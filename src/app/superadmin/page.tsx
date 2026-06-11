@@ -1,9 +1,17 @@
+import Link from "next/link";
 import {
+  Globe,
+  Monitor,
   Users,
   UserCog,
-  UserCheck,
-  Shield,
+  ShieldCheck,
   TrendingUp,
+  Image,
+  Building2,
+  Link2,
+  Eye,
+  UserCheck,
+  Settings,
 } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -27,7 +35,7 @@ export default async function SuperadminDashboard() {
 
   const { data: employees, error } = await supabaseAdmin
     .from("employees")
-    .select("id, address");
+    .select("id, address, email, status");
 
   if (error) {
     return (
@@ -39,34 +47,25 @@ export default async function SuperadminDashboard() {
     );
   }
 
-  const employeeList = employees || [];
+  const employeeList = (employees || []).filter(
+    (e) => (e.email as string) !== "__settings__@ptpgp.co.id"
+  );
   const totalUsers = employeeList.length;
 
   let totalHRD = 0;
-  let totalEmployees = 0;
-  let totalSuperadmins = 0;
 
   for (const emp of employeeList) {
     const role = parseRole(emp.address);
-    if (role === "superadmin") totalSuperadmins++;
-    else if (role === "hrd") totalHRD++;
-    else totalEmployees++;
+    if (role === "hrd") totalHRD++;
   }
 
-  const stats = [
+  const statsCards = [
     {
-      label: "Total Users",
+      label: "Total Karyawan",
       value: totalUsers,
       icon: Users,
       color: "blue",
       sub: "Semua akun terdaftar",
-    },
-    {
-      label: "Total Superadmin",
-      value: totalSuperadmins,
-      icon: Shield,
-      color: "amber",
-      sub: "Akses penuh sistem",
     },
     {
       label: "Total HRD",
@@ -76,27 +75,101 @@ export default async function SuperadminDashboard() {
       sub: "Manajemen HR",
     },
     {
-      label: "Total Karyawan",
-      value: totalEmployees,
-      icon: UserCheck,
+      label: "Status Website",
+      value: "Aktif",
+      icon: Globe,
       color: "indigo",
-      sub: "Akun employee",
+      sub: "CMS operasional",
     },
   ];
 
-  const colorMap: Record<string, { bg: string; text: string; iconBg: string; accent: string }> = {
-    blue: { bg: "bg-blue-500/5", text: "text-blue-600", iconBg: "bg-blue-50", accent: "text-blue-600" },
-    amber: { bg: "bg-amber-500/5", text: "text-amber-600", iconBg: "bg-amber-50", accent: "text-amber-600" },
-    emerald: { bg: "bg-emerald-500/5", text: "text-emerald-600", iconBg: "bg-emerald-50", accent: "text-emerald-600" },
-    indigo: { bg: "bg-indigo-500/5", text: "text-indigo-600", iconBg: "bg-indigo-50", accent: "text-indigo-600" },
+  const colorMap: Record<
+    string,
+    { bg: string; text: string; iconBg: string; accent: string }
+  > = {
+    blue: {
+      bg: "bg-blue-500/5",
+      text: "text-blue-600",
+      iconBg: "bg-blue-50",
+      accent: "text-blue-600",
+    },
+    amber: {
+      bg: "bg-amber-500/5",
+      text: "text-amber-600",
+      iconBg: "bg-amber-50",
+      accent: "text-amber-600",
+    },
+    emerald: {
+      bg: "bg-emerald-500/5",
+      text: "text-emerald-600",
+      iconBg: "bg-emerald-50",
+      accent: "text-emerald-600",
+    },
+    indigo: {
+      bg: "bg-indigo-500/5",
+      text: "text-indigo-600",
+      iconBg: "bg-indigo-50",
+      accent: "text-indigo-600",
+    },
   };
+
+  const websiteCards = [
+    {
+      title: "Hero Section",
+      desc: "Edit judul, subtitle, dan gambar latar halaman utama",
+      href: "/superadmin/website/hero",
+      icon: Image,
+      color: "bg-orange-50 text-orange-600",
+    },
+    {
+      title: "Informasi Perusahaan",
+      desc: "Edit nama, telepon, email, alamat perusahaan",
+      href: "/superadmin/website/info",
+      icon: Building2,
+      color: "bg-blue-50 text-blue-600",
+    },
+    {
+      title: "Link & Navigasi",
+      desc: "Edit menu navigasi dan link footer",
+      href: "/superadmin/website/links",
+      icon: Link2,
+      color: "bg-emerald-50 text-emerald-600",
+    },
+  ];
+
+  const monitoringCards = [
+    {
+      title: "Data HRD",
+      desc: "Lihat aktivitas dan data HRD (read-only)",
+      href: "/superadmin/monitoring/hrd",
+      icon: Eye,
+      color: "bg-purple-50 text-purple-600",
+    },
+    {
+      title: "Data Karyawan",
+      desc: "Lihat seluruh data karyawan (read-only)",
+      href: "/superadmin/monitoring/employees",
+      icon: UserCheck,
+      color: "bg-teal-50 text-teal-600",
+    },
+  ];
+
+  const userCards = [
+    {
+      title: "Manajemen User",
+      desc: "Edit email & password seluruh user",
+      href: "/superadmin/employees",
+      icon: UserCog,
+      color: "bg-amber-50 text-amber-600",
+    },
+  ];
 
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Dashboard Superadmin
+            Panel Kontrol Superadmin
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Hari ini:{" "}
@@ -104,13 +177,15 @@ export default async function SuperadminDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
-          <Shield size={14} className="text-amber-600" />
-          <span className="text-xs font-bold text-amber-700">Superadmin Mode</span>
+          <ShieldCheck size={14} className="text-amber-600" />
+          <span className="text-xs font-bold text-amber-700">
+            Superadmin Mode
+          </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => {
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {statsCards.map((stat) => {
           const c = colorMap[stat.color];
           const Icon = stat.icon;
           return (
@@ -129,7 +204,9 @@ export default async function SuperadminDashboard() {
                   <h3 className="text-3xl font-extrabold text-slate-800 mt-2">
                     {stat.value}
                   </h3>
-                  <div className={`flex items-center gap-1 mt-2 ${c.accent} text-xs font-semibold`}>
+                  <div
+                    className={`flex items-center gap-1 mt-2 ${c.accent} text-xs font-semibold`}
+                  >
                     <TrendingUp size={14} />
                     <span>{stat.sub}</span>
                   </div>
@@ -141,6 +218,100 @@ export default async function SuperadminDashboard() {
             </div>
           );
         })}
+      </div>
+
+      {/* Manajemen Website */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Globe size={18} className="text-slate-500" />
+          <h2 className="text-lg font-bold text-[#1A2530]">
+            Manajemen Website
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {websiteCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <Link
+                key={card.href}
+                href={card.href}
+                className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 group"
+              >
+                <div className={`p-3 rounded-xl inline-block mb-4 ${card.color}`}>
+                  <Icon size={22} />
+                </div>
+                <h3 className="text-base font-bold text-slate-800 mb-1 group-hover:text-amber-600 transition-colors">
+                  {card.title}
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {card.desc}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Monitoring */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Monitor size={18} className="text-slate-500" />
+          <h2 className="text-lg font-bold text-[#1A2530]">Monitoring</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {monitoringCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <Link
+                key={card.href}
+                href={card.href}
+                className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 group"
+              >
+                <div className={`p-3 rounded-xl inline-block mb-4 ${card.color}`}>
+                  <Icon size={22} />
+                </div>
+                <h3 className="text-base font-bold text-slate-800 mb-1 group-hover:text-amber-600 transition-colors">
+                  {card.title}
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {card.desc}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Manajemen User */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Settings size={18} className="text-slate-500" />
+          <h2 className="text-lg font-bold text-[#1A2530]">
+            Manajemen User
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 max-w-md">
+          {userCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <Link
+                key={card.href}
+                href={card.href}
+                className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 group"
+              >
+                <div className={`p-3 rounded-xl inline-block mb-4 ${card.color}`}>
+                  <Icon size={22} />
+                </div>
+                <h3 className="text-base font-bold text-slate-800 mb-1 group-hover:text-amber-600 transition-colors">
+                  {card.title}
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {card.desc}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

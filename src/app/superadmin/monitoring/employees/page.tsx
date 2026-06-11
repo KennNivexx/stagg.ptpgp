@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Pencil, Mail, ShieldCheck, UserCog } from "lucide-react";
+import { ArrowLeft, Users, Mail, Search } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
 
 function parseRole(address: unknown): string {
@@ -33,8 +33,14 @@ function getStatusBadge(status: string) {
   return `${base} bg-slate-100 text-slate-600`;
 }
 
-export default async function SuperadminEmployees() {
-  const { data: employees, error } = await supabaseAdmin
+export default async function MonitoringEmployees({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+
+  const { data: allEmployees, error } = await supabaseAdmin
     .from("employees")
     .select("*")
     .order("created_at", { ascending: false });
@@ -49,52 +55,119 @@ export default async function SuperadminEmployees() {
     );
   }
 
-  const employeeList = (employees || []).filter(
+  let employees = (allEmployees || []).filter(
     (e) => (e.email as string) !== "__settings__@ptpgp.co.id"
   );
 
+  if (q) {
+    const query = q.toLowerCase();
+    employees = employees.filter(
+      (e) =>
+        ((e.full_name as string) || "").toLowerCase().includes(query) ||
+        ((e.email as string) || "").toLowerCase().includes(query) ||
+        ((e.department as string) || "").toLowerCase().includes(query) ||
+        ((e.position as string) || "").toLowerCase().includes(query)
+    );
+  }
+
+  const total = employees.length;
+  const active = employees.filter(
+    (e) => e.status === "Tetap" || e.status === "Kontrak"
+  ).length;
+
+  const deptCount: Record<string, number> = {};
+  for (const emp of employees) {
+    const dept = (emp.department as string) || "Lainnya";
+    deptCount[dept] = (deptCount[dept] || 0) + 1;
+  }
+
   return (
-    <div className="p-6 lg:p-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A2530]">Manajemen User</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Edit email & password seluruh user sistem.
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <Link
+          href="/superadmin"
+          className="inline-flex items-center text-sm text-gray-500 hover:text-amber-600 transition-colors mb-4 font-semibold"
+        >
+          <ArrowLeft size={16} className="mr-1" /> Kembali ke Dashboard
+        </Link>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#1A2530]">
+              Data Karyawan
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Lihat seluruh data karyawan (read-only).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            Total Karyawan
+          </p>
+          <p className="text-3xl font-extrabold text-slate-800 mt-1">{total}</p>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            Karyawan Aktif
+          </p>
+          <p className="text-3xl font-extrabold text-emerald-600 mt-1">
+            {active}
+          </p>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            Departemen
+          </p>
+          <p className="text-3xl font-extrabold text-blue-600 mt-1">
+            {Object.keys(deptCount).length}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-4">
-        <div className="px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold flex items-center gap-1">
-          <ShieldCheck size={12} />
-          Superadmin:{" "}
-          {
-            employeeList.filter((e) => parseRole(e.address) === "superadmin")
-              .length
-          }
-        </div>
-        <div className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1">
-          <UserCog size={12} />
-          HRD:{" "}
-          {employeeList.filter((e) => parseRole(e.address) === "hrd").length}
-        </div>
-        <div className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
-          Employee:{" "}
-          {
-            employeeList.filter((e) => parseRole(e.address) === "employee")
-              .length
-          }
-        </div>
+      {/* Department breakdown */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {Object.entries(deptCount)
+          .sort(([, a], [, b]) => b - a)
+          .map(([dept, count]) => (
+            <span
+              key={dept}
+              className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold"
+            >
+              {dept}: {count}
+            </span>
+          ))}
       </div>
 
-      {employeeList.length === 0 ? (
+      {/* Search */}
+      <form className="mb-6">
+        <div className="relative max-w-sm">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="text"
+            name="q"
+            defaultValue={q || ""}
+            placeholder="Cari nama, email, departemen..."
+            className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-colors"
+          />
+        </div>
+      </form>
+
+      {employees.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-          <div className="text-5xl mb-4 opacity-30">👥</div>
+          <Users size={48} className="mx-auto text-slate-300 mb-4" />
           <h3 className="text-lg font-bold text-slate-800 mb-2">
-            Belum ada data user
+            {q ? "Tidak ada hasil" : "Belum ada data karyawan"}
           </h3>
           <p className="text-sm text-slate-500">
-            Tidak ada karyawan yang terdaftar dalam sistem.
+            {q
+              ? `Tidak ditemukan karyawan dengan kata kunci "${q}".`
+              : "Tidak ada karyawan yang terdaftar dalam sistem."}
           </p>
         </div>
       ) : (
@@ -116,15 +189,18 @@ export default async function SuperadminEmployees() {
                     Departemen
                   </th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Jabatan
+                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="text-right px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Aksi
+                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Tanggal Masuk
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {employeeList.map((emp) => {
+                {employees.map((emp) => {
                   const role = parseRole(emp.address);
                   return (
                     <tr
@@ -161,17 +237,19 @@ export default async function SuperadminEmployees() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
+                        <span className="text-xs text-slate-600">
+                          {(emp.position as string) || "-"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
                         <span className={getStatusBadge(emp.status as string)}>
                           {(emp.status as string) || "-"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <Link
-                          href={`/superadmin/employees/${emp.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors"
-                        >
-                          <Pencil size={12} /> Edit
-                        </Link>
+                      <td className="px-6 py-4">
+                        <span className="text-xs text-slate-500">
+                          {(emp.join_date as string) || "-"}
+                        </span>
                       </td>
                     </tr>
                   );
@@ -182,10 +260,7 @@ export default async function SuperadminEmployees() {
           <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
             <p className="text-xs text-slate-500">
               Total:{" "}
-              <span className="font-bold text-slate-800">
-                {employeeList.length}
-              </span>{" "}
-              user
+              <span className="font-bold text-slate-800">{total}</span> karyawan
             </p>
           </div>
         </div>

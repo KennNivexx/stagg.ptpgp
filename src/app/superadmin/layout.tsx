@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   Users,
   UserCog,
-  Briefcase,
   LogOut,
   LayoutDashboard,
   Bell,
@@ -14,6 +13,13 @@ import {
   Menu,
   X,
   ShieldCheck,
+  Globe,
+  Monitor,
+  Eye,
+  Image,
+  Building2,
+  Link2,
+  Footprints,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { getCookie } from "@/lib/cookie-client";
@@ -26,9 +32,22 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
 
   const menuItems = [
     { href: "/superadmin", label: "Dashboard", icon: LayoutDashboard },
+  ];
+
+  const websiteItems = [
+    { href: "/superadmin/website/hero", label: "Hero Section", icon: Image },
+    { href: "/superadmin/website/info", label: "Info Perusahaan", icon: Building2 },
+    { href: "/superadmin/website/links", label: "Link & Navigasi", icon: Link2 },
+    { href: "/superadmin/website/footer", label: "Footer", icon: Footprints },
+  ];
+
+  const monitoringItems = [
+    { href: "/superadmin/monitoring/hrd", label: "Data HRD", icon: Eye },
+    { href: "/superadmin/monitoring/employees", label: "Data Karyawan", icon: Users },
+  ];
+
+  const userItems = [
     { href: "/superadmin/employees", label: "Manajemen User", icon: UserCog },
-    { href: "/hrd/employees", label: "Data Karyawan", icon: Users },
-    { href: "/hrd/recruitment", label: "Rekrutmen", icon: Briefcase },
   ];
 
   return (
@@ -77,7 +96,7 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
         {/* Navigation Items */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/superadmin" && pathname.startsWith(item.href));
+            const isActive = pathname === item.href;
             const Icon = item.icon;
 
             return (
@@ -101,6 +120,102 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
               </Link>
             );
           })}
+
+          {/* Website Management Section */}
+          <div className="pt-3">
+            <p className="px-4 py-2 text-[10px] font-bold text-slate-500 tracking-widest uppercase flex items-center gap-2">
+              <Globe size={11} /> Manajemen Website
+            </p>
+            {websiteItems.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={`
+                    flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group
+                    ${isActive
+                      ? "bg-amber-600 text-white shadow-lg shadow-amber-600/15"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                    }
+                  `}
+                >
+                  <Icon size={16} className={`transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
+                  <span>{item.label}</span>
+                  {isActive && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Monitoring Section */}
+          <div className="pt-3">
+            <p className="px-4 py-2 text-[10px] font-bold text-slate-500 tracking-widest uppercase flex items-center gap-2">
+              <Monitor size={11} /> Monitoring
+            </p>
+            {monitoringItems.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={`
+                    flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group
+                    ${isActive
+                      ? "bg-amber-600 text-white shadow-lg shadow-amber-600/15"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                    }
+                  `}
+                >
+                  <Icon size={16} className={`transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
+                  <span>{item.label}</span>
+                  {isActive && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* User Management Section */}
+          <div className="pt-3">
+            <p className="px-4 py-2 text-[10px] font-bold text-slate-500 tracking-widest uppercase flex items-center gap-2">
+              <ShieldCheck size={11} /> Manajemen User
+            </p>
+            {userItems.map((item) => {
+              const isActive = pathname.startsWith(item.href);
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={`
+                    flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group
+                    ${isActive
+                      ? "bg-amber-600 text-white shadow-lg shadow-amber-600/15"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                    }
+                  `}
+                >
+                  <Icon size={16} className={`transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
+                  <span>{item.label}</span>
+                  {isActive && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         {/* User Profile Card & Logout */}

@@ -105,7 +105,8 @@ export default function SuperadminEditEmployee({
   };
 
   const handleGeneratePassword = () => {
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const chars =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*";
     let pw = "";
     for (let i = 0; i < 12; i++) {
       pw += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -153,7 +154,7 @@ export default function SuperadminEditEmployee({
         </Link>
         <h1 className="text-2xl font-bold text-[#1A2530]">Edit User</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Ubah data akun, role, dan password pengguna.
+          Ubah data akun, email, password, dan role pengguna.
         </p>
       </div>
 
@@ -187,7 +188,9 @@ export default function SuperadminEditEmployee({
 
           <div className="p-8 border-b border-slate-100">
             <div className="flex items-center gap-2 mb-6">
-              <h2 className="text-lg font-bold text-[#1A2530]">Informasi Akun</h2>
+              <h2 className="text-lg font-bold text-[#1A2530]">
+                Informasi Akun
+              </h2>
               <span className={getRoleBadge(currentRole)}>
                 {getRoleIcon(currentRole)}
                 <span className="ml-1">{getRoleLabel(currentRole)}</span>
@@ -217,6 +220,9 @@ export default function SuperadminEditEmployee({
                   defaultValue={employee.email as string}
                   className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-colors"
                 />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Mengubah email akan memperbarui kredensial login.
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">
@@ -306,7 +312,8 @@ export default function SuperadminEditEmployee({
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-400 mt-1">
-                  Isi untuk mereset password. Kosongkan untuk mempertahankan password lama.
+                  Isi untuk mereset password. Kosongkan untuk mempertahankan
+                  password lama.
                 </p>
               </div>
             </div>
