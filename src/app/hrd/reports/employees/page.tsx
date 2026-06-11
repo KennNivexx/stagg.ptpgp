@@ -1,0 +1,215 @@
+﻿import { supabaseAdmin } from "@/lib/supabase";
+import { FileText, Users, TrendingUp, UserPlus, UserX, Building2 } from "lucide-react";
+
+export default async function LaporanKaryawan() {
+  const { data: employees } = await supabaseAdmin
+    .from("employees")
+    .select("*")
+    .order("full_name");
+
+  const { count: totalEmployees } = await supabaseAdmin
+    .from("employees")
+    .select("*", { count: "exact", head: true });
+
+  const { count: tetapCount } = await supabaseAdmin
+    .from("employees")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "Tetap");
+
+  const { count: kontrakCount } = await supabaseAdmin
+    .from("employees")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "Kontrak");
+
+  const { count: resignedCount } = await supabaseAdmin
+    .from("employees")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "Resigned");
+
+  const deptCounts: Record<string, number> = {};
+  (employees || []).forEach((e: Record<string, unknown>) => {
+    const dept = (e.department as string) || "Tidak Ada";
+    deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+  });
+
+  const statusCounts: Record<string, number> = {};
+  (employees || []).forEach((e: Record<string, unknown>) => {
+    const s = (e.status as string) || "Lainnya";
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+
+  const monthlyJoin = (employees || []).reduce((acc: Record<string, number>, e: Record<string, unknown>) => {
+    if (e.join_date) {
+      const d = new Date(e.join_date as string);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      acc[key] = (acc[key] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const months = Object.keys(monthlyJoin).sort();
+
+  return (
+    <div className="p-6 lg:p-8 space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Karyawan</h1>
+        <p className="text-sm text-gray-500">Demografi karyawan, tren headcount, dan statistik tenaga kerja.</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Users size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Total Karyawan</p>
+              <p className="text-xl font-extrabold text-slate-800">{totalEmployees || 0}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><UserPlus size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Tetap</p>
+              <p className="text-xl font-extrabold text-slate-800">{tetapCount || 0}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><Building2 size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Kontrak</p>
+              <p className="text-xl font-extrabold text-slate-800">{kontrakCount || 0}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-red-50 text-red-600 rounded-xl"><UserX size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Resign</p>
+              <p className="text-xl font-extrabold text-slate-800">{resignedCount || 0}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-sm">Distribusi per Departemen</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Jumlah karyawan tiap departemen</p>
+            </div>
+          </div>
+          {Object.keys(deptCounts).length === 0 ? (
+            <div className="p-12 text-center">
+              <Building2 size={40} className="mx-auto text-slate-300 mb-4" />
+              <p className="text-sm text-slate-500">Belum ada data departemen.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/50">
+                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Departemen</th>
+                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Jumlah</th>
+                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Persentase</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {Object.entries(deptCounts)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([dept, count]) => (
+                    <tr key={dept} className="hover:bg-slate-50/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold">{dept}</span>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-bold text-slate-800">{count}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[120px]">
+                            <div
+                              className="h-full bg-[#CC0000] rounded-full"
+                              style={{ width: `${((count / (totalEmployees || 1)) * 100).toFixed(0)}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-500">
+                            {((count / (totalEmployees || 1)) * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <div className="p-6 border-b border-slate-100">
+              <h3 className="font-extrabold text-slate-800 text-sm">Distribusi Status</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Perbandingan status karyawan</p>
+            </div>
+            <div className="p-6 space-y-3">
+              {Object.entries(statusCounts).map(([status, count]) => {
+                const colors: Record<string, string> = {
+                  Tetap: "bg-emerald-500",
+                  Kontrak: "bg-amber-500",
+                  Magang: "bg-purple-500",
+                  Resigned: "bg-red-500",
+                };
+                return (
+                  <div key={status}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-slate-600">{status}</span>
+                      <span className="text-xs font-bold text-slate-800">{count}</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${colors[status] || "bg-blue-500"}`}
+                        style={{ width: `${Math.max(2, (count / (totalEmployees || 1)) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <div className="p-6 border-b border-slate-100">
+              <h3 className="font-extrabold text-slate-800 text-sm">Tren Headcount</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Karyawan baru per bulan</p>
+            </div>
+            <div className="p-6">
+              {months.length > 0 ? (
+                <div className="space-y-2">
+                  {months.slice(-6).map((m) => (
+                    <div key={m} className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-500">{m}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden w-24">
+                          <div
+                            className="h-full bg-[#CC0000] rounded-full"
+                            style={{ width: `${Math.min(100, (monthlyJoin[m] || 0) * 20)}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-800">{monthlyJoin[m] || 0}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 text-center py-4">Belum ada data.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
