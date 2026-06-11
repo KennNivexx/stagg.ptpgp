@@ -1,71 +1,93 @@
 import Link from "next/link";
 import { Mail, Phone, MapPin } from "lucide-react";
 
-export default function PGPFooter() {
+interface FooterLink { name: string; href: string; }
+interface FooterProps {
+  info?: { company_name?: string; company_phone?: string; company_email?: string; company_address?: string; company_description?: string };
+  footer?: { footer_copyright?: string; footer_description?: string };
+  links?: { footer_quick?: FooterLink[]; footer_support?: FooterLink[]; social?: FooterLink[] };
+}
+
+export default function PGPFooter({ info, footer, links }: FooterProps) {
+  const companyName = info?.company_name || "PT Pratama Galuh Perkasa";
+  const companyPhone = info?.company_phone || "(0524) 570700";
+  const companyDesc = info?.company_description || footer?.footer_description || "Industrial Excellence in Logistics. Delivering precision and reliability across the archipelago.";
+  const copyright = footer?.footer_copyright || `\u00a9 ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
+
+  const quickLinks = links?.footer_quick?.length ? links.footer_quick : [
+    { name: "About Us", href: "/" },
+    { name: "Safety & Compliance", href: "/" },
+    { name: "Sustainability", href: "/" },
+  ];
+
+  const supportLinks = links?.footer_support?.length ? links.footer_support : [
+    { name: "Network", href: "/#services" },
+    { name: "Client Portal", href: "/" },
+    { name: "Privacy Policy", href: "/" },
+  ];
+
   return (
     <footer className="bg-zinc-50 pt-16 pb-8 border-t border-zinc-200/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16 mb-16">
           
-          {/* Brand & Description */}
           <div className="lg:col-span-1">
             <Link href="/" className="inline-block mb-4">
               <img 
                 src="https://stag.ptpgp.co.id/web/image/website/1/logo/PRATAMA%20GALUH%20PERKASA?unique=af2b0b3" 
-                alt="PT Pratama Galuh Perkasa" 
+                alt={companyName} 
                 className="h-16 w-auto" 
               />
             </Link>
             <p className="text-zinc-600 text-xs leading-relaxed mb-6 font-light">
-              Industrial Excellence in Logistics. Delivering precision and reliability across the archipelago.
+              {companyDesc}
             </p>
           </div>
 
-          {/* Quick Links */}
           <div>
             <h3 className="text-xs font-bold text-pgp-navy uppercase tracking-widest mb-6">Company</h3>
             <ul className="space-y-4">
-              <li><Link href="/" className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">About Us</Link></li>
-              <li><Link href="/" className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">Safety & Compliance</Link></li>
-              <li><Link href="/" className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">Sustainability</Link></li>
+              {quickLinks.map((l) => (
+                <li key={l.name}><Link href={l.href} className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">{l.name}</Link></li>
+              ))}
             </ul>
           </div>
 
-          {/* Services */}
           <div>
             <h3 className="text-xs font-bold text-pgp-navy uppercase tracking-widest mb-6">Services</h3>
             <ul className="space-y-4">
-              <li><Link href="/#services" className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">Network</Link></li>
-              <li><Link href="/" className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">Client Portal</Link></li>
-              <li><Link href="/" className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">Privacy Policy</Link></li>
+              {supportLinks.map((l) => (
+                <li key={l.name}><Link href={l.href} className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">{l.name}</Link></li>
+              ))}
             </ul>
           </div>
 
-          {/* Contact */}
           <div>
-            <h3 className="text-xs font-bold text-pgp-navy uppercase tracking-widest mb-6">Contact</h3>
-            <ul className="space-y-6">
-              <li className="flex items-center gap-3">
-                <span className="text-zinc-600 text-xs">(0524) 570700</span>
+            <h3 className="text-xs font-bold text-pgp-navy uppercase tracking-widest mb-6">Kontak</h3>
+            <ul className="space-y-4">
+              <li className="flex items-center gap-2">
+                <Phone size={12} className="text-pgp-red" />
+                <span className="text-zinc-600 text-xs">{companyPhone}</span>
               </li>
-              <li className="flex gap-3">
-                 <div className="w-6 h-6 bg-white border border-zinc-200 rounded flex items-center justify-center">
-                    <div className="w-3 h-3 border border-zinc-300 rounded-sm"></div>
-                 </div>
-                 <div className="w-6 h-6 bg-orange-100 border border-orange-200/50 rounded flex items-center justify-center">
-                    <Mail size={12} className="text-pgp-red" />
-                 </div>
-              </li>
+              {info?.company_email && (
+                <li className="flex items-center gap-2">
+                  <Mail size={12} className="text-pgp-red" />
+                  <span className="text-zinc-600 text-xs">{info.company_email}</span>
+                </li>
+              )}
+              {info?.company_address && (
+                <li className="flex items-center gap-2">
+                  <MapPin size={12} className="text-pgp-red" />
+                  <span className="text-zinc-600 text-xs">{info.company_address}</span>
+                </li>
+              )}
             </ul>
           </div>
 
         </div>
 
-        {/* Bottom Bar */}
         <div className="border-t border-zinc-200/80 pt-6 text-center">
-          <p className="text-zinc-500 text-[10px] font-bold">
-            &copy; {new Date().getFullYear()} PT Pratama Galuh Perkasa. All rights reserved. Industrial Excellence in Logistics.
-          </p>
+          <p className="text-zinc-500 text-[10px] font-bold">{copyright}</p>
         </div>
       </div>
     </footer>

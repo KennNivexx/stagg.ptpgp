@@ -1,25 +1,60 @@
 import { MapPin } from "lucide-react";
 
-export default function CoverageSection() {
-  const domestik = ["Jakarta", "Surabaya", "Medan", "Makassar", "Balikpapan", "Batam"];
-  const internasional = ["Singapura", "Malaysia", "China", "Thailand", "Vietnam", "Timur Tengah"];
+interface CoverageItem {
+  region: string;
+  description?: string;
+}
+
+interface CoverageProps {
+  show?: boolean;
+  title?: string;
+  subtitle?: string;
+  domestic?: CoverageItem[];
+  international?: CoverageItem[];
+}
+
+const defaultDomestic: CoverageItem[] = [
+  { region: "Jakarta" },
+  { region: "Surabaya" },
+  { region: "Medan" },
+  { region: "Makassar" },
+  { region: "Balikpapan" },
+  { region: "Batam" }
+];
+
+const defaultInternational: CoverageItem[] = [
+  { region: "Singapura" },
+  { region: "Malaysia" },
+  { region: "China" },
+  { region: "Thailand" },
+  { region: "Vietnam" },
+  { region: "Timur Tengah" }
+];
+
+export default function CoverageSection({
+  show = true,
+  title = "Area Layanan",
+  subtitle = "Cakupan Pengiriman",
+  domestic = defaultDomestic,
+  international = defaultInternational,
+}: CoverageProps) {
+  if (!show) return null;
+
+  const domestik = domestic?.length ? domestic : defaultDomestic;
+  const internasional = international?.length ? international : defaultInternational;
 
   return (
     <section id="coverage" className="py-24 bg-zinc-50 text-pgp-navy overflow-hidden relative border-y border-zinc-200/40">
-      {/* Abstract Map Background Placeholder */}
       <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-pgp-red font-extrabold text-xs tracking-widest uppercase mb-4 block">
-            Cakupan Pengiriman
+            {subtitle}
           </span>
-          <h2 className="text-3xl md:text-4xl font-black mb-6 tracking-tight text-zinc-955">
-            Area Layanan
+          <h2 className="text-3xl md:text-4xl font-black mb-6 tracking-tight text-zinc-950">
+            {title}
           </h2>
-          <p className="text-zinc-900 font-normal">
-            Menghubungkan rantai pasok Anda ke seluruh pelosok nusantara hingga pusat bisnis global.
-          </p>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-12">
@@ -29,9 +64,9 @@ export default function CoverageSection() {
               Domestik (Indonesia)
             </h3>
             <ul className="grid grid-cols-2 gap-y-6 gap-x-4">
-              {domestik.map((city, idx) => (
+              {domestik.map((item, idx) => (
                 <li key={idx} className="flex items-center gap-3 text-zinc-950 text-sm font-bold">
-                  <div className="w-2.5 h-2.5 rounded-full bg-pgp-red"></div> {city}
+                  <div className="w-2.5 h-2.5 rounded-full bg-pgp-red"></div> {item.region}
                 </li>
               ))}
             </ul>
@@ -43,9 +78,9 @@ export default function CoverageSection() {
               Internasional
             </h3>
             <ul className="grid grid-cols-2 gap-y-6 gap-x-4">
-              {internasional.map((country, idx) => (
+              {internasional.map((item, idx) => (
                 <li key={idx} className="flex items-center gap-3 text-zinc-950 text-sm font-bold">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> {country}
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> {item.region}
                 </li>
               ))}
             </ul>
