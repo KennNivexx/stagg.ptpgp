@@ -1,3 +1,4 @@
+// Trigger rebuild for AboutSection
 interface AboutProps {
   show?: boolean;
   title?: string;

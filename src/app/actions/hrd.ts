@@ -52,6 +52,7 @@ export async function createEmployee(formData: FormData) {
   const position = formData.get("position") as string;
   const join_date = formData.get("join_date") as string;
   const status = formData.get("status") as string || "Tetap";
+  const orgCode = (formData.get("org_code") as string) || "";
   const password = generateRandomPassword();
 
   const { data: existingEmails } = await supabaseAdmin
@@ -96,6 +97,7 @@ export async function createEmployee(formData: FormData) {
   const passwordHash = hashPassword(password);
   const authData = JSON.stringify({
     __auth__: { password_hash: passwordHash, role: "employee" },
+    org_code: orgCode,
   });
 
   const { error: empError } = await supabaseAdmin

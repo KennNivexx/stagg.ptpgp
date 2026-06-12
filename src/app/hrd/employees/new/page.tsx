@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Mail, Key, CheckCircle2, Copy, Eye, EyeOff } from "lucide-react";
 import { createEmployee } from "@/app/actions/hrd";
+import { getOrgStructure } from "@/app/actions/org";
 import { generateCompanyEmail } from "@/lib/auth";
 
 export default function NewEmployeeForm() {
@@ -22,12 +23,28 @@ export default function NewEmployeeForm() {
   const [generatedEmail, setGeneratedEmail] = useState("");
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [orgUnits, setOrgUnits] = useState<{code: string; name: string}[]>([]);
+  const [orgCode, setOrgCode] = useState("");
 
   useEffect(() => {
     if (fullName && !email) {
       setGeneratedEmail(generateCompanyEmail(fullName));
     }
   }, [fullName, email]);
+
+  useEffect(() => {
+    getOrgStructure().then(tree => {
+      const flat: {code: string; name: string}[] = [];
+      function walk(units: any[]) {
+        for (const u of units) {
+          flat.push({ code: u.code, name: u.name });
+          if (u.children) walk(u.children);
+        }
+      }
+      walk(tree);
+      setOrgUnits(flat);
+    });
+  }, []);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -47,6 +64,7 @@ export default function NewEmployeeForm() {
     formData.append("position", position);
     formData.append("join_date", joinDate);
     formData.append("status", status);
+    if (orgCode) formData.append("org_code", orgCode);
 
     const res = await createEmployee(formData);
     if (res.error) {
@@ -241,6 +259,16 @@ export default function NewEmployeeForm() {
                   <option>Tetap</option>
                   <option>Kontrak</option>
                   <option>Magang</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Unit Organisasi</label>
+                <select value={orgCode} onChange={(e) => setOrgCode(e.target.value)}
+                  className="w-full border border-gray-200 p-3 rounded-xl text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000]/20 outline-none bg-white">
+                  <option value="">Pilih Unit Organisasi</option>
+                  {orgUnits.map(u => (
+                    <option key={u.code} value={u.code}>{u.code} — {u.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
