@@ -8,9 +8,11 @@ import {
   Users, DollarSign, TrendingUp, Truck, FileText, ShieldCheck,
   Settings, Printer, Search, Building2, Activity, Edit3,
   PlusCircle, Trash2, X, Mail, Briefcase, AlertTriangle,
-  User, ChevronRight, Phone, Calendar, IdCard,
+  User, ChevronRight, Phone, Calendar, IdCard, Image as ImageIcon
 } from "lucide-react";
 import { addOrgUnit, updateOrgUnit, deleteOrgUnit } from "@/app/actions/org";
+import { toPng } from "html-to-image";
+import jsPDF from "jspdf";
 
 /* ─────────────────────────────── Types ───────────────────────────────────── */
 interface OrgUnit {
@@ -261,7 +263,40 @@ export default function OrgStructureClient({ orgData=[], employees=[] }: Props) 
   const [modal, setModal] = useState<null|"info"|"edit"|"add"|"del">(null);
   const [sel, setSel] = useState<OrgUnit|null>(null);
   const [mounted, setMounted] = useState(false);
+  const chartInnerRef = React.useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
   useEffect(()=>setMounted(true),[]);
+
+  const handleExportPNG = async () => {
+    if (!chartInnerRef.current || exporting) return;
+    setExporting(true);
+    try {
+      const dataUrl = await toPng(chartInnerRef.current, { backgroundColor: "#F8FAFC", pixelRatio: 2, skipFonts: true });
+      const link = document.createElement("a");
+      link.download = "struktur-organisasi-ptpgp.png";
+      link.href = dataUrl;
+      link.click();
+    } catch (err) { console.error(err); }
+    setExporting(false);
+  };
+
+  const handleExportPDF = async () => {
+    if (!chartInnerRef.current || exporting) return;
+    setExporting(true);
+    try {
+      const dataUrl = await toPng(chartInnerRef.current, { backgroundColor: "#F8FAFC", pixelRatio: 2, skipFonts: true });
+      const img = new window.Image();
+      img.src = dataUrl;
+      await new Promise<void>(r => { img.onload = () => r(); });
+      const pdf = new jsPDF({
+        orientation: img.width > img.height ? "landscape" : "portrait",
+        unit: "px", format: [img.width, img.height],
+      });
+      pdf.addImage(img, "PNG", 0, 0, img.width, img.height);
+      pdf.save("struktur-organisasi-ptpgp.pdf");
+    } catch (err) { console.error(err); }
+    setExporting(false);
+  };
 
   // form
   const [fName, setFName] = useState("");
@@ -463,16 +498,18 @@ export default function OrgStructureClient({ orgData=[], employees=[] }: Props) 
   // Operational:
   //   [Operational navy]
   //       │
-  //   ├── Vehicle Operations (green) → Driver, Operasional Alat Berat→Operator, Plant→Rigger
-  //   ├── Operasional Plant (green)
+  //   ├── Vehicle Operations (green) → Driver
+  //   ├── Operasional Alat Berat (green) → Operator
+  //   ├── Operasional Plant (green) → Rigger
   //   ├── Traffic System (orange)
-  //   └── Quality Control (green)    → Service Advisor, Vehicle Registration, Equipment Control, Staff Admin
+  //   └── Quality Control (green) → Service Advisor, Vehicle Registration, Equipment Control, Staff Admin
   function OpsCol({node}:{node:OrgUnit}) {
-    const vo = node.children.find(c=>c.name.toLowerCase().includes("vehicle operations")||c.name.toLowerCase().includes("vehicle ops"));
-    const op = node.children.find(c=>c.name.toLowerCase().includes("operasional plant")||c.name.toLowerCase().includes("plant"));
-    const ts = node.children.find(c=>c.name.toLowerCase().includes("traffic"));
-    const qc = node.children.find(c=>c.name.toLowerCase().includes("quality control"));
-    const grps = [vo,op,ts,qc].filter(Boolean) as OrgUnit[];
+    const vo  = node.children.find(c=>c.name.toLowerCase().includes("vehicle operations")||c.name.toLowerCase().includes("vehicle ops"));
+    const oab = node.children.find(c=>c.name.toLowerCase().includes("alat berat"));
+    const op  = node.children.find(c=>{const n=c.name.toLowerCase();return (n.includes("operasional plant")||n==="plant")&&!n.includes("alat berat");});
+    const ts  = node.children.find(c=>c.name.toLowerCase().includes("traffic"));
+    const qc  = node.children.find(c=>c.name.toLowerCase().includes("quality control"));
+    const grps = [vo,oab,op,ts,qc].filter(Boolean) as OrgUnit[];
     return (
       <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
         {C(node,175)}
@@ -886,10 +923,16 @@ export default function OrgStructureClient({ orgData=[], employees=[] }: Props) 
               <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${em?"translate-x-4":"translate-x-0.5"}`}/>
             </button>
           </div>
-          <button onClick={()=>window.print()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors">
-            <Printer className="w-3.5 h-3.5"/>Cetak
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={handleExportPNG} disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors disabled:opacity-50">
+              <ImageIcon className="w-3.5 h-3.5"/>PNG
+            </button>
+            <button onClick={handleExportPDF} disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#004A8F] hover:bg-[#003870] text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50">
+              <FileText className="w-3.5 h-3.5"/>PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -904,7 +947,7 @@ export default function OrgStructureClient({ orgData=[], employees=[] }: Props) 
             {/* Fixed chart area — scrollable, not draggable */}
             <div className="w-full overflow-auto bg-slate-50 border border-slate-200 rounded-2xl"
               style={{maxHeight:"calc(100vh - 260px)"}}>
-              <div className="p-6" style={{minWidth:"max-content"}}>
+              <div className="p-6" style={{minWidth:"max-content"}} ref={chartInnerRef}>
                 <Chart/>
               </div>
             </div>

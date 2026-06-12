@@ -1,5 +1,23 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { Network, Plus, Users, Award, Briefcase } from "lucide-react";
+import { getOrgStructure } from "@/app/actions/org";
+
+interface OrgUnit {
+  id: string; code: string; name: string; level: number;
+  leader_name: string; leader_email: string; children: OrgUnit[];
+}
+
+function flattenTree(tree: OrgUnit[]): OrgUnit[] {
+  const result: OrgUnit[] = [];
+  function walk(units: OrgUnit[]) {
+    for (const u of units) {
+      result.push(u);
+      if (u.children) walk(u.children);
+    }
+  }
+  walk(tree);
+  return result;
+}
 
 export default async function Jabatan() {
   const { data: employees } = await supabaseAdmin
@@ -8,11 +26,9 @@ export default async function Jabatan() {
     .neq("status", "Inactive")
     .order("position");
 
-  const { data: departments } = await supabaseAdmin
-    .from("departments")
-    .select("*");
-
-  const deptList = [...new Set((employees || []).map((e: Record<string, unknown>) => e.department as string).filter(Boolean))];
+  const orgTree = await getOrgStructure();
+  const flatOrg = flattenTree(orgTree);
+  const deptList = [...new Set(flatOrg.map((u) => u.name))];
 
   const positionsByDept = deptList.map((dept) => {
     const deptEmps = (employees || []).filter((e: Record<string, unknown>) => e.department === dept);

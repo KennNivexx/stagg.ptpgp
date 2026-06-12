@@ -1,5 +1,23 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, Plus, Award, Briefcase, Save, ListChecks, BookOpen } from "lucide-react";
+import { getOrgStructure } from "@/app/actions/org";
+
+interface OrgUnit {
+  id: string; code: string; name: string; level: number;
+  leader_name: string; leader_email: string; children: OrgUnit[];
+}
+
+function flattenTree(tree: OrgUnit[]): OrgUnit[] {
+  const result: OrgUnit[] = [];
+  function walk(units: OrgUnit[]) {
+    for (const u of units) {
+      result.push(u);
+      if (u.children) walk(u.children);
+    }
+  }
+  walk(tree);
+  return result;
+}
 
 const SEED_JOBDESC = [
   {
@@ -115,6 +133,9 @@ export default async function DeskripsiPekerjaan() {
     .select("position, department")
     .neq("status", "Inactive");
 
+  const orgTree = await getOrgStructure();
+  const flatOrg = flattenTree(orgTree);
+  const deptList = [...new Set(flatOrg.map((u) => u.name))];
   const uniquePositions = [...new Set((employees || []).map((e: Record<string, unknown>) => e.position as string).filter(Boolean))];
 
   return (
@@ -166,7 +187,12 @@ export default async function DeskripsiPekerjaan() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Departemen</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Nama departemen" />
+                <select className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
+                  <option value="">Pilih Departemen</option>
+                  {deptList.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Tanggung Jawab</label>
