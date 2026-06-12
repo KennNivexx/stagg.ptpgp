@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { getCookie } from "@/lib/cookie-client";
+import NotificationBell from "@/components/NotificationBell";
 
 const MENU_GROUPS = [
   {
@@ -407,10 +408,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-4 ml-auto">
-            <button className="p-2 hover:bg-slate-100 rounded-xl relative transition-colors text-slate-500">
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white"></span>
-            </button>
+            <NotificationBell role="hrd" />
             <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
             <div className="flex items-center gap-2">
               <div className="text-right hidden sm:block">

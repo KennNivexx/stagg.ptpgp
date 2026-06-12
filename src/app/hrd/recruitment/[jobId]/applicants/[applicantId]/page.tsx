@@ -2,21 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { ArrowLeft, Mail, Phone, Calendar, FileText, Download, UserCheck, ChevronDown } from "lucide-react";
 import { updateApplicationStatus, convertApplicantToEmployee, getApplicantDetail } from "@/app/actions/hrd";
 
 export default function ApplicantDetailPage() {
+  const params = useParams();
+  const jobId = params.jobId as string;
+  const applicantId = params.applicantId as string;
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showConvert, setShowConvert] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState("");
-
-  const path = typeof window !== "undefined" ? window.location.pathname : "";
-  const segments = path.split("/");
-  const jobId = segments[3] || "";
-  const applicantId = segments[5] || "";
-
   const [application, setApplication] = useState<Record<string, unknown> | null>(null);
   const [job, setJob] = useState<Record<string, unknown> | null>(null);
 

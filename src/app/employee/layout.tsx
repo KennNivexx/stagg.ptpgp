@@ -9,7 +9,6 @@ import {
   FileText, 
   Target, 
   LogOut,
-  Bell,
   Search,
   Menu,
   X,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { getCookie } from "@/lib/cookie-client";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -151,11 +151,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-4 ml-auto">
-            {/* Notifications */}
-            <button className="p-2 hover:bg-slate-100 rounded-xl relative transition-colors text-slate-500">
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white animate-pulse"></span>
-            </button>
+            <NotificationBell role="employee" />
 
             <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 

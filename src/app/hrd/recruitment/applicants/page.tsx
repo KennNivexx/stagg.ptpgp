@@ -1,26 +1,39 @@
+"use client";
+
+import { useState, useEffect, Suspense } from "react";
 import { supabaseAdmin } from "@/lib/supabase";
 import { Users, Search, Filter, FileText, Mail, Phone, Calendar, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 
-export default async function DataPelamar({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string; job?: string }>;
-}) {
-  const params = await searchParams;
-  const statusFilter = params.status || "";
-  const jobFilter = params.job || "";
+export default function DataPelamarWrapper() {
+  return (
+    <Suspense fallback={<div className="p-8 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000]" /></div>}>
+      <DataPelamar />
+    </Suspense>
+  );
+}
 
-  const { data: applications } = await supabaseAdmin
-    .from("applications")
-    .select("*, jobs!inner(title, department)")
-    .order("applied_at", { ascending: false })
-    .limit(100);
+function DataPelamar() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const statusFilter = searchParams.get("status") || "";
+  const jobFilter = searchParams.get("job") || "";
 
-  const { data: jobs } = await supabaseAdmin
-    .from("jobs")
-    .select("id, title")
-    .order("title", { ascending: true });
+  const [applications, setApplications] = useState<Record<string, unknown>[]>([]);
+  const [jobs, setJobs] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      supabaseAdmin.from("applications").select("*, jobs!inner(title, department)").order("applied_at", { ascending: false }).limit(100),
+      supabaseAdmin.from("jobs").select("id, title").order("title", { ascending: true }),
+    ]).then(([{ data: apps }, { data: jbs }]) => {
+      setApplications(apps || []);
+      setJobs(jbs || []);
+      setLoading(false);
+    });
+  }, []);
 
   let filtered = applications || [];
   if (statusFilter) filtered = filtered.filter((a: Record<string, unknown>) => a.status === statusFilter);
@@ -38,6 +51,14 @@ export default async function DataPelamar({
     }
   };
 
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000]" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-6">
@@ -51,11 +72,7 @@ export default async function DataPelamar({
           className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
             !statusFilter ? "bg-[#1A2530] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
-          onClick={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.delete("status");
-            window.location.href = url.toString();
-          }}
+          onClick={() => router.push("/hrd/recruitment/applicants")}
         >
           Semua ({(applications || []).length})
         </button>
@@ -65,11 +82,7 @@ export default async function DataPelamar({
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
               statusFilter === s ? `${statusColor(s)} ring-1 ring-current` : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set("status", s);
-              window.location.href = url.toString();
-            }}
+            onClick={() => router.push(`/hrd/recruitment/applicants?status=${encodeURIComponent(s)}`)}
           >
             {s} ({(applications || []).filter((a: Record<string, unknown>) => a.status === s).length})
           </button>

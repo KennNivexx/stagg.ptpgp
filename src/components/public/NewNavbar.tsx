@@ -17,10 +17,10 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
 
   const defaultLinks = [
     { name: "Home", href: "/" },
-    { name: "Tentang Kami", href: "/" },
-    { name: "Layanan", href: "/" },
+    { name: "Tentang Kami", href: "/#about" },
+    { name: "Layanan", href: "/#services" },
     { name: "Karir", href: "/career" },
-    { name: "Kontak", href: "/" },
+    { name: "Kontak", href: "/#contact" },
   ];
 
   const navLinks = linkSettings?.navbar?.length ? linkSettings.navbar : defaultLinks;
@@ -36,17 +36,21 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
           </div>
           
           <div className="hidden md:flex items-center space-x-8 h-full">
-            {navLinks.map((link) => (
+            {navLinks.map((link, idx) => {
+              const linkPath = link.href.split("#")[0];
+              const isActive = linkPath === "/" ? idx === 0 && pathname === "/" : pathname.startsWith(linkPath);
+              return (
               <Link
                 key={link.href + link.name}
                 href={link.href}
                 className={`text-sm font-medium transition-colors ${
-                  pathname === link.href ? "text-pgp-red" : "text-gray-700 hover:text-pgp-red"
+                  isActive ? "text-pgp-red" : "text-gray-700 hover:text-pgp-red"
                 }`}
               >
                 {link.name}
               </Link>
-            ))}
+              );
+            })}
           </div>
 
           <div className="hidden md:flex items-center gap-3">

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 import NewNavbar from "@/components/public/NewNavbar";
 import PGPFooter from "@/components/public/PGPFooter";
