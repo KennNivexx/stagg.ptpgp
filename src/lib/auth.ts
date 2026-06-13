@@ -29,6 +29,14 @@ function generateRandomPassword(): string {
   return pw.split("").sort(() => randomInt(3) - 1).join("");
 }
 
+function generateNumericPassword(length = 8): string {
+  let pw = "";
+  for (let i = 0; i < length; i++) {
+    pw += randomInt(10).toString();
+  }
+  return pw;
+}
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -63,6 +71,7 @@ export {
   hashPassword,
   verifyPassword,
   generateRandomPassword,
+  generateNumericPassword,
   generateCompanyEmail,
   generateCompanyEmailUnique,
 };

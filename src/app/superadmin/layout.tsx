@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -27,8 +27,13 @@ import { getCookie } from "@/lib/cookie-client";
 export default function SuperadminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const userName = getCookie("user_name") || "Super Administrator";
-  const userEmail = getCookie("user_email") || "superadmin@ptpgp.co.id";
+  const [userName, setUserName] = useState("Super Administrator");
+  const [userEmail, setUserEmail] = useState("superadmin@ptpgp.co.id");
+
+  useEffect(() => {
+    setUserName(getCookie("user_name") || "Super Administrator");
+    setUserEmail(getCookie("user_email") || "superadmin@ptpgp.co.id");
+  }, []);
 
   const menuItems = [
     { href: "/superadmin", label: "Dashboard", icon: LayoutDashboard },

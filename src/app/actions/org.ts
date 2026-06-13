@@ -1,6 +1,8 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/auth-guard";
+import { auditLog } from "@/lib/audit";
 
 interface OrgUnit {
   id: string; code: string; name: string; level: number;
@@ -49,11 +51,14 @@ async function saveSettings(settings: Record<string, unknown>) {
 }
 
 export async function getOrgStructure(): Promise<OrgUnit[]> {
+  await requireRole("hrd", "superadmin");
   const s = await getSettings();
   return (s.org_structure as OrgUnit[]) || [];
 }
 
 export async function addOrgUnit(formData: FormData) {
+  const user = await requireRole("hrd", "superadmin");
+
   const parent_code = formData.get("parent_code") as string;
   const unit_name = formData.get("unit_name") as string;
   const leader_name = (formData.get("leader_name") as string) || "";
@@ -84,10 +89,18 @@ export async function addOrgUnit(formData: FormData) {
   settings.org_structure = tree;
   await saveSettings(settings);
   revalidatePath("/hrd/workplace");
+  auditLog({
+    action: "org.add_unit",
+    targetId: newCode,
+    targetName: unit_name,
+    performedBy: user,
+  });
   return { success: true, code: newCode };
 }
 
 export async function updateOrgUnit(formData: FormData) {
+  const user = await requireRole("hrd", "superadmin");
+
   const unit_code = formData.get("unit_code") as string;
   const unit_name = formData.get("unit_name") as string;
   const leader_name = (formData.get("leader_name") as string) || "";
@@ -109,10 +122,18 @@ export async function updateOrgUnit(formData: FormData) {
   settings.org_structure = tree;
   await saveSettings(settings);
   revalidatePath("/hrd/workplace");
+  auditLog({
+    action: "org.update_unit",
+    targetId: unit_code,
+    targetName: unit_name || unit.name,
+    performedBy: user,
+  });
   return { success: true };
 }
 
 export async function deleteOrgUnit(unitCode: string) {
+  const user = await requireRole("hrd", "superadmin");
+
   if (!unitCode) return { error: "Kode unit wajib diisi." };
   const settings = await getSettings();
   const tree = (settings.org_structure || []) as OrgUnit[];
@@ -121,10 +142,17 @@ export async function deleteOrgUnit(unitCode: string) {
   settings.org_structure = tree;
   await saveSettings(settings);
   revalidatePath("/hrd/workplace");
+  auditLog({
+    action: "org.delete_unit",
+    targetId: unitCode,
+    performedBy: user,
+  });
   return { success: true };
 }
 
 export async function moveOrgUnit(unitCode: string, newParentCode: string) {
+  const user = await requireRole("hrd", "superadmin");
+
   if (!unitCode || !newParentCode) return { error: "Kode unit dan parent wajib diisi." };
   if (unitCode === newParentCode) return { error: "Tidak bisa memindahkan ke dirinya sendiri." };
 
@@ -152,6 +180,13 @@ export async function moveOrgUnit(unitCode: string, newParentCode: string) {
   settings.org_structure = tree;
   await saveSettings(settings);
   revalidatePath("/hrd/workplace");
+  auditLog({
+    action: "org.move_unit",
+    targetId: unit.code,
+    targetName: unit.name,
+    performedBy: user,
+    detail: `Dipindah ke ${newParentCode}`,
+  });
   return { success: true, newCode: unit.code };
 }
 
@@ -168,6 +203,8 @@ export async function saveChartLayout(
   nodePositions: Record<string, { x: number; y: number }>,
   customEdges: { id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }[]
 ) {
+  await requireRole("hrd", "superadmin");
+
   const settings = await getSettings();
   settings.chart_layout = {
     nodePositions,
@@ -183,6 +220,8 @@ export async function getChartLayout(): Promise<{
   nodePositions: Record<string, { x: number; y: number }>;
   customEdges: { id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }[];
 } | null> {
+  await requireRole("hrd", "superadmin");
+
   const settings = await getSettings();
   return (settings as any).chart_layout || null;
 }

@@ -5,7 +5,6 @@ import { GraduationCap, Calendar, Award, BookOpen, Clock, MapPin, CheckCircle } 
 export default async function EmployeeTraining() {
   const cookieStore = await cookies();
   const userEmail = cookieStore.get("user_email")?.value || "";
-  const userName = cookieStore.get("user_name")?.value || "Karyawan";
 
   const { data: employee } = await supabaseAdmin
     .from("employees")
@@ -14,28 +13,17 @@ export default async function EmployeeTraining() {
     .limit(1)
     .single();
 
-  const myTrainings = [
-    { id: 1, title: "Pelatihan Keselamatan Kerja (K3)", type: "Wajib", status: "Selesai", date: "15 Mei 2026", provider: "Internal HSE", certificate: true },
-    { id: 2, title: "Supply Chain Management Dasar", type: "Teknis", status: "Sedang Berjalan", date: "01 Jun - 30 Jun 2026", provider: "Lembaga Logistik Indonesia", certificate: false },
-    { id: 3, title: "Leadership & Supervisory Skills", type: "Soft Skill", status: "Terjadwal", date: "15 Jul 2026", provider: "HRD Internal", certificate: true },
-    { id: 4, title: "Pengoperasian Sistem HRIS Lanjutan", type: "Teknis", status: "Selesai", date: "10 Mei 2026", provider: "Tim IT", certificate: true },
-  ];
+  const employeeId = employee?.id;
 
-  const upcomingTrainings = [
-    { id: 1, title: "Manajemen Risiko Operasional", date: "20 Jul 2026", time: "09:00 - 16:00 WIB", location: "Ruang Training Lt. 2", provider: "Konsultan Eksternal" },
-    { id: 2, title: "Workshop Keselamatan Berkendara", date: "05 Agu 2026", time: "08:00 - 12:00 WIB", location: "Lapangan Parkir Utama", provider: "Tim HSE" },
-  ];
+  const { data: trainings } = employeeId ? await supabaseAdmin
+    .from("trainings")
+    .select("*")
+    .eq("employee_id", employeeId)
+    .order("created_at", { ascending: false })
+    .limit(50) : { data: [] };
 
-  const myCertificates = [
-    { id: 1, title: "Sertifikat K3 Umum", issueDate: "15 Mei 2026", issuer: "Kemenaker RI", validUntil: "15 Mei 2029" },
-    { id: 2, title: "Sertifikat Pengoperasian HRIS", issueDate: "10 Mei 2026", issuer: "Tim IT Internal", validUntil: "-" },
-    { id: 3, title: "Sertifikat Leadership Dasar", issueDate: "20 Mar 2026", issuer: "HRD Internal", validUntil: "-" },
-  ];
-
-  const formatDate = (dateStr: string) => {
-    try { return new Date(dateStr).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }); }
-    catch { return dateStr; }
-  };
+  const completed = (trainings || []).filter((t: Record<string, unknown>) => t.status === "Selesai").length;
+  const inProgress = (trainings || []).filter((t: Record<string, unknown>) => t.status === "Sedang Berjalan").length;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -50,7 +38,7 @@ export default async function EmployeeTraining() {
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><BookOpen size={18} /></div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Total Pelatihan</p>
-              <p className="text-xl font-extrabold text-slate-800">{myTrainings.length}</p>
+              <p className="text-xl font-extrabold text-slate-800">{(trainings || []).length}</p>
             </div>
           </div>
         </div>
@@ -59,7 +47,7 @@ export default async function EmployeeTraining() {
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><CheckCircle size={18} /></div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Selesai</p>
-              <p className="text-xl font-extrabold text-slate-800">{myTrainings.filter((t) => t.status === "Selesai").length}</p>
+              <p className="text-xl font-extrabold text-slate-800">{completed}</p>
             </div>
           </div>
         </div>
@@ -67,84 +55,54 @@ export default async function EmployeeTraining() {
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><Award size={18} /></div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Sertifikat</p>
-              <p className="text-xl font-extrabold text-slate-800">{myCertificates.length}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Sedang Berjalan</p>
+              <p className="text-xl font-extrabold text-slate-800">{inProgress}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2">
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
             <div className="p-6 border-b border-slate-100">
-              <h3 className="font-extrabold text-slate-800 text-sm">Daftar Pelatihan Saya</h3>
+              <h3 className="font-extrabold text-slate-800 text-sm">Daftar Pelatihan</h3>
               <p className="text-xs text-slate-400 mt-0.5">Pelatihan yang ditugaskan atau diikuti</p>
             </div>
 
-            <div className="divide-y divide-slate-50">
-              {myTrainings.map((training) => (
-                <div key={training.id} className="p-6 hover:bg-slate-50/30 transition-colors flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h4 className="text-sm font-bold text-slate-800">{training.title}</h4>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        training.type === "Wajib" ? "bg-red-50 text-red-700" :
-                        training.type === "Teknis" ? "bg-blue-50 text-blue-700" :
-                        "bg-purple-50 text-purple-700"
-                      }`}>{training.type}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        training.status === "Selesai" ? "bg-emerald-50 text-emerald-700" :
-                        training.status === "Sedang Berjalan" ? "bg-amber-50 text-amber-700" :
-                        "bg-slate-100 text-slate-600"
-                      }`}>{training.status}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-[10px] text-slate-400">
-                      <span className="flex items-center gap-1"><Calendar size={9} /> {training.date}</span>
-                      <span className="flex items-center gap-1"><GraduationCap size={9} /> {training.provider}</span>
+            {(trainings || []).length === 0 ? (
+              <div className="p-10 text-center">
+                <GraduationCap size={40} className="mx-auto text-slate-300 mb-4" />
+                <p className="text-sm text-slate-500">Belum ada pelatihan yang ditugaskan.</p>
+                <p className="text-xs text-slate-400 mt-1">HRD akan menugaskan pelatihan sesuai kebutuhan pengembangan Anda.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {(trainings || []).map((t: Record<string, unknown>) => (
+                  <div key={t.id as string} className="p-6 hover:bg-slate-50/30 transition-colors flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h4 className="text-sm font-bold text-slate-800">{t.title as string}</h4>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          t.type === "Wajib" ? "bg-red-50 text-red-700" :
+                          t.type === "Teknis" ? "bg-blue-50 text-blue-700" :
+                          "bg-purple-50 text-purple-700"
+                        }`}>{t.type as string}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          t.status === "Selesai" ? "bg-emerald-50 text-emerald-700" :
+                          t.status === "Sedang Berjalan" ? "bg-amber-50 text-amber-700" :
+                          "bg-slate-100 text-slate-600"
+                        }`}>{t.status as string}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-[10px] text-slate-400">
+                        {(t.date as string) && <span className="flex items-center gap-1"><Calendar size={9} /> {t.date as string}</span>}
+                        {(t.provider as string) && <span className="flex items-center gap-1"><GraduationCap size={9} /> {t.provider as string}</span>}
+                      </div>
                     </div>
                   </div>
-                  {training.certificate && (
-                    <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg text-[9px] font-bold flex items-center gap-1 shrink-0">
-                      <Award size={10} /> Bersertifikat
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <div className="p-6 border-b border-slate-100">
-              <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
-                <Award size={16} className="text-amber-500" />
-                Sertifikat Saya
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Daftar sertifikat yang telah diperoleh</p>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/50">
-                    <th className="text-left px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nama Sertifikat</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Terbit</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Penerbit</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Berlaku Hingga</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {myCertificates.map((cert) => (
-                    <tr key={cert.id} className="hover:bg-slate-50/30 transition-colors">
-                      <td className="px-6 py-3 text-xs font-semibold text-slate-800">{cert.title}</td>
-                      <td className="px-6 py-3 text-xs text-slate-600">{cert.issueDate}</td>
-                      <td className="px-6 py-3 text-xs text-slate-600">{cert.issuer}</td>
-                      <td className="px-6 py-3 text-xs text-slate-600">{cert.validUntil}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -153,21 +111,13 @@ export default async function EmployeeTraining() {
             <div className="p-6 border-b border-slate-100">
               <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
                 <Clock size={16} className="text-[#CC0000]" />
-                Jadwal Mendatang
+                Informasi
               </h3>
             </div>
-            <div className="divide-y divide-slate-50">
-              {upcomingTrainings.map((ut) => (
-                <div key={ut.id} className="p-5">
-                  <h4 className="text-xs font-bold text-slate-800 mb-2">{ut.title}</h4>
-                  <div className="space-y-1.5 text-[10px] text-slate-500">
-                    <p className="flex items-center gap-1"><Calendar size={9} /> {ut.date}</p>
-                    <p className="flex items-center gap-1"><Clock size={9} /> {ut.time}</p>
-                    <p className="flex items-center gap-1"><MapPin size={9} /> {ut.location}</p>
-                    <p className="flex items-center gap-1"><GraduationCap size={9} /> {ut.provider}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="p-5 text-xs text-slate-500 space-y-2">
+              <p>Departemen: <span className="font-bold text-slate-700">{employee?.department as string || "-"}</span></p>
+              <p>Jabatan: <span className="font-bold text-slate-700">{employee?.position as string || "-"}</span></p>
+              <p className="text-[10px] text-slate-400 mt-3">Pelatihan ditugaskan oleh HRD berdasarkan kebutuhan pengembangan kompetensi.</p>
             </div>
           </div>
 

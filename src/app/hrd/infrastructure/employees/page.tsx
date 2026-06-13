@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { Users, Download, Search, Filter, ChevronDown } from "lucide-react";
+import { Users, Download, Search } from "lucide-react";
 import Link from "next/link";
+import EmployeeFilter from "./EmployeeFilter";
 
 export default async function DataIndukKaryawan({
   searchParams,
@@ -75,63 +76,17 @@ export default async function DataIndukKaryawan({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        <div className="flex items-center gap-2">
-          <Filter size={14} className="text-gray-400" />
-          <form className="flex items-center gap-3">
-            <select
-              name="dept"
-              defaultValue={deptFilter}
-              className="text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none"
-              onChange={(e) => {
-                const val = e.target.value;
-                const url = new URL(window.location.href);
-                if (val) url.searchParams.set("dept", val);
-                else url.searchParams.delete("dept");
-                window.location.href = url.toString();
-              }}
-            >
-              <option value="">Semua Departemen</option>
-              {deptList.map((d: string) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-            <select
-              name="status"
-              defaultValue={statusFilter}
-              className="text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none"
-              onChange={(e) => {
-                const val = e.target.value;
-                const url = new URL(window.location.href);
-                if (val) url.searchParams.set("status", val);
-                else url.searchParams.delete("status");
-                window.location.href = url.toString();
-              }}
-            >
-              <option value="">Semua Status</option>
-              {statusList.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </form>
-          {(deptFilter || statusFilter) && (
-            <a href="?" className="text-xs text-[#CC0000] hover:underline">
-              Hapus filter
-            </a>
-          )}
-        </div>
-        <div className="flex items-center gap-2 ml-auto">
-          <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold">
-            Tetap: {(employees || []).filter((e: Record<string, unknown>) => e.status === "Tetap").length}
-          </span>
-          <span className="px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold">
-            Kontrak: {(employees || []).filter((e: Record<string, unknown>) => e.status === "Kontrak").length}
-          </span>
-          <span className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-bold">
-            Magang: {(employees || []).filter((e: Record<string, unknown>) => e.status === "Magang").length}
-          </span>
-        </div>
-      </div>
+      <EmployeeFilter
+        deptFilter={deptFilter}
+        statusFilter={statusFilter}
+        deptList={deptList}
+        statusList={statusList}
+        activeCounts={{
+          tetap: (employees || []).filter((e: Record<string, unknown>) => e.status === "Tetap").length,
+          kontrak: (employees || []).filter((e: Record<string, unknown>) => e.status === "Kontrak").length,
+          magang: (employees || []).filter((e: Record<string, unknown>) => e.status === "Magang").length,
+        }}
+      />
 
       {!employees || employees.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">

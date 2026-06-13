@@ -1,4 +1,13 @@
-const DEFAULT_SECRET = "pgp-hris-session-secret-key-2026-fallback";
+function getSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SESSION_SECRET environment variable is required in production");
+    }
+    return "pgp-hris-dev-secret-do-not-use-in-production";
+  }
+  return secret;
+}
 
 function toBase64url(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -21,7 +30,7 @@ function fromBase64url(str: string): Uint8Array {
 }
 
 async function signSession(payload: Record<string, string>): Promise<string> {
-  const secret = process.env.SESSION_SECRET || DEFAULT_SECRET;
+  const secret = getSecret();
   const enc = new TextEncoder();
   const payloadBytes = enc.encode(JSON.stringify(payload));
   const data = toBase64url(payloadBytes.buffer as ArrayBuffer);
@@ -39,7 +48,7 @@ async function signSession(payload: Record<string, string>): Promise<string> {
 
 async function verifySession(token: string): Promise<Record<string, string> | null> {
   try {
-    const secret = process.env.SESSION_SECRET || DEFAULT_SECRET;
+    const secret = getSecret();
     const enc = new TextEncoder();
     const [data, sigB64] = token.split(".");
     if (!data || !sigB64) return null;

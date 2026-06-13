@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 interface NavLink { name: string; href: string; }
 interface NavbarProps {
@@ -14,6 +14,20 @@ interface NavbarProps {
 export default function NewNavbar({ links: linkSettings, companyName }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleHashClick = (e: React.MouseEvent, href: string) => {
+    const [path, hash] = href.split("#");
+    if (!hash) return;
+
+    if (pathname === "/" || pathname === "") {
+      e.preventDefault();
+      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      e.preventDefault();
+      router.push("/" + (hash ? "#" + hash : ""));
+    }
+  };
 
   const defaultLinks = [
     { name: "Home", href: "/" },
@@ -37,12 +51,14 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
           
           <div className="hidden md:flex items-center space-x-8 h-full">
             {navLinks.map((link, idx) => {
+              const isHash = link.href.includes("#");
               const linkPath = link.href.split("#")[0];
               const isActive = linkPath === "/" ? idx === 0 && pathname === "/" : pathname.startsWith(linkPath);
               return (
               <Link
                 key={link.href + link.name}
                 href={link.href}
+                onClick={isHash ? (e) => handleHashClick(e, link.href) : undefined}
                 className={`text-sm font-medium transition-colors ${
                   isActive ? "text-pgp-red" : "text-gray-700 hover:text-pgp-red"
                 }`}
@@ -69,16 +85,19 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
 
         {isOpen && (
           <div className="md:hidden absolute top-[72px] left-0 w-full bg-white border-b border-gray-100 shadow-lg px-4 py-4 space-y-2">
-            {navLinks.map((link) => (
+            {navLinks.map((link) => {
+              const isHash = link.href.includes("#");
+              return (
               <Link
                 key={link.href + link.name}
                 href={link.href}
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => { setIsOpen(false); if (isHash) handleHashClick(e, link.href); }}
                 className="block px-4 py-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-pgp-red"
               >
                 {link.name}
               </Link>
-            ))}
+              );
+            })}
             <div className="flex gap-2 pt-2 border-t border-gray-100">
               <Link href="/login" onClick={() => setIsOpen(false)} className="flex-1 text-center py-2.5 text-gray-700 border border-gray-300 text-xs font-bold rounded-full">
                 Login

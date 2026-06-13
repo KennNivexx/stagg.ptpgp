@@ -2,7 +2,8 @@
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
-import { hashPassword, generateRandomPassword, generateCompanyEmailUnique } from "@/lib/auth";
+import { hashPassword, generateRandomPassword, generateNumericPassword, generateCompanyEmailUnique } from "@/lib/auth";
+import { requireRole } from "@/lib/auth-guard";
 
 let usersTableCache: boolean | null = null;
 
@@ -14,6 +15,8 @@ async function usersTableExists(): Promise<boolean> {
 }
 
 export async function createJob(formData: FormData) {
+  const user = await requireRole("hrd", "superadmin");
+
   const title = formData.get("title") as string;
   const department = formData.get("department") as string;
   const location = formData.get("location") as string;
@@ -40,10 +43,19 @@ export async function createJob(formData: FormData) {
 
   revalidatePath("/hrd/recruitment");
   revalidatePath("/career");
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "job.create",
+    targetName: title,
+    performedBy: user,
+    detail: `Departemen: ${department}, Tipe: ${type}`,
+  });
   return { success: true };
 }
 
 export async function createEmployee(formData: FormData) {
+  const user = await requireRole("hrd", "superadmin");
+
   const full_name = formData.get("full_name") as string;
   const email = formData.get("email") as string;
   const phone = formData.get("phone") as string;
@@ -53,7 +65,7 @@ export async function createEmployee(formData: FormData) {
   const join_date = formData.get("join_date") as string;
   const status = formData.get("status") as string || "Tetap";
   const orgCode = (formData.get("org_code") as string) || "";
-  const password = generateRandomPassword();
+  const password = generateNumericPassword();
 
   const { data: existingEmails } = await supabaseAdmin
     .from("employees")
@@ -135,10 +147,20 @@ export async function createEmployee(formData: FormData) {
   }
 
   revalidatePath("/hrd/employees");
-  return { success: true, email: normalizedEmail, password };
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "employee.create",
+    targetId: normalizedEmail,
+    targetName: full_name,
+    performedBy: user,
+  });
+
+  return { success: true, email: normalizedEmail, password, phone };
 }
 
 export async function updateLeaveStatus(leaveId: string, status: string) {
+  const user = await requireRole("hrd", "superadmin");
+
   const { error } = await supabaseAdmin
     .from("leaves")
     .update({ status })
@@ -148,11 +170,21 @@ export async function updateLeaveStatus(leaveId: string, status: string) {
     return { error: error.message };
   }
 
-  revalidatePath("/hrd/attendance");
+  revalidatePath("/hrd/relations/leaves");
+  revalidatePath("/employee/leaves");
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "leave.status_change",
+    targetId: leaveId,
+    performedBy: user,
+    detail: `Status diubah menjadi ${status}`,
+  });
   return { success: true };
 }
 
 export async function updateApplicationStatus(applicationId: string, status: string) {
+  const user = await requireRole("hrd", "superadmin");
+
   const { error } = await supabaseAdmin
     .from("applications")
     .update({ status })
@@ -163,15 +195,24 @@ export async function updateApplicationStatus(applicationId: string, status: str
   }
 
   revalidatePath("/hrd/recruitment");
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "application.update",
+    targetId: applicationId,
+    performedBy: user,
+    detail: `Status diubah menjadi ${status}`,
+  });
   return { success: true };
 }
 
 export async function convertApplicantToEmployee(applicationId: string, formData: FormData) {
+  const user = await requireRole("hrd", "superadmin");
+
   const department = formData.get("department") as string;
   const position = formData.get("position") as string;
   const join_date = formData.get("join_date") as string || new Date().toISOString().split("T")[0];
   const status = formData.get("status") as string || "Tetap";
-  const password = (formData.get("password") as string) || generateRandomPassword();
+  const password = (formData.get("password") as string) || generateNumericPassword();
 
   const { data: application, error: appError } = await supabaseAdmin
     .from("applications")
@@ -237,10 +278,20 @@ export async function convertApplicantToEmployee(applicationId: string, formData
 
   revalidatePath("/hrd/recruitment");
   revalidatePath("/hrd/employees");
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "applicant.convert",
+    targetId: applicationId,
+    targetName: application.full_name as string,
+    performedBy: user,
+    detail: `Dikonversi menjadi karyawan - ${department}/${position}`,
+  });
   return { success: true, password: await usersTableExists() ? password : undefined };
 }
 
 export async function updateEmployeeStatus(employeeId: string, status: string) {
+  const user = await requireRole("hrd", "superadmin");
+
   const { error } = await supabaseAdmin
     .from("employees")
     .update({ status })
@@ -268,10 +319,19 @@ export async function updateEmployeeStatus(employeeId: string, status: string) {
   }
 
   revalidatePath("/hrd/employees");
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "employee.status_change",
+    targetId: employeeId,
+    performedBy: user,
+    detail: `Status diubah menjadi ${status}`,
+  });
   return { success: true };
 }
 
 export async function updateEmployee(formData: FormData) {
+  const user = await requireRole("hrd", "superadmin");
+
   const id = formData.get("id") as string;
   const full_name = formData.get("full_name") as string;
   const email = formData.get("email") as string;
@@ -350,7 +410,8 @@ export async function updateEmployee(formData: FormData) {
         .limit(1);
 
       if (!newUserCheck || newUserCheck.length === 0) {
-        const passwordHash = hashPassword("password");
+        const newPw = generateNumericPassword();
+        const passwordHash = hashPassword(newPw);
         const { error: userInsertError } = await supabaseAdmin
           .from("users")
           .insert([
@@ -370,13 +431,22 @@ export async function updateEmployee(formData: FormData) {
   }
 
   revalidatePath("/hrd/employees");
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "employee.update",
+    targetId: id,
+    targetName: full_name,
+    performedBy: user,
+  });
   return { success: true };
 }
 
 export async function resetEmployeePassword(employeeId: string) {
+  const user = await requireRole("superadmin");
+
   const { data: emp } = await supabaseAdmin
     .from("employees")
-    .select("email, full_name")
+    .select("email, full_name, phone")
     .eq("id", employeeId)
     .single();
 
@@ -384,7 +454,7 @@ export async function resetEmployeePassword(employeeId: string) {
     return { error: "Karyawan tidak ditemukan." };
   }
 
-  const newPassword = generateRandomPassword();
+  const newPassword = generateNumericPassword();
 
   if (await usersTableExists()) {
     const passwordHash = hashPassword(newPassword);
@@ -399,10 +469,22 @@ export async function resetEmployeePassword(employeeId: string) {
     }
   }
 
-  return { success: true, password: newPassword, email: emp.email as string };
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "employee.password_reset",
+    targetId: employeeId,
+    targetName: emp.full_name as string,
+    performedBy: user,
+  });
+
+  const phone = (emp.phone as string) || "";
+
+  return { success: true, password: newPassword, email: emp.email as string, phone };
 }
 
 export async function deleteEmployee(employeeId: string) {
+  const user = await requireRole("hrd", "superadmin");
+
   if (await usersTableExists()) {
     const { data: emp } = await supabaseAdmin
       .from("employees")
@@ -427,11 +509,20 @@ export async function deleteEmployee(employeeId: string) {
     return { error: error.message };
   }
 
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "employee.delete",
+    targetId: employeeId,
+    performedBy: user,
+  });
+
   revalidatePath("/hrd/employees");
   return { success: true };
 }
 
 export async function updateJobStatus(jobId: string, status: string) {
+  const user = await requireRole("hrd", "superadmin");
+
   const { error } = await supabaseAdmin
     .from("jobs")
     .update({ status })
@@ -443,6 +534,13 @@ export async function updateJobStatus(jobId: string, status: string) {
 
   revalidatePath("/hrd/recruitment");
   revalidatePath("/career");
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "job.status_change",
+    targetId: jobId,
+    performedBy: user,
+    detail: `Status diubah menjadi ${status}`,
+  });
   return { success: true };
 }
 
@@ -481,6 +579,8 @@ export async function submitApplication(formData: FormData) {
 }
 
 export async function updateEmployeeAsSuperadmin(formData: FormData) {
+  const user = await requireRole("superadmin");
+
   const id = formData.get("id") as string;
   const full_name = formData.get("full_name") as string;
   const email = formData.get("email") as string;
@@ -525,10 +625,20 @@ export async function updateEmployeeAsSuperadmin(formData: FormData) {
   if (error) return { error: error.message };
 
   revalidatePath("/superadmin/employees");
+  const { auditLog } = await import("@/lib/audit");
+  auditLog({
+    action: "employee.update",
+    targetId: id,
+    targetName: full_name,
+    performedBy: user,
+    detail: `Superadmin update - role: ${role}, status: ${status}`,
+  });
   return { success: true, password: newPassword || undefined };
 }
 
 export async function getEmployeeById(id: string) {
+  await requireRole("hrd", "superadmin");
+
   const { data, error } = await supabaseAdmin
     .from("employees")
     .select("*")
@@ -539,6 +649,8 @@ export async function getEmployeeById(id: string) {
 }
 
 export async function getEmployees(status?: string) {
+  await requireRole("hrd", "superadmin");
+
   let query = supabaseAdmin
     .from("employees")
     .select("*")
@@ -552,6 +664,8 @@ export async function getEmployees(status?: string) {
 }
 
 export async function getApplicantDetail(applicantId: string, jobId: string) {
+  await requireRole("hrd", "superadmin");
+
   const [{ data: application }, { data: job }] = await Promise.all([
     supabaseAdmin.from("applications").select("*").eq("id", applicantId).single(),
     supabaseAdmin.from("jobs").select("title, department").eq("id", jobId).single(),

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
-import { FileText, Plus, Calendar, Coffee, Heart, Star } from "lucide-react";
+import { FileText, Calendar, Coffee, Heart, Star } from "lucide-react";
+import LeaveRequestButton from "@/components/LeaveRequestButton";
 
 export default async function EmployeeLeaves() {
   const cookieStore = await cookies();
@@ -53,9 +54,7 @@ export default async function EmployeeLeaves() {
           <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Cuti & Izin</h1>
           <p className="text-sm text-gray-500">Riwayat pengajuan cuti dan izin Anda.</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#CC0000] hover:bg-[#aa0000] text-white rounded-xl text-xs font-bold transition-colors shadow-md shadow-red-900/10">
-          <Plus size={14} /> Ajukan Cuti
-        </button>
+        <LeaveRequestButton />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

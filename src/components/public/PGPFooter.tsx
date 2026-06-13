@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { Mail, Phone, MapPin } from "lucide-react";
 
 interface FooterLink { name: string; href: string; }
@@ -9,6 +12,21 @@ interface FooterProps {
 }
 
 export default function PGPFooter({ info, footer, links }: FooterProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const handleHashClick = (e: React.MouseEvent, href: string) => {
+    const hash = href.split("#")[1];
+    if (!hash) return;
+    if (pathname === "/" || pathname === "") {
+      e.preventDefault();
+      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      e.preventDefault();
+      router.push("/#" + hash);
+    }
+  };
+
   const companyName = info?.company_name || "PT Pratama Galuh Perkasa";
   const companyPhone = info?.company_phone || "(0524) 570700";
   const companyDesc = info?.company_description || footer?.footer_description || "Industrial Excellence in Logistics. Delivering precision and reliability across the archipelago.";
@@ -47,18 +65,28 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
           <div>
             <h3 className="text-xs font-bold text-pgp-navy uppercase tracking-widest mb-6">Company</h3>
             <ul className="space-y-4">
-              {quickLinks.map((l) => (
-                <li key={l.name}><Link href={l.href} className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">{l.name}</Link></li>
-              ))}
+              {quickLinks.map((l) => {
+                const isHash = l.href.includes("#");
+                return (
+                <li key={l.name}>
+                  <Link href={l.href} onClick={isHash ? (e) => handleHashClick(e, l.href) : undefined} className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">{l.name}</Link>
+                </li>
+                );
+              })}
             </ul>
           </div>
 
           <div>
             <h3 className="text-xs font-bold text-pgp-navy uppercase tracking-widest mb-6">Services</h3>
             <ul className="space-y-4">
-              {supportLinks.map((l) => (
-                <li key={l.name}><Link href={l.href} className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">{l.name}</Link></li>
-              ))}
+              {supportLinks.map((l) => {
+                const isHash = l.href.includes("#");
+                return (
+                <li key={l.name}>
+                  <Link href={l.href} onClick={isHash ? (e) => handleHashClick(e, l.href) : undefined} className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">{l.name}</Link>
+                </li>
+                );
+              })}
             </ul>
           </div>
 

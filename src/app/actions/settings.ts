@@ -2,6 +2,8 @@
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/auth-guard";
+import { auditLog } from "@/lib/audit";
 
 export async function getWebsiteSettings() {
   const { data, error } = await supabaseAdmin
@@ -24,6 +26,8 @@ export async function saveWebsiteSettings(
   section: string,
   values: Record<string, unknown>
 ) {
+  const user = await requireRole("superadmin");
+
   const current = await getWebsiteSettings();
   current[section] = values;
 
@@ -44,5 +48,10 @@ export async function saveWebsiteSettings(
 
   revalidatePath("/", "layout");
   revalidatePath("/superadmin/website");
+  auditLog({
+    action: "settings.save",
+    targetName: section,
+    performedBy: user,
+  });
   return { success: true };
 }

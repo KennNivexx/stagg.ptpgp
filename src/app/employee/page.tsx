@@ -30,26 +30,48 @@ export default async function EmployeeDashboard() {
 
   const { data: employee } = await supabaseAdmin
     .from("employees")
-    .select("department, position")
+    .select("id, department, position")
     .eq("email", userEmail)
     .limit(1)
     .single();
 
-  const department = employee?.department || "Operational";
+  const employeeId = employee?.id;
+  const department = employee?.department || "-";
 
-  const announcements = [
-    { id: 1, title: "Evaluasi Kinerja Kuartal II (Q2)", desc: "Diharapkan mengisi formulir penilaian KPI mandiri sebelum tanggal 20 Juni 2026.", date: "10 Jun 2026", category: "HRD Info" },
-    { id: 2, title: "Sosialisasi Manfaat BPJS Kesehatan Terbaru", desc: "Pertemuan online hari Jumat jam 14:00 WIB via Zoom. Link undangan dikirim ke email.", date: "08 Jun 2026", category: "Benefit" },
-  ];
+  let annualLeaveUsed = 0;
+  let annualLeaveTotal = 12;
+  if (employeeId) {
+    const { data: approvedLeaves } = await supabaseAdmin
+      .from("leaves")
+      .select("id")
+      .eq("employee_id", employeeId)
+      .eq("type", "Cuti Tahunan")
+      .eq("status", "Approved");
+    annualLeaveUsed = (approvedLeaves || []).length;
+  }
 
-  const scheduleToday = [
-    { id: 1, title: "Daily Standup Meeting", time: "09:00 - 09:30 WIB", room: "Ruang Rapat Utama / Zoom" },
-    { id: 2, title: "Operational Briefing", time: "13:00 - 14:00 WIB", room: "Gudang Logistik C" },
-  ];
+  let lastPayroll: Record<string, unknown> | null = null;
+  if (employeeId) {
+    const { data } = await supabaseAdmin
+      .from("payroll")
+      .select("basic_salary, net_salary, period, payment_date")
+      .eq("employee_id", employeeId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    lastPayroll = data?.[0] || null;
+  }
+
+  const annualLeaveRemaining = annualLeaveTotal - annualLeaveUsed;
+  const leavePercent = Math.min((annualLeaveUsed / annualLeaveTotal) * 100, 100);
+
+  const formatCurrency = (val: unknown) => {
+    const n = Number(val);
+    if (isNaN(n)) return "••••••••";
+    return `Rp ${n.toLocaleString("id-ID")}`;
+  };
 
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
-      {/* Welcome Banner */}
       <div className="bg-gradient-to-br from-slate-900 via-[#1E293B] to-slate-900 rounded-3xl p-6 lg:p-8 text-white relative overflow-hidden shadow-lg border border-slate-800">
         <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/10 rounded-full -mr-12 -mt-12 blur-3xl pointer-events-none"></div>
         <div className="relative z-10 max-w-2xl">
@@ -57,10 +79,10 @@ export default async function EmployeeDashboard() {
             Portal Karyawan
           </span>
           <h1 className="text-3xl font-extrabold tracking-tight mt-4">
-            Selamat Pagi, {userName}!
+            Selamat Datang, {userName}!
           </h1>
           <p className="text-slate-300 text-sm mt-2 font-light leading-relaxed">
-            Semoga harimu menyenangkan dan penuh produktivitas. Pastikan untuk melakukan check-in kehadiran harian sebelum jam kerja dimulai.
+            Pantau kehadiran, cuti, slip gaji, dan informasi penting lainnya di satu tempat.
           </p>
           <div className="flex flex-wrap items-center gap-4 mt-6 text-xs text-slate-300 border-t border-white/10 pt-4">
             <div className="flex items-center gap-1.5">
@@ -76,13 +98,8 @@ export default async function EmployeeDashboard() {
         </div>
       </div>
 
-      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Column: Attendance & Stats */}
         <div className="lg:col-span-2 space-y-8">
-          
-          {/* Check-in Section */}
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="p-4 bg-slate-50 text-slate-700 rounded-2xl border border-slate-100 shrink-0">
@@ -98,15 +115,13 @@ export default async function EmployeeDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <button className="w-full md:w-auto bg-[#0F172A] hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold text-xs transition-all shadow-md shadow-slate-900/10 active:scale-95">
+              <Link href="/employee/attendance" className="w-full md:w-auto bg-[#0F172A] hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold text-xs transition-all shadow-md shadow-slate-900/10 active:scale-95">
                 Check-in Sekarang
-              </button>
+              </Link>
             </div>
           </div>
 
-          {/* Quick Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Leave Balance */}
             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start">
@@ -114,31 +129,27 @@ export default async function EmployeeDashboard() {
                   <span className="p-2 bg-red-50 text-red-600 rounded-lg"><Coffee size={16} /></span>
                 </div>
                 <div className="mt-4">
-                  <h4 className="text-3xl font-extrabold text-slate-900">10 Hari</h4>
-                  <p className="text-xs text-slate-500 mt-1">Dari total jatah 12 hari cuti tahunan</p>
+                  <h4 className="text-3xl font-extrabold text-slate-900">{annualLeaveRemaining} Hari</h4>
+                  <p className="text-xs text-slate-500 mt-1">Dari total jatah {annualLeaveTotal} hari cuti tahunan</p>
                 </div>
               </div>
-              
-              {/* Progress Bar */}
               <div className="mt-6 space-y-2">
                 <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-red-600 h-2 rounded-full" style={{ width: "83.3%" }}></div>
+                  <div className="bg-red-600 h-2 rounded-full" style={{ width: `${leavePercent}%` }}></div>
                 </div>
                 <div className="flex justify-between text-[10px] font-semibold text-slate-400">
-                  <span>Terpakai: 2 Hari</span>
-                  <span>Tersedia: 10 Hari</span>
+                  <span>Terpakai: {annualLeaveUsed} Hari</span>
+                  <span>Tersedia: {annualLeaveRemaining} Hari</span>
                 </div>
               </div>
-
               <Link 
-                href="/employee/attendance" 
+                href="/employee/leaves" 
                 className="w-full text-center py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 transition-colors mt-6 block"
               >
                 Ajukan Cuti Baru
               </Link>
             </div>
 
-            {/* Salary slip */}
             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start">
@@ -146,99 +157,89 @@ export default async function EmployeeDashboard() {
                   <span className="p-2 bg-blue-50 text-blue-600 rounded-lg"><FileText size={16} /></span>
                 </div>
                 <div className="mt-4">
-                  <p className="text-[10px] font-bold text-slate-400">Bulan: Mei 2026</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xl font-extrabold text-slate-800">Rp ••••••••</span>
-                    <EyeOff size={14} className="text-slate-400 cursor-pointer" />
-                  </div>
-                  <p className="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-                    <CheckCircle2 size={10} /> Ditransfer pada 25 Mei 2026
-                  </p>
+                  {lastPayroll ? (
+                    <>
+                      <p className="text-[10px] font-bold text-slate-400">Periode: {lastPayroll.period as string || "-"}</p>
+                      <p className="text-xl font-extrabold text-slate-800 mt-2">{formatCurrency(lastPayroll.net_salary)}</p>
+                      {lastPayroll.payment_date && (
+                        <p className="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+                          <CheckCircle2 size={10} /> Ditransfer {new Date(lastPayroll.payment_date as string).toLocaleDateString("id-ID")}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[10px] font-bold text-slate-400">Belum ada slip gaji</p>
+                      <p className="text-sm text-slate-500 mt-2">Data payroll akan muncul setelah diproses HRD.</p>
+                    </>
+                  )}
                 </div>
               </div>
-
               <Link 
                 href="/employee/payslip" 
                 className="w-full text-center py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-slate-900/10 flex items-center justify-center gap-2 mt-12"
               >
-                <Download size={12} /> Unduh Slip PDF
+                <Download size={12} /> Lihat Slip Gaji
               </Link>
             </div>
           </div>
 
-          {/* Announcements Feed */}
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Megaphone size={18} className="text-red-500" />
                 <h3 className="font-extrabold text-slate-800">Pengumuman Internal</h3>
               </div>
-              <span className="text-[10px] font-bold text-slate-400">Pemberitahuan Terbaru</span>
             </div>
-
-            <div className="divide-y divide-slate-100">
-              {announcements.map((item) => (
-                <div key={item.id} className="py-4 first:pt-0 last:pb-0 group">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-extrabold bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">{item.category}</span>
-                        <span className="text-[10px] text-slate-400 font-medium">{item.date}</span>
-                      </div>
-                      <h4 className="text-xs font-bold text-slate-800 mt-1.5 group-hover:text-red-600 transition-colors">{item.title}</h4>
-                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{item.desc}</p>
-                    </div>
-                    <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all mt-1.5 shrink-0" />
-                  </div>
-                </div>
-              ))}
+            <div className="text-center py-10">
+              <Megaphone size={36} className="mx-auto text-slate-200 mb-3" />
+              <p className="text-sm text-slate-400">Belum ada pengumuman terbaru.</p>
+              <p className="text-xs text-slate-300 mt-1">HRD akan mengirimkan pengumuman penting di sini.</p>
             </div>
           </div>
-
         </div>
 
-        {/* Right Column: Schedule / Quick Contacts */}
         <div className="space-y-8">
-          
-          {/* Day Schedule Planner */}
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <CalendarDays size={18} className="text-red-500" />
-                <h3 className="font-extrabold text-slate-800">Agenda Hari Ini</h3>
+                <h3 className="font-extrabold text-slate-800">Menu Cepat</h3>
               </div>
             </div>
-
-            <div className="space-y-4">
-              {scheduleToday.map((event) => (
-                <div key={event.id} className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100 flex flex-col gap-1.5">
-                  <span className="text-[10px] font-bold text-slate-400">{event.time}</span>
-                  <h4 className="text-xs font-bold text-slate-800">{event.title}</h4>
-                  <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
-                    <MapPin size={10} className="text-slate-400" />
-                    <span>{event.room}</span>
-                  </p>
-                </div>
+            <div className="space-y-2">
+              {[
+                { label: "Profil Saya", href: "/employee/profile" },
+                { label: "Absensi & Kehadiran", href: "/employee/attendance" },
+                { label: "Cuti & Izin", href: "/employee/leaves" },
+                { label: "Slip Gaji", href: "/employee/payslip" },
+                { label: "KPI & Performa", href: "/employee/kpi" },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors text-xs font-medium text-slate-700"
+                >
+                  {item.label}
+                  <ChevronRight size={14} className="text-slate-400" />
+                </Link>
               ))}
             </div>
           </div>
 
-          {/* Quick Help Card */}
           <div className="bg-gradient-to-br from-red-600 to-red-700 p-6 rounded-3xl text-white shadow-md shadow-red-600/10 flex flex-col justify-between">
             <div>
               <h4 className="text-base font-bold">Butuh Bantuan HRD?</h4>
-              <p className="text-xs text-red-100 mt-2 leading-relaxed">Mengalami kendala terkait payroll, absensi, data diri, atau sistem HRIS? Segera hubungi Tim HRD PT Pratama Galuh Perkasa.</p>
+              <p className="text-xs text-red-100 mt-2 leading-relaxed">Mengalami kendala terkait payroll, absensi, data diri, atau sistem? Segera hubungi Tim HRD.</p>
             </div>
             <Link 
-              href="mailto:hrd@pratamagaluh.co.id" 
+              href="mailto:hrd@ptpgp.co.id" 
               className="w-full text-center py-2.5 bg-white text-red-600 hover:bg-red-50 rounded-2xl text-xs font-bold transition-colors mt-6 block"
             >
               Hubungi Tim HRD
             </Link>
           </div>
-
         </div>
-
       </div>
     </div>
   );

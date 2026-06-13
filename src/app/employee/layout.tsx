@@ -37,16 +37,17 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
 
   const menuItems = [
     { href: "/employee", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/employee/profile", label: "My Profile", icon: User },
-    { href: "/employee/attendance", label: "Attendance", icon: Calendar },
-    { href: "/employee/leaves", label: "Leave & Permission", icon: FileText },
-    { href: "/employee/payroll", label: "Payroll & Payslips", icon: DollarSign },
-    { href: "/employee/training", label: "Training Center", icon: GraduationCap },
-    { href: "/employee/documents", label: "SOP & Documents", icon: BookOpen },
-    { href: "/employee/kpi", label: "KPI & Performance", icon: TrendingUp },
-    { href: "/employee/career", label: "Career Development", icon: TrendingUp },
-    { href: "/employee/complaints", label: "Complaints & Suggestions", icon: MessageCircle },
-    { href: "/employee/resignation", label: "Resignation Request", icon: LogOut },
+    { href: "/employee/profile", label: "Profil Saya", icon: User },
+    { href: "/employee/attendance", label: "Absensi", icon: Calendar },
+    { href: "/employee/leaves", label: "Cuti & Izin", icon: FileText },
+    { href: "/employee/payroll", label: "Gaji & Slip", icon: DollarSign },
+    { href: "/employee/training", label: "Pelatihan", icon: GraduationCap },
+    { href: "/employee/documents", label: "Dokumen & SOP", icon: BookOpen },
+    { href: "/employee/kpi", label: "KPI & Performa", icon: TrendingUp },
+    { href: "/employee/career", label: "Pengembangan Karir", icon: TrendingUp },
+    { href: "/employee/complaints", label: "Keluhan & Saran", icon: MessageCircle },
+    { href: "/employee/warnings", label: "Surat Peringatan", icon: ShieldCheck },
+    { href: "/employee/resignation", label: "Pengunduran Diri", icon: LogOut },
   ];
 
   return (
