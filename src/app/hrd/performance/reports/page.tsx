@@ -7,10 +7,6 @@ export default async function PerformanceReportsPage() {
     .select("*, employees!inner(full_name, department, position)")
     .limit(100);
 
-  const { data: departments } = await supabaseAdmin
-    .from("departments")
-    .select("name")
-    .order("name");
 
   const totalEval = evaluations?.length || 0;
 

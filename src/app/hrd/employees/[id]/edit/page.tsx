@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, KeyRound } from "lucide-react";
 import { getEmployeeById, updateEmployee, resetEmployeePassword } from "@/app/actions/hrd";
+import { getDepartments } from "@/app/actions/org";
 import { generateWhatsAppUrl, formatPasswordMessage } from "@/lib/wa";
 
 export default function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
@@ -13,6 +14,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState("");
   const [passwordResult, setPasswordResult] = useState<{ password: string; email: string; phone: string } | null>(null);
+  const [deptList, setDeptList] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -25,6 +27,9 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
   });
 
   useEffect(() => {
+    getDepartments().then(depts => {
+      setDeptList(depts.map(d => d.name));
+    });
     params.then(({ id }) => {
       setId(id);
       getEmployeeById(id).then((data) => {
@@ -179,11 +184,9 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Departemen</label>
                 <select name="department" value={formData.department} onChange={handleChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white">
-                  <option>Operasional</option>
-                  <option>Administrasi</option>
-                  <option>Keuangan</option>
-                  <option>IT & Sistem</option>
-                  <option>HRD</option>
+                  {deptList.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </select>
               </div>
               <div>

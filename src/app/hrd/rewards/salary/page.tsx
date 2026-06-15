@@ -7,10 +7,6 @@ export default async function SalaryPage() {
     .select("id, full_name, department, position")
     .limit(50);
 
-  const { data: departments } = await supabaseAdmin
-    .from("departments")
-    .select("name")
-    .order("name");
 
   const salaryData = [
     { id: 1, employee: "Budi Santoso", department: "Operasional", position: "Supervisor Gudang", basicSalary: 7500000, transport: 1000000, meal: 800000, housing: 1200000, position_: 1500000, total: 12000000 },

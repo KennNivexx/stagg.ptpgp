@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Mail, Key, CheckCircle2, Copy, Eye, EyeOff } from "lucide-react";
 import { generateWhatsAppUrl, formatPasswordMessage } from "@/lib/wa";
 import { createEmployee } from "@/app/actions/hrd";
-import { getOrgStructure } from "@/app/actions/org";
+import { getOrgStructure, getDepartments } from "@/app/actions/org";
 import { generateCompanyEmail } from "@/lib/auth";
 
 export default function NewEmployeeForm() {
@@ -26,6 +26,7 @@ export default function NewEmployeeForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [orgUnits, setOrgUnits] = useState<{code: string; name: string}[]>([]);
   const [orgCode, setOrgCode] = useState("");
+  const [deptList, setDeptList] = useState<string[]>([]);
 
   useEffect(() => {
     if (fullName && !email) {
@@ -44,6 +45,9 @@ export default function NewEmployeeForm() {
       }
       walk(tree);
       setOrgUnits(flat);
+    });
+    getDepartments().then(depts => {
+      setDeptList(depts.map(d => d.name));
     });
   }, []);
 
@@ -245,13 +249,9 @@ export default function NewEmployeeForm() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Departemen *</label>
                 <select value={department} onChange={(e) => setDepartment(e.target.value)}
                   className="w-full border border-gray-200 p-3 rounded-xl text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000]/20 outline-none bg-white">
-                  <option>Operasional</option>
-                  <option>Administrasi</option>
-                  <option>Keuangan</option>
-                  <option>IT & Sistem</option>
-                  <option>HRD</option>
-                  <option>Marketing</option>
-                  <option>Legal</option>
+                  {deptList.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </select>
               </div>
               <div>

@@ -1,5 +1,4 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
-import { Target, Plus, Calendar, User, Flag, Trash2 } from "lucide-react";
+﻿import { Target, Plus, Calendar, User, Flag, Trash2 } from "lucide-react";
 
 const SEED_INITIATIVES = [
   { id: 1, name: "Transformasi Digital HR", objective: "Digitalisasi seluruh proses HR dalam 12 bulan", timeline: "Jan - Des 2026", pic: "Direktur HRD", status: "In Progress", progress: 45 },
@@ -8,8 +7,7 @@ const SEED_INITIATIVES = [
   { id: 4, name: "Culture Transformation", objective: "Transformasi budaya perusahaan menuju agile & inovatif", timeline: "Jun - Des 2026", pic: "Chief People Officer", status: "Planning", progress: 10 },
 ];
 
-export default async function PerencanaanStrategis() {
-  const { data: departments } = await supabaseAdmin.from("departments").select("*");
+export default function PerencanaanStrategis() {
 
   return (
     <div className="p-6 lg:p-8 space-y-8">

@@ -14,10 +14,6 @@ export default async function KPIPage() {
     .select("id, full_name, department, position")
     .limit(50);
 
-  const { data: departments } = await supabaseAdmin
-    .from("departments")
-    .select("name")
-    .order("name");
 
   const avgScore = evaluations && evaluations.length > 0
     ? (evaluations.filter((e: Record<string, unknown>) => e.score != null)
