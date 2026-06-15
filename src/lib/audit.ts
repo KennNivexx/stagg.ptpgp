@@ -15,7 +15,19 @@ export type AuditAction =
   | "org.update_unit"
   | "org.delete_unit"
   | "org.move_unit"
-  | "settings.save";
+  | "settings.save"
+  | "position.add"
+  | "position.update"
+  | "position.delete"
+  | "jobdesc.save"
+  | "jobdesc.delete"
+  | "jobspec.save"
+  | "jobspec.delete"
+  | "headcount.update"
+  | "headcount.sync"
+  | "request.add"
+  | "request.status_change"
+  | "request.delete";
 
 export async function auditLog(params: {
   action: AuditAction;
