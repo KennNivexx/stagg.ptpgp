@@ -34,7 +34,10 @@ export async function addRequest(formData: FormData) {
   const { error } = await supabaseAdmin.from("workforce_requests").insert({
     id, department, position, quantity, reason, urgency, status: "Pending", requested_by, created_at: now,
   });
-  if (error) return { error: "Gagal mengajukan permintaan." };
+  if (error) {
+    console.error("addRequest error:", error);
+    return { error: `Gagal: ${error.message || "Silakan coba lagi."}` };
+  }
 
   revalidatePath("/hrd/workforce/requests");
   return { success: true };
@@ -42,8 +45,24 @@ export async function addRequest(formData: FormData) {
 
 export async function updateRequestStatus(id: string, status: string) {
   await requireRole("hrd", "superadmin");
+
   await supabaseAdmin.from("workforce_requests").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+
+  if (status === "Disetujui") {
+    const { data: req } = await supabaseAdmin.from("workforce_requests").select("department, quantity").eq("id", id).maybeSingle();
+    if (req) {
+      const dept = req as { department: string; quantity: number };
+      const { data: deptRow } = await supabaseAdmin.from("departments").select("id, headcount, name").eq("name", dept.department).maybeSingle();
+      if (deptRow) {
+        const row = deptRow as { id: string; headcount: number };
+        const newHC = (row.headcount || 0) + dept.quantity;
+        await supabaseAdmin.from("departments").update({ headcount: newHC }).eq("id", row.id);
+      }
+    }
+  }
+
   revalidatePath("/hrd/workforce/requests");
+  revalidatePath("/hrd/workforce/headcount");
   return { success: true };
 }
 

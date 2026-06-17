@@ -34,13 +34,19 @@ export async function saveJobSpec(formData: FormData) {
     const { error } = await supabaseAdmin.from("job_specifications").update({
       position, department, education, experience, skills, certifications, updated_at: now,
     }).eq("id", id);
-    if (error) return { error: "Gagal mengupdate spesifikasi pekerjaan." };
+    if (error) {
+      console.error("saveJobSpec error:", error);
+      return { error: `Gagal: ${error.message || "Coba lagi."}` };
+    }
   } else {
     const newId = uid();
     const { error } = await supabaseAdmin.from("job_specifications").insert({
       id: newId, position, department, education, experience, skills, certifications, created_at: now, updated_at: now,
     });
-    if (error) return { error: "Gagal menambah spesifikasi pekerjaan." };
+    if (error) {
+      console.error("addJobSpec error:", error);
+      return { error: `Gagal: ${error.message || "Coba lagi."}` };
+    }
   }
 
   revalidatePath("/hrd/workplace/jobspec");

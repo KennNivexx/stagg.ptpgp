@@ -27,7 +27,11 @@ export type AuditAction =
   | "headcount.sync"
   | "request.add"
   | "request.status_change"
-  | "request.delete";
+  | "request.delete"
+  | "attendance.clock_in"
+  | "attendance.clock_out"
+  | "leave.submit"
+  | "leave.status_change";
 
 export async function auditLog(params: {
   action: AuditAction;

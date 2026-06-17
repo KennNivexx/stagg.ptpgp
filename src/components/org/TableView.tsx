@@ -2,16 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Edit3, PlusCircle, Trash2, User, Search, ChevronUp, ChevronDown } from "lucide-react";
-
-interface OrgUnit {
-  id: string; code: string; name: string; level: number;
-  leader_name: string; leader_email: string; children: OrgUnit[];
-}
-
-interface FlatUnit {
-  id: string; code: string; name: string; level: number;
-  leader_name: string; leader_email: string;
-}
+import type { OrgUnit, FlatUnit } from "@/types/org";
 
 const LEVEL_COLORS: Record<number, string> = {
   0: "bg-red-100 text-red-700",

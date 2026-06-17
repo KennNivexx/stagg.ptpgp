@@ -7,6 +7,7 @@ import {
   AlertTriangle, Search, CheckCircle2, RefreshCw
 } from "lucide-react";
 import { getPositions, addPosition, updatePosition, deletePosition } from "@/app/actions/positions";
+import type { Employee } from "@/types/org";
 
 interface Position {
   id: string;
@@ -14,10 +15,6 @@ interface Position {
   name: string;
   department: string;
   level: string;
-}
-
-interface Employee {
-  id: string; full_name: string; department: string; position: string;
 }
 
 interface Props {

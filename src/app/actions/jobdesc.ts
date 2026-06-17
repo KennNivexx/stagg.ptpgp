@@ -32,13 +32,19 @@ export async function saveJobDesc(formData: FormData) {
     const { error } = await supabaseAdmin.from("job_descriptions").update({
       position, department, responsibilities, requirements, updated_at: now,
     }).eq("id", id);
-    if (error) return { error: "Gagal mengupdate deskripsi pekerjaan." };
+    if (error) {
+      console.error("saveJobDesc error:", error);
+      return { error: `Gagal: ${error.message || "Coba lagi."}` };
+    }
   } else {
     const newId = uid();
     const { error } = await supabaseAdmin.from("job_descriptions").insert({
       id: newId, position, department, responsibilities, requirements, created_at: now, updated_at: now,
     });
-    if (error) return { error: "Gagal menambah deskripsi pekerjaan." };
+    if (error) {
+      console.error("addJobDesc error:", error);
+      return { error: `Gagal: ${error.message || "Coba lagi."}` };
+    }
   }
 
   revalidatePath("/hrd/workplace/jobdesc");

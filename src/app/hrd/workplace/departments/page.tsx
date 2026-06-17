@@ -3,25 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit, Building2, AlertTriangle, X, ArrowRight } from "lucide-react";
 import { getOrgStructure, addOrgUnit, deleteOrgUnit, updateOrgUnit, moveOrgUnit } from "@/app/actions/org";
-
-interface OrgUnit {
-  id: string;
-  code: string;
-  name: string;
-  level: number;
-  leader_name: string;
-  leader_email: string;
-  children: OrgUnit[];
-}
-
-interface FlatUnit {
-  id: string;
-  code: string;
-  name: string;
-  level: number;
-  leader_name: string;
-  leader_email: string;
-}
+import type { OrgUnit, FlatUnit } from "@/types/org";
 
 function flattenTree(tree: OrgUnit[]): FlatUnit[] {
   const result: FlatUnit[] = [];

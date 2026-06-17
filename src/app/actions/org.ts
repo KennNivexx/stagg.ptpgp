@@ -1,31 +1,12 @@
 "use server";
+
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { auditLog } from "@/lib/audit";
-
-interface OrgUnit {
-  id: string; code: string; name: string; level: number;
-  leader_name: string; leader_email: string; children: OrgUnit[];
-}
+import type { OrgUnit, FlatDept } from "@/types/org";
 
 /* ─────── helpers ─────── */
-
-function findUnit(tree: OrgUnit[], code: string): OrgUnit | null {
-  for (const u of tree) {
-    if (u.code === code) return u;
-    const found = findUnit(u.children, code);
-    if (found) return found;
-  }
-  return null;
-}
-
-function deleteUnitByCode(tree: OrgUnit[], code: string): boolean {
-  const idx = tree.findIndex(u => u.code === code);
-  if (idx !== -1) { tree.splice(idx, 1); return true; }
-  for (const u of tree) { if (deleteUnitByCode(u.children, code)) return true; }
-  return false;
-}
 
 function codeSegments(code: string): number[] {
   return code.split(".").map(Number);
@@ -49,9 +30,7 @@ function generateCode(parentCode: string, siblingCount: number): string {
 function getParentCode(code: string): string | null {
   const digits = codeSegments(code);
   let lastNonZero = -1;
-  for (let i = 0; i < digits.length; i++) {
-    if (digits[i] > 0) lastNonZero = i;
-  }
+  for (let i = 0; i < digits.length; i++) if (digits[i] > 0) lastNonZero = i;
   if (lastNonZero <= 0) return null;
   digits[lastNonZero] = 0;
   return digits.join(".");
@@ -61,34 +40,21 @@ function isDescendantOf(code: string, ancestor: string): boolean {
   const a = codeSegments(ancestor);
   const c = codeSegments(code);
   if (c.length <= a.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] > 0 && a[i] !== c[i]) return false;
-  }
+  for (let i = 0; i < a.length; i++) if (a[i] > 0 && a[i] !== c[i]) return false;
   return true;
 }
 
-function recalculateCodes(unit: OrgUnit, parentCode: string) {
-  unit.code = parentCode;
-  unit.level = codeLevel(parentCode);
-  for (let i = 0; i < unit.children.length; i++) {
-    const childCode = generateCode(parentCode, i);
-    recalculateCodes(unit.children[i], childCode);
-  }
-}
+const uid = () => "org-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
 
-/* ─────── settings persistence ─────── */
+/* ─────── tree builder ─────── */
 
 async function getSettings() {
-  const { data, error } = await supabaseAdmin.from("employees").select("address").eq("email", "__settings__@ptpgp.co.id").single();
-  if (error || !data?.address) return {};
+  const { data } = await supabaseAdmin.from("employees").select("address").eq("email", "__settings__@ptpgp.co.id").single();
+  if (!data?.address) return {};
   try { return JSON.parse(data.address as string); } catch { return {}; }
 }
 
 async function saveSettings(settings: Record<string, unknown>) {
-  const tree = settings.org_structure as OrgUnit[] | undefined;
-  if (tree && (tree.length === 0 || !tree[0])) {
-    throw new Error("saveSettings rejected: empty org_structure");
-  }
   await supabaseAdmin.from("employees").upsert({
     full_name: "System Settings", email: "__settings__@ptpgp.co.id",
     address: JSON.stringify(settings), department: "System", position: "Settings",
@@ -96,12 +62,67 @@ async function saveSettings(settings: Record<string, unknown>) {
   }, { onConflict: "email" });
 }
 
-/* ─────── public actions ─────── */
+interface OrgUnitRow {
+  id: string; code: string; name: string; parent_code: string | null;
+  level: number; leader_name: string | null; leader_email: string | null; sort_order: number;
+}
+
+async function buildTree(): Promise<OrgUnit[]> {
+  const { data } = await supabaseAdmin.from("org_units").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
+  if (!data || data.length === 0) return [];
+  const rows = data as unknown as OrgUnitRow[];
+  const map = new Map<string, OrgUnit>();
+  const roots: OrgUnit[] = [];
+  for (const row of rows) {
+    map.set(row.code, {
+      id: row.id, code: row.code, name: row.name, level: row.level,
+      leader_name: row.leader_name || "", leader_email: row.leader_email || "",
+      children: [],
+    });
+  }
+  for (const row of rows) {
+    const u = map.get(row.code)!;
+    if (row.parent_code && map.has(row.parent_code)) {
+      map.get(row.parent_code)!.children.push(u);
+    } else {
+      roots.push(u);
+    }
+  }
+  return roots;
+}
+
+async function countChildren(parentCode: string): Promise<number> {
+  const { count } = await supabaseAdmin.from("org_units").select("*", { count: "exact", head: true }).eq("parent_code", parentCode);
+  return count || 0;
+}
+
+async function recalculateDescendants(parentCode: string, newParentCode: string) {
+  const { data: children } = await supabaseAdmin.from("org_units").select("code").eq("parent_code", parentCode).order("sort_order", { ascending: true });
+  if (!children) return;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i] as { code: string };
+    const newChildCode = generateCode(newParentCode, i);
+    const newLevel = codeLevel(newChildCode);
+    await supabaseAdmin.from("org_units").update({ code: newChildCode, level: newLevel }).eq("code", child.code);
+    await recalculateDescendants(child.code, newChildCode);
+  }
+}
+
+async function deleteSubtree(code: string) {
+  const { data: children } = await supabaseAdmin.from("org_units").select("code").eq("parent_code", code);
+  if (children) {
+    for (const c of children as { code: string }[]) {
+      await deleteSubtree(c.code);
+    }
+  }
+  await supabaseAdmin.from("org_units").delete().eq("code", code);
+}
+
+/* ─────── public API ─────── */
 
 export async function getOrgStructure(): Promise<OrgUnit[]> {
   await requireRole("hrd", "superadmin");
-  const s = await getSettings();
-  return (s.org_structure as OrgUnit[]) || [];
+  return await buildTree();
 }
 
 export async function addOrgUnit(formData: FormData) {
@@ -115,35 +136,23 @@ export async function addOrgUnit(formData: FormData) {
   if (!parent_code || !unit_name) return { error: "Parent dan nama unit wajib diisi." };
   if (!/^\d+(\.\d+)+$/.test(parent_code)) return { error: "Format kode parent tidak valid." };
 
-  const settings = await getSettings();
-  const tree = (settings.org_structure || []) as OrgUnit[];
-  if (tree.length === 0) return { error: "Struktur organisasi belum tersedia. Jalankan seed terlebih dahulu." };
-
-  const parent = findUnit(tree, parent_code);
+  const { data: parent } = await supabaseAdmin.from("org_units").select("code").eq("code", parent_code).maybeSingle();
   if (!parent) return { error: "Parent unit tidak ditemukan." };
 
-  const siblingCount = parent.children.length;
+  const siblingCount = await countChildren(parent_code);
   const newCode = generateCode(parent_code, siblingCount);
   const newLevel = codeLevel(newCode);
 
-  parent.children.push({
-    id: "org-" + Date.now(),
-    code: newCode,
-    name: unit_name,
-    level: newLevel,
-    leader_name,
-    leader_email,
-    children: [],
+  const { error } = await supabaseAdmin.from("org_units").insert({
+    id: uid(), code: newCode, name: unit_name, level: newLevel,
+    parent_code: parent_code, leader_name, leader_email, sort_order: siblingCount,
   });
-
-  settings.org_structure = tree;
-  try {
-    await saveSettings(settings);
-  } catch (e) {
-    console.error("addOrgUnit save error:", e);
-    return { error: "Gagal menyimpan data. Silakan coba lagi." };
+  if (error) {
+    console.error("addOrgUnit error:", error);
+    return { error: "Gagal menambah unit." };
   }
-  await syncOrgToDepartments(tree);
+
+  await syncOrgToDepartments();
   revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace/departments");
   revalidatePath("/hrd/workplace");
@@ -163,73 +172,57 @@ export async function updateOrgUnit(formData: FormData) {
 
   if (!unit_code) return { error: "Kode unit wajib diisi." };
 
-  const settings = await getSettings();
-  const tree = (settings.org_structure || []) as OrgUnit[];
-  const unit = findUnit(tree, unit_code);
+  const { data: unit } = await supabaseAdmin.from("org_units").select("*").eq("code", unit_code).maybeSingle();
   if (!unit) return { error: "Unit tidak ditemukan." };
 
-  // Validate new code BEFORE any modifications
-  if (new_code && new_code !== unit.code) {
+  // Validate new code first
+  if (new_code && new_code !== unit_code) {
     if (!/^\d+(\.\d+)+$/.test(new_code)) {
       return { error: "Format kode tidak valid. Gunakan format: 1.2.3.0.0.0.0" };
     }
-    const duplicate = findUnit(tree, new_code);
-    if (duplicate && duplicate !== unit) {
-      return { error: `Kode "${new_code}" sudah digunakan unit lain.` };
-    }
-    const newParentCode = getParentCode(new_code);
-    if (newParentCode) {
-      const newParent = findUnit(tree, newParentCode);
-      if (!newParent) {
-        return { error: `Parent "${newParentCode}" tidak ditemukan di struktur.` };
-      }
-      if (newParent === unit) {
-        return { error: "Tidak bisa memindahkan ke dirinya sendiri." };
-      }
-      if (isDescendantOf(newParent.code, unit.code)) {
-        return { error: "Tidak bisa memindahkan ke anaknya sendiri." };
-      }
+    const { data: dup } = await supabaseAdmin.from("org_units").select("code").eq("code", new_code).maybeSingle();
+    if (dup) return { error: `Kode "${new_code}" sudah digunakan unit lain.` };
+    const npc = getParentCode(new_code);
+    if (npc) {
+      const { data: np } = await supabaseAdmin.from("org_units").select("code").eq("code", npc).maybeSingle();
+      if (!np) return { error: `Parent "${npc}" tidak ditemukan.` };
+      if (isDescendantOf(npc, unit_code)) return { error: "Tidak bisa memindahkan ke anaknya sendiri." };
     }
   }
 
-  // Now apply modifications (leader only if non-empty)
-  if (unit_name) unit.name = unit_name;
-  if (leader_name.trim()) {
-    unit.leader_name = leader_name.trim();
-    unit.leader_email = leader_email.trim();
-  }
-  unit.level = level;
+  const updates: Record<string, unknown> = {};
+  if (unit_name) updates.name = unit_name;
+  if (leader_name.trim()) { updates.leader_name = leader_name.trim(); updates.leader_email = leader_email.trim(); }
+  updates.level = level;
 
-  if (new_code && new_code !== unit.code) {
-    const newParentCode = getParentCode(new_code);
-    const currentParentCode = getParentCode(unit.code);
-
-    if (newParentCode && newParentCode !== currentParentCode) {
-      const newParent = findUnit(tree, newParentCode)!;
-      deleteUnitByCode(tree, unit.code);
-      unit.code = new_code;
-      unit.level = codeLevel(new_code);
-      recalculateCodes(unit, new_code);
-      newParent.children.push(unit);
-    } else {
-      unit.code = new_code;
-      unit.level = codeLevel(new_code);
-      recalculateCodes(unit, new_code);
+  if (new_code && new_code !== unit_code) {
+    const npc = getParentCode(new_code);
+    const curPc = (unit as Record<string, unknown>).parent_code as string || null;
+    const oldParent = curPc ? getParentCode(unit_code) : null;
+    updates.code = new_code;
+    updates.level = codeLevel(new_code);
+    if (npc && npc !== oldParent) {
+      updates.parent_code = npc;
     }
+    await supabaseAdmin.from("org_units").update(updates).eq("code", unit_code);
+    await recalculateDescendants(unit_code, new_code);
+  } else {
+    await supabaseAdmin.from("org_units").update(updates).eq("code", unit_code);
   }
 
-  settings.org_structure = tree;
+  // Sync JSON backup
   try {
+    const tree = await buildTree();
+    const settings = await getSettings();
+    settings.org_structure = tree;
     await saveSettings(settings);
-  } catch (e) {
-    console.error("updateOrgUnit save error:", e);
-    return { error: "Gagal menyimpan perubahan." };
-  }
-  await syncOrgToDepartments(tree);
+  } catch (e) { console.error("updateOrgUnit JSON backup error:", e); }
+
+  await syncOrgToDepartments();
   revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace/departments");
   revalidatePath("/hrd/workplace");
-  auditLog({ action: "org.update_unit", targetId: new_code || unit_code, targetName: unit_name || unit.name, performedBy: user });
+  auditLog({ action: "org.update_unit", targetId: new_code || unit_code, targetName: unit_name || (unit as Record<string, unknown>).name as string, performedBy: user });
   return { success: true };
 }
 
@@ -237,25 +230,23 @@ export async function deleteOrgUnit(unitCode: string) {
   const user = await requireRole("hrd", "superadmin");
   if (!unitCode) return { error: "Kode unit wajib diisi." };
 
-  const settings = await getSettings();
-  const tree = (settings.org_structure || []) as OrgUnit[];
-  if (tree.length === 0) return { error: "Struktur organisasi tidak tersedia." };
+  const { data: unit } = await supabaseAdmin.from("org_units").select("name, code").eq("code", unitCode).maybeSingle();
+  if (!unit) return { error: "Unit tidak ditemukan." };
 
-  const deleted = deleteUnitByCode(tree, unitCode);
-  if (!deleted) return { error: "Unit tidak ditemukan." };
+  await deleteSubtree(unitCode);
 
-  settings.org_structure = tree;
   try {
+    const tree = await buildTree();
+    const settings = await getSettings();
+    settings.org_structure = tree;
     await saveSettings(settings);
-  } catch (e) {
-    console.error("deleteOrgUnit save error:", e);
-    return { error: "Gagal menyimpan perubahan." };
-  }
-  await syncOrgToDepartments(tree);
+  } catch (e) { console.error("deleteOrgUnit JSON backup error:", e); }
+
+  await syncOrgToDepartments();
   revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace/departments");
   revalidatePath("/hrd/workplace");
-  auditLog({ action: "org.delete_unit", targetId: unitCode, performedBy: user });
+  auditLog({ action: "org.delete_unit", targetId: unitCode, targetName: (unit as { name: string }).name, performedBy: user });
   return { success: true };
 }
 
@@ -265,100 +256,102 @@ export async function moveOrgUnit(unitCode: string, newParentCode: string) {
   if (!unitCode || !newParentCode) return { error: "Kode unit dan parent wajib diisi." };
   if (unitCode === newParentCode) return { error: "Tidak bisa memindahkan ke dirinya sendiri." };
 
-  const settings = await getSettings();
-  const tree = (settings.org_structure || []) as OrgUnit[];
-
-  const unit = findUnit(tree, unitCode);
+  const { data: unit } = await supabaseAdmin.from("org_units").select("code").eq("code", unitCode).maybeSingle();
   if (!unit) return { error: "Unit tidak ditemukan." };
 
-  const newParent = findUnit(tree, newParentCode);
+  const { data: newParent } = await supabaseAdmin.from("org_units").select("code").eq("code", newParentCode).maybeSingle();
   if (!newParent) return { error: "Parent tujuan tidak ditemukan." };
+  if (isDescendantOf(newParentCode, unitCode)) return { error: "Tidak bisa memindahkan ke anaknya sendiri." };
 
-  if (newParent.code === unitCode || isDescendantOf(newParent.code, unitCode)) {
-    return { error: "Tidak bisa memindahkan ke anaknya sendiri." };
-  }
+  const siblingCount = await countChildren(newParentCode);
+  const newCode = generateCode(newParentCode, siblingCount);
+  const newLevel = codeLevel(newCode);
 
-  deleteUnitByCode(tree, unitCode);
+  await supabaseAdmin.from("org_units").update({
+    code: newCode, level: newLevel, parent_code: newParentCode,
+    sort_order: siblingCount,
+  }).eq("code", unitCode);
 
-  const siblingCount = newParent.children.length;
-  unit.code = generateCode(newParentCode, siblingCount);
-  unit.level = codeLevel(unit.code);
-  recalculateCodes(unit, unit.code);
-
-  newParent.children.push(unit);
-  settings.org_structure = tree;
+  await recalculateDescendants(unitCode, newCode);
 
   try {
+    const tree = await buildTree();
+    const settings = await getSettings();
+    settings.org_structure = tree;
     await saveSettings(settings);
-  } catch (e) {
-    console.error("moveOrgUnit save error:", e);
-    return { error: "Gagal menyimpan perubahan." };
-  }
-  await syncOrgToDepartments(tree);
+  } catch (e) { console.error("moveOrgUnit JSON backup error:", e); }
+
+  await syncOrgToDepartments();
   revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace/departments");
   revalidatePath("/hrd/workplace");
-  auditLog({ action: "org.move_unit", targetId: unit.code, targetName: unit.name, performedBy: user, detail: `Dipindah ke ${newParentCode}` });
-  return { success: true, newCode: unit.code };
+  auditLog({ action: "org.move_unit", targetId: newCode, targetName: (unit as { name?: string }).name || unitCode, performedBy: user, detail: `Dipindah ke ${newParentCode}` });
+  return { success: true, newCode };
 }
 
 /* ─────── departments sync ─────── */
 
-interface FlatDept {
-  id?: string; code: string; name: string; parent_code: string | null;
-  level: number; leader_name: string; leader_email: string; sort_order: number;
-}
-
-function flattenTreeForSync(tree: OrgUnit[], parentCode: string | null = null): FlatDept[] {
-  const result: FlatDept[] = [];
-  for (let i = 0; i < tree.length; i++) {
-    const u = tree[i];
-    result.push({
-      code: u.code,
-      name: u.name,
-      parent_code: parentCode,
-      level: u.level,
-      leader_name: u.leader_name,
-      leader_email: u.leader_email,
-      sort_order: i,
-    });
-    if (u.children && u.children.length > 0) {
-      result.push(...flattenTreeForSync(u.children, u.code));
-    }
-  }
+async function syncOrgToDepartments() {
+  const { data } = await supabaseAdmin.from("org_units").select("*").order("level").order("sort_order").order("name");
+  if (!data || data.length === 0) return;
+  const rows = data as unknown as OrgUnitRow[];
+  const flat: FlatDept[] = rows.map((r, i) => ({
+    code: r.code, name: r.name, parent_code: r.parent_code || null,
+    level: r.level, leader_name: r.leader_name || "", leader_email: r.leader_email || "", sort_order: r.sort_order || i,
+  }));
   const nameCount: Record<string, number> = {};
-  for (const r of result) nameCount[r.name] = (nameCount[r.name] || 0) + 1;
+  for (const r of flat) nameCount[r.name] = (nameCount[r.name] || 0) + 1;
   const dupNames = new Map<string, number>();
-  for (const r of result) {
+  for (const r of flat) {
     if (nameCount[r.name] > 1) {
       const idx = (dupNames.get(r.name) || 0) + 1;
       dupNames.set(r.name, idx);
       r.name = `${r.name} (${idx})`;
     }
   }
-  return result;
-}
-
-async function syncOrgToDepartments(tree: OrgUnit[]) {
-  const flat = flattenTreeForSync(tree);
   const treeCodes = flat.map(f => f.code);
-  if (flat.length > 0) {
-    const { error: upErr } = await supabaseAdmin.from("departments").upsert(flat, { onConflict: "code" });
-    if (upErr) { console.error("syncOrgToDepartments upsert error:", upErr); return; }
-  }
-  const { data: existing, error: selErr } = await supabaseAdmin.from("departments").select("code");
-  if (selErr) { console.error("syncOrgToDepartments select error:", selErr); return; }
+  const { error: upErr } = await supabaseAdmin.from("departments").upsert(flat, { onConflict: "code" });
+  if (upErr) { console.error("syncToDepartments upsert error:", upErr); return; }
+  const { data: existing } = await supabaseAdmin.from("departments").select("code");
   if (existing) {
     const toDelete = (existing as { code: string }[]).filter(d => !treeCodes.includes(d.code)).map(d => d.code);
-    if (toDelete.length > 0) {
-      await supabaseAdmin.from("departments").delete().in("code", toDelete);
-    }
+    if (toDelete.length > 0) await supabaseAdmin.from("departments").delete().in("code", toDelete);
   }
 }
 
 export async function getDepartments(): Promise<FlatDept[]> {
   const { data } = await supabaseAdmin.from("departments").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
   return (data as FlatDept[]) || [];
+}
+
+/* ─────── seed / migrate from JSON ─────── */
+
+export async function migrateJsonToOrgUnits() {
+  await requireRole("hrd", "superadmin");
+
+  const settings = await getSettings();
+  const tree = (settings.org_structure as OrgUnit[]) || [];
+  if (tree.length === 0) return { error: "No JSON data to migrate." };
+
+  function flatten(list: OrgUnit[], parentCode: string | null = null, depth = 0): { id: string; code: string; name: string; parent_code: string | null; level: number; leader_name: string; leader_email: string; sort_order: number }[] {
+    const result: { id: string; code: string; name: string; parent_code: string | null; level: number; leader_name: string; leader_email: string; sort_order: number }[] = [];
+    for (let i = 0; i < list.length; i++) {
+      const u = list[i];
+      result.push({
+        id: u.id, code: u.code, name: u.name, parent_code: parentCode,
+        level: u.level, leader_name: u.leader_name, leader_email: u.leader_email, sort_order: i,
+      });
+      if (u.children && u.children.length > 0) result.push(...flatten(u.children, u.code, depth + 1));
+    }
+    return result;
+  }
+
+  const flat = flatten(tree);
+  for (const row of flat) {
+    await supabaseAdmin.from("org_units").upsert(row, { onConflict: "code" });
+  }
+  await syncOrgToDepartments();
+  return { success: true, count: flat.length };
 }
 
 /* ─────── chart layout (legacy) ─────── */
@@ -369,19 +362,13 @@ export async function saveChartLayout(
 ) {
   await requireRole("hrd", "superadmin");
   const settings = await getSettings();
-  settings.chart_layout = {
-    nodePositions, customEdges,
-    edgesCleared: customEdges.length === 0 && Object.keys(nodePositions).length === 0 ? true : undefined,
-  };
+  settings.chart_layout = { nodePositions, customEdges, edgesCleared: customEdges.length === 0 && Object.keys(nodePositions).length === 0 ? true : undefined };
   await saveSettings(settings);
   revalidatePath("/hrd/workplace/structure");
   return { success: true };
 }
 
-export async function getChartLayout(): Promise<{
-  nodePositions: Record<string, { x: number; y: number }>;
-  customEdges: { id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }[];
-} | null> {
+export async function getChartLayout(): Promise<{ nodePositions: Record<string, { x: number; y: number }>; customEdges: { id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }[] } | null> {
   await requireRole("hrd", "superadmin");
   const settings = await getSettings();
   return (settings as Record<string, unknown>).chart_layout as any || null;

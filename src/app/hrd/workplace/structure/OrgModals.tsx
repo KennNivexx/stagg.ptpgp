@@ -8,16 +8,7 @@ import {
   Settings, Building2, Edit3, PlusCircle, Trash2, X,
   Mail, Briefcase, AlertTriangle, User, IdCard
 } from "lucide-react";
-
-interface OrgUnit {
-  id: string; code: string; name: string; level: number;
-  leader_name: string; leader_email: string; children: OrgUnit[];
-}
-
-interface Employee {
-  id: string; full_name: string; email: string;
-  position: string; department: string;
-}
+import type { OrgUnit, Employee } from "@/types/org";
 
 /* ─────────────────── Shared Portal + Backdrop ──────────────────────────── */
 

@@ -52,6 +52,12 @@ export default function RequestsClient({ departments, positions }: Props) {
   const doStatus = async (id: string, status: string) => {
     await updateRequestStatus(id, status);
     setData(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    const req = data.find(r => r.id === id);
+    if (status === "Disetujui" && req) {
+      showToast(`Disetujui! Headcount ${req.department} +${req.quantity}.`);
+    } else if (status === "Ditolak") {
+      showToast("Permintaan ditolak.");
+    }
   };
 
   const doDelete = async (id: string) => { await deleteRequest(id); getRequests().then(setData); };

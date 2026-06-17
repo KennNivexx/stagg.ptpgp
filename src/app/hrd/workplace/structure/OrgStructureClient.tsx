@@ -11,15 +11,8 @@ import { addOrgUnit, updateOrgUnit, deleteOrgUnit } from "@/app/actions/org";
 import TreeView from "@/components/org/TreeView";
 import TableView from "@/components/org/TableView";
 import { InfoModal, EditModal, DelModal, DeptIcon } from "./OrgModals";
+import type { OrgUnit, Employee } from "@/types/org";
 
-interface OrgUnit {
-  id: string; code: string; name: string; level: number;
-  leader_name: string; leader_email: string; children: OrgUnit[];
-}
-interface Employee {
-  id: string; full_name: string; email: string;
-  position: string; department: string;
-}
 interface Props { orgData: OrgUnit[]; employees: Employee[]; }
 
 export default function OrgStructureClient({ orgData = [], employees = [] }: Props) {

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Target, BarChart3, Building2, Server,
   Briefcase, Award, GraduationCap, BookOpen, TrendingUp,
   Gift, GitBranch, Heart, RefreshCw, FileText, Shield,
-  LogOut, Bell, Search, Menu, X, ChevronRight,
+  LogOut, Search, Menu, X, ChevronRight, Clock,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { getCookie } from "@/lib/cookie-client";
@@ -42,6 +42,14 @@ const MENU_GROUPS = [
       { href: "/hrd/workforce/requests", label: "Permintaan SDM" },
       { href: "/hrd/workforce/forecast", label: "Proyeksi" },
       { href: "/hrd/workforce/vacancy", label: "Lowongan" },
+    ],
+  },
+  {
+    label: "Kehadiran & Cuti",
+    icon: Clock,
+    items: [
+      { href: "/hrd/attendance", label: "Absensi" },
+      { href: "/hrd/leaves", label: "Cuti & Izin" },
     ],
   },
   {
