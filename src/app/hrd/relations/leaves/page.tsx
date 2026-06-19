@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Calendar, CheckCircle2 } from "lucide-react";
-import { updateLeaveStatus } from "@/app/actions/hrd";
+import { updateLeaveStatus } from "@/app/actions/leaves";
 
 export default function LeavesPage() {
   const [pendingLeaves, setPendingLeaves] = useState<Record<string, unknown>[] | null>(null);
