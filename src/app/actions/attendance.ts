@@ -32,7 +32,7 @@ export async function clockIn(formData: FormData) {
   const longitude = (formData.get("longitude") as string || "").trim();
   const locationName = (formData.get("location_name") as string || "").trim();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
   const { data: existing } = await supabaseAdmin.from("attendance").select("id").eq("employee_id", employeeId).eq("date", today).maybeSingle();
   if (existing) return { error: "Sudah clock-in hari ini." };
 
@@ -54,11 +54,14 @@ export async function clockIn(formData: FormData) {
     status: "Hadir",
     notes,
     photo_url: storedPhotoUrl,
-    latitude: latitude || null,
-    longitude: longitude || null,
+    latitude: latitude ? parseFloat(latitude) : null,
+    longitude: longitude ? parseFloat(longitude) : null,
     location_name: locationName || null,
   });
-  if (error) return { error: "Gagal clock-in." };
+  if (error) {
+    console.error("[clockIn] Supabase error:", error);
+    return { error: `Gagal clock-in: ${error.message}` };
+  }
 
   revalidatePath("/hrd/attendance");
   revalidatePath("/employee");
@@ -67,7 +70,7 @@ export async function clockIn(formData: FormData) {
 
 export async function clockOut(formData?: FormData) {
   const user = await requireRole("hrd", "superadmin", "employee");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
   const now = new Date().toISOString();
 
   let photoUrl: string | null = null;
@@ -90,7 +93,10 @@ export async function clockOut(formData?: FormData) {
   else if (latitude) Object.assign(updateData, { checkout_latitude: latitude, checkout_longitude: longitude, checkout_location_name: locationName });
 
   const { error } = await supabaseAdmin.from("attendance").update(updateData).eq("employee_id", user.id).eq("date", today);
-  if (error) return { error: "Gagal clock-out." };
+  if (error) {
+    console.error("[clockOut] Supabase error:", error);
+    return { error: `Gagal clock-out: ${error.message}` };
+  }
 
   revalidatePath("/hrd/attendance");
   return { success: true, time: now };
@@ -98,7 +104,7 @@ export async function clockOut(formData?: FormData) {
 
 export async function getTodayAttendance() {
   const user = await requireRole("hrd", "superadmin", "employee");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
   const { data } = await supabaseAdmin.from("attendance").select("*").eq("employee_id", user.id).eq("date", today).maybeSingle();
   return data || null;
 }

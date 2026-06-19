@@ -34,6 +34,7 @@ export default function CameraCapture({ onCapture, buttonLabel = "Ambil Foto", e
   const [loading, setLoading] = useState(true);
   const [cameraError, setCameraError] = useState("");
   const [gpsError, setGpsError] = useState("");
+  const [faceModelWarning, setFaceModelWarning] = useState("");
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [streamReady, setStreamReady] = useState(false);
@@ -53,8 +54,7 @@ export default function CameraCapture({ onCapture, buttonLabel = "Ambil Foto", e
       } catch {
         if (!cancelled) {
           setModelsLoaded(true);
-          setCameraError("Gagal memuat deteksi wajah. Kamera tetap bisa digunakan.");
-          setLoading(false);
+          setFaceModelWarning("Deteksi wajah tidak tersedia. Kamera tetap bisa digunakan.");
         }
       }
     }
@@ -137,7 +137,7 @@ export default function CameraCapture({ onCapture, buttonLabel = "Ambil Foto", e
   }, [modelsLoaded, cameraError]);
 
   useEffect(() => {
-    if (!modelsLoaded || !streamReady) return;
+    if (!modelsLoaded || !streamReady || faceModelWarning) return;
 
     const video = videoRef.current;
     const overlay = overlayRef.current;
@@ -273,6 +273,12 @@ export default function CameraCapture({ onCapture, buttonLabel = "Ambil Foto", e
       {errorMsg && !permissionDenied && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
           <p className="text-xs text-amber-700">{errorMsg}</p>
+        </div>
+      )}
+
+      {faceModelWarning && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+          <p className="text-xs text-blue-700">{faceModelWarning}</p>
         </div>
       )}
 
