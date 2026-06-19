@@ -3,6 +3,10 @@ ALTER TABLE attendance ADD COLUMN IF NOT EXISTS photo_url TEXT DEFAULT '';
 ALTER TABLE attendance ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
 ALTER TABLE attendance ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 ALTER TABLE attendance ADD COLUMN IF NOT EXISTS location_name TEXT DEFAULT '';
+ALTER TABLE attendance ALTER COLUMN id TYPE TEXT;
+ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_employee_id_fkey;
+ALTER TABLE attendance ALTER COLUMN check_in TYPE TIMESTAMPTZ USING (date + check_in::TIME) AT TIME ZONE 'Asia/Jakarta';
+ALTER TABLE attendance ALTER COLUMN check_out TYPE TIMESTAMPTZ USING (date + check_out::TIME) AT TIME ZONE 'Asia/Jakarta';
 
 -- Employees: KK / Data Induk
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS nik TEXT DEFAULT '';
