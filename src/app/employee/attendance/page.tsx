@@ -66,8 +66,8 @@ export default function EmployeeAttendancePage() {
     [fetchToday]
   );
 
-  const checkedIn = today && today.check_in;
-  const checkedOut = today && today.check_out;
+  const checkedIn = !!(today && today.check_in);
+  const checkedOut = !!(today && today.check_out);
   const bothDone = checkedIn && checkedOut;
   const status = today?.status as string;
 

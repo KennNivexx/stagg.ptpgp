@@ -15,13 +15,15 @@ export default function HireForm({ jobPosting }: { jobPosting: Record<string, un
   const [toast, setToast] = useState("");
   const [done, setDone] = useState("");
 
-  const fetchApplicants = () => {
-    supabase.from("applications")
-      .select("*")
-      .eq("job_id", jobPosting.id as string)
-      .order("applied_at", { ascending: false })
-      .then(({ data }) => { setApplicants(data || []); setLoading(false); })
-      .catch(() => setLoading(false));
+  const fetchApplicants = async () => {
+    try {
+      const { data } = await supabase.from("applications")
+        .select("*")
+        .eq("job_id", jobPosting.id as string)
+        .order("applied_at", { ascending: false });
+      setApplicants(data || []);
+    } catch { /* ignore */ }
+    setLoading(false);
   };
 
   useEffect(() => { fetchApplicants(); }, [jobPosting.id]);
