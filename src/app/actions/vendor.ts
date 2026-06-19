@@ -1,6 +1,6 @@
 "use server";
 
-import { supabaseAdminAdmin } from "@/lib/supabaseAdmin";
+import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
 export async function registerVendor(formData: FormData) {
