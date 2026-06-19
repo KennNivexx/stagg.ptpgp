@@ -126,8 +126,8 @@ export default function DeptCompetencyPage() {
       }));
 
       const result = await assessEmployee(employeeId, empSkillsToSave);
-      if (result && (result as { error?: string }).error) {
-        showToast("error", (result as { error: string }).error);
+      if (result && (result as unknown as { error?: string }).error) {
+        showToast("error", (result as unknown as { error: string }).error);
         return;
       }
 
