@@ -52,7 +52,8 @@ export default function CameraCapture({ onCapture, buttonLabel = "Ambil Foto", e
         if (!cancelled) setModelsLoaded(true);
       } catch {
         if (!cancelled) {
-          setCameraError("Gagal memuat model deteksi wajah.");
+          setModelsLoaded(true);
+          setCameraError("Gagal memuat deteksi wajah. Kamera tetap bisa digunakan.");
           setLoading(false);
         }
       }
@@ -277,9 +278,9 @@ export default function CameraCapture({ onCapture, buttonLabel = "Ambil Foto", e
 
       <button
         onClick={handleCapture}
-        disabled={!faceDetected || capturing || loading}
+        disabled={capturing || loading || !streamReady}
         className={`w-full py-3 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-          faceDetected && !capturing && !loading
+          !capturing && !loading && streamReady
             ? "bg-[#0F172A] text-white hover:bg-slate-800 shadow-lg shadow-slate-900/15 active:scale-[0.98]"
             : "bg-slate-200 text-slate-400 cursor-not-allowed"
         }`}
