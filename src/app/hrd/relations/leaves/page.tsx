@@ -11,8 +11,8 @@ export default function LeavesPage() {
 
   const fetchLeaves = () => {
     Promise.all([
-      supabase.from("leaves").select("*, employees!inner(full_name, department)").eq("status", "Pending").order("created_at", { ascending: false }).limit(50),
-      supabase.from("leaves").select("*, employees!inner(full_name, department)").eq("status", "Approved").order("start_date", { ascending: false }).limit(20),
+      supabase.from("leave_requests").select("*, employees!inner(full_name, department)").eq("status", "Pending").order("created_at", { ascending: false }).limit(50),
+      supabase.from("leave_requests").select("*, employees!inner(full_name, department)").eq("status", "Approved").order("start_date", { ascending: false }).limit(20),
     ]).then(([{ data: pending }, { data: approved }]) => {
       setPendingLeaves(pending);
       setApprovedLeaves(approved);

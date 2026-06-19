@@ -7,18 +7,9 @@ export default async function SOPPage() {
     .select("name")
     .order("name");
 
-  const sopCategories = ["Semua", "Operasional", "Keuangan", "SDM", "HSE", "IT", "Umum"];
+  const sopCategories = ["Semua", ...(departments || []).map((d: Record<string, unknown>) => d.name as string)];
 
-  const sopData = [
-    { id: "SOP-001", title: "Prosedur Penerimaan Barang di Gudang", department: "Operasional", version: "v2.1", lastUpdated: "10 Jun 2026", status: "Aktif" },
-    { id: "SOP-002", title: "Prosedur Pengiriman & Ekspedisi", department: "Operasional", version: "v1.3", lastUpdated: "05 Jun 2026", status: "Aktif" },
-    { id: "SOP-003", title: "Standar Keselamatan Kerja Lapangan", department: "HSE", version: "v3.0", lastUpdated: "01 Jun 2026", status: "Aktif" },
-    { id: "SOP-004", title: "Prosedur Pengadaan Barang & Jasa", department: "Keuangan", version: "v2.0", lastUpdated: "28 Mei 2026", status: "Revisi" },
-    { id: "SOP-005", title: "Prosedur Rekrutmen Karyawan Baru", department: "SDM", version: "v1.5", lastUpdated: "20 Mei 2026", status: "Aktif" },
-    { id: "SOP-006", title: "Prosedur Pemeliharaan IT & Jaringan", department: "IT", version: "v1.2", lastUpdated: "15 Mei 2026", status: "Aktif" },
-    { id: "SOP-007", title: "Prosedur Administrasi Kepegawaian", department: "SDM", version: "v2.3", lastUpdated: "10 Mei 2026", status: "Aktif" },
-    { id: "SOP-008", title: "Prosedur Audit Internal", department: "Umum", version: "v1.0", lastUpdated: "05 Mei 2026", status: "Draft" },
-  ];
+  const sopData: Array<Record<string, unknown>> = [];
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -84,31 +75,41 @@ export default async function SOPPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {sopData.map((sop) => (
-                <tr key={sop.id} className="hover:bg-slate-50/30 transition-colors">
-                  <td className="px-6 py-4 text-xs font-bold text-[#CC0000]">{sop.id}</td>
-                  <td className="px-6 py-4 text-xs font-semibold text-slate-800">{sop.title}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[10px] font-bold">{sop.department}</span>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-slate-600">{sop.version}</td>
-                  <td className="px-6 py-4 text-xs text-slate-500">{sop.lastUpdated}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
-                      sop.status === "Aktif" ? "bg-emerald-50 text-emerald-700" :
-                      sop.status === "Revisi" ? "bg-amber-50 text-amber-700" :
-                      "bg-slate-100 text-slate-600"
-                    }`}>
-                      {sop.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="px-3 py-1.5 text-[10px] font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
-                      Lihat
-                    </button>
+              {sopData.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-12 text-center">
+                    <BookOpen size={40} className="mx-auto text-slate-300 mb-4" />
+                    <p className="text-sm text-slate-500">SOP management coming soon.</p>
+                    <p className="text-xs text-slate-400 mt-1">Fitur pengelolaan SOP akan tersedia dalam waktu dekat.</p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                sopData.map((sop) => (
+                  <tr key={sop.id as string} className="hover:bg-slate-50/30 transition-colors">
+                    <td className="px-6 py-4 text-xs font-bold text-[#CC0000]">{sop.id as string}</td>
+                    <td className="px-6 py-4 text-xs font-semibold text-slate-800">{sop.title as string}</td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[10px] font-bold">{sop.department as string}</span>
+                    </td>
+                    <td className="px-6 py-4 text-xs text-slate-600">{sop.version as string}</td>
+                    <td className="px-6 py-4 text-xs text-slate-500">{sop.lastUpdated as string}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
+                        sop.status === "Aktif" ? "bg-emerald-50 text-emerald-700" :
+                        sop.status === "Revisi" ? "bg-amber-50 text-amber-700" :
+                        "bg-slate-100 text-slate-600"
+                      }`}>
+                        {sop.status as string}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="px-3 py-1.5 text-[10px] font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
+                        Lihat
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

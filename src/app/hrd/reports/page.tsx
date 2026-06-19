@@ -73,7 +73,7 @@ export default async function HRDReports() {
     { count: resignedEmployees },
   ] = await Promise.all([
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).neq("status", "Inactive"),
-    supabaseAdmin.from("jobs").select("*", { count: "exact", head: true }).eq("status", "Open"),
+    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
     supabaseAdmin.from("payroll").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("training_programs").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("kpi_evaluations").select("*", { count: "exact", head: true }),

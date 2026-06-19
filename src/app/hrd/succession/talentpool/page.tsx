@@ -1,7 +1,8 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Star, TrendingUp, Users, Filter } from "lucide-react";
 
-export default async function TalentPoolSuksesi() {
+export default async function TalentPoolSuksesi({ searchParams }: { searchParams?: { dept?: string } }) {
+  const filterDept = searchParams?.dept || "";
   const { data: employees } = await supabaseAdmin
     .from("employees")
     .select("*")
@@ -45,9 +46,16 @@ export default async function TalentPoolSuksesi() {
       avgScore: getAvgScore(emp.id as string),
     }))
     .filter((emp: Record<string, unknown>) => (emp.avgScore as number) >= 50)
+    .filter((emp: Record<string, unknown>) => !filterDept || (emp.department as string) === filterDept)
     .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.avgScore as number) - (a.avgScore as number));
 
-  const highPotentials = talentPool.filter((t: Record<string, unknown>) => (t.avgScore as number) >= 70);
+  const highPotentials = (employees || [])
+    .map((emp: Record<string, unknown>) => ({
+      ...emp,
+      avgScore: getAvgScore(emp.id as string),
+    }))
+    .filter((emp: Record<string, unknown>) => (emp.avgScore as number) >= 70)
+    .filter((emp: Record<string, unknown>) => !filterDept || (emp.department as string) === filterDept);
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -106,12 +114,17 @@ export default async function TalentPoolSuksesi() {
               <h3 className="font-extrabold text-slate-800 text-sm">Daftar Talent Pool</h3>
               <p className="text-xs text-slate-400 mt-0.5">Karyawan berpotensi tinggi berdasarkan Grid 9-Box</p>
             </div>
-            <select className="text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-600 focus:border-[#CC0000] outline-none">
-              <option value="">Semua Departemen</option>
-              {(departments || []).map((d: Record<string, unknown>) => (
-                <option key={d.name as string} value={d.name as string}>{d.name as string}</option>
-              ))}
-            </select>
+            <form method="get" className="flex items-center gap-2">
+              <select name="dept" className="text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-600 focus:border-[#CC0000] outline-none" defaultValue={filterDept}>
+                <option value="">Semua Departemen</option>
+                {(departments || []).map((d: Record<string, unknown>) => (
+                  <option key={d.name as string} value={d.name as string}>{d.name as string}</option>
+                ))}
+              </select>
+              <button type="submit" className="text-xs px-3 py-2 bg-[#CC0000] text-white rounded-lg font-bold hover:bg-[#aa0000] transition-colors">
+                Filter
+              </button>
+            </form>
           </div>
 
           {talentPool.length === 0 ? (

@@ -38,10 +38,13 @@ export default async function PerformanceReportsPage() {
     d.avg = d.count > 0 ? Math.round((d.total / d.count) * 10) / 10 : 0;
   });
 
-  const deptColors: Record<string, string> = {
-    Operasional: "bg-blue-500", SDM: "bg-emerald-500", Keuangan: "bg-amber-500",
-    HSE: "bg-red-500", IT: "bg-purple-500", Marketing: "bg-indigo-500",
-  };
+  const deptColors = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-red-500", "bg-purple-500", "bg-indigo-500", "bg-cyan-500", "bg-pink-500"];
+  const deptColorMap: Record<string, string> = {};
+  let colorIdx = 0;
+  Object.keys(deptBreakdown).forEach((dept) => {
+    deptColorMap[dept] = deptColors[colorIdx % deptColors.length];
+    colorIdx++;
+  });
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -109,7 +112,7 @@ export default async function PerformanceReportsPage() {
               <div key={dept}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${deptColors[dept] || "bg-slate-400"}`}></span>
+                    <span className={`w-2.5 h-2.5 rounded-full ${deptColorMap[dept] || "bg-slate-400"}`}></span>
                     <span className="text-xs font-semibold text-slate-700">{dept}</span>
                   </div>
                   <div className="flex items-center gap-3 text-[10px] text-slate-400">
@@ -120,7 +123,7 @@ export default async function PerformanceReportsPage() {
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
                   <div
-                    className={`h-3 rounded-full ${deptColors[dept] || "bg-slate-500"}`}
+                    className={`h-3 rounded-full ${deptColorMap[dept] || "bg-slate-500"}`}
                     style={{ width: `${Math.min((data.avg / 100) * 100, 100)}%` }}
                   ></div>
                 </div>

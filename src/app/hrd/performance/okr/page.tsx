@@ -2,73 +2,45 @@
 import { Target, Plus, TrendingUp, Building, BarChart3 } from "lucide-react";
 
 export default async function OKRPage() {
-  const { data: departments } = await supabaseAdmin
-    .from("departments")
-    .select("name")
-    .order("name");
+  const [{ data: departments }, { data: employees }, { data: evaluations }] = await Promise.all([
+    supabaseAdmin.from("departments").select("name").order("name"),
+    supabaseAdmin.from("employees").select("id, full_name, department").limit(100),
+    supabaseAdmin.from("kpi_evaluations").select("*, employees!inner(full_name, department)").limit(200),
+  ]);
 
-  const { data: employees } = await supabaseAdmin
-    .from("employees")
-    .select("id, full_name, department")
-    .limit(100);
+  const evals = (evaluations || []) as Record<string, unknown>[];
 
-  const okrData = [
-    {
-      id: 1,
-      department: "Operasional",
-      objective: "Meningkatkan Efisiensi Distribusi & Logistik",
-      keyResults: [
-        { id: 1, text: "Mengurangi waktu pengiriman rata-rata dari 48 jam menjadi 36 jam", progress: 75 },
-        { id: 2, text: "Mencapai tingkat akurasi pengiriman 99,5%", progress: 82 },
-        { id: 3, text: "Mengurangi biaya bahan bakar armada sebesar 10%", progress: 45 },
-      ],
-      overallProgress: 67,
-    },
-    {
-      id: 2,
-      department: "SDM",
-      objective: "Membangun Tim Berkinerja Tinggi",
-      keyResults: [
-        { id: 1, text: "Meningkatkan skor kepuasan karyawan menjadi 85%", progress: 90 },
-        { id: 2, text: "Mengurangi turnover rate menjadi di bawah 5%", progress: 60 },
-        { id: 3, text: "Menyelesaikan 100% rencana pelatihan tahunan", progress: 40 },
-      ],
-      overallProgress: 63,
-    },
-    {
-      id: 3,
-      department: "Keuangan",
-      objective: "Mengoptimalkan Manajemen Keuangan Perusahaan",
-      keyResults: [
-        { id: 1, text: "Meningkatkan margin laba bersih sebesar 5%", progress: 55 },
-        { id: 2, text: "Mengurangi piutang tak tertagih menjadi di bawah 2%", progress: 70 },
-        { id: 3, text: "Implementasi sistem budgeting digital 100%", progress: 85 },
-      ],
-      overallProgress: 70,
-    },
-    {
-      id: 4,
-      department: "HSE",
-      objective: "Mencapai Zero Accident di Seluruh Operasional",
-      keyResults: [
-        { id: 1, text: "Melakukan safety briefing rutin setiap minggu", progress: 95 },
-        { id: 2, text: "Menyelesaikan 100% inspeksi peralatan keselamatan", progress: 80 },
-        { id: 3, text: "Mencapai 0 kecelakaan kerja sepanjang tahun", progress: 88 },
-      ],
-      overallProgress: 88,
-    },
-    {
-      id: 5,
-      department: "IT",
-      objective: "Transformasi Digital Proses Bisnis",
-      keyResults: [
-        { id: 1, text: "Migrasi 100% data ke sistem cloud terintegrasi", progress: 60 },
-        { id: 2, text: "Mengurangi downtime sistem menjadi < 0,1%", progress: 92 },
-        { id: 3, text: "Meluncurkan portal mobile untuk seluruh karyawan", progress: 35 },
-      ],
-      overallProgress: 62,
-    },
-  ];
+  const deptMap = new Map<string, { dept: string; evaluations: Record<string, unknown>[] }>();
+  evals.forEach((ev) => {
+    const emp = ev.employees as Record<string, string> | undefined;
+    const dept = emp?.department || "Lainnya";
+    if (!deptMap.has(dept)) {
+      deptMap.set(dept, { dept, evaluations: [] });
+    }
+    deptMap.get(dept)!.evaluations.push(ev);
+  });
+
+  const okrData = Array.from(deptMap.values()).map((item, idx) => {
+    const keyResults = item.evaluations.slice(0, 4).map((ev, i) => {
+      const emp = ev.employees as Record<string, string> | undefined;
+      const score = Number(ev.score) || 0;
+      return {
+        id: i + 1,
+        text: `${emp?.full_name || "Unknown"} - ${ev.period || "-"}`,
+        progress: score,
+      };
+    });
+    const overallProgress = keyResults.length > 0
+      ? Math.round(keyResults.reduce((s, kr) => s + kr.progress, 0) / keyResults.length)
+      : 0;
+    return {
+      id: idx + 1,
+      department: item.dept,
+      objective: `Pencapaian KPI ${item.dept}`,
+      keyResults,
+      overallProgress,
+    };
+  }).filter((o) => o.keyResults.length > 0);
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -178,7 +150,7 @@ export default async function OKRPage() {
               <option value="">Pilih Departemen</option>
               {departments?.map((d: Record<string, unknown>) => (
                 <option key={d.name as string} value={d.name as string}>{d.name as string}</option>
-              )) || <><option>Operasional</option><option>SDM</option><option>Keuangan</option></>}
+              ))}
             </select>
           </div>
           <div className="space-y-1.5">

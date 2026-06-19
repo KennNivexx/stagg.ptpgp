@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Users, Building2, TrendingUp, AlertCircle, Edit3, Check, X, RefreshCw } from "lucide-react";
-import { updateHeadcount, syncAllHeadcounts } from "@/app/actions/headcount";
+import { BarChart3, Users, Building2, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
+import { syncAllHeadcounts } from "@/app/actions/headcount";
 
 interface DeptHC {
   id: string; name: string; current: number; approved: number;
@@ -14,48 +14,17 @@ export default function HeadcountClient({
   initialData: DeptHC[];
 }) {
   const [data, setData] = useState(initialData);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editVal, setEditVal] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState("");
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
-  const startEdit = (dept: DeptHC) => {
-    setEditing(dept.id);
-    setEditVal(dept.approved || dept.current);
-  };
-  const cancelEdit = () => setEditing(null);
-  const saveEdit = async (dept: DeptHC) => {
-    const prev = dept.approved;
-    setData(prevData => prevData.map(d => d.id === dept.id ? { ...d, approved: editVal } : d));
-    setEditing(null);
-    try {
-      await updateHeadcount(dept.id, editVal);
-    } catch {
-      setData(prevData => prevData.map(d => d.id === dept.id ? { ...d, approved: prev } : d));
-      showToast("Gagal menyimpan. Coba lagi.");
-    }
-  };
-
-  const quickChange = async (dept: DeptHC, delta: number) => {
-    const n = Math.max(0, dept.approved + delta);
-    const prev = dept.approved;
-    setData(prevData => prevData.map(d => d.id === dept.id ? { ...d, approved: n } : d));
-    try {
-      await updateHeadcount(dept.id, n);
-    } catch {
-      setData(prevData => prevData.map(d => d.id === dept.id ? { ...d, approved: prev } : d));
-      showToast("Gagal menyimpan. Coba lagi.");
-    }
-  };
-
   const syncFromEmployees = async () => {
     setSyncing(true);
     try {
       await syncAllHeadcounts();
-      setData(prev => prev.map(d => ({ ...d, approved: d.current })));
-    } catch {
+      showToast("Headcount disinkronkan dari data karyawan + permintaan disetujui.");
+    } catch (_e) {
       showToast("Sinkronisasi gagal.");
     }
     setSyncing(false);
@@ -75,7 +44,7 @@ export default function HeadcountClient({
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Headcount Planning</h1>
-          <p className="text-sm text-gray-500">Headcount otomatis mengikuti jumlah karyawan. Bisa diubah manual kapan saja.</p>
+          <p className="text-sm text-gray-500">Headcount dihitung otomatis: karyawan existing + permintaan SDM yang disetujui Director. HRD tidak bisa mengubah manual.</p>
         </div>
         <button
           onClick={syncFromEmployees}
@@ -123,7 +92,7 @@ export default function HeadcountClient({
         <div className="hidden sm:grid grid-cols-12 gap-2 px-6 py-3 bg-slate-50/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
           <div className="col-span-4">Departemen</div>
           <div className="col-span-2 text-center">Saat Ini</div>
-          <div className="col-span-2 text-center">Disetujui (±)</div>
+          <div className="col-span-2 text-center">Disetujui</div>
           <div className="col-span-2 text-center">Kekosongan</div>
           <div className="col-span-2 text-center">Progress</div>
         </div>
@@ -140,7 +109,6 @@ export default function HeadcountClient({
               const isEmpty = dept.approved === 0;
               const isFull = !isEmpty && dept.current >= dept.approved;
               const isOver = !isEmpty && dept.current > dept.approved;
-              const isEditing = editing === dept.id;
 
               return (
                 <div key={dept.id} className="p-5 hover:bg-slate-50/30 transition-colors">
@@ -152,36 +120,7 @@ export default function HeadcountClient({
                       <span className={`text-sm font-extrabold ${dept.current > 0 ? "text-slate-800" : "text-slate-300"}`}>{dept.current}</span>
                     </div>
                     <div className="col-span-2 text-center">
-                      {isEditing ? (
-                        <div className="inline-flex items-center gap-1">
-                          <input
-                            type="number" min={0} value={editVal}
-                            onChange={e => setEditVal(Number(e.target.value))}
-                            className="w-14 px-1.5 py-1 border border-sky-300 rounded text-xs font-bold text-center focus:outline-none focus:ring-2 focus:ring-sky-400/30"
-                            autoFocus
-                            onKeyDown={e => { if (e.key === "Enter") saveEdit(dept); if (e.key === "Escape") cancelEdit(); }}
-                          />
-                          <button onClick={() => saveEdit(dept)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"><Check size={14} /></button>
-                          <button onClick={cancelEdit} className="p-1 text-red-500 hover:bg-red-50 rounded"><X size={14} /></button>
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-1">
-                          <button
-                            onClick={() => quickChange(dept, -1)}
-                            className="w-5 h-5 rounded bg-slate-200 hover:bg-slate-300 text-slate-500 flex items-center justify-center text-xs font-bold transition-colors"
-                            title="Kurangi kuota"
-                          >−</button>
-                          <button onClick={() => startEdit(dept)} className="text-sm font-bold text-slate-600 hover:text-sky-600 hover:underline inline-flex items-center gap-0.5 transition-colors group min-w-[20px] text-center justify-center">
-                            {dept.approved}
-                            <Edit3 size={10} className="opacity-0 group-hover:opacity-100 text-sky-400" />
-                          </button>
-                          <button
-                            onClick={() => quickChange(dept, 1)}
-                            className="w-5 h-5 rounded bg-sky-100 hover:bg-sky-200 text-sky-600 flex items-center justify-center text-xs font-bold transition-colors"
-                            title="Tambah kuota"
-                          >+</button>
-                        </div>
-                      )}
+                      <span className="text-sm font-bold text-slate-600">{dept.approved}</span>
                     </div>
                     <div className="col-span-2 text-center">
                       {isEmpty ? (
@@ -217,7 +156,7 @@ export default function HeadcountClient({
         </div>
 
         <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30 text-[10px] text-slate-400">
-          <span className="text-sky-600 font-bold">Sinkronkan</span> = samakan semua headcount dengan jumlah karyawan saat ini. Klik angka untuk override manual.
+          <span className="text-sky-600 font-bold">Auto</span> = headcount dihitung dari karyawan existing + permintaan SDM yang disetujui Director.
         </div>
       </div>
     </div>

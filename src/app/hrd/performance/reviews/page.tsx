@@ -87,7 +87,7 @@ export default async function ReviewsPage() {
             <option value="">Semua Departemen</option>
             {departments?.map((d: Record<string, unknown>) => (
               <option key={d.name as string} value={d.name as string}>{d.name as string}</option>
-            )) || <option>Operasional</option>}
+            ))}
           </select>
         </div>
       </div>

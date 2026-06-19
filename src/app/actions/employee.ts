@@ -20,44 +20,6 @@ export async function getCurrentEmployee() {
   return data;
 }
 
-export async function submitLeave(formData: FormData) {
-  const user = await requireRole("employee", "hrd", "superadmin");
-
-  const leaveType = formData.get("leave_type") as string;
-  const startDate = formData.get("start_date") as string;
-  const endDate = formData.get("end_date") as string;
-  const reason = formData.get("reason") as string;
-
-  if (!leaveType || !startDate || !endDate) {
-    return { error: "Jenis cuti, tanggal mulai, dan tanggal selesai wajib diisi." };
-  }
-
-  if (new Date(endDate) < new Date(startDate)) {
-    return { error: "Tanggal selesai tidak boleh sebelum tanggal mulai." };
-  }
-
-  const { error } = await supabaseAdmin.from("leaves").insert([
-    {
-      employee_id: user.id,
-      employee_name: user.name,
-      employee_email: user.email,
-      type: leaveType,
-      start_date: startDate,
-      end_date: endDate,
-      reason: reason || null,
-      status: "Pending",
-    },
-  ]);
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath("/employee/leaves");
-  revalidatePath("/hrd/relations/leaves");
-  return { success: true };
-}
-
 export async function submitComplaint(formData: FormData) {
   const user = await requireRole("employee", "hrd", "superadmin");
 
@@ -124,7 +86,7 @@ export async function submitResignation(formData: FormData) {
 
 export async function getEmployeeLeaves(employeeId: string) {
   const { data, error } = await supabaseAdmin
-    .from("leaves")
+    .from("leave_requests")
     .select("*")
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false });

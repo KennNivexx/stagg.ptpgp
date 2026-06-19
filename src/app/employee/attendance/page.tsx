@@ -1,183 +1,151 @@
-import { cookies } from "next/headers";
-import { supabaseAdmin } from "@/lib/supabase";
-import { Calendar, Clock, CheckCircle2, AlertCircle, Coffee, Plus } from "lucide-react";
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import CameraCapture from "@/components/CameraCapture";
+import { getTodayAttendance, clockIn, clockOut } from "@/app/actions/attendance";
+import { getCookie } from "@/lib/cookie-client";
+import { Calendar, Clock, CheckCircle2 } from "lucide-react";
 
-export default async function EmployeeAttendance() {
-  const cookieStore = await cookies();
-  const userEmail = cookieStore.get("user_email")?.value || "";
+export default function EmployeeAttendancePage() {
+  const [today, setToday] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [result, setResult] = useState<string | null>(null);
+  const [employeeName] = useState(() => getCookie("user_name") || "Karyawan");
 
-  const { data: employee } = await supabaseAdmin
-    .from("employees")
-    .select("id")
-    .eq("email", userEmail)
-    .limit(1)
-    .single();
+  const fetchToday = useCallback(async () => {
+    const data = await getTodayAttendance();
+    setToday(data || null);
+    setLoading(false);
+  }, []);
 
-  const employeeId = employee?.id;
-
-  const { data: attendances } = employeeId ? await supabaseAdmin
-    .from("attendance")
-    .select("*")
-    .eq("employee_id", employeeId)
-    .order("date", { ascending: false })
-    .limit(30) : { data: [] };
-
-  const { data: leaves } = employeeId ? await supabaseAdmin
-    .from("leaves")
-    .select("*")
-    .eq("employee_id", employeeId)
-    .order("created_at", { ascending: false })
-    .limit(10) : { data: [] };
-
-  const pendingLeaves = leaves?.filter((l: Record<string, unknown>) => l.status === "Pending").length || 0;
-  const totalLeaveDays = leaves?.filter((l: Record<string, unknown>) => l.status === "Approved")
-    .reduce((sum: number, l: Record<string, unknown>) => {
-      if (l.start_date && l.end_date) {
-        return sum + Math.ceil((new Date(l.end_date as string).getTime() - new Date(l.start_date as string).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  useEffect(() => {
+    let cancelled = false;
+    getTodayAttendance().then((data) => {
+      if (!cancelled) {
+        setToday(data || null);
+        setLoading(false);
       }
-      return sum;
-    }, 0) || 0;
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleClockIn = useCallback(
+    async (photoBase64: string, location: { lat: number; lng: number; name: string }) => {
+      setResult("Memproses clock-in...");
+      const fd = new FormData();
+      fd.append("photo_url", photoBase64);
+      fd.append("latitude", String(location.lat));
+      fd.append("longitude", String(location.lng));
+      fd.append("location_name", location.name);
+      const res = await clockIn(fd);
+      if (res?.error) {
+        setResult(res.error);
+      } else {
+        setResult("Clock-in berhasil!");
+        await fetchToday();
+      }
+    },
+    [fetchToday]
+  );
+
+  const handleClockOut = useCallback(
+    async (photoBase64: string, location: { lat: number; lng: number; name: string }) => {
+      setResult("Memproses clock-out...");
+      const fd = new FormData();
+      fd.append("photo_url", photoBase64);
+      fd.append("latitude", String(location.lat));
+      fd.append("longitude", String(location.lng));
+      fd.append("location_name", location.name);
+      const res = await clockOut(fd);
+      if (res?.error) {
+        setResult(res.error);
+      } else {
+        setResult("Clock-out berhasil!");
+        await fetchToday();
+      }
+    },
+    [fetchToday]
+  );
+
+  const checkedIn = today && today.check_in;
+  const checkedOut = today && today.check_out;
+  const bothDone = checkedIn && checkedOut;
+  const status = today?.status as string;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Kehadiran & Cuti</h1>
-        <p className="text-sm text-gray-500">Monitor riwayat kehadiran dan ajukan cuti Anda.</p>
+        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Absensi Hari Ini</h1>
+        <p className="text-sm text-gray-500">Lakukan check-in dan check-out dengan foto selfie.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><CheckCircle2 size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Hadir Bulan Ini</p>
-              <p className="text-xl font-extrabold text-slate-800">{attendances?.filter((a: Record<string, unknown>) => a.status === "Present").length || 0}</p>
+      {loading ? (
+        <div className="bg-white p-12 rounded-2xl border border-slate-100 shadow-sm text-center">
+          <p className="text-sm text-slate-400">Memuat data absensi...</p>
+        </div>
+      ) : bothDone ? (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center space-y-4">
+          <CheckCircle2 size={48} className="mx-auto text-emerald-500" />
+          <h2 className="text-xl font-extrabold text-slate-800">Absensi Hari Ini Selesai</h2>
+          <div className="flex items-center justify-center gap-6 text-sm text-slate-600">
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-emerald-500" />
+              <span>Check-in: {new Date(today.check_in as string).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-red-500" />
+              <span>Check-out: {new Date(today.check_out as string).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
             </div>
           </div>
+          <p className="text-xs text-slate-400">Status: {status || "Hadir"}</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><AlertCircle size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Terlambat</p>
-              <p className="text-xl font-extrabold text-slate-800">{attendances?.filter((a: Record<string, unknown>) => a.status !== "Present" && a.status !== "Absent").length || 0}</p>
+      ) : (
+        <div className="max-w-lg mx-auto space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 bg-slate-50 text-slate-700 rounded-xl">
+                <Calendar size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800">{employeeName}</p>
+                <p className="text-xs text-slate-400">
+                  {checkedIn ? "Sudah check-in — lakukan check-out" : "Belum check-in hari ini"}
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Coffee size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Cuti Terpakai</p>
-              <p className="text-xl font-extrabold text-slate-800">{totalLeaveDays} Hari</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-red-50 text-red-600 rounded-xl"><Clock size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Pengajuan Pending</p>
-              <p className="text-xl font-extrabold text-slate-800">{pendingLeaves}</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Riwayat Kehadiran</h3>
-            <p className="text-xs text-slate-400 mt-0.5">30 hari terakhir</p>
+            {result && (
+              <div
+                className={`mb-4 p-3 rounded-xl text-xs font-semibold ${
+                  result.includes("berhasil") ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                {result}
+              </div>
+            )}
+
+            {checkedIn && (
+              <div className="mb-4 p-3 bg-emerald-50 rounded-xl flex items-center gap-2 text-xs text-emerald-700 font-semibold">
+                <CheckCircle2 size={14} />
+                Check-in: {new Date(today.check_in as string).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            )}
+
+            {checkedIn && !checkedOut ? (
+              <CameraCapture
+                onCapture={handleClockOut}
+                buttonLabel="Clock Out"
+                employeeName={employeeName}
+              />
+            ) : (
+              <CameraCapture
+                onCapture={handleClockIn}
+                buttonLabel="Clock In"
+                employeeName={employeeName}
+              />
+            )}
           </div>
-
-          {!attendances || attendances.length === 0 ? (
-            <div className="p-12 text-center">
-              <Calendar size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data kehadiran.</p>
-              <p className="text-xs text-slate-400 mt-1">Riwayat akan muncul setelah Anda melakukan check-in.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/50">
-                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal</th>
-                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Check-in</th>
-                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Check-out</th>
-                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {attendances.map((att: Record<string, unknown>) => {
-                    const isPresent = att.status === "Present";
-                    const isLate = att.check_in && (att.check_in as string) > "08:00:00";
-                    return (
-                      <tr key={att.id as string} className="hover:bg-slate-50/30 transition-colors">
-                        <td className="px-6 py-4 text-xs font-medium text-slate-700">
-                          {new Date(att.date as string).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
-                        </td>
-                        <td className="px-6 py-4 text-xs text-slate-600">{att.check_in as string || "-"}</td>
-                        <td className="px-6 py-4 text-xs text-slate-600">{att.check_out as string || "-"}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
-                            isLate ? "bg-amber-50 text-amber-700" :
-                            isPresent ? "bg-emerald-50 text-emerald-700" :
-                            "bg-red-50 text-red-700"
-                          }`}>
-                            {isPresent ? (att.check_in as string) <= "08:00:00" ? "Tepat Waktu" : "Terlambat" : att.status as string}
-                        </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
-
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-            <div>
-              <h3 className="font-extrabold text-slate-800 text-sm">Riwayat Cuti</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Pengajuan cuti Anda</p>
-            </div>
-            <button className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors text-slate-600" title="Ajukan Cuti">
-              <Plus size={14} />
-            </button>
-          </div>
-
-          {!leaves || leaves.length === 0 ? (
-            <div className="p-12 text-center">
-              <Coffee size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada riwayat cuti.</p>
-              <p className="text-xs text-slate-400 mt-1">Ajukan cuti melalui tombol di atas.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {leaves.map((leave: Record<string, unknown>) => (
-                <div key={leave.id as string} className="px-6 py-4 hover:bg-slate-50/30 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-slate-800">{leave.type as string}</p>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      leave.status === "Approved" ? "bg-emerald-50 text-emerald-700" :
-                      leave.status === "Rejected" ? "bg-red-50 text-red-700" :
-                      "bg-amber-50 text-amber-700"
-                    }`}>
-                      {leave.status === "Pending" ? "Pending" : leave.status === "Approved" ? "Disetujui" : "Ditolak"}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">{leave.reason as string}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    {leave.start_date as string} s/d {leave.end_date as string}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 }

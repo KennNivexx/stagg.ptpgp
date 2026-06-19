@@ -19,20 +19,24 @@ export default async function DashboardAnalytics() {
     { data: payrolls },
     { data: evaluations },
     { count: totalDepartments },
+    { data: empDeptStatus },
+    { data: recentHires },
   ] = await Promise.all([
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).neq("status", "Inactive"),
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).eq("status", "Inactive"),
-    supabaseAdmin.from("jobs").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("jobs").select("*", { count: "exact", head: true }).eq("status", "Open"),
+    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
     supabaseAdmin.from("applications").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("applications").select("*", { count: "exact", head: true }).eq("status", "Menunggu Review"),
     supabaseAdmin.from("attendance").select("status, date").limit(1000),
-    supabaseAdmin.from("leaves").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("leaves").select("*", { count: "exact", head: true }).eq("status", "Pending"),
+    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Pending"),
     supabaseAdmin.from("payroll").select("net_salary, status, month, year"),
     supabaseAdmin.from("kpi_evaluations").select("score, status"),
     supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("employees").select("department, status").neq("status", "Inactive"),
+    supabaseAdmin.from("employees").select("full_name, department, position, join_date").neq("status", "Inactive").order("join_date", { ascending: false }).limit(5),
   ]);
 
   const today = new Date().toISOString().split("T")[0];
@@ -52,6 +56,18 @@ export default async function DashboardAnalytics() {
 
   const paidPayroll = (payrolls || []).filter((p: Record<string, unknown>) => p.status === "Paid").length;
   const totalPayroll = (payrolls || []).reduce((s, p: Record<string, unknown>) => s + (Number(p.net_salary) || 0), 0);
+
+  const deptDistribution = (empDeptStatus || []).reduce<Record<string, number>>((acc, e: Record<string, unknown>) => {
+    const dept = (e.department as string) || "N/A";
+    acc[dept] = (acc[dept] || 0) + 1;
+    return acc;
+  }, {});
+
+  const statusDistribution = (empDeptStatus || []).reduce<Record<string, number>>((acc, e: Record<string, unknown>) => {
+    const s = (e.status as string) || "Lainnya";
+    acc[s] = (acc[s] || 0) + 1;
+    return acc;
+  }, {});
 
   const modules = [
     { name: "Karyawan", icon: Users, total: totalEmployees || 0, active: activeEmployees || 0, inactive: inactiveEmployees || 0, color: "blue" },
@@ -209,6 +225,103 @@ export default async function DashboardAnalytics() {
               <span className="text-xs text-slate-500">Total Lowongan</span>
               <span className="text-xs font-bold text-slate-700">{totalJobs || 0}</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div className="p-6 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Building2 size={16} className="text-blue-600" />
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm">Distribusi Status Karyawan</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Tetap vs Kontrak vs Magang</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 space-y-3">
+            {Object.entries(statusDistribution).length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">Belum ada data.</p>
+            ) : (
+              Object.entries(statusDistribution).map(([status, count]) => {
+                const pct = activeEmployees && activeEmployees > 0 ? Math.round((count / activeEmployees) * 100) : 0;
+                const barColor = status === "Tetap" ? "bg-emerald-500" : status === "Kontrak" ? "bg-amber-500" : "bg-slate-400";
+                const labelColor = status === "Tetap" ? "text-emerald-700" : status === "Kontrak" ? "text-amber-700" : "text-slate-600";
+                return (
+                  <div key={status}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-bold ${labelColor}`}>{status}</span>
+                      <span className="text-xs text-slate-500">{count} karyawan ({pct}%)</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.max(pct, 2)}%` }} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div className="p-6 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Users size={16} className="text-indigo-600" />
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm">Distribusi per Departemen</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Jumlah karyawan per departemen</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 space-y-3 max-h-[320px] overflow-y-auto">
+            {Object.entries(deptDistribution).length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">Belum ada data.</p>
+            ) : (
+              Object.entries(deptDistribution).sort(([, a], [, b]) => b - a).map(([dept, count]) => {
+                const pct = activeEmployees && activeEmployees > 0 ? Math.round((count / activeEmployees) * 100) : 0;
+                return (
+                  <div key={dept}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-slate-700">{dept}</span>
+                      <span className="text-xs text-slate-400">{count} ({pct}%)</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.max(pct, 2)}%` }} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div className="p-6 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={16} className="text-emerald-600" />
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm">Karyawan Baru</h3>
+                <p className="text-xs text-slate-400 mt-0.5">5 karyawan terbaru berdasarkan tanggal masuk</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 space-y-3">
+            {(recentHires || []).length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">Belum ada data.</p>
+            ) : (
+              (recentHires as Record<string, unknown>[]).map((emp, i) => (
+                <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50">
+                  <div>
+                    <p className="text-xs font-bold text-slate-700">{emp.full_name as string || "-"}</p>
+                    <p className="text-[10px] text-slate-400">{emp.department as string || "-"} &middot; {emp.position as string || "-"}</p>
+                  </div>
+                  <span className="text-[10px] text-slate-400">
+                    {emp.join_date ? new Date(emp.join_date as string).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

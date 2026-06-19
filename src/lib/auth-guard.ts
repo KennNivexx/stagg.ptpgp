@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session";
 
-type Role = "superadmin" | "hrd" | "employee";
+type Role = "superadmin" | "hrd" | "employee" | "director" | "department_manager";
 
 class UnauthorizedError extends Error {
   constructor(message = "Akses ditolak: Autentikasi diperlukan.") {

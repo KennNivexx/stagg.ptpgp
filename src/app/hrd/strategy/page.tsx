@@ -9,10 +9,12 @@ export default async function HRDStrategy() {
     { count: totalEmployees },
     { count: totalDepartments },
     { count: activeJobs },
+    { count: totalEvaluations },
   ] = await Promise.all([
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("jobs").select("*", { count: "exact", head: true }).eq("status", "Open"),
+    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
+    supabaseAdmin.from("kpi_evaluations").select("*", { count: "exact", head: true }),
   ]);
 
   const strategicCards = [
@@ -35,7 +37,7 @@ export default async function HRDStrategy() {
       description: "Inisiatif strategis SDM jangka panjang termasuk transformasi digital, budaya perusahaan, dan employer branding.",
       icon: <Lightbulb size={22} />,
       color: "amber",
-      stats: `${(activeJobs || 0)} lowongan aktif`,
+      stats: `${(totalEvaluations || 0)} inisiatif evaluasi KPI`,
     },
   ];
 

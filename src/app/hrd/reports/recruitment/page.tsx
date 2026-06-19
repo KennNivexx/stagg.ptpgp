@@ -3,7 +3,7 @@ import { FileText, Briefcase, Users, Clock, TrendingUp, Calendar } from "lucide-
 
 export default async function LaporanRekrutmen() {
   const { data: jobs, error: jobsError } = await supabaseAdmin
-    .from("jobs")
+    .from("job_postings")
     .select("*")
     .order("created_at", { ascending: false });
 
@@ -12,7 +12,7 @@ export default async function LaporanRekrutmen() {
     .select("*");
 
   const { count: totalJobs } = await supabaseAdmin
-    .from("jobs")
+    .from("job_postings")
     .select("*", { count: "exact", head: true });
 
   const { count: totalApplications } = await supabaseAdmin
@@ -20,7 +20,7 @@ export default async function LaporanRekrutmen() {
     .select("*", { count: "exact", head: true });
 
   const { count: openJobs } = await supabaseAdmin
-    .from("jobs")
+    .from("job_postings")
     .select("*", { count: "exact", head: true })
     .eq("status", "Open");
 

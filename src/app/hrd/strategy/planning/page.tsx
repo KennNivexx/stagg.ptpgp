@@ -1,13 +1,38 @@
-﻿import { Target, Plus, Calendar, User, Flag, Trash2 } from "lucide-react";
+﻿import { supabaseAdmin } from "@/lib/supabase";
+import { Target, Plus, Calendar, User, Flag, Trash2 } from "lucide-react";
 
-const SEED_INITIATIVES = [
-  { id: 1, name: "Transformasi Digital HR", objective: "Digitalisasi seluruh proses HR dalam 12 bulan", timeline: "Jan - Des 2026", pic: "Direktur HRD", status: "In Progress", progress: 45 },
-  { id: 2, name: "Employee Value Proposition", objective: "Meningkatkan daya tarik perusahaan sebagai employer of choice", timeline: "Mar - Sep 2026", pic: "Manager HR", status: "Planning", progress: 15 },
-  { id: 3, name: "Talent Pipeline Development", objective: "Membangun pipeline talent untuk posisi kritis", timeline: "Apr - Nov 2026", pic: "HR Business Partner", status: "In Progress", progress: 30 },
-  { id: 4, name: "Culture Transformation", objective: "Transformasi budaya perusahaan menuju agile & inovatif", timeline: "Jun - Des 2026", pic: "Chief People Officer", status: "Planning", progress: 10 },
-];
+export default async function PerencanaanStrategis() {
+  const [{ data: evaluations }, { data: employees }, { data: departments }] = await Promise.all([
+    supabaseAdmin
+      .from("kpi_evaluations")
+      .select("*, employees!inner(full_name, department, position)")
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabaseAdmin.from("employees").select("id, full_name, department").neq("status", "Inactive"),
+    supabaseAdmin.from("departments").select("name").order("name"),
+  ]);
 
-export default function PerencanaanStrategis() {
+  const evals = (evaluations || []) as Record<string, unknown>[];
+  const initiatives = evals.map((ev) => {
+    const emp = ev.employees as Record<string, string> | undefined;
+    const status = (ev.status as string) || "Draft";
+    const score = Number(ev.score) || 0;
+    return {
+      id: ev.id as string,
+      name: `Evaluasi KPI - ${emp?.full_name || "Unknown"}`,
+      objective: ev.comments as string || `Penilaian kinerja periode ${ev.period || "-"}`,
+      timeline: ev.period as string || "-",
+      pic: emp?.full_name || "Unknown",
+      status: status.charAt(0).toUpperCase() + status.slice(1),
+      progress: score,
+    };
+  });
+
+  const inProgress = initiatives.filter((i) => i.status === "In Progress").length;
+  const planning = initiatives.filter((i) => i.status === "Draft" || i.status === "Planning").length;
+  const avgProgress = initiatives.length > 0
+    ? Math.round(initiatives.reduce((s, i) => s + i.progress, 0) / initiatives.length)
+    : 0;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -18,10 +43,10 @@ export default function PerencanaanStrategis() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Inisiatif", value: SEED_INITIATIVES.length, icon: <Flag size={18} />, color: "blue" },
-          { label: "In Progress", value: SEED_INITIATIVES.filter((i) => i.status === "In Progress").length, icon: <Target size={18} />, color: "emerald" },
-          { label: "Planning", value: SEED_INITIATIVES.filter((i) => i.status === "Planning").length, icon: <Calendar size={18} />, color: "amber" },
-          { label: "Rata-rata Progress", value: `${Math.round(SEED_INITIATIVES.reduce((s, i) => s + i.progress, 0) / SEED_INITIATIVES.length)}%`, icon: <Target size={18} />, color: "purple" },
+          { label: "Total Inisiatif", value: initiatives.length, icon: <Flag size={18} />, color: "blue" },
+          { label: "In Progress", value: inProgress, icon: <Target size={18} />, color: "emerald" },
+          { label: "Planning / Draft", value: planning, icon: <Calendar size={18} />, color: "amber" },
+          { label: "Rata-rata Progress", value: `${avgProgress}%`, icon: <Target size={18} />, color: "purple" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3">
@@ -96,14 +121,14 @@ export default function PerencanaanStrategis() {
             </div>
           </div>
           <div className="divide-y divide-slate-50">
-            {SEED_INITIATIVES.length === 0 ? (
+            {initiatives.length === 0 ? (
               <div className="p-12 text-center">
                 <Target size={40} className="mx-auto text-slate-300 mb-4" />
                 <p className="text-sm text-slate-500">Belum ada inisiatif strategis.</p>
                 <p className="text-xs text-slate-400 mt-1">Tambahkan inisiatif baru untuk memulai perencanaan strategis.</p>
               </div>
             ) : (
-              SEED_INITIATIVES.map((init) => (
+              initiatives.map((init) => (
                 <div key={init.id} className="p-5 hover:bg-slate-50/30 transition-colors">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-start gap-3">

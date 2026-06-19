@@ -167,7 +167,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
     data.append("full_name", formData.name);
     data.append("email", formData.email);
     data.append("phone", formData.phone);
-    data.append("job_id", isSpontaneousOpen ? "spontaneous" : activeJob?.id || "");
+    data.append("job_id", isSpontaneousOpen ? "00000000-0000-0000-0000-000000000000" : activeJob?.id || "");
     if (formData.cvFile) {
       data.append("cv_filename", formData.cvFile.name);
     }
@@ -325,7 +325,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
       {/* Modal Form */}
       <AnimatePresence>
         {(activeJob || isSpontaneousOpen) && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-start justify-center">
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={closeModal}
@@ -335,7 +335,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden relative z-10 flex flex-col border border-gray-100"
+              className="bg-white shadow-2xl w-full max-h-screen overflow-hidden relative z-10 flex flex-col border-b border-gray-100"
             >
               {/* Header */}
               <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
@@ -352,7 +352,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                 </button>
               </div>
 
-              <div className="overflow-y-auto p-6 flex-1">
+              <div className="overflow-y-auto p-8 flex-1 max-w-3xl mx-auto w-full">
                 {submitSuccess ? (
                   <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     className="flex flex-col items-center justify-center py-12 text-center">
@@ -362,6 +362,30 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                   </motion.div>
                 ) : (
                   <>
+                    {/* Job Requirements */}
+                    {activeJob && (
+                      <div className="mb-6 bg-sky-50 border border-sky-100 rounded-2xl p-5">
+                        <h4 className="font-bold text-sky-800 text-sm mb-3">Detail Lowongan</h4>
+                        {activeJob.description && (
+                          <div className="mb-3 pb-3 border-b border-sky-200/50">
+                            <p className="font-bold text-sky-600 text-xs mb-1">Deskripsi Pekerjaan:</p>
+                            <p className="text-xs text-sky-800 whitespace-pre-line">{activeJob.description}</p>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                          {activeJob.education && <div><span className="font-bold text-sky-600">Pendidikan:</span> <span className="text-sky-800">{activeJob.education}</span></div>}
+                          {activeJob.experience && <div><span className="font-bold text-sky-600">Pengalaman:</span> <span className="text-sky-800">{activeJob.experience}</span></div>}
+                          {(activeJob.age_min || activeJob.age_max) && <div><span className="font-bold text-sky-600">Usia:</span> <span className="text-sky-800">{activeJob.age_min || "-"} - {activeJob.age_max || "-"} tahun</span></div>}
+                          {activeJob.location && <div><span className="font-bold text-sky-600">Lokasi:</span> <span className="text-sky-800">{activeJob.location}</span></div>}
+                        </div>
+                        {activeJob.job_desk && (
+                          <div className="mt-3 pt-3 border-t border-sky-200/50">
+                            <p className="font-bold text-sky-600 text-xs mb-1">Job Desk:</p>
+                            <p className="text-xs text-sky-800 whitespace-pre-line">{activeJob.job_desk}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {renderStepIndicator()}
                     {submitError && (
                       <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{submitError}</div>

@@ -15,6 +15,8 @@ export default async function HRDDashboardKPI() {
     { data: attendance },
     { data: payrolls },
     { count: totalDepartments },
+    { count: totalPositions },
+    { data: recentEvals },
   ] = await Promise.all([
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("employees").select("id, full_name, department, position, status"),
@@ -24,6 +26,8 @@ export default async function HRDDashboardKPI() {
     supabaseAdmin.from("attendance").select("status, date"),
     supabaseAdmin.from("payroll").select("net_salary, allowances, deductions, status"),
     supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("positions").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("kpi_evaluations").select("score, status, created_at, employees!inner(full_name, department)").order("created_at", { ascending: false }).limit(5),
   ]);
 
   const avgScore = evaluations && evaluations.length > 0
@@ -224,6 +228,7 @@ export default async function HRDDashboardKPI() {
               { label: "Database Employees", value: totalEmployees || 0, target: 1, unit: "records" },
               { label: "Active Jobs", value: openJobs || 0, target: 1, unit: "openings" },
               { label: "KPI Evaluations", value: evaluations?.length || 0, target: 1, unit: "reviews" },
+              { label: "Active Positions", value: totalPositions || 0, target: 1, unit: "positions" },
               { label: "Attendance Records", value: attendance?.length || 0, target: 1, unit: "logs" },
               { label: "Payroll Slips", value: payrolls?.length || 0, target: 1, unit: "slips" },
               { label: "Departments", value: totalDepartments || 0, target: 1, unit: "units" },
@@ -251,6 +256,66 @@ export default async function HRDDashboardKPI() {
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 <span className="text-[10px] font-bold text-emerald-600">Operational</span>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div className="p-6 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Target size={16} className="text-red-600" />
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm">Evaluasi KPI Terbaru</h3>
+                <p className="text-xs text-slate-400 mt-0.5">5 evaluasi terakhir yang tercatat di sistem</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 space-y-3">
+            {(recentEvals || []).length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">Belum ada evaluasi.</p>
+            ) : (
+              (recentEvals as Record<string, unknown>[]).map((ev, i) => {
+                const emp = ev.employees as Record<string, string> | undefined;
+                return (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">{emp?.full_name || "-"}</p>
+                      <p className="text-[10px] text-slate-400">{emp?.department || "-"}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-extrabold text-slate-800">{Number(ev.score) || 0}</p>
+                      <p className="text-[10px] text-slate-400">skor</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div className="p-6 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Award size={16} className="text-purple-600" />
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm">Cakupan Evaluasi</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Persentase karyawan yang sudah dinilai</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-bold text-slate-700">Progress Evaluasi</span>
+              <span className="text-xl font-extrabold text-slate-800">{evaluationRate}%</span>
+            </div>
+            <div className="h-3 bg-slate-100 rounded-full overflow-hidden mb-4">
+              <div className="h-full rounded-full bg-purple-500" style={{ width: `${Math.max(evaluationRate, 2)}%` }} />
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>{evaluatedCount} sudah dinilai</span>
+              <span>{(totalEmployees || 0) - evaluatedCount} belum dinilai</span>
             </div>
           </div>
         </div>

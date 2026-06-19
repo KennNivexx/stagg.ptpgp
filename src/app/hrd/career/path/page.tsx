@@ -7,48 +7,32 @@ export default async function CareerPathPage() {
     .select("name")
     .order("name");
 
-  const careerPaths = [
-    {
-      department: "Operasional",
-      levels: [
-        { level: "Entry", positions: ["Operator Gudang", "Driver", "Helper"] },
-        { level: "Staff", positions: ["Staff Gudang", "Staff Logistik", "Admin Operasional"] },
-        { level: "Supervisor", positions: ["Supervisor Gudang", "Supervisor Armada", "Supervisor Distribusi"] },
-        { level: "Manager", positions: ["Manager Operasional", "Manager Logistik"] },
-        { level: "Senior", positions: ["Senior Manager Operasional", "Kepala Cabang"] },
-      ],
-    },
-    {
-      department: "Keuangan",
-      levels: [
-        { level: "Entry", positions: ["Staff Admin Keuangan"] },
-        { level: "Staff", positions: ["Staff Accounting", "Staff Finance", "Staff Pajak"] },
-        { level: "Supervisor", positions: ["Supervisor Accounting", "Supervisor Finance"] },
-        { level: "Manager", positions: ["Manager Keuangan", "Finance Controller"] },
-        { level: "Senior", positions: ["Senior Finance Manager", "Direktur Keuangan"] },
-      ],
-    },
-    {
-      department: "SDM",
-      levels: [
-        { level: "Entry", positions: ["Staff Admin HR"] },
-        { level: "Staff", positions: ["HR Officer", "Recruitment Officer", "Training Officer"] },
-        { level: "Supervisor", positions: ["HR Supervisor", "HRBP"] },
-        { level: "Manager", positions: ["HR Manager", "Talent Management Manager"] },
-        { level: "Senior", positions: ["Senior HR Manager", "Direktur SDM"] },
-      ],
-    },
-    {
-      department: "IT",
-      levels: [
-        { level: "Entry", positions: ["IT Helpdesk"] },
-        { level: "Staff", positions: ["IT Support", "Programmer", "Network Admin"] },
-        { level: "Supervisor", positions: ["IT Supervisor", "System Analyst"] },
-        { level: "Manager", positions: ["IT Manager", "IT Infrastructure Manager"] },
-        { level: "Senior", positions: ["Senior IT Manager", "Direktur IT"] },
-      ],
-    },
-  ];
+  const { data: positions } = await supabaseAdmin
+    .from("positions")
+    .select("name, department, level")
+    .order("level")
+    .order("name");
+
+  const levelOrder = ["Entry", "Staff", "Supervisor", "Manager", "Senior"];
+
+  const grouped: Record<string, Record<string, string[]>> = {};
+  (positions || []).forEach((p: Record<string, unknown>) => {
+    const dept = (p.department as string) || "Umum";
+    const level = (p.level as string) || "Staff";
+    const name = p.name as string;
+    if (!grouped[dept]) grouped[dept] = {};
+    if (!grouped[dept][level]) grouped[dept][level] = [];
+    grouped[dept][level].push(name);
+  });
+
+  const careerPaths = Object.entries(grouped)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([department, levels]) => ({
+      department,
+      levels: levelOrder
+        .filter((l) => levels[l] && levels[l].length > 0)
+        .map((level) => ({ level, positions: levels[level] })),
+    }));
 
   const levelColors: Record<string, string> = {
     Entry: "bg-slate-100 text-slate-600 border-slate-200",

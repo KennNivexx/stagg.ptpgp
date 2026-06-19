@@ -1,6 +1,6 @@
 "use server";
 
-import { supabase } from "@/lib/supabase";
+import { supabaseAdminAdmin } from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
 
 export async function registerVendor(formData: FormData) {
@@ -12,7 +12,7 @@ export async function registerVendor(formData: FormData) {
   const address = formData.get("address") as string;
   const business_type = formData.get("business_type") as string;
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("vendors")
     .insert([
       {
@@ -48,7 +48,7 @@ export async function submitQuotation(formData: FormData) {
     return { error: "Nama perusahaan dan email wajib diisi." };
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("vendors")
     .insert([{
       company_name,

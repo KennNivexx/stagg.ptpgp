@@ -42,7 +42,7 @@ export default async function EmployeeDashboard() {
   let annualLeaveTotal = 12;
   if (employeeId) {
     const { data: approvedLeaves } = await supabaseAdmin
-      .from("leaves")
+      .from("leave_requests")
       .select("id")
       .eq("employee_id", employeeId)
       .eq("type", "Cuti Tahunan")

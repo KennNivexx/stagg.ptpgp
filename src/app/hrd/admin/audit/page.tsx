@@ -15,7 +15,7 @@ export default async function AuditLog() {
     .limit(10);
 
   const { data: recentJobs } = await supabaseAdmin
-    .from("jobs")
+    .from("job_postings")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(10);

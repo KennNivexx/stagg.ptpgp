@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Users, Search, CheckCircle2, LogIn, LogOut } from "lucide-react";
+import { Clock, Users, Search, CheckCircle2, LogIn, LogOut, Camera, MapPin, X } from "lucide-react";
 import { getAllAttendance, clockIn, clockOut, getTodayAttendance } from "@/app/actions/attendance";
 
 interface AttRecord {
   id: string; employee_id: string; employee_name: string; department: string;
   date: string; check_in: string; check_out: string; status: string; notes: string;
+  photo_url?: string; location_name?: string;
 }
 
 export default function AttendancePage() {
@@ -17,6 +18,7 @@ export default function AttendancePage() {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
   const [clocking, setClocking] = useState(false);
+  const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     getTodayAttendance().then(setToday);
@@ -115,6 +117,8 @@ export default function AttendancePage() {
               <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Clock In</th>
               <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Clock Out</th>
               <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Status</th>
+              <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Foto</th>
+              <th className="text-left py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Lokasi</th>
             </tr></thead>
             <tbody className="divide-y divide-slate-50">
               {filtered.map(a => (
@@ -124,10 +128,40 @@ export default function AttendancePage() {
                   <td className="py-2.5 px-4 text-center text-xs font-mono text-slate-600">{a.check_in ? new Date(a.check_in).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
                   <td className="py-2.5 px-4 text-center text-xs font-mono text-slate-600">{a.check_out ? new Date(a.check_out).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
                   <td className="py-2.5 px-4 text-center"><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${a.status === "Hadir" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>{a.status}</span></td>
+                  <td className="py-2.5 px-4 text-center">
+                    {a.photo_url ? (
+                      <button onClick={() => setExpandedPhoto(a.photo_url!)} className="inline-flex items-center gap-1 text-xs text-[#CC0000] hover:underline font-medium">
+                        <Camera size={12} /> Lihat
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-300">—</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 px-4 text-xs text-slate-600">
+                    {a.location_name ? (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin size={10} className="text-slate-400" />
+                        {a.location_name}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {expandedPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setExpandedPhoto(null)}>
+          <div className="relative max-w-2xl max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setExpandedPhoto(null)} className="absolute -top-3 -right-3 p-2 bg-white rounded-full shadow-lg hover:bg-slate-100 transition-colors z-10">
+              <X size={16} className="text-slate-600" />
+            </button>
+            <img src={expandedPhoto} alt="Foto Absensi" className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain" />
+          </div>
         </div>
       )}
     </div>

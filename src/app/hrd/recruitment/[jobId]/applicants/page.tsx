@@ -10,7 +10,7 @@ export default async function JobApplicantsPage({
   const { jobId } = await params;
 
   const { data: job } = await supabaseAdmin
-    .from("jobs")
+    .from("job_postings")
     .select("title, department, status")
     .eq("id", jobId)
     .single();

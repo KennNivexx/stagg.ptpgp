@@ -69,26 +69,36 @@ interface OrgUnitRow {
 
 async function buildTree(): Promise<OrgUnit[]> {
   const { data } = await supabaseAdmin.from("org_units").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
-  if (!data || data.length === 0) return [];
-  const rows = data as unknown as OrgUnitRow[];
-  const map = new Map<string, OrgUnit>();
-  const roots: OrgUnit[] = [];
-  for (const row of rows) {
-    map.set(row.code, {
-      id: row.id, code: row.code, name: row.name, level: row.level,
-      leader_name: row.leader_name || "", leader_email: row.leader_email || "",
-      children: [],
-    });
-  }
-  for (const row of rows) {
-    const u = map.get(row.code)!;
-    if (row.parent_code && map.has(row.parent_code)) {
-      map.get(row.parent_code)!.children.push(u);
-    } else {
-      roots.push(u);
+  if (data && data.length > 0) {
+    const rows = data as unknown as OrgUnitRow[];
+    const map = new Map<string, OrgUnit>();
+    const roots: OrgUnit[] = [];
+    for (const row of rows) {
+      map.set(row.code, {
+        id: row.id, code: row.code, name: row.name, level: row.level,
+        leader_name: row.leader_name || "", leader_email: row.leader_email || "",
+        children: [],
+      });
     }
+    for (const row of rows) {
+      const u = map.get(row.code)!;
+      if (row.parent_code && map.has(row.parent_code)) {
+        map.get(row.parent_code)!.children.push(u);
+      } else {
+        roots.push(u);
+      }
+    }
+    return roots;
   }
-  return roots;
+
+  // Fallback to JSON if org_units is empty
+  const settings = await getSettings();
+  const tree = (settings.org_structure as OrgUnit[]) || [];
+  if (tree.length > 0) {
+    // Auto-migrate to org_units
+    migrateTreeToOrgUnits(tree);
+  }
+  return tree;
 }
 
 async function countChildren(parentCode: string): Promise<number> {
@@ -116,6 +126,22 @@ async function deleteSubtree(code: string) {
     }
   }
   await supabaseAdmin.from("org_units").delete().eq("code", code);
+}
+
+async function migrateTreeToOrgUnits(tree: OrgUnit[]) {
+  function flatten(list: OrgUnit[], parentCode: string | null): { id: string; code: string; name: string; parent_code: string | null; level: number; leader_name: string; leader_email: string; sort_order: number }[] {
+    const result: { id: string; code: string; name: string; parent_code: string | null; level: number; leader_name: string; leader_email: string; sort_order: number }[] = [];
+    for (let i = 0; i < list.length; i++) {
+      const u = list[i];
+      result.push({ id: u.id, code: u.code, name: u.name, parent_code: parentCode, level: u.level, leader_name: u.leader_name, leader_email: u.leader_email, sort_order: i });
+      if (u.children?.length) result.push(...flatten(u.children, u.code));
+    }
+    return result;
+  }
+  const flat = flatten(tree, null);
+  for (const row of flat) {
+    await supabaseAdmin.from("org_units").upsert(row, { onConflict: "code" });
+  }
 }
 
 /* ─────── public API ─────── */
@@ -292,7 +318,19 @@ export async function moveOrgUnit(unitCode: string, newParentCode: string) {
 /* ─────── departments sync ─────── */
 
 async function syncOrgToDepartments() {
-  const { data } = await supabaseAdmin.from("org_units").select("*").order("level").order("sort_order").order("name");
+  let { data } = await supabaseAdmin.from("org_units").select("*").order("level").order("sort_order").order("name");
+
+  // If org_units empty, migrate from JSON first
+  if (!data || data.length === 0) {
+    const settings = await getSettings();
+    const tree = (settings.org_structure as OrgUnit[]) || [];
+    if (tree.length > 0) {
+      await migrateTreeToOrgUnits(tree);
+      const retry = await supabaseAdmin.from("org_units").select("*").order("level").order("sort_order").order("name");
+      data = retry.data;
+    }
+  }
+
   if (!data || data.length === 0) return;
   const rows = data as unknown as OrgUnitRow[];
   const flat: FlatDept[] = rows.map((r, i) => ({
@@ -320,7 +358,12 @@ async function syncOrgToDepartments() {
 }
 
 export async function getDepartments(): Promise<FlatDept[]> {
-  const { data } = await supabaseAdmin.from("departments").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
+  let { data } = await supabaseAdmin.from("departments").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
+  if (!data || data.length === 0) {
+    await syncOrgToDepartments();
+    const retry = await supabaseAdmin.from("departments").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
+    data = retry.data;
+  }
   return (data as FlatDept[]) || [];
 }
 

@@ -39,6 +39,13 @@ export interface Job {
   description: string;
   requirements?: string[];
   created_at?: string;
+  type?: string;
+  job_desk?: string;
+  education?: string;
+  experience?: string;
+  age_min?: number | null;
+  age_max?: number | null;
+  deadline?: string;
 }
 
 export interface Employee {

@@ -20,20 +20,17 @@ export async function createJob(formData: FormData) {
   const title = formData.get("title") as string;
   const department = formData.get("department") as string;
   const location = formData.get("location") as string;
-  const type = formData.get("type") as string;
   const description = formData.get("description") as string;
-  const deadline = formData.get("deadline") as string;
 
   const { error } = await supabaseAdmin
-    .from("jobs")
+    .from("job_postings")
     .insert([
       {
-        title,
+        id: crypto.randomUUID(),
+        position: title,
         department,
         location,
-        type,
-        description,
-        deadline: deadline || null,
+        requirements: description || "",
       },
     ]);
 
@@ -48,7 +45,7 @@ export async function createJob(formData: FormData) {
     action: "job.create",
     targetName: title,
     performedBy: user,
-    detail: `Departemen: ${department}, Tipe: ${type}`,
+    detail: `Departemen: ${department}`,
   });
   return { success: true };
 }
@@ -112,20 +109,30 @@ export async function createEmployee(formData: FormData) {
     org_code: orgCode,
   });
 
+  // Generate employee kode
+  let kode = "";
+  if (department) {
+    const { data: orgUnit } = await supabaseAdmin.from("org_units").select("code").eq("name", department).maybeSingle();
+    if (orgUnit) {
+      const segments = (orgUnit.code as string).split(".");
+      const { count } = await supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).eq("department", department);
+      const seq = (count || 0) + 1;
+      const firstZero = segments.findIndex(s => Number(s) === 0);
+      if (firstZero >= 0) segments[firstZero] = String(seq);
+      else segments.push(String(seq));
+      kode = segments.join(".");
+    }
+  }
+
+  const empData: Record<string, unknown> = {
+    full_name, email: normalizedEmail, phone, address: address || authData,
+    department, position, join_date, status,
+  };
+  if (kode) empData.kode = kode;
+
   const { error: empError } = await supabaseAdmin
     .from("employees")
-    .insert([
-      {
-        full_name,
-        email: normalizedEmail,
-        phone,
-        address: address || authData,
-        department,
-        position,
-        join_date,
-        status,
-      },
-    ])
+    .insert([empData])
     .select("id")
     .single();
 
@@ -156,30 +163,6 @@ export async function createEmployee(formData: FormData) {
   });
 
   return { success: true, email: normalizedEmail, password, phone };
-}
-
-export async function updateLeaveStatus(leaveId: string, status: string) {
-  const user = await requireRole("hrd", "superadmin");
-
-  const { error } = await supabaseAdmin
-    .from("leaves")
-    .update({ status })
-    .eq("id", leaveId);
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath("/hrd/relations/leaves");
-  revalidatePath("/employee/leaves");
-  const { auditLog } = await import("@/lib/audit");
-  auditLog({
-    action: "leave.status_change",
-    targetId: leaveId,
-    performedBy: user,
-    detail: `Status diubah menjadi ${status}`,
-  });
-  return { success: true };
 }
 
 export async function updateApplicationStatus(applicationId: string, status: string) {
@@ -524,7 +507,7 @@ export async function updateJobStatus(jobId: string, status: string) {
   const user = await requireRole("hrd", "superadmin");
 
   const { error } = await supabaseAdmin
-    .from("jobs")
+    .from("job_postings")
     .update({ status })
     .eq("id", jobId);
 
@@ -548,9 +531,9 @@ export async function submitApplication(formData: FormData) {
   const job_id = formData.get("job_id") as string;
   const full_name = formData.get("full_name") as string;
   const email = formData.get("email") as string;
-  const phone = formData.get("phone") as string;
-  const cv_filename = formData.get("cv_filename") as string;
-  const profile_data = formData.get("profile_data") as string;
+  const phone = formData.get("phone") as string || "";
+  const cv_filename = formData.get("cv_filename") as string || "";
+  const profile_data = formData.get("profile_data") as string || "{}";
 
   if (!job_id || !full_name || !email) {
     return { error: "Nama dan email wajib diisi." };
@@ -562,19 +545,16 @@ export async function submitApplication(formData: FormData) {
       job_id,
       full_name,
       email,
-      phone: phone || null,
-      resume_url: JSON.stringify({
-        cv_filename: cv_filename || null,
-        profile: profile_data ? JSON.parse(profile_data) : null,
-      }),
+      phone,
+      resume_url: profile_data,
       status: "Menunggu Review",
     }]);
 
   if (error) {
-    return { error: error.message };
+    console.error("submitApplication error:", error);
+    return { error: `Gagal mengirim lamaran: ${error.message}` };
   }
 
-  revalidatePath("/hrd/recruitment");
   return { success: true };
 }
 
@@ -668,7 +648,7 @@ export async function getApplicantDetail(applicantId: string, jobId: string) {
 
   const [{ data: application }, { data: job }] = await Promise.all([
     supabaseAdmin.from("applications").select("*").eq("id", applicantId).single(),
-    supabaseAdmin.from("jobs").select("title, department").eq("id", jobId).single(),
+    supabaseAdmin.from("job_postings").select("position, department").eq("id", jobId).single(),
   ]);
 
   return { application, job };

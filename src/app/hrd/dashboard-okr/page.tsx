@@ -1,15 +1,19 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
-import { Target, TrendingUp, Award, Building2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Users, Target, TrendingUp, Award, Building2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 
 export default async function DashboardOKR() {
   const [
     { data: evaluations },
     { data: employees },
     { data: departments },
+    { count: totalEmployees },
+    { count: totalDepartments },
   ] = await Promise.all([
     supabaseAdmin.from("kpi_evaluations").select("*, employees!inner(full_name, department)").order("created_at", { ascending: false }),
     supabaseAdmin.from("employees").select("id, full_name, department, status").neq("status", "Inactive"),
     supabaseAdmin.from("departments").select("*"),
+    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).neq("status", "Inactive"),
+    supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
   ]);
 
   const deptList = (departments || []).length > 0
@@ -74,6 +78,29 @@ export default async function DashboardOKR() {
       <div>
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">OKR Dashboard</h1>
         <p className="text-sm text-gray-500">Pantau objectives dan key results berdasarkan departemen dan periode.</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600"><Users size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Karyawan</p>
+              <p className="text-2xl font-extrabold text-slate-800">{totalEmployees || 0}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">aktif</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600"><Building2 size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Departemen</p>
+              <p className="text-2xl font-extrabold text-slate-800">{totalDepartments || 0}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">unit</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

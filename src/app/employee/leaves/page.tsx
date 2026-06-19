@@ -17,7 +17,7 @@ export default async function EmployeeLeaves() {
   const employeeId = employee?.id;
 
   const { data: leaves } = employeeId ? await supabaseAdmin
-    .from("leaves")
+    .from("leave_requests")
     .select("*")
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false })

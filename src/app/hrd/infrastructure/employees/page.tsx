@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { Users, Download, Search } from "lucide-react";
 import Link from "next/link";
 import EmployeeFilter from "./EmployeeFilter";
+import EmployeeTable from "./EmployeeTable";
 
 export default async function DataIndukKaryawan({
   searchParams,
@@ -32,28 +33,6 @@ export default async function DataIndukKaryawan({
   if (statusFilter) {
     filtered = filtered.filter((e: Record<string, unknown>) => e.status === statusFilter);
   }
-
-  const getStatusBadge = (status: string) => {
-    const base = "px-2.5 py-1 rounded-lg text-xs font-bold";
-    if (status === "Tetap") return `${base} bg-emerald-50 text-emerald-700`;
-    if (status === "Kontrak") return `${base} bg-amber-50 text-amber-700`;
-    if (status === "Magang") return `${base} bg-purple-50 text-purple-700`;
-    return `${base} bg-slate-100 text-slate-600`;
-  };
-
-  const getDeptBadge = (dept: string) => {
-    const base = "px-2.5 py-1 rounded-lg text-xs font-semibold";
-    const colors = [
-      "bg-blue-50 text-blue-700",
-      "bg-emerald-50 text-emerald-700",
-      "bg-amber-50 text-amber-700",
-      "bg-purple-50 text-purple-700",
-      "bg-rose-50 text-rose-700",
-      "bg-cyan-50 text-cyan-700",
-    ];
-    const idx = dept.charCodeAt(0) % colors.length;
-    return `${base} ${colors[idx]}`;
-  };
 
   return (
     <div className="p-6 lg:p-8">
@@ -105,64 +84,7 @@ export default async function DataIndukKaryawan({
           <a href="?" className="text-sm font-bold text-[#CC0000] hover:underline">Hapus semua filter</a>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">NIK</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Departemen</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Jabatan</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tgl Masuk</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filtered.map((emp: Record<string, unknown>) => (
-                  <tr key={emp.id as string} className="hover:bg-slate-50/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-mono font-bold text-slate-600">
-                        NIK-{String(emp.id).substring(0, 8).toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                          {(emp.full_name as string)?.charAt(0)?.toUpperCase() || "?"}
-                        </div>
-                        <p className="font-bold text-slate-800">{emp.full_name as string}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-600">{emp.email as string || "-"}</td>
-                    <td className="px-6 py-4">
-                      <span className={getDeptBadge(emp.department as string || "")}>
-                        {emp.department as string || "-"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-700 font-medium">{emp.position as string || "-"}</td>
-                    <td className="px-6 py-4">
-                      <span className={getStatusBadge(emp.status as string)}>
-                        {emp.status as string || "-"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
-                      {emp.join_date ? new Date(emp.join_date as string).toLocaleDateString("id-ID") : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
-            <p className="text-xs text-slate-500">
-              Total: <span className="font-bold text-slate-800">{filtered.length}</span> karyawan
-              {(deptFilter || statusFilter) && <span className="text-slate-400"> (difilter)</span>}
-            </p>
-            <p className="text-xs text-slate-400">Dari {employees.length} data</p>
-          </div>
-        </div>
+        <EmployeeTable employees={filtered} />
       )}
     </div>
   );

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     if (role === "hrd") {
       const [{ data: applicants }, { data: pendingLeaves }, { data: expiringContracts }, { data: newEmployees }, { data: pendingPayroll }] = await Promise.all([
         supabaseAdmin.from("applications").select("id, full_name, job_id, applied_at").eq("status", "Menunggu Review").order("applied_at", { ascending: false }).limit(5),
-        supabaseAdmin.from("leaves").select("id, employees!inner(full_name), type, start_date, end_date").eq("status", "Pending").order("created_at", { ascending: false }).limit(5),
+        supabaseAdmin.from("leave_requests").select("id, employees!inner(full_name), type, start_date, end_date").eq("status", "Pending").order("created_at", { ascending: false }).limit(5),
         supabaseAdmin.from("employees").select("id, full_name, status").order("created_at", { ascending: false }).limit(50),
         supabaseAdmin.from("employees").select("id, full_name, join_date").order("created_at", { ascending: false }).limit(5),
         supabaseAdmin.from("payroll").select("id, month, year").eq("status", "Draft").limit(5),
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 
       if (empId) {
         const [{ data: myLeaves }, { data: myPayroll }, { data: myKPI }] = await Promise.all([
-          supabaseAdmin.from("leaves").select("id, type, status, start_date").eq("employee_id", empId).order("created_at", { ascending: false }).limit(5),
+          supabaseAdmin.from("leave_requests").select("id, type, status, start_date").eq("employee_id", empId).order("created_at", { ascending: false }).limit(5),
           supabaseAdmin.from("payroll").select("id, month, year, status, net_salary").eq("employee_id", empId).order("year", { ascending: false }).order("month", { ascending: false }).limit(3),
           supabaseAdmin.from("kpi_evaluations").select("id, period, score, status").eq("employee_id", empId).order("created_at", { ascending: false }).limit(3),
         ]);

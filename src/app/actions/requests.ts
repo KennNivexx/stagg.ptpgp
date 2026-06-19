@@ -12,14 +12,25 @@ interface WorkforceRequest {
   requested_by: string; created_at: string;
 }
 
-export async function getRequests(): Promise<WorkforceRequest[]> {
-  await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("workforce_requests").select("*").order("created_at", { ascending: false });
+export async function getRequests(params?: { status?: string; department?: string }): Promise<WorkforceRequest[]> {
+  await requireRole("hrd", "superadmin", "director", "department_manager");
+
+  let query = supabaseAdmin.from("workforce_requests").select("*").order("created_at", { ascending: false });
+
+  if (params?.status) {
+    query = query.eq("status", params.status);
+  }
+  if (params?.department) {
+    query = query.eq("department", params.department);
+  }
+
+  const { data } = await query;
   return (data as WorkforceRequest[]) || [];
 }
 
 export async function addRequest(formData: FormData) {
-  await requireRole("hrd", "superadmin");
+  await requireRole("department_manager", "superadmin");
+
   const department = (formData.get("department") as string || "").trim();
   const position = (formData.get("position") as string || "").trim();
   const quantity = parseInt(formData.get("quantity") as string || "1");
@@ -44,7 +55,13 @@ export async function addRequest(formData: FormData) {
 }
 
 export async function updateRequestStatus(id: string, status: string) {
-  await requireRole("hrd", "superadmin");
+  // Only Director can approve (Setujui)
+  if (status === "Disetujui") {
+    await requireRole("director", "superadmin");
+  } else {
+    // HRD & Director can forward/reject
+    await requireRole("hrd", "superadmin", "director");
+  }
 
   await supabaseAdmin.from("workforce_requests").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
 
@@ -59,10 +76,13 @@ export async function updateRequestStatus(id: string, status: string) {
         await supabaseAdmin.from("departments").update({ headcount: newHC }).eq("id", row.id);
       }
     }
+
+    revalidatePath("/hrd/workforce/requests");
+    revalidatePath("/hrd/workforce/headcount");
+    return { success: true };
   }
 
   revalidatePath("/hrd/workforce/requests");
-  revalidatePath("/hrd/workforce/headcount");
   return { success: true };
 }
 

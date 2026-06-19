@@ -3,7 +3,7 @@ import { Briefcase, Plus, MapPin, Clock, Users, CheckCircle2 } from "lucide-reac
 
 export default async function PerencanaanLowongan() {
   const { data: jobs } = await supabaseAdmin
-    .from("jobs")
+    .from("job_postings")
     .select("*")
     .order("created_at", { ascending: false });
 

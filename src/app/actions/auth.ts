@@ -15,27 +15,13 @@ const COOKIE_OPTS = {
 };
 
 const MOCK_USERS: Record<string, { id: string; role: string; name: string; email: string; password: string }> = {
-  "superadmin@ptpgp.co.id": {
-    id: "mock-sa-001",
-    role: "superadmin",
-    name: "Super Administrator",
-    email: "superadmin@ptpgp.co.id",
-    password: "superadmin123",
-  },
-  "hrd@ptpgp.co.id": {
-    id: "mock-hrd-001",
-    role: "hrd",
-    name: "Administrator HRD",
-    email: "hrd@ptpgp.co.id",
-    password: "password",
-  },
-  "employee@ptpgp.co.id": {
-    id: "mock-emp-001",
-    role: "employee",
-    name: "Budi Santoso",
-    email: "employee@ptpgp.co.id",
-    password: "password",
-  },
+  "superadmin@ptpgp.co.id": { id: "mock-sa-001", role: "superadmin", name: "Super Administrator", email: "superadmin@ptpgp.co.id", password: "superadmin123" },
+  "hrd@ptpgp.co.id": { id: "mock-hrd-001", role: "hrd", name: "Administrator HRD", email: "hrd@ptpgp.co.id", password: "password" },
+  "employee@ptpgp.co.id": { id: "mock-emp-001", role: "employee", name: "Budi Santoso", email: "employee@ptpgp.co.id", password: "password" },
+  "director@ptpgp.co.id": { id: "mock-dir-001", role: "director", name: "Ade Fajar Nurcahman", email: "director@ptpgp.co.id", password: "password" },
+  "hrga@ptpgp.co.id": { id: "mock-dm-001", role: "department_manager", name: "Manager HR & GA", email: "hrga@ptpgp.co.id", password: "password" },
+  "finance@ptpgp.co.id": { id: "mock-dm-002", role: "department_manager", name: "Manager Finance", email: "finance@ptpgp.co.id", password: "password" },
+  "operational@ptpgp.co.id": { id: "mock-dm-003", role: "department_manager", name: "Manager Operational", email: "operational@ptpgp.co.id", password: "password" },
 };
 
 async function setLoginCookies(user: { id: string; role: string; name: string; email: string }) {
@@ -51,6 +37,8 @@ function getRedirectPath(role: string): string {
   switch (role) {
     case "superadmin": return "/superadmin";
     case "hrd": return "/hrd";
+    case "director": return "/director";
+    case "department_manager": return "/department";
     default: return "/employee";
   }
 }
@@ -119,20 +107,20 @@ export async function loginAction(formData: FormData) {
 
   const normalizedEmail = email.toLowerCase().trim();
 
-  // 1. Check mock users first so login is instantaneous and doesn't wait on slow/offline DB connections
-  const mockUser = MOCK_USERS[normalizedEmail];
-  if (mockUser && mockUser.password === password) {
-    await setLoginCookies(mockUser);
-    return { success: true, redirect: getRedirectPath(mockUser.role) };
-  }
-
-  // 2. Fall back to database authentication
-  const dbUser = (await tryEmployeesAuth(normalizedEmail, password))
-    || (await tryUsersTableAuth(normalizedEmail, password));
+  // 1. Try database authentication first
+  const dbUser = (await tryUsersTableAuth(normalizedEmail, password))
+    || (await tryEmployeesAuth(normalizedEmail, password));
 
   if (dbUser) {
     await setLoginCookies(dbUser);
     return { success: true, redirect: getRedirectPath(dbUser.role) };
+  }
+
+  // 2. Fallback to mock users if database is unavailable
+  const mockUser = MOCK_USERS[normalizedEmail];
+  if (mockUser && mockUser.password === password) {
+    await setLoginCookies(mockUser);
+    return { success: true, redirect: getRedirectPath(mockUser.role) };
   }
 
   return { error: "Email atau password salah." };

@@ -26,10 +26,16 @@ function DataPelamar() {
 
   useEffect(() => {
     Promise.all([
-      supabaseAdmin.from("applications").select("*, jobs!inner(title, department)").order("applied_at", { ascending: false }).limit(100),
-      supabaseAdmin.from("jobs").select("id, title").order("title", { ascending: true }),
+      supabaseAdmin.from("applications").select("*").order("applied_at", { ascending: false }).limit(100),
+      supabaseAdmin.from("job_postings").select("id, position, department").order("position", { ascending: true }),
     ]).then(([{ data: apps }, { data: jbs }]) => {
-      setApplications(apps || []);
+      // Manually attach job info to each application
+      const jobMap = new Map((jbs || []).map((j: Record<string, unknown>) => [j.id as string, j]));
+      const enrichedApps = (apps || []).map((app: Record<string, unknown>) => ({
+        ...app,
+        job_postings: jobMap.get(app.job_id as string) || null,
+      }));
+      setApplications(enrichedApps);
       setJobs(jbs || []);
       setLoading(false);
     });
@@ -117,7 +123,7 @@ function DataPelamar() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filtered.map((app: Record<string, unknown>) => {
-                  const job = app.jobs as Record<string, string> | undefined;
+                  const job = app.job_postings as Record<string, string> | undefined;
                   return (
                     <tr key={app.id as string} className="hover:bg-slate-50/30 transition-colors">
                       <td className="px-6 py-4">
@@ -141,7 +147,7 @@ function DataPelamar() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-xs font-bold text-slate-700">{job?.title || "-"}</p>
+                        <p className="text-xs font-bold text-slate-700">{job?.position || "-"}</p>
                         {job?.department && <p className="text-[10px] text-slate-400">{job.department}</p>}
                       </td>
                       <td className="px-6 py-4">

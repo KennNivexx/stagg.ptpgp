@@ -10,6 +10,8 @@ import {
   FileText,
   Settings,
   GraduationCap,
+  Building2,
+  Clock,
 } from "lucide-react";
 
 const iconColorMap: Record<string, { bg: string; text: string }> = {
@@ -100,14 +102,18 @@ export default async function HRDDashboard() {
 
   const [
     { count: totalEmployees },
+    { count: totalDepartments },
     { count: presentToday },
-    { count: activeJobs },
+    { count: pendingRequests },
     { count: pendingLeaves },
+    { count: activeJobs },
   ] = await Promise.all([
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).neq("status", "Inactive"),
-    supabaseAdmin.from("attendance").select("*", { count: "exact", head: true }).eq("date", today).eq("status", "Present"),
-    supabaseAdmin.from("jobs").select("*", { count: "exact", head: true }).eq("status", "Open"),
-    supabaseAdmin.from("leaves").select("*", { count: "exact", head: true }).eq("status", "Pending"),
+    supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("attendance").select("*", { count: "exact", head: true }).eq("date", today).not("check_in", "is", null),
+    supabaseAdmin.from("workforce_requests").select("*", { count: "exact", head: true }).eq("status", "Pending"),
+    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Pending"),
+    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
   ]);
 
   const quickAccess = [
@@ -123,9 +129,11 @@ export default async function HRDDashboard() {
 
   const stats = [
     { label: "Total Karyawan", value: totalEmployees || 0, icon: Users, color: "blue", tooltip: "Jumlah seluruh karyawan aktif yang terdaftar di sistem" },
+    { label: "Total Departemen", value: totalDepartments || 0, icon: Building2, color: "indigo", tooltip: "Jumlah departemen yang terdaftar di sistem" },
     { label: "Hadir Hari Ini", value: presentToday || 0, icon: CalendarCheck, color: "emerald", tooltip: "Jumlah karyawan yang tercatat hadir pada hari ini" },
-    { label: "Lowongan Aktif", value: activeJobs || 0, icon: Briefcase, color: "amber", tooltip: "Jumlah lowongan kerja yang sedang dibuka dan aktif" },
+    { label: "Permintaan Pending", value: pendingRequests || 0, icon: Clock, color: "amber", tooltip: "Jumlah permintaan tenaga kerja yang menunggu persetujuan" },
     { label: "Cuti Pending", value: pendingLeaves || 0, icon: FileText, color: "red", tooltip: "Jumlah pengajuan cuti yang menunggu persetujuan HRD" },
+    { label: "Lowongan Aktif", value: activeJobs || 0, icon: Briefcase, color: "purple", tooltip: "Jumlah lowongan kerja yang sedang dibuka dan aktif" },
   ];
 
   return (

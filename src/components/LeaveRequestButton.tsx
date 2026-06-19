@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, X, Send } from "lucide-react";
-import { submitLeave } from "@/app/actions/employee";
+import { submitLeave } from "@/app/actions/leaves";
 
 export default function LeaveRequestButton() {
   const [open, setOpen] = useState(false);
@@ -65,7 +65,7 @@ export default function LeaveRequestButton() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5" htmlFor="leave-type">Jenis Cuti</label>
-                  <select id="leave-type" name="leave_type" required className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none bg-white">
+                  <select id="leave-type" name="type" required className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none bg-white">
                     <option value="">Pilih jenis cuti...</option>
                     <option value="Cuti Tahunan">Cuti Tahunan</option>
                     <option value="Cuti Sakit">Cuti Sakit</option>

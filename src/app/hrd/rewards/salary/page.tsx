@@ -5,24 +5,37 @@ export default async function SalaryPage() {
   const { data: employees } = await supabaseAdmin
     .from("employees")
     .select("id, full_name, department, position")
-    .limit(50);
+    .neq("status", "Inactive")
+    .order("department")
+    .order("full_name")
+    .limit(100);
 
+  const { data: positions } = await supabaseAdmin
+    .from("positions")
+    .select("name, level")
+    .order("level")
+    .order("name");
 
-  const salaryData = [
-    { id: 1, employee: "Budi Santoso", department: "Operasional", position: "Supervisor Gudang", basicSalary: 7500000, transport: 1000000, meal: 800000, housing: 1200000, position_: 1500000, total: 12000000 },
-    { id: 2, employee: "Siti Rahayu", department: "Keuangan", position: "Staff Accounting", basicSalary: 5500000, transport: 700000, meal: 600000, housing: 800000, position_: 500000, total: 8100000 },
-    { id: 3, employee: "Ahmad Fauzi", department: "Operasional", position: "Driver", basicSalary: 4800000, transport: 1200000, meal: 700000, housing: 600000, position_: 0, total: 7300000 },
-    { id: 4, employee: "Dian Permata", department: "SDM", position: "HR Officer", basicSalary: 6000000, transport: 800000, meal: 600000, housing: 900000, position_: 800000, total: 9100000 },
-    { id: 5, employee: "Rudi Hartono", department: "Operasional", position: "Manager Operasional", basicSalary: 12000000, transport: 2000000, meal: 1500000, housing: 2500000, position_: 3000000, total: 21000000 },
-    { id: 6, employee: "Dewi Lestari", department: "IT", position: "IT Support", basicSalary: 6500000, transport: 800000, meal: 600000, housing: 900000, position_: 1000000, total: 9800000 },
-  ];
+  const salaryData = (employees || []).map((emp: Record<string, unknown>) => ({
+    id: emp.id as string,
+    employee: emp.full_name as string,
+    department: emp.department as string,
+    position: emp.position as string,
+    basicSalary: 0,
+    transport: 0,
+    meal: 0,
+    housing: 0,
+    position_: 0,
+    total: 0,
+  }));
 
-  const positionTemplates = [
-    { position: "Manager", basicSalary: 12000000, allowances: [2000000, 1500000, 2500000, 3000000], total: 21000000 },
-    { position: "Supervisor", basicSalary: 7500000, allowances: [1000000, 800000, 1200000, 1500000], total: 12000000 },
-    { position: "Staff", basicSalary: 5500000, allowances: [700000, 600000, 800000, 500000], total: 8100000 },
-    { position: "Driver/Operator", basicSalary: 4800000, allowances: [1200000, 700000, 600000, 0], total: 7300000 },
-  ];
+  const positionTemplates = (positions || []).map((p: Record<string, unknown>) => ({
+    position: p.name as string,
+    level: p.level as string,
+    basicSalary: 0,
+    allowances: [0, 0, 0, 0],
+    total: 0,
+  }));
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -90,26 +103,30 @@ export default async function SalaryPage() {
             </div>
 
             <div className="divide-y divide-slate-50">
-              {positionTemplates.map((pt, idx) => (
-                <div key={idx} className="p-5 hover:bg-slate-50/30 transition-colors">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-bold text-slate-800">{pt.position}</h4>
-                    <span className="text-sm font-extrabold text-[#CC0000]">Rp {pt.total.toLocaleString("id-ID")}</span>
-                  </div>
-                  <div className="space-y-1.5 text-[10px]">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Gaji Pokok</span>
-                      <span className="font-semibold text-slate-700">Rp {pt.basicSalary.toLocaleString("id-ID")}</span>
+              {positionTemplates.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">Belum ada data jabatan.</div>
+              ) : (
+                positionTemplates.map((pt, idx) => (
+                  <div key={idx} className="p-5 hover:bg-slate-50/30 transition-colors">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-bold text-slate-800">{pt.position}</h4>
+                      <span className="text-[10px] text-slate-400">{pt.level || "-"}</span>
                     </div>
-                    {["Transport", "Makan", "Perumahan", "Jabatan"].map((label, i) => (
-                      <div key={label} className="flex justify-between">
-                        <span className="text-slate-400">Tunjangan {label}</span>
-                        <span className="text-slate-600">Rp {pt.allowances[i].toLocaleString("id-ID")}</span>
+                    <div className="space-y-1.5 text-[10px]">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Gaji Pokok</span>
+                        <span className="font-semibold text-slate-700">Rp {pt.basicSalary.toLocaleString("id-ID")}</span>
                       </div>
-                    ))}
+                      {["Transport", "Makan", "Perumahan", "Jabatan"].map((label, i) => (
+                        <div key={label} className="flex justify-between">
+                          <span className="text-slate-400">Tunjangan {label}</span>
+                          <span className="text-slate-600">Rp {pt.allowances[i].toLocaleString("id-ID")}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
