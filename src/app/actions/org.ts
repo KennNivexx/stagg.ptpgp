@@ -49,17 +49,38 @@ const uid = () => "org-" + Date.now() + "-" + Math.random().toString(36).slice(2
 /* ─────── tree builder ─────── */
 
 async function getSettings() {
-  const { data } = await supabaseAdmin.from("employees").select("address").eq("email", "__settings__@ptpgp.co.id").single();
+  // Try new system_settings table first; fall back to legacy employee row if
+  // the migration hasn't been applied yet.
+  const { data: row, error } = await supabaseAdmin
+    .from("system_settings")
+    .select("value")
+    .eq("key", "org_settings")
+    .maybeSingle();
+
+  if (!error && row) {
+    try { return (row as Record<string, unknown>).value as Record<string, unknown> || {}; } catch { return {}; }
+  }
+
+  // Legacy fallback
+  const { data } = await supabaseAdmin.from("employees").select("address").eq("email", "__settings__@ptpgp.co.id").maybeSingle();
   if (!data?.address) return {};
   try { return JSON.parse(data.address as string); } catch { return {}; }
 }
 
 async function saveSettings(settings: Record<string, unknown>) {
-  await supabaseAdmin.from("employees").upsert({
-    full_name: "System Settings", email: "__settings__@ptpgp.co.id",
-    address: JSON.stringify(settings), department: "System", position: "Settings",
-    join_date: "2024-01-01", status: "Tetap"
-  }, { onConflict: "email" });
+  // Try new table first
+  const { error } = await supabaseAdmin
+    .from("system_settings")
+    .upsert({ key: "org_settings", value: settings, updated_at: new Date().toISOString() }, { onConflict: "key" });
+
+  if (error) {
+    // Legacy fallback if migration not yet applied
+    await supabaseAdmin.from("employees").upsert({
+      full_name: "System Settings", email: "__settings__@ptpgp.co.id",
+      address: JSON.stringify(settings), department: "System", position: "Settings",
+      join_date: "2024-01-01", status: "Tetap"
+    }, { onConflict: "email" });
+  }
 }
 
 interface OrgUnitRow {
@@ -113,7 +134,7 @@ async function recalculateDescendants(parentCode: string, newParentCode: string)
     const child = children[i] as { code: string };
     const newChildCode = generateCode(newParentCode, i);
     const newLevel = codeLevel(newChildCode);
-    await supabaseAdmin.from("org_units").update({ code: newChildCode, level: newLevel }).eq("code", child.code);
+    await supabaseAdmin.from("org_units").update({ code: newChildCode, level: newLevel, parent_code: newParentCode }).eq("code", child.code);
     await recalculateDescendants(child.code, newChildCode);
   }
 }
@@ -282,7 +303,7 @@ export async function moveOrgUnit(unitCode: string, newParentCode: string) {
   if (!unitCode || !newParentCode) return { error: "Kode unit dan parent wajib diisi." };
   if (unitCode === newParentCode) return { error: "Tidak bisa memindahkan ke dirinya sendiri." };
 
-  const { data: unit } = await supabaseAdmin.from("org_units").select("code").eq("code", unitCode).maybeSingle();
+  const { data: unit } = await supabaseAdmin.from("org_units").select("code, name").eq("code", unitCode).maybeSingle();
   if (!unit) return { error: "Unit tidak ditemukan." };
 
   const { data: newParent } = await supabaseAdmin.from("org_units").select("code").eq("code", newParentCode).maybeSingle();
@@ -311,7 +332,7 @@ export async function moveOrgUnit(unitCode: string, newParentCode: string) {
   revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace/departments");
   revalidatePath("/hrd/workplace");
-  auditLog({ action: "org.move_unit", targetId: newCode, targetName: (unit as { name?: string }).name || unitCode, performedBy: user, detail: `Dipindah ke ${newParentCode}` });
+  auditLog({ action: "org.move_unit", targetId: newCode, targetName: (unit as { name: string }).name, performedBy: user, detail: `Dipindah ke ${newParentCode}` });
   return { success: true, newCode };
 }
 

@@ -5,6 +5,7 @@ import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp
 import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, assessEmployee } from "@/app/actions/skills";
 import { getCookie } from "@/lib/cookie-client";
 import PanduanLevel from "@/components/PanduanLevel";
+import { EMAIL_TO_DEPT } from "@/lib/dept-map";
 
 interface Employee {
   id: string;
@@ -32,16 +33,6 @@ interface PositionSkill {
   skill_id: string;
   required_level: number;
 }
-
-const EMAIL_TO_DEPT: Record<string, string> = {
-  "hrga@ptpgp.co.id": "HR & GA",
-  "finance@ptpgp.co.id": "Finance",
-  "operational@ptpgp.co.id": "Operational Division",
-  "procurement@ptpgp.co.id": "Procurement Division",
-  "projectappraisal@ptpgp.co.id": "Project Appraisal",
-  "mr@ptpgp.co.id": "Management Representative",
-  "hse@ptpgp.co.id": "Health, Safety & Environment",
-};
 
 export default function DeptCompetencyPage() {
   const [deptName, setDeptName] = useState("");

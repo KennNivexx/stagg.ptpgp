@@ -16,17 +16,17 @@ export default async function CareerPage(props: { searchParams: Promise<{ filter
   const { data: jobs } = await query;
   const mappedJobs = (jobs || []).map((j: Record<string, unknown>) => ({
     id: j.id as string,
-    title: j.position as string,
+    title: (j.title as string) || (j.position as string),
     department: j.department as string,
-    type: "Full-time",
-    location: j.location as string || "Jakarta Utara",
-    description: (j.requirements as string) || "",
+    type: (j.type as string) || "Full-time",
+    location: (j.location as string) || "Jakarta Utara",
+    description: (j.description as string) || (j.requirements as string) || "",
     job_desk: (j.job_desk as string) || "",
     education: (j.education as string) || "",
     experience: (j.experience as string) || "",
-    age_min: j.age_min as number || null,
-    age_max: j.age_max as number || null,
-    deadline: "",
+    age_min: (j.age_min as number) || null,
+    age_max: (j.age_max as number) || null,
+    deadline: (j.deadline as string) || "",
   }));
 
   return (

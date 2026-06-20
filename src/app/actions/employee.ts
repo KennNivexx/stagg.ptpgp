@@ -13,11 +13,20 @@ export async function getCurrentEmployee() {
     .eq("email", user.email)
     .single();
 
-  if (error || !data) {
-    return null;
-  }
+  if (error || !data) return null;
 
-  return data;
+  const emp = data as Record<string, unknown>;
+
+  // When employees.address contains the legacy auth JSON blob, extract the
+  // actual home address from home_address so the profile form shows a readable
+  // value instead of a raw JSON string.
+  let displayAddress = emp.address as string || "";
+  try {
+    const parsed = JSON.parse(emp.address as string || "{}");
+    if (parsed.__auth__) displayAddress = parsed.home_address || "";
+  } catch { /* plain address, already correct */ }
+
+  return { ...emp, address: displayAddress };
 }
 
 export async function submitComplaint(formData: FormData) {
@@ -85,10 +94,14 @@ export async function submitResignation(formData: FormData) {
 }
 
 export async function getEmployeeLeaves(employeeId: string) {
+  const user = await requireRole("employee", "hrd", "superadmin");
+  // Employee can only see own leaves; HRD/superadmin can see any
+  const targetId = user.role === "employee" ? user.id : employeeId;
+
   const { data, error } = await supabaseAdmin
     .from("leave_requests")
     .select("*")
-    .eq("employee_id", employeeId)
+    .eq("employee_id", targetId)
     .order("created_at", { ascending: false });
 
   if (error) return [];
@@ -96,36 +109,45 @@ export async function getEmployeeLeaves(employeeId: string) {
 }
 
 export async function getEmployeeComplaints(employeeId: string) {
+  const user = await requireRole("employee", "hrd", "superadmin");
+  const targetId = user.role === "employee" ? user.id : employeeId;
+
   const { data, error } = await supabaseAdmin
     .from("complaints")
     .select("*")
-    .eq("employee_id", employeeId)
+    .eq("employee_id", targetId)
     .order("created_at", { ascending: false });
 
-  if (error && !error.message.includes("Could not find the table")) return [];
+  if (error) return [];
   return data || [];
 }
 
 export async function getEmployeeResignation(employeeId: string) {
+  const user = await requireRole("employee", "hrd", "superadmin");
+  const targetId = user.role === "employee" ? user.id : employeeId;
+
   const { data, error } = await supabaseAdmin
     .from("resignations")
     .select("*")
-    .eq("employee_id", employeeId)
+    .eq("employee_id", targetId)
     .order("created_at", { ascending: false })
     .limit(1);
 
-  if (error && !error.message.includes("Could not find the table")) return null;
+  if (error) return null;
   return data?.[0] || null;
 }
 
 export async function getEmployeeWarnings(employeeId: string) {
+  const user = await requireRole("employee", "hrd", "superadmin");
+  const targetId = user.role === "employee" ? user.id : employeeId;
+
   const { data, error } = await supabaseAdmin
     .from("warnings")
     .select("*")
-    .eq("employee_id", employeeId)
+    .eq("employee_id", targetId)
     .order("created_at", { ascending: false });
 
-  if (error && !error.message.includes("Could not find the table")) return [];
+  if (error) return [];
   return data || [];
 }
 

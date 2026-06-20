@@ -10,6 +10,7 @@ export default function EmployeeAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [lastAction, setLastAction] = useState<"in" | "out" | null>(null);
   const [employeeName] = useState(() => getCookie("user_name") || "Karyawan");
 
   const fetchToday = useCallback(async () => {
@@ -19,12 +20,8 @@ export default function EmployeeAttendancePage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    getTodayAttendance().then((data) => {
-      if (!cancelled) { setToday(data || null); setLoading(false); }
-    });
-    return () => { cancelled = true; };
-  }, []);
+    fetchToday();
+  }, [fetchToday]);
 
   const handleClockIn = useCallback(
     async (photoBase64: string, location: { lat: number; lng: number; name: string }) => {
@@ -36,6 +33,7 @@ export default function EmployeeAttendancePage() {
       fd.append("location_name", location.name);
       const res = await clockIn(fd);
       if (res?.error) { setResult(res.error); return; }
+      setLastAction("in");
       setShowSuccess(true);
       setResult("");
       await fetchToday();
@@ -53,6 +51,7 @@ export default function EmployeeAttendancePage() {
       fd.append("location_name", location.name);
       const res = await clockOut(fd);
       if (res?.error) { setResult(res.error); return; }
+      setLastAction("out");
       setShowSuccess(true);
       setResult("");
       await fetchToday();
@@ -66,8 +65,11 @@ export default function EmployeeAttendancePage() {
 
   const now = new Date();
   const currentHour = now.getHours();
-  const afterThreePM = currentHour >= 15;
-  const canClockOut = checkedIn && !checkedOut && afterThreePM;
+  // Checkout cutoff hour (default 15:00 WIB / 3 PM)
+  const CHECKOUT_HOUR = parseInt(process.env.NEXT_PUBLIC_CHECKOUT_HOUR || "15", 10);
+  const afterCutoff = currentHour >= CHECKOUT_HOUR;
+  const afterThreePM = afterCutoff; // kept for UI text reference
+  const canClockOut = checkedIn && !checkedOut && afterCutoff;
 
   if (loading) {
     return (
@@ -93,7 +95,7 @@ export default function EmployeeAttendancePage() {
               <CheckCircle2 size={40} className="text-emerald-600" />
             </div>
             <h2 className="text-xl font-extrabold text-slate-800 mb-2">
-              {checkedOut ? "Absensi Selesai!" : "Berhasil Hadir!"}
+              {lastAction === "out" ? "Absensi Selesai!" : "Berhasil Hadir!"}
             </h2>
             <p className="text-sm text-slate-500 mb-1">{employeeName}</p>
             <p className="text-xs text-slate-400 mb-4">

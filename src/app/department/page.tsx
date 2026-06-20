@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Users, Briefcase, Clock, CheckCircle2, Plus, Send, AlertTriangle } from "lucide-react";
-import { getDeptData, submitRequest } from "@/app/actions/department";
-import { getCookie } from "@/lib/cookie-client";
+import { getDeptData, submitRequest, getMyDept } from "@/app/actions/department";
 
 interface Employee {
   id: string; full_name: string; email: string; department: string;
@@ -15,16 +14,6 @@ interface Request {
   quantity: number; reason: string; urgency: string; status: string;
   requested_by: string; created_at: string;
 }
-
-const EMAIL_TO_DEPT: Record<string, string> = {
-  "hrga@ptpgp.co.id": "HR & GA",
-  "finance@ptpgp.co.id": "Finance",
-  "operational@ptpgp.co.id": "Operational Division",
-  "procurement@ptpgp.co.id": "Procurement Division",
-  "projectappraisal@ptpgp.co.id": "Project Appraisal",
-  "mr@ptpgp.co.id": "Management Representative",
-  "hse@ptpgp.co.id": "Health, Safety & Environment",
-};
 
 const URGENCY = ["Tinggi", "Sedang", "Rendah"];
 
@@ -63,10 +52,13 @@ export default function DeptDashboard() {
   };
 
   useEffect(() => {
-    const email = getCookie("user_email");
-    const department = EMAIL_TO_DEPT[email] || "";
-    setDeptName(department);
-    if (department) loadData(department);
+    (async () => {
+      const { dept } = await getMyDept();
+      const department = dept || "";
+      setDeptName(department);
+      if (department) loadData(department);
+      else setLoading(false);
+    })();
   }, []);
 
   const doSubmit = async () => {
@@ -78,7 +70,6 @@ export default function DeptDashboard() {
     fd.append("quantity", String(fQty));
     fd.append("urgency", fUrgency);
     fd.append("reason", fReason.trim());
-    fd.append("requested_by", getCookie("user_name") || getCookie("user_email") || "");
     const r = await submitRequest(fd);
     setFLoading(false);
     if (r && r.error) { showToast("error", r.error); return; }

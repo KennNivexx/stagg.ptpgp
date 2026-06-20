@@ -5,13 +5,11 @@ import { revalidatePath } from "next/cache";
 import { hashPassword, generateRandomPassword, generateNumericPassword, generateCompanyEmailUnique } from "@/lib/auth";
 import { requireRole } from "@/lib/auth-guard";
 
-let usersTableCache: boolean | null = null;
-
+// Always query fresh — a module-level cache would permanently freeze to false
+// if the DB returned a transient error on the first cold request.
 async function usersTableExists(): Promise<boolean> {
-  if (usersTableCache !== null) return usersTableCache;
   const { error } = await supabaseAdmin.from("users").select("id").limit(1);
-  usersTableCache = !error || !error.message.includes("Could not find the table");
-  return usersTableCache;
+  return !error || !error.message.includes("Could not find the table");
 }
 
 export async function createJob(formData: FormData) {
@@ -84,26 +82,26 @@ export async function createEmployee(formData: FormData) {
     return { error: `Email ${normalizedEmail} sudah digunakan. Gunakan email lain.` };
   }
 
-  let usersTableExists = true;
-  const { data: existing, error: checkError } = await supabaseAdmin
-    .from("users")
-    .select("id")
-    .eq("email", normalizedEmail)
-    .limit(1);
-
-  if (checkError) {
-    if (checkError.message.includes("Could not find the table")) {
-      usersTableExists = false;
-    } else {
+  const tableExists = await usersTableExists();
+  if (tableExists) {
+    const { data: existing, error: checkError } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .limit(1);
+    if (checkError && !checkError.message.includes("Could not find the table")) {
       return { error: checkError.message };
+    }
+    if (existing && existing.length > 0) {
+      return { error: "Email sudah terdaftar sebagai user." };
     }
   }
 
-  if (usersTableExists && existing && existing.length > 0) {
-    return { error: "Email sudah terdaftar sebagai user." };
-  }
-
   const passwordHash = hashPassword(password);
+
+  // authData is only stored in employees.address when the users table does NOT
+  // exist. When the users table exists, the address column is left for the
+  // employee's actual home address (saveable later via profile form).
   const authData = JSON.stringify({
     __auth__: { password_hash: passwordHash, role: "employee" },
     org_code: orgCode,
@@ -124,8 +122,12 @@ export async function createEmployee(formData: FormData) {
     }
   }
 
+  // When users table exists, store the real address; otherwise embed auth JSON
+  // in address as a fallback auth mechanism.
+  const storedAddress = tableExists ? (address || "") : (address || authData);
+
   const empData: Record<string, unknown> = {
-    full_name, email: normalizedEmail, phone, address: address || authData,
+    full_name, email: normalizedEmail, phone, address: storedAddress,
     department, position, join_date, status,
   };
   if (kode) empData.kode = kode;
@@ -140,7 +142,7 @@ export async function createEmployee(formData: FormData) {
     return { error: empError.message };
   }
 
-  if (usersTableExists) {
+  if (tableExists) {
     await supabaseAdmin
       .from("users")
       .insert([
@@ -168,6 +170,13 @@ export async function createEmployee(formData: FormData) {
 export async function updateApplicationStatus(applicationId: string, status: string) {
   const user = await requireRole("hrd", "superadmin");
 
+  // Fetch application email before update (needed for account deletion)
+  const { data: application } = await supabaseAdmin
+    .from("applications")
+    .select("email, full_name")
+    .eq("id", applicationId)
+    .maybeSingle();
+
   const { error } = await supabaseAdmin
     .from("applications")
     .update({ status })
@@ -177,11 +186,26 @@ export async function updateApplicationStatus(applicationId: string, status: str
     return { error: error.message };
   }
 
+  // Auto-delete temporary applicant account when rejected
+  if (status === "Ditolak" && application) {
+    const appEmail = (application as { email: string }).email;
+    if (appEmail) {
+      // Only delete if the account is a temporary applicant account
+      await supabaseAdmin
+        .from("users")
+        .delete()
+        .eq("email", appEmail)
+        .eq("role", "applicant")
+        .eq("is_temporary", true);
+    }
+  }
+
   revalidatePath("/hrd/recruitment");
   const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "application.update",
     targetId: applicationId,
+    targetName: (application as { full_name?: string } | null)?.full_name || "",
     performedBy: user,
     detail: `Status diubah menjadi ${status}`,
   });
@@ -258,6 +282,15 @@ export async function convertApplicantToEmployee(applicationId: string, formData
     .from("applications")
     .update({ status: "Diterima" })
     .eq("id", applicationId);
+
+  // Delete the temporary applicant user so their old "applicant" session no
+  // longer grants access to /applicant/*. The new employee entry (created above)
+  // has role "employee" — they must log in again to get the updated token.
+  await supabaseAdmin
+    .from("users")
+    .delete()
+    .eq("email", normalizedEmail)
+    .eq("role", "applicant");
 
   revalidatePath("/hrd/recruitment");
   revalidatePath("/hrd/employees");
@@ -532,19 +565,35 @@ export async function submitApplication(formData: FormData) {
   const full_name = formData.get("full_name") as string;
   const email = formData.get("email") as string;
   const phone = formData.get("phone") as string || "";
-  const cv_filename = formData.get("cv_filename") as string || "";
   const profile_data = formData.get("profile_data") as string || "{}";
 
   if (!job_id || !full_name || !email) {
     return { error: "Nama dan email wajib diisi." };
   }
 
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Prevent duplicate application with same email for same job
+  const { data: dupApp } = await supabaseAdmin
+    .from("applications")
+    .select("id, status")
+    .eq("email", normalizedEmail)
+    .eq("job_id", job_id)
+    .maybeSingle();
+
+  if (dupApp) {
+    return { error: "Anda sudah pernah melamar untuk posisi ini." };
+  }
+
+  const applicationId = "app-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+
   const { error } = await supabaseAdmin
     .from("applications")
     .insert([{
+      id: applicationId,
       job_id,
       full_name,
-      email,
+      email: normalizedEmail,
       phone,
       resume_url: profile_data,
       status: "Menunggu Review",
@@ -555,7 +604,53 @@ export async function submitApplication(formData: FormData) {
     return { error: `Gagal mengirim lamaran: ${error.message}` };
   }
 
-  return { success: true };
+  // Create temporary applicant account so they can track their application
+  let tempPassword: string | undefined;
+  let accountCreated = false;
+
+  try {
+    // Check if user with this email already exists (might have applied before)
+    const { data: existingUser } = await supabaseAdmin
+      .from("users")
+      .select("id, role")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+
+    if (!existingUser) {
+      // Generate a readable temp password: 3 words style e.g. "Lamar2026!"
+      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+      const suffix = chars[Math.floor(Math.random() * chars.length)];
+      tempPassword = `Lamar${randomNum}${suffix}`;
+
+      const passwordHash = hashPassword(tempPassword);
+
+      await supabaseAdmin.from("users").insert([{
+        email: normalizedEmail,
+        password_hash: passwordHash,
+        role: "applicant",
+        full_name,
+        application_id: applicationId,
+        is_temporary: true,
+      }]);
+
+      accountCreated = true;
+    } else if (existingUser.role === "applicant") {
+      // Update application_id to the latest application
+      await supabaseAdmin.from("users").update({ application_id: applicationId }).eq("email", normalizedEmail);
+    }
+    // If existing user is employee/hrd/etc, don't overwrite their account
+  } catch (e) {
+    // Account creation failure is non-fatal — application still submitted
+    console.error("Failed to create applicant account:", e);
+  }
+
+  return {
+    success: true,
+    applicationId,
+    accountCreated,
+    credentials: accountCreated ? { email: normalizedEmail, password: tempPassword } : null,
+  };
 }
 
 export async function updateEmployeeAsSuperadmin(formData: FormData) {

@@ -39,6 +39,7 @@ function getRedirectPath(role: string): string {
     case "hrd": return "/hrd";
     case "director": return "/director";
     case "department_manager": return "/department";
+    case "applicant": return "/applicant";
     default: return "/employee";
   }
 }

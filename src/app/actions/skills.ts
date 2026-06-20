@@ -60,7 +60,21 @@ export async function assessEmployee(
   employeeId: string,
   skills: { skill_id: string; current_level: number }[]
 ) {
-  await requireRole("department_manager", "superadmin", "hrd");
+  const assessor = await requireRole("department_manager", "superadmin", "hrd");
+
+  // A department_manager may only assess employees within their OWN department.
+  // hrd/superadmin are company-wide and bypass this scope check.
+  if (assessor.role === "department_manager") {
+    const [{ data: managerEmp }, { data: targetEmp }] = await Promise.all([
+      supabaseAdmin.from("employees").select("department").eq("email", assessor.email).maybeSingle(),
+      supabaseAdmin.from("employees").select("department").eq("id", employeeId).maybeSingle(),
+    ]);
+    const managerDept = (managerEmp as { department?: string } | null)?.department;
+    const targetDept = (targetEmp as { department?: string } | null)?.department;
+    if (!managerDept || !targetDept || managerDept !== targetDept) {
+      throw new Error("Akses ditolak: karyawan berada di luar departemen Anda.");
+    }
+  }
 
   const now = new Date().toISOString();
 
@@ -75,20 +89,73 @@ export async function assessEmployee(
     if (existing) {
       await supabaseAdmin
         .from("employee_skills")
-        .update({ current_level: sk.current_level, updated_at: now })
+        .update({ current_level: sk.current_level, assessed_by: assessor.email, updated_at: now })
         .eq("id", (existing as { id: string }).id);
     } else {
       await supabaseAdmin.from("employee_skills").insert({
+        id: "es-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
         employee_id: employeeId,
         skill_id: sk.skill_id,
         current_level: sk.current_level,
-        created_at: now,
+        assessed_by: assessor.email,
         updated_at: now,
       });
     }
   }
 
+  // Auto-enroll in training when skill gap >= 2 (required - current >= 2)
+  const { data: employee } = await supabaseAdmin
+    .from("employees")
+    .select("position")
+    .eq("id", employeeId)
+    .maybeSingle();
+
+  if (employee) {
+    const posCode = (employee as { position: string }).position;
+    const { data: posSkills } = await supabaseAdmin
+      .from("position_skills")
+      .select("skill_id, required_level")
+      .eq("position_code", posCode);
+
+    if (posSkills) {
+      for (const sk of skills) {
+        const req = (posSkills as { skill_id: string; required_level: number }[]).find(p => p.skill_id === sk.skill_id);
+        if (req && req.required_level - sk.current_level >= 2) {
+          // Find active training for this skill
+          const { data: trainings } = await supabaseAdmin
+            .from("trainings")
+            .select("id")
+            .eq("skill_id", sk.skill_id)
+            .in("status", ["Planned", "Ongoing"])
+            .limit(1);
+
+          if (trainings && trainings.length > 0) {
+            const trainingId = (trainings[0] as { id: string }).id;
+            // Check if already enrolled
+            const { data: enrolled } = await supabaseAdmin
+              .from("training_enrollments")
+              .select("id")
+              .eq("training_id", trainingId)
+              .eq("employee_id", employeeId)
+              .maybeSingle();
+
+            if (!enrolled) {
+              await supabaseAdmin.from("training_enrollments").insert({
+                id: "te-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+                training_id: trainingId,
+                employee_id: employeeId,
+                status: "Enrolled",
+                enrolled_at: now,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
   revalidatePath("/department/competency");
+  revalidatePath("/hrd/learning");
   return { success: true };
 }
 
@@ -135,28 +202,28 @@ export async function deleteSkill(id: string) {
 export async function saveRequiredLevel(formData: FormData) {
   await requireRole("hrd", "superadmin");
 
-  const position = (formData.get("position") as string || "").trim();
+  const position_code = (formData.get("position_code") as string || "").trim();
   const skill_id = (formData.get("skill_id") as string || "").trim();
   const required_level = parseInt(formData.get("required_level") as string || "0");
 
-  if (!position || !skill_id) return { error: "Posisi dan skill wajib diisi." };
+  if (!position_code || !skill_id) return { error: "Posisi dan skill wajib diisi." };
 
   const { data: existing } = await supabaseAdmin
     .from("position_skills")
-    .select("id")
-    .eq("position", position)
+    .select("position_code")
+    .eq("position_code", position_code)
     .eq("skill_id", skill_id)
     .maybeSingle();
 
   if (existing) {
     const { error } = await supabaseAdmin.from("position_skills")
       .update({ required_level })
-      .eq("id", (existing as { id: string }).id);
+      .eq("position_code", position_code)
+      .eq("skill_id", skill_id);
     if (error) return { error: "Gagal mengupdate level." };
   } else {
     const { error } = await supabaseAdmin.from("position_skills").insert({
-      id: "ps-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
-      position, skill_id, required_level,
+      position_code, skill_id, required_level,
     });
     if (error) return { error: "Gagal menambah required level." };
   }

@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { cookies } from "next/headers";
+import { verifySession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
-  const role = request.nextUrl.searchParams.get("role") || "hrd";
+  // Authentication: a valid signed session is required. The notification feed
+  // exposes payroll/leave/KPI data, so it must never be reachable anonymously
+  // or scoped by a client-controllable cookie/query param.
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("session_token")?.value;
+  if (!sessionToken) return NextResponse.json({ notifications: [] }, { status: 401 });
+
+  const session = await verifySession(sessionToken);
+  if (!session?.role) return NextResponse.json({ notifications: [] }, { status: 401 });
+
+  const sessionRole = session.role.toLowerCase();
+  const requestedRole = request.nextUrl.searchParams.get("role") || "hrd";
+
+  // The HRD feed (applicants, all leaves, payroll drafts) is only for hrd/superadmin.
+  // Anyone else falls back to their own personal (employee) feed.
+  const role =
+    requestedRole === "hrd"
+      ? sessionRole === "hrd" || sessionRole === "superadmin"
+        ? "hrd"
+        : "employee"
+      : "employee";
   const notifications: {
     id: string;
     type: string;
@@ -95,7 +117,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (role === "employee") {
-      const userEmail = request.cookies.get("user_email")?.value || "";
+      const userEmail = session.email || "";
 
       const { data: employee } = await supabaseAdmin.from("employees").select("id").eq("email", userEmail).limit(1).single();
       const empId = employee?.id;

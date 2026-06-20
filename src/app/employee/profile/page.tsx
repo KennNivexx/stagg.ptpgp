@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { User, Mail, Phone, Building, Briefcase, Calendar, ShieldCheck, Save, MapPin, IdCard, Heart, Droplet, Users2, GraduationCap, Siren } from "lucide-react";
 import { getCurrentEmployee } from "@/app/actions/employee";
-import { saveEmployeeProfile } from "@/app/actions/profile";
+import { saveEmployeeProfile, saveContactProfile } from "@/app/actions/profile";
 
 interface Employee {
   id: string; full_name: string; email: string; phone: string; address: string;
@@ -30,6 +30,18 @@ export default function EmployeeProfile() {
   }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  const handleSaveContact = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    const fd = new FormData(e.currentTarget);
+    fd.set("employeeId", profile?.id || "");
+    const r = await saveContactProfile(fd);
+    setSaving(false);
+    if (r.error) { showToast(r.error); return; }
+    showToast("Profil berhasil disimpan!");
+    getCurrentEmployee().then((emp) => setProfile(emp as Employee));
+  };
 
   const handleSaveKK = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -140,11 +152,12 @@ export default function EmployeeProfile() {
                 <p className="text-xs text-slate-400 mt-0.5">Perbarui informasi kontak dan data pribadi Anda</p>
               </div>
 
-              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <form onSubmit={handleSaveContact} className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nama Lengkap</label>
                   <input
                     type="text"
+                    name="full_name"
                     defaultValue={profile?.full_name || ""}
                     className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
                   />
@@ -153,6 +166,7 @@ export default function EmployeeProfile() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Telepon</label>
                   <input
                     type="text"
+                    name="phone"
                     defaultValue={profile?.phone || ""}
                     placeholder="08123456789"
                     className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
@@ -162,20 +176,29 @@ export default function EmployeeProfile() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Alamat</label>
                   <textarea
                     rows={3}
+                    name="address"
                     defaultValue={profile?.address || ""}
                     placeholder="Alamat lengkap Anda"
                     className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] resize-none"
                   />
                 </div>
                 <div className="sm:col-span-2 flex items-center gap-3">
-                  <button className="px-6 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
-                    <Save size={14} /> Simpan Perubahan
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-6 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Save size={14} /> {saving ? "Menyimpan..." : "Simpan Perubahan"}
                   </button>
-                  <button className="px-6 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => getCurrentEmployee().then((emp) => setProfile(emp as Employee))}
+                    className="px-6 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                  >
                     Batal
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         </div>

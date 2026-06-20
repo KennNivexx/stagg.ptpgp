@@ -1,11 +1,18 @@
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
-import { TrendingUp, Target, ArrowUp, Briefcase, GraduationCap, Calendar } from "lucide-react";
+import { TrendingUp, Target, ArrowUp, Briefcase, GraduationCap, Calendar, CheckCircle } from "lucide-react";
+import { redirect } from "next/navigation";
+import { requireAuth } from "@/lib/auth-guard";
 
 export default async function EmployeeCareer() {
-  const cookieStore = await cookies();
-  const userEmail = cookieStore.get("user_email")?.value || "";
-  const userName = cookieStore.get("user_name")?.value || "Karyawan";
+  let userEmail: string;
+  let userName: string;
+  try {
+    const auth = await requireAuth();
+    userEmail = auth.email;
+    userName = auth.name || "Karyawan";
+  } catch {
+    redirect("/login");
+  }
 
   const { data: employee } = await supabaseAdmin
     .from("employees")
@@ -14,20 +21,68 @@ export default async function EmployeeCareer() {
     .limit(1)
     .single();
 
-  const myCareerPath = ["Staff", "Senior Staff", "Supervisor", "Manager", "Senior Manager"];
-  const currentLevelIdx = 1;
+  const CAREER_LEVELS = ["Staff", "Senior Staff", "Supervisor", "Manager", "Senior Manager"];
 
-  const availablePromotions = [
-    { id: 1, position: "Supervisor " + (employee?.department || "Operasional"), department: employee?.department || "Operasional", requirements: "Min. 3 tahun pengalaman, nilai KPI >= 80", status: "Tersedia" },
-    { id: 2, position: "Manager " + (employee?.department || "Operasional"), department: employee?.department || "Operasional", requirements: "Min. 5 tahun pengalaman, sertifikasi leadership", status: "Terkunci" },
-  ];
+  // Determine current career level based on position keyword
+  const positionStr = (employee?.position || "").toLowerCase();
+  const currentLevelIdx = positionStr.includes("senior manager") ? 4
+    : positionStr.includes("manager") ? 3
+    : positionStr.includes("supervisor") || positionStr.includes("spv") ? 2
+    : positionStr.includes("senior") ? 1
+    : 0;
+
+  // Fetch open job postings in same department for promotion opportunities
+  const { data: openJobs } = await supabaseAdmin
+    .from("job_postings")
+    .select("id, position, department, requirements, education, experience")
+    .eq("status", "Open")
+    .eq("department", employee?.department || "")
+    .limit(3);
+
+  const availablePromotions = (openJobs || []).map((j: Record<string, unknown>, idx: number) => ({
+    id: idx + 1,
+    position: j.position as string,
+    department: j.department as string,
+    requirements: [j.education, j.experience].filter(Boolean).join(", ") || "Lihat detail lowongan",
+    status: "Tersedia",
+  }));
+
+  if (availablePromotions.length === 0) {
+    const nextLevel = CAREER_LEVELS[Math.min(currentLevelIdx + 1, CAREER_LEVELS.length - 1)];
+    availablePromotions.push({
+      id: 1,
+      position: `${nextLevel} — ${employee?.department || "Departemen Anda"}`,
+      department: employee?.department || "",
+      requirements: "Belum ada lowongan terbuka saat ini",
+      status: "Terkunci",
+    });
+  }
+
+  // Fetch active trainings for development plan
+  const { data: activeTrainings } = await supabaseAdmin
+    .from("trainings")
+    .select("id, title, date_start, date_end")
+    .in("status", ["Planned", "Ongoing"])
+    .order("date_start", { ascending: true })
+    .limit(5);
+
+  // Calculate tenure in months for progress
+  const joinDate = employee?.join_date ? new Date(employee.join_date as string) : null;
+  const tenureMonths = joinDate ? Math.floor((Date.now() - joinDate.getTime()) / (1000 * 60 * 60 * 24 * 30)) : 0;
+  const progressPct = Math.min(Math.round((tenureMonths / 24) * 100), 100);
 
   const myDevelopmentPlan = {
-    goals: "Mencapai posisi Supervisor dalam 2 tahun ke depan",
-    trainings: ["Leadership & Supervisory Skills", "Supply Chain Management", "Manajemen Risiko"],
-    timeline: "Jan 2026 - Des 2027",
-    progress: 35,
+    goals: currentLevelIdx < CAREER_LEVELS.length - 1
+      ? `Mencapai posisi ${CAREER_LEVELS[currentLevelIdx + 1]} dalam departemen ${employee?.department || ""}`
+      : "Mempertahankan dan mengembangkan keahlian di posisi saat ini",
+    trainings: (activeTrainings || []).map((t: Record<string, unknown>) => t.title as string),
+    timeline: joinDate
+      ? `${joinDate.toLocaleDateString("id-ID", { month: "short", year: "numeric" })} — ${new Date(joinDate.getTime() + 2 * 365 * 24 * 60 * 60 * 1000).toLocaleDateString("id-ID", { month: "short", year: "numeric" })}`
+      : "-",
+    progress: progressPct,
   };
+
+  const myCareerPath = CAREER_LEVELS;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -193,10 +248,3 @@ export default async function EmployeeCareer() {
   );
 }
 
-function CheckCircle({ size, className }: { size?: number; className?: string }) {
-  return (
-    <svg width={size || 16} height={size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>
-    </svg>
-  );
-}

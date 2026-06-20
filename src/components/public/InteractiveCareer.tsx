@@ -28,6 +28,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
   const [step, setStep] = useState(1);
 
   const [formData, setFormData] = useState({
@@ -138,9 +139,12 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
   };
 
   const closeModal = () => {
-    if (!submitting && !submitSuccess) {
+    if (!submitting) {
       setActiveJob(null);
       setIsSpontaneousOpen(false);
+      setSubmitSuccess(false);
+      setCredentials(null);
+      resetForm();
     }
   };
 
@@ -181,12 +185,9 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
       } else {
         setSubmitSuccess(true);
         setSubmitting(false);
-        setTimeout(() => {
-          setSubmitSuccess(false);
-          setActiveJob(null);
-          setIsSpontaneousOpen(false);
-          resetForm();
-        }, 2500);
+        if (result.credentials) {
+          setCredentials(result.credentials as { email: string; password: string });
+        }
       }
     } catch {
       setSubmitError("Gagal mengirim lamaran. Silakan coba lagi.");
@@ -355,10 +356,47 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
               <div className="overflow-y-auto p-8 flex-1 max-w-3xl mx-auto w-full">
                 {submitSuccess ? (
                   <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                    className="flex flex-col items-center justify-center py-12 text-center">
+                    className="flex flex-col items-center justify-center py-8 text-center">
                     <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4 animate-bounce" />
                     <h4 className="text-lg font-bold text-pgp-navy mb-2">Lamaran Berhasil Dikirim!</h4>
-                    <p className="text-sm text-gray-500 max-w-sm">Tim HRD kami akan meninjau lamaran Anda segera.</p>
+                    <p className="text-sm text-gray-500 max-w-sm mb-6">Tim HRD kami akan meninjau lamaran Anda segera. Pantau perkembangannya melalui Portal Pelamar.</p>
+
+                    {credentials && (
+                      <div className="w-full max-w-sm bg-slate-900 rounded-2xl p-6 text-left mt-2">
+                        <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">✅ Akun Portal Pelamar Dibuat</p>
+                        <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                          Gunakan akun ini untuk login ke <strong className="text-white">portal.ptpgp.co.id/applicant</strong> dan memantau status lamaran Anda secara real-time.
+                        </p>
+                        <div className="space-y-3">
+                          <div className="bg-slate-800 rounded-xl p-3">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Email</p>
+                            <p className="text-sm text-white font-mono font-bold">{credentials.email}</p>
+                          </div>
+                          <div className="bg-slate-800 rounded-xl p-3">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Password Sementara</p>
+                            <p className="text-sm text-emerald-400 font-mono font-bold tracking-wider">{credentials.password}</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-amber-400 mt-4 leading-relaxed">
+                          ⚠️ Simpan kredensial ini. Akun akan otomatis dihapus jika lamaran tidak lolos seleksi.
+                        </p>
+                        <a
+                          href="/login"
+                          className="mt-4 w-full block text-center py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors"
+                        >
+                          Login ke Portal Pelamar →
+                        </a>
+                      </div>
+                    )}
+
+                    {!credentials && (
+                      <a
+                        href="/login"
+                        className="mt-2 px-6 py-2.5 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors"
+                      >
+                        Login ke Portal Pelamar →
+                      </a>
+                    )}
                   </motion.div>
                 ) : (
                   <>

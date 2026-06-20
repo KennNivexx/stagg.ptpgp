@@ -38,6 +38,10 @@ export async function saveTraining(formData: FormData) {
   const status = (formData.get("status") as string || "").trim();
 
   if (!title || !date_start || !date_end) return { error: "Judul, tanggal mulai, dan tanggal selesai wajib diisi." };
+  const VALID_STATUSES = ["Planned", "Ongoing", "Completed", "Cancelled"];
+  if (status && !VALID_STATUSES.includes(status)) {
+    return { error: `Status tidak valid. Gunakan: ${VALID_STATUSES.join(", ")}.` };
+  }
   if (new Date(date_end) < new Date(date_start)) return { error: "Tanggal selesai harus setelah tanggal mulai." };
 
   const now = new Date().toISOString();
@@ -105,6 +109,53 @@ export async function removeEnrollment(id: string) {
   const { error } = await supabaseAdmin.from("training_enrollments").delete().eq("id", id);
   if (error) return { error: "Gagal menghapus peserta." };
 
+  revalidatePath("/hrd/learning");
+  return { success: true };
+}
+
+export async function requestTrainingEnrollment(employeeId: string, trainingId: string) {
+  const user = await requireRole("employee", "hrd", "superadmin");
+
+  if (!employeeId || !trainingId) return { error: "Data tidak lengkap." };
+
+  // Employee can only enroll themselves
+  if (user.role === "employee" && user.id !== employeeId) {
+    return { error: "Akses ditolak." };
+  }
+
+  // Check training exists and is open
+  const { data: training } = await supabaseAdmin
+    .from("trainings")
+    .select("id, status")
+    .eq("id", trainingId)
+    .maybeSingle();
+
+  if (!training) return { error: "Pelatihan tidak ditemukan." };
+  if (!["Planned", "Ongoing"].includes((training as { id: string; status: string }).status)) {
+    return { error: "Pelatihan tidak menerima pendaftaran." };
+  }
+
+  // Check not already enrolled
+  const { data: existing } = await supabaseAdmin
+    .from("training_enrollments")
+    .select("id")
+    .eq("training_id", trainingId)
+    .eq("employee_id", employeeId)
+    .maybeSingle();
+
+  if (existing) return { error: "Anda sudah terdaftar di pelatihan ini." };
+
+  const { error } = await supabaseAdmin.from("training_enrollments").insert({
+    id: "te-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+    training_id: trainingId,
+    employee_id: employeeId,
+    status: "Enrolled",
+    enrolled_at: new Date().toISOString(),
+  });
+
+  if (error) return { error: "Gagal mendaftar pelatihan." };
+
+  revalidatePath("/employee/training");
   revalidatePath("/hrd/learning");
   return { success: true };
 }
