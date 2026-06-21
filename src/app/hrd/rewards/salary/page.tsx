@@ -1,5 +1,6 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
-import { DollarSign, Plus, Building, Briefcase } from "lucide-react";
+import { supabaseAdmin } from "@/lib/supabase";
+import { DollarSign, Users, Briefcase } from "lucide-react";
+import SalaryForm from "./SalaryForm";
 
 export default async function SalaryPage() {
   const { data: employees } = await supabaseAdmin
@@ -10,166 +11,53 @@ export default async function SalaryPage() {
     .order("full_name")
     .limit(100);
 
-  const { data: positions } = await supabaseAdmin
-    .from("positions")
-    .select("name, level")
-    .order("level")
-    .order("name");
+  let salaryRecords: Array<Record<string, unknown>> = [];
+  const { data, error } = await supabaseAdmin
+    .from("salary_structures")
+    .select("*, employees(full_name, department, position)")
+    .order("created_at", { ascending: false });
+  if (!error || (error as unknown as Record<string, unknown>)?.code !== "42P01") {
+    salaryRecords = data || [];
+  }
 
-  const salaryData = (employees || []).map((emp: Record<string, unknown>) => ({
-    id: emp.id as string,
-    employee: emp.full_name as string,
-    department: emp.department as string,
-    position: emp.position as string,
-    basicSalary: 0,
-    transport: 0,
-    meal: 0,
-    housing: 0,
-    position_: 0,
-    total: 0,
-  }));
+  const totalPayroll = salaryRecords.reduce((s, r) => {
+    const base = Number(r.base_salary) || 0;
+    const allow = (Number(r.position_allowance) || 0) + (Number(r.transport_allowance) || 0) + (Number(r.meal_allowance) || 0);
+    const ded = (Number(r.bpjs_tk_deduction) || 0) + (Number(r.bpjs_kes_deduction) || 0);
+    return s + base + allow - ded;
+  }, 0);
 
-  const positionTemplates = (positions || []).map((p: Record<string, unknown>) => ({
-    position: p.name as string,
-    level: p.level as string,
-    basicSalary: 0,
-    allowances: [0, 0, 0, 0],
-    total: 0,
-  }));
+  function fmt(n: number) { return n.toLocaleString("id-ID"); }
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Komponen Gaji</h1>
-          <p className="text-sm text-gray-500">Struktur dan komponen gaji seluruh karyawan.</p>
-        </div>
-        <button className="px-4 py-2 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
-          <Plus size={14} /> Edit Komponen Gaji
-        </button>
+      <div>
+        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Struktur Gaji</h1>
+        <p className="text-sm text-gray-500">Kelola komponen dan struktur penggajian karyawan.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
-              <DollarSign size={16} className="text-[#CC0000]" />
-              Daftar Gaji Karyawan
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Rincian komponen gaji per karyawan</p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Karyawan</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gaji Pokok</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Transport</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Makan</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Perumahan</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Jabatan</th>
-                  <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {salaryData.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50/30 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-bold text-slate-800 text-[11px]">{s.employee}</p>
-                      <p className="text-[9px] text-slate-400">{s.position} - {s.department}</p>
-                    </td>
-                    <td className="px-4 py-3 text-[11px] text-slate-700">Rp {s.basicSalary.toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-3 text-[11px] text-slate-600">Rp {s.transport.toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-3 text-[11px] text-slate-600">Rp {s.meal.toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-3 text-[11px] text-slate-600">Rp {s.housing.toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-3 text-[11px] text-slate-600">Rp {s.position_.toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-3 text-[11px] font-bold text-slate-800 text-right">Rp {s.total.toLocaleString("id-ID")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <div className="p-6 border-b border-slate-100">
-              <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
-                <Building size={16} className="text-[#CC0000]" />
-                Template Gaji per Jabatan
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Struktur gaji standar berdasarkan posisi</p>
-            </div>
-
-            <div className="divide-y divide-slate-50">
-              {positionTemplates.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-400">Belum ada data jabatan.</div>
-              ) : (
-                positionTemplates.map((pt, idx) => (
-                  <div key={idx} className="p-5 hover:bg-slate-50/30 transition-colors">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-bold text-slate-800">{pt.position}</h4>
-                      <span className="text-[10px] text-slate-400">{pt.level || "-"}</span>
-                    </div>
-                    <div className="space-y-1.5 text-[10px]">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Gaji Pokok</span>
-                        <span className="font-semibold text-slate-700">Rp {pt.basicSalary.toLocaleString("id-ID")}</span>
-                      </div>
-                      {["Transport", "Makan", "Perumahan", "Jabatan"].map((label, i) => (
-                        <div key={label} className="flex justify-between">
-                          <span className="text-slate-400">Tunjangan {label}</span>
-                          <span className="text-slate-600">Rp {pt.allowances[i].toLocaleString("id-ID")}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <div className="p-6 border-b border-slate-100">
-              <h3 className="font-extrabold text-slate-800 text-sm">Edit Komponen Gaji</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Ubah struktur gaji karyawan</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Karyawan</label>
-                <select className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
-                  <option value="">Pilih Karyawan</option>
-                  {employees?.map((e: Record<string, unknown>) => (
-                    <option key={e.id as string} value={e.id as string}>{e.full_name as string}</option>
-                  ))}
-                </select>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { icon: Users, label: "Karyawan Terdaftar", value: salaryRecords.length, color: "bg-blue-50 text-blue-600" },
+          { icon: DollarSign, label: "Total Payroll", value: `Rp ${fmt(totalPayroll)}`, color: "bg-emerald-50 text-emerald-600" },
+          { icon: Briefcase, label: "Total Karyawan", value: (employees || []).length, color: "bg-purple-50 text-purple-600" },
+        ].map((s) => (
+          <div key={s.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl ${s.color}`}><s.icon size={18} /></div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">{s.label}</p>
+                <p className="text-lg font-extrabold text-slate-800">{s.value}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gaji Pokok</label>
-                  <input type="number" placeholder="0" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tunjangan Transport</label>
-                  <input type="number" placeholder="0" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tunjangan Makan</label>
-                  <input type="number" placeholder="0" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tunjangan Perumahan</label>
-                  <input type="number" placeholder="0" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]" />
-                </div>
-              </div>
-              <button className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors">
-                Simpan Komponen Gaji
-              </button>
             </div>
           </div>
-        </div>
+        ))}
       </div>
+
+      <SalaryForm
+        employees={(employees || []) as Array<{ id: string; full_name: string; department: string; position: string }>}
+        salaryRecords={salaryRecords}
+      />
     </div>
   );
 }

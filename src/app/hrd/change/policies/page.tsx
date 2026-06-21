@@ -1,5 +1,6 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
-import { FileText, Clock, CheckCircle2, History, Plus } from "lucide-react";
+import { supabaseAdmin } from "@/lib/supabase";
+import { FileText, Clock, CheckCircle2 } from "lucide-react";
+import PoliciesForm from "./PoliciesForm";
 
 export default async function PerubahanKebijakan() {
   const { data: managers } = await supabaseAdmin
@@ -10,6 +11,15 @@ export default async function PerubahanKebijakan() {
     .order("full_name")
     .limit(10);
 
+  let policies: Array<Record<string, unknown>> = [];
+  const { data, error } = await supabaseAdmin
+    .from("change_policies")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (!error || (error as unknown as Record<string, unknown>)?.code !== "42P01") {
+    policies = data || [];
+  }
+
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div>
@@ -17,115 +27,58 @@ export default async function PerubahanKebijakan() {
         <p className="text-sm text-gray-500">Kelola log perubahan kebijakan, draft kebijakan baru, dan riwayat versi.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><FileText size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Kebijakan Aktif</p>
-              <p className="text-xl font-extrabold text-slate-800">0</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { icon: FileText, label: "Kebijakan Aktif", value: policies.filter((p) => p.status === "Aktif").length, color: "bg-blue-50 text-blue-600" },
+          { icon: Clock, label: "Draft", value: policies.filter((p) => p.status === "Draft").length, color: "bg-amber-50 text-amber-600" },
+          { icon: CheckCircle2, label: "Total", value: policies.length, color: "bg-emerald-50 text-emerald-600" },
+        ].map((s) => (
+          <div key={s.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl ${s.color}`}><s.icon size={18} /></div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">{s.label}</p>
+                <p className="text-xl font-extrabold text-slate-800">{s.value}</p>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><Clock size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Draft</p>
-              <p className="text-xl font-extrabold text-slate-800">0</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl"><History size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Perubahan Bulan Ini</p>
-              <p className="text-xl font-extrabold text-slate-800">0</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><CheckCircle2 size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Menunggu Approval</p>
-              <p className="text-xl font-extrabold text-slate-800">0</p>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Log Perubahan Kebijakan</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Riwayat semua perubahan kebijakan</p>
+            <h3 className="font-extrabold text-slate-800 text-sm">Riwayat Kebijakan</h3>
           </div>
-
-          <div className="p-12 text-center">
-            <FileText size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada perubahan kebijakan tercatat.</p>
-            <p className="text-xs text-slate-400 mt-1">Gunakan formulir di samping untuk membuat draft kebijakan baru.</p>
-          </div>
+          {policies.length === 0 ? (
+            <div className="p-12 text-center">
+              <FileText size={40} className="mx-auto text-slate-300 mb-4" />
+              <p className="text-sm text-slate-500">Belum ada perubahan kebijakan.</p>
+              <p className="text-xs text-slate-400 mt-1">Gunakan formulir di samping untuk membuat draft kebijakan baru.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {policies.map((pol) => (
+                <div key={pol.id as string} className="p-6 hover:bg-slate-50/50 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-bold text-slate-800 text-xs">{pol.title as string} <span className="text-slate-400 font-normal">{pol.version as string}</span></p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{pol.description as string}</p>
+                      {!!pol.effective_date && <p className="text-[10px] text-slate-400 mt-1">Efektif: {pol.effective_date as string}</p>}
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold shrink-0 ml-4 ${
+                      pol.status === "Aktif" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                    }`}>{(pol.status as string) || "Draft"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Draft Kebijakan Baru</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Formulir pembuatan kebijakan</p>
-          </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Nama Kebijakan</label>
-              <input type="text" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none" placeholder="Masukkan nama kebijakan..." />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Versi</label>
-              <input type="text" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none" placeholder="v1.0" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Deskripsi Perubahan</label>
-              <textarea rows={3} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none" placeholder="Jelaskan perubahan yang diusulkan..." />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tanggal Efektif</label>
-              <input type="date" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Approver</label>
-              <select className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none">
-                <option value="">Pilih approver...</option>
-                {(managers || []).map((m: Record<string, unknown>) => (
-                  <option key={m.id as string} value={m.id as string}>{m.full_name as string}</option>
-                ))}
-              </select>
-            </div>
-            <button className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center justify-center gap-2">
-              <Plus size={14} /> Simpan Draft
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-        <div className="p-6 border-b border-slate-100">
-          <h3 className="font-extrabold text-slate-800 text-sm">Riwayat Versi Kebijakan</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Tracking perubahan versi kebijakan perusahaan</p>
-        </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 bg-slate-50 rounded-xl">
-            <div className="flex items-center gap-2 mb-2">
-              <History size={14} className="text-slate-400" />
-              <span className="text-xs font-bold text-slate-700">Belum ada riwayat versi</span>
-            </div>
-            <p className="text-[10px] text-slate-400">Versi kebijakan akan tercatat saat draft pertama disimpan.</p>
-          </div>
-          <div className="p-4 bg-slate-50 rounded-xl">
-            <p className="text-xs font-bold text-slate-700 mb-1">Sistem Versioning</p>
-            <p className="text-[10px] text-slate-400">Setiap perubahan akan disimpan sebagai versi baru (v1.0, v1.1, v2.0) dengan timestamp dan approver.</p>
-          </div>
-        </div>
+        <PoliciesForm
+          managers={(managers || []) as Array<{ id: string; full_name: string }>}
+        />
       </div>
     </div>
   );

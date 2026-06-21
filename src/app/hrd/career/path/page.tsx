@@ -1,5 +1,6 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
-import { TrendingUp, ArrowUp, Briefcase, Building, Plus, Edit } from "lucide-react";
+import { supabaseAdmin } from "@/lib/supabase";
+import { TrendingUp, ArrowUp, Briefcase, Building } from "lucide-react";
+import CareerPathForm from "./CareerPathForm";
 
 export default async function CareerPathPage() {
   const { data: departments } = await supabaseAdmin
@@ -49,9 +50,10 @@ export default async function CareerPathPage() {
           <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Jalur Karir</h1>
           <p className="text-sm text-gray-500">Visualisasi jenjang karir per departemen.</p>
         </div>
-        <button className="px-4 py-2 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
-          <Edit size={14} /> Edit Jalur Karir
-        </button>
+        <a href="#career-path-form"
+          className="px-4 py-2 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
+          Edit Jalur Karir
+        </a>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -89,20 +91,23 @@ export default async function CareerPathPage() {
       </div>
 
       <div className="space-y-6">
-        {careerPaths.map((cp) => (
+        {careerPaths.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
+            <Building size={40} className="mx-auto text-slate-300 mb-4" />
+            <p className="text-sm text-slate-500">Belum ada jalur karir yang terdefinisi.</p>
+            <p className="text-xs text-slate-400 mt-1">Tambahkan posisi di bagian Edit Jalur Karir di bawah.</p>
+          </div>
+        ) : careerPaths.map((cp) => (
           <div key={cp.department} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#CC0000]/10 text-[#CC0000] rounded-lg">
-                  <Building size={18} />
-                </div>
+                <div className="p-2 bg-[#CC0000]/10 text-[#CC0000] rounded-lg"><Building size={18} /></div>
                 <div>
                   <h3 className="text-lg font-extrabold text-slate-800">{cp.department}</h3>
                   <p className="text-xs text-slate-400">Jenjang karir departemen</p>
                 </div>
               </div>
             </div>
-
             <div className="p-6">
               <div className="flex items-start gap-4 overflow-x-auto pb-2">
                 {cp.levels.map((level, idx) => (
@@ -115,7 +120,7 @@ export default async function CareerPathPage() {
                       <div className="space-y-1.5">
                         {level.positions.map((pos) => (
                           <div key={pos} className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0" />
                             <span className="text-[10px] font-semibold">{pos}</span>
                           </div>
                         ))}
@@ -134,39 +139,7 @@ export default async function CareerPathPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-        <div className="p-6 border-b border-slate-100">
-          <h3 className="font-extrabold text-slate-800 text-sm">Edit Jalur Karir</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Tambah atau ubah jenjang karir</p>
-        </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Departemen</label>
-            <select className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
-              <option value="">Pilih Departemen</option>
-              {departments?.map((d: Record<string, unknown>) => (
-                <option key={d.name as string} value={d.name as string}>{d.name as string}</option>
-              )) || <option>Operasional</option>}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Level</label>
-            <select className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
-              <option value="">Pilih Level</option>
-              <option>Entry</option><option>Staff</option><option>Supervisor</option><option>Manager</option><option>Senior</option>
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nama Posisi</label>
-            <input type="text" placeholder="Nama jabatan" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]" />
-          </div>
-          <div className="md:col-span-3">
-            <button className="px-6 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
-              <Plus size={14} /> Tambah Posisi
-            </button>
-          </div>
-        </div>
-      </div>
+      <CareerPathForm departments={departments || []} />
     </div>
   );
 }
