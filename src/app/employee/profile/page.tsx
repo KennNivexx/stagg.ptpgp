@@ -152,7 +152,7 @@ export default function EmployeeProfile() {
                 <p className="text-xs text-slate-400 mt-0.5">Perbarui informasi kontak dan data pribadi Anda</p>
               </div>
 
-              <form onSubmit={handleSaveContact} className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <form key={`contact-${profile?.full_name ?? ""}-${profile?.phone ?? ""}-${profile?.address ?? ""}`} onSubmit={handleSaveContact} className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nama Lengkap</label>
                   <input
@@ -213,7 +213,7 @@ export default function EmployeeProfile() {
               <p className="text-xs text-slate-400 mt-0.5">Kelola data Kartu Keluarga dan informasi pribadi Anda.</p>
             </div>
 
-            <form onSubmit={handleSaveKK} className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <form key={`kk-${profile?.nik ?? ""}-${profile?.birth_date ?? ""}-${profile?.marital_status ?? ""}`} onSubmit={handleSaveKK} className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">NIK</label>
                 <input

@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, assessEmployee } from "@/app/actions/skills";
-import { getCookie } from "@/lib/cookie-client";
 import PanduanLevel from "@/components/PanduanLevel";
-import { EMAIL_TO_DEPT } from "@/lib/dept-map";
+import { getMyDept } from "@/app/actions/department";
 
 interface Employee {
   id: string;
@@ -93,12 +92,14 @@ export default function DeptCompetencyPage() {
   }, []);
 
   useEffect(() => {
-    const email = getCookie("user_email");
-    const department = EMAIL_TO_DEPT[email] || "";
-    if (department) {
-      setDeptName(department);
-      loadData(department);
-    }
+    getMyDept().then(({ dept }) => {
+      if (dept) {
+        setDeptName(dept);
+        loadData(dept);
+      } else {
+        setLoading(false);
+      }
+    }).catch(() => setLoading(false));
   }, [loadData]);
 
   const handleLevelChange = (employeeId: string, skillId: string, value: number) => {

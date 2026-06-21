@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 
-const uid = () => "jd-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+const uid = () => "jd-" + crypto.randomUUID();
 
 interface JobDesc {
   id: string; position: string; department: string;

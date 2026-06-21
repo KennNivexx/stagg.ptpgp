@@ -4,12 +4,12 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 
-const uid = () => Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+const uid = () => crypto.randomUUID();
 
 async function uploadPhoto(base64: string, employeeId: string): Promise<string | null> {
   try {
     const buffer = Buffer.from(base64.split(",")[1], "base64");
-    const filename = `attendance/${employeeId}/${Date.now()}.jpg`;
+    const filename = `attendance/${employeeId}/${crypto.randomUUID()}.jpg`;
     const { error } = await supabaseAdmin.storage
       .from("attendance-photos")
       .upload(filename, buffer, { contentType: "image/jpeg", upsert: true });

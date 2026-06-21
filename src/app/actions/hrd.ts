@@ -585,7 +585,7 @@ export async function submitApplication(formData: FormData) {
     return { error: "Anda sudah pernah melamar untuk posisi ini." };
   }
 
-  const applicationId = "app-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+  const applicationId = "app-" + crypto.randomUUID();
 
   const { error } = await supabaseAdmin
     .from("applications")
@@ -618,9 +618,13 @@ export async function submitApplication(formData: FormData) {
 
     if (!existingUser) {
       // Generate a readable temp password: 3 words style e.g. "Lamar2026!"
-      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      const numArr = new Uint16Array(1);
+      crypto.getRandomValues(numArr);
+      const randomNum = 1000 + (numArr[0] % 9000);
       const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-      const suffix = chars[Math.floor(Math.random() * chars.length)];
+      const charArr = new Uint8Array(1);
+      crypto.getRandomValues(charArr);
+      const suffix = chars[charArr[0] % chars.length];
       tempPassword = `Lamar${randomNum}${suffix}`;
 
       const passwordHash = hashPassword(tempPassword);

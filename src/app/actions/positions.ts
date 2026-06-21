@@ -15,7 +15,7 @@ interface Position {
   updated_at?: string;
 }
 
-function uid() { return "pos-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8); }
+function uid() { return "pos-" + crypto.randomUUID(); }
 
 export async function getPositions(): Promise<Position[]> {
   await requireRole("hrd", "superadmin");

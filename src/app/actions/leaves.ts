@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 
-const uid = () => Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+const uid = () => crypto.randomUUID();
 
 export async function submitLeave(formData: FormData) {
   const user = await requireRole("hrd", "superadmin", "employee");

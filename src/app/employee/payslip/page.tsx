@@ -33,6 +33,8 @@ export default async function EmployeePayslip() {
     .limit(12) : { data: [] };
 
   const monthNames = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const currentYear = new Date().getFullYear();
+  const thisYearPayslips = (payslips || []).filter((s: Record<string, unknown>) => Number(s.year) === currentYear);
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -111,17 +113,17 @@ export default async function EmployeePayslip() {
           </div>
 
           <div className="bg-gradient-to-br from-[#0F172A] to-slate-800 rounded-2xl p-6 text-white shadow-sm">
-            <h4 className="text-sm font-bold mb-2">Ringkasan Tahun Ini</h4>
+            <h4 className="text-sm font-bold mb-2">Ringkasan {currentYear}</h4>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-400">Total Diterima</span>
                 <span className="font-bold">
-                  Rp {(payslips?.reduce((sum: number, s: Record<string, unknown>) => sum + (Number(s.net_salary) || 0), 0) || 0).toLocaleString("id-ID")}
+                  Rp {thisYearPayslips.reduce((sum: number, s: Record<string, unknown>) => sum + (Number(s.net_salary) || 0), 0).toLocaleString("id-ID")}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Slip Tersedia</span>
-                <span className="font-bold">{payslips?.length || 0} bulan</span>
+                <span className="text-slate-400">Slip {currentYear}</span>
+                <span className="font-bold">{thisYearPayslips.length} bulan</span>
               </div>
             </div>
           </div>

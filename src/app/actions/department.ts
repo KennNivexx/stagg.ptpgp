@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 
-const uid = () => "dept-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+const uid = () => "dept-" + crypto.randomUUID();
 
 interface EmployeeRow {
   id: string; full_name: string; email: string; department: string;

@@ -44,7 +44,7 @@ function isDescendantOf(code: string, ancestor: string): boolean {
   return true;
 }
 
-const uid = () => "org-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+const uid = () => "org-" + crypto.randomUUID();
 
 /* ─────── tree builder ─────── */
 

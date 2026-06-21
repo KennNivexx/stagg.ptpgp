@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { requestTrainingEnrollment } from "@/app/actions/trainings";
 
 interface Training {
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function TrainingRequestButton({ employeeId, availableTrainings }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,6 +35,7 @@ export default function TrainingRequestButton({ employeeId, availableTrainings }
       setMsg({ text: "Permohonan berhasil dikirim!", ok: true });
       setOpen(false);
       setSelectedId("");
+      router.refresh();
       setTimeout(() => setMsg(null), 4000);
     }
   };

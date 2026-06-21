@@ -1,10 +1,16 @@
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
 import { Target, TrendingUp, Award, Star } from "lucide-react";
+import { requireAuth } from "@/lib/auth-guard";
+import { redirect } from "next/navigation";
 
 export default async function EmployeeKPI() {
-  const cookieStore = await cookies();
-  const userEmail = cookieStore.get("user_email")?.value || "";
+  let userEmail: string;
+  try {
+    const auth = await requireAuth();
+    userEmail = auth.email;
+  } catch {
+    redirect("/login");
+  }
 
   const { data: employee } = await supabaseAdmin
     .from("employees")

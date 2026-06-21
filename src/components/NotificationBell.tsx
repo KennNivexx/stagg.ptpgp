@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Bell, Briefcase, Calendar, FileText, UserPlus, AlertTriangle, Clock, Wallet, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { getCookie } from "@/lib/cookie-client";
 
 interface Notification {
   id: string;
@@ -26,11 +25,46 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   resignation: <FileText size={14} className="text-orange-500" />,
 };
 
+const READ_KEY = (role: string) => `notif_read_${role}`;
+
+function getReadIds(role: string): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(READ_KEY(role)) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveReadIds(role: string, ids: string[]) {
+  try {
+    localStorage.setItem(READ_KEY(role), JSON.stringify(ids));
+  } catch {}
+}
+
 export default function NotificationBell({ role }: { role: "hrd" | "employee" }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+
+  const fetchNotifications = useCallback(() => {
+    fetch("/api/notifications?role=" + role)
+      .then((r) => r.json())
+      .then((data) => {
+        const fetched: Notification[] = data.notifications || [];
+        setNotifications(fetched);
+        const readIds = getReadIds(role);
+        const unreadCount = fetched.filter((n) => !readIds.includes(n.id)).length;
+        setUnread(unreadCount);
+      })
+      .catch(() => {});
+  }, [role]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -40,15 +74,12 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    fetch("/api/notifications?role=" + role)
-      .then((r) => r.json())
-      .then((data) => {
-        setNotifications(data.notifications || []);
-        setUnread(data.notifications?.length || 0);
-      })
-      .catch(() => {});
-  }, [role]);
+  const markAllRead = () => {
+    const allIds = notifications.map((n) => n.id);
+    saveReadIds(role, allIds);
+    setUnread(0);
+    setOpen(false);
+  };
 
   const priorityColor = (p: string) =>
     p === "high" ? "bg-red-500" : p === "medium" ? "bg-amber-500" : "bg-blue-400";
@@ -115,7 +146,7 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
 
           {notifications.length > 0 && (
             <div className="p-3 border-t border-slate-100 bg-slate-50/50 text-center">
-              <button onClick={() => { setUnread(0); setOpen(false); }} className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors">
+              <button onClick={markAllRead} className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors">
                 Tandai semua sudah dibaca
               </button>
             </div>

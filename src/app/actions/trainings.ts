@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 
-const uid = () => "tr-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+const uid = () => "tr-" + crypto.randomUUID();
 
 export async function getTrainings() {
   await requireRole("hrd", "superadmin", "department_manager");
@@ -146,7 +146,7 @@ export async function requestTrainingEnrollment(employeeId: string, trainingId: 
   if (existing) return { error: "Anda sudah terdaftar di pelatihan ini." };
 
   const { error } = await supabaseAdmin.from("training_enrollments").insert({
-    id: "te-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+    id: "te-" + crypto.randomUUID(),
     training_id: trainingId,
     employee_id: employeeId,
     status: "Enrolled",

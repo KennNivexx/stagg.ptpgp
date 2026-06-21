@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { TrendingUp, Target, ArrowUp, Briefcase, GraduationCap, Calendar, CheckCircle } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-guard";
+import { ApplyButton, ConsultationButton } from "./CareerActionButtons";
 
 export default async function EmployeeCareer() {
   let userEmail: string;
@@ -45,6 +46,7 @@ export default async function EmployeeCareer() {
     department: j.department as string,
     requirements: [j.education, j.experience].filter(Boolean).join(", ") || "Lihat detail lowongan",
     status: "Tersedia",
+    jobDept: j.department as string,
   }));
 
   if (availablePromotions.length === 0) {
@@ -55,6 +57,7 @@ export default async function EmployeeCareer() {
       department: employee?.department || "",
       requirements: "Belum ada lowongan terbuka saat ini",
       status: "Terkunci",
+      jobDept: employee?.department || "",
     });
   }
 
@@ -217,9 +220,7 @@ export default async function EmployeeCareer() {
                   </div>
                   <p className="text-[10px] text-slate-500 mb-2">{promo.requirements}</p>
                   {promo.status === "Tersedia" ? (
-                    <button className="px-3 py-1 text-[9px] font-bold bg-[#CC0000] text-white rounded-lg hover:bg-[#aa0000] transition-colors">
-                      Lamar Posisi
-                    </button>
+                    <ApplyButton jobTitle={promo.position} jobDept={promo.jobDept} />
                   ) : (
                     <button className="px-3 py-1 text-[9px] font-bold bg-slate-100 text-slate-400 rounded-lg cursor-not-allowed" disabled>
                       Terkunci
@@ -238,9 +239,7 @@ export default async function EmployeeCareer() {
             <p className="text-[11px] text-slate-300 leading-relaxed mb-4">
               Diskusikan rencana karir Anda dengan HRD atau mentor untuk arahan pengembangan yang lebih terstruktur.
             </p>
-            <button className="w-full px-4 py-2 bg-white text-slate-800 text-[10px] font-bold rounded-xl hover:bg-slate-100 transition-colors">
-              Jadwalkan Konsultasi
-            </button>
+            <ConsultationButton />
           </div>
         </div>
       </div>

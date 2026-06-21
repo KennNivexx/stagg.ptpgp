@@ -1,10 +1,16 @@
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
-import { BookOpen, FileText, Download, Search, Shield, File, Clipboard } from "lucide-react";
+import { BookOpen, FileText, Download, Shield, File, Clipboard } from "lucide-react";
+import { requireAuth } from "@/lib/auth-guard";
+import { redirect } from "next/navigation";
 
 export default async function EmployeeDocuments() {
-  const cookieStore = await cookies();
-  const userEmail = cookieStore.get("user_email")?.value || "";
+  let userEmail: string;
+  try {
+    const auth = await requireAuth();
+    userEmail = auth.email;
+  } catch {
+    redirect("/login");
+  }
 
   const { data: employee } = await supabaseAdmin
     .from("employees")

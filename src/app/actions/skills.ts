@@ -93,7 +93,7 @@ export async function assessEmployee(
         .eq("id", (existing as { id: string }).id);
     } else {
       await supabaseAdmin.from("employee_skills").insert({
-        id: "es-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+        id: "es-" + crypto.randomUUID(),
         employee_id: employeeId,
         skill_id: sk.skill_id,
         current_level: sk.current_level,
@@ -141,7 +141,7 @@ export async function assessEmployee(
 
             if (!enrolled) {
               await supabaseAdmin.from("training_enrollments").insert({
-                id: "te-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+                id: "te-" + crypto.randomUUID(),
                 training_id: trainingId,
                 employee_id: employeeId,
                 status: "Enrolled",
@@ -159,7 +159,7 @@ export async function assessEmployee(
   return { success: true };
 }
 
-const suid = () => "sk-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+const suid = () => "sk-" + crypto.randomUUID();
 
 export async function saveSkill(formData: FormData) {
   await requireRole("hrd", "superadmin");

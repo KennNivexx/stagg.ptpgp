@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Clock, CheckCircle2, XCircle, Users, Filter } from "lucide-react";
-import { getDeptData } from "@/app/actions/department";
-import { getCookie } from "@/lib/cookie-client";
-import { EMAIL_TO_DEPT } from "@/lib/dept-map";
+import { getDeptData, getMyDept } from "@/app/actions/department";
 
 interface Request {
   id: string; department: string; position: string;
@@ -31,10 +29,14 @@ export default function DeptRequests() {
   };
 
   useEffect(() => {
-    const email = getCookie("user_email");
-    const department = EMAIL_TO_DEPT[email] || "";
-    setDeptName(department);
-    if (department) loadData(department);
+    getMyDept().then(({ dept }) => {
+      if (dept) {
+        setDeptName(dept);
+        loadData(dept);
+      } else {
+        setLoading(false);
+      }
+    }).catch(() => setLoading(false));
   }, []);
 
   const filtered = statusFilter === "Semua"
