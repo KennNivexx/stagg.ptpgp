@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useRouter } from "next/navigation";
 import {
   Users, FileText, Printer, Search, Building2, Activity,
@@ -27,11 +28,7 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
   const [exporting, setExporting] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  useEffect(() => {
-    if (modal) return;
-    const id = setInterval(() => { router.refresh(); }, 5000);
-    return () => clearInterval(id);
-  }, [modal, router]);
+  useAutoRefresh(() => { router.refresh(); });
 
   const handleExportPDF = async () => {
     if (!contentRef.current || exporting) return;

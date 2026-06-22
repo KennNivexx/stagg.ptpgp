@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FileText, Plus, Award, Briefcase, Trash2, Edit3, X, GraduationCap, Wrench, ShieldCheck, AlertTriangle } from "lucide-react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getJobSpecs, saveJobSpec, deleteJobSpec } from "@/app/actions/jobspec";
 
 interface JobSpec {
@@ -29,6 +30,8 @@ export default function JobSpecClient({ departments, positions }: Props) {
   const [fLoading, setFLoading] = useState(false);
 
   useEffect(() => { getJobSpecs().then(setData).finally(() => setLoading(false)); }, []);
+
+  useAutoRefresh(() => { getJobSpecs().then(setData); });
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 

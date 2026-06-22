@@ -21,7 +21,7 @@ type EmployeeSkill = {
 };
 
 type PositionSkill = {
-  position: string;
+  position_code: string;
   skill_id: string;
   required_level: number;
 };
@@ -54,7 +54,7 @@ export default async function GapAnalysisPage() {
       .select("employee_id, skill_id, current_level"),
     supabaseAdmin
       .from("position_skills")
-      .select("position, skill_id, required_level"),
+      .select("position_code, skill_id, required_level"),
   ]);
 
   const employees: Employee[] = (empRes.data as Employee[]) || [];
@@ -72,8 +72,8 @@ export default async function GapAnalysisPage() {
 
   const posSkillMap: Record<string, Record<string, number>> = {};
   for (const ps of positionSkills) {
-    if (!posSkillMap[ps.position]) posSkillMap[ps.position] = {};
-    posSkillMap[ps.position][ps.skill_id] = ps.required_level;
+    if (!posSkillMap[ps.position_code]) posSkillMap[ps.position_code] = {};
+    posSkillMap[ps.position_code][ps.skill_id] = ps.required_level;
   }
 
   const gapRows: GapRow[] = [];

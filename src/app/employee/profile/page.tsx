@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { User, Mail, Phone, Building, Briefcase, Calendar, ShieldCheck, Save, MapPin, IdCard, Heart, Droplet, Users2, GraduationCap, Siren } from "lucide-react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getCurrentEmployee } from "@/app/actions/employee";
 import { saveEmployeeProfile, saveContactProfile } from "@/app/actions/profile";
 
@@ -28,6 +29,8 @@ export default function EmployeeProfile() {
       setLoading(false);
     });
   }, []);
+
+  useAutoRefresh(() => { getCurrentEmployee().then((emp) => setProfile(emp as Employee)); });
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 

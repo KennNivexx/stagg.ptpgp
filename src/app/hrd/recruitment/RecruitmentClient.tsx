@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import {
   Briefcase, Users, CheckCircle2, XCircle, UserPlus, Search,
   AlertTriangle, X,
@@ -40,6 +41,12 @@ export default function RecruitmentClient({ totalEmployees }: Props) {
       .then((data) => { setPostings(data as JobPosting[]); setLoading(false); })
       .catch(() => { showToast("error", "Gagal memuat data lowongan."); setLoading(false); });
   }, []);
+
+  useAutoRefresh(() => {
+    getJobPostings()
+      .then((data) => { setPostings(data as JobPosting[]); setLoading(false); })
+      .catch(() => { showToast("error", "Gagal memuat data lowongan."); setLoading(false); });
+  });
 
   const departments = useMemo(() => {
     const set = new Set<string>();

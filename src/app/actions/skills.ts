@@ -156,6 +156,9 @@ export async function assessEmployee(
 
   revalidatePath("/department/competency");
   revalidatePath("/hrd/learning");
+  revalidatePath("/hrd/competency/assessment");
+  revalidatePath("/hrd/competency/skillmatrix");
+  revalidatePath("/hrd/competency/gap");
   return { success: true };
 }
 

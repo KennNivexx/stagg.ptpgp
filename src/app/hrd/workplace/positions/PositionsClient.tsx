@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import {
   Network, Plus, Users, Award, Briefcase, Edit3, Trash2, X,
   AlertTriangle, Search, CheckCircle2, RefreshCw
@@ -68,6 +69,8 @@ export default function PositionsClient({ departments, employees }: Props) {
   useEffect(() => {
     getPositions().then(data => { setPositions(data); setLoading(false); });
   }, []);
+
+  useAutoRefresh(() => { getPositions().then(data => { setPositions(data); setLoading(false); }); });
 
   const showToast = (type: "error" | "success", msg: string) => {
     setToast({ type, msg });

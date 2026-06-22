@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { Plus, Pencil, Trash2, Award, Lightbulb, Save, X, AlertTriangle, CheckCircle2, Layers, Search, BookOpen } from "lucide-react";
 import {
   saveSkill, deleteSkill, saveRequiredLevel, getSkills, getPositionSkills,
@@ -85,6 +86,8 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     setPosSkills(ps as PositionSkill[]);
     router.refresh();
   };
+
+  useAutoRefresh(() => { refreshData(); });
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -170,7 +173,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     const level = levelMap[skillId] ?? 0;
     setSavingLevelIds((prev) => new Set(prev).add(skillId));
     const fd = new FormData();
-    fd.append("position", selectedPosition);
+    fd.append("position_code", selectedPosition);
     fd.append("skill_id", skillId);
     fd.append("required_level", String(level));
     const r = await saveRequiredLevel(fd);
@@ -187,7 +190,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   const doAddSkillToPos = async () => {
     if (!addSkillForm.skill_id) return;
     const fd = new FormData();
-    fd.append("position", selectedPosition);
+    fd.append("position_code", selectedPosition);
     fd.append("skill_id", addSkillForm.skill_id);
     fd.append("required_level", String(addSkillForm.level));
     const r = await saveRequiredLevel(fd);

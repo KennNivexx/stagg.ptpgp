@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import CameraCapture from "@/components/CameraCapture";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getTodayAttendance, clockIn, clockOut } from "@/app/actions/attendance";
 import { getCookie } from "@/lib/cookie-client";
 import { Calendar, Clock, CheckCircle2 } from "lucide-react";
@@ -22,6 +23,8 @@ export default function EmployeeAttendancePage() {
   useEffect(() => {
     fetchToday();
   }, [fetchToday]);
+
+  useAutoRefresh(() => { fetchToday(); });
 
   const handleClockIn = useCallback(
     async (photoBase64: string, location: { lat: number; lng: number; name: string }) => {

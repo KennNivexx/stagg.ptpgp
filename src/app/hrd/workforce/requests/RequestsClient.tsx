@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { FileText, Clock, CheckCircle2, XCircle, Users, Trash2, Plus } from "lucide-react";
 import { getRequests, updateRequestStatus, deleteRequest } from "@/app/actions/requests";
 
@@ -18,6 +19,8 @@ export default function RequestsClient({ departments: _departments, positions: _
   const [toast, setToast] = useState("");
 
   useEffect(() => { getRequests().then(setData).finally(() => setLoading(false)); }, []);
+
+  useAutoRefresh(() => { getRequests().then(setData); });
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 

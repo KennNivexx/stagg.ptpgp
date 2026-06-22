@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Plus, X, BookOpen } from "lucide-react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, assessEmployee } from "@/app/actions/skills";
 import { addDeptSkill, getAllSkillGuidesMap, type LevelGuide } from "@/app/actions/competency-guides";
 import { getMyDept } from "@/app/actions/department";
@@ -347,6 +348,8 @@ export default function DeptCompetencyPage() {
       else setLoading(false);
     }).catch(() => setLoading(false));
   }, [loadData]);
+
+  useAutoRefresh(() => { if (deptName) loadData(deptName); });
 
   // Ubah level via tombol +/- → tampilkan popup panduan
   const handleLevelStep = (employeeId: string, skill: Skill, delta: number) => {

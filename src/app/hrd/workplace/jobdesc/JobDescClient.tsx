@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FileText, Plus, Award, Trash2, Edit3, X, AlertTriangle } from "lucide-react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getJobDescs, saveJobDesc, deleteJobDesc } from "@/app/actions/jobdesc";
 
 interface JobDesc {
@@ -27,6 +28,8 @@ export default function JobDescClient({ departments, positions }: Props) {
   const [fLoading, setFLoading] = useState(false);
 
   useEffect(() => { getJobDescs().then(setData).finally(() => setLoading(false)); }, []);
+
+  useAutoRefresh(() => { getJobDescs().then(setData); });
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
