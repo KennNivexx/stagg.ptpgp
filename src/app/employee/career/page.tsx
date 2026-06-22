@@ -50,7 +50,7 @@ export default async function EmployeeCareer() {
       position: p.name,
       department: p.department,
       requirements: `Level ${p.level} — Kode: ${p.code}`,
-      status: "Tersedia" as const,
+      status: "Tersedia",
       jobDept: p.department,
     }));
 
@@ -62,7 +62,7 @@ export default async function EmployeeCareer() {
         : `${employee?.position || "Posisi Anda"} — ${employee?.department || ""}`,
       department: employee?.department || "",
       requirements: "Belum ada jabatan level lebih tinggi di departemen ini",
-      status: "Terkunci" as const,
+      status: "Terkunci",
       jobDept: employee?.department || "",
     });
   }
