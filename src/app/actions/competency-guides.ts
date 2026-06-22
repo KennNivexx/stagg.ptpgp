@@ -19,7 +19,7 @@ export async function saveAllSkillLevelGuides(formData: FormData) {
   await requireRole("hrd", "superadmin");
 
   const skill_id = (formData.get("skill_id") as string || "").trim();
-  const department = (formData.get("department") as string || "").trim();
+  const department = "";
 
   if (!skill_id) return { error: "Kompetensi wajib dipilih." };
 
@@ -65,20 +65,17 @@ export async function getSkillLevelGuides(skillId: string, department?: string):
 }
 
 // Returns guides indexed by level for easy lookup
-export async function getSkillGuidesMap(skillId: string, department = ""): Promise<Record<number, LevelGuide>> {
+export async function getSkillGuidesMap(skillId: string): Promise<Record<number, LevelGuide>> {
   await requireRole("hrd", "superadmin", "department_manager", "employee");
 
   const { data } = await supabaseAdmin
     .from("skill_level_guides")
     .select("*")
     .eq("skill_id", skillId)
-    .or(`department.eq.${department},department.eq.`)
-    .order("department", { ascending: false }) // dept-specific first
     .order("level");
 
   const map: Record<number, LevelGuide> = {};
   for (const row of (data || []) as LevelGuide[]) {
-    // dept-specific overrides general; since ordered desc by dept, first hit wins
     if (!map[row.level]) map[row.level] = row;
   }
   return map;
@@ -87,8 +84,7 @@ export async function getSkillGuidesMap(skillId: string, department = ""): Promi
 // Ambil semua panduan untuk banyak skill sekaligus (efisien untuk halaman dept)
 // Return: { [skill_id]: { [level]: LevelGuide } }
 export async function getAllSkillGuidesMap(
-  skillIds: string[],
-  department = ""
+  skillIds: string[]
 ): Promise<Record<string, Record<number, LevelGuide>>> {
   if (skillIds.length === 0) return {};
 
@@ -96,14 +92,11 @@ export async function getAllSkillGuidesMap(
     .from("skill_level_guides")
     .select("*")
     .in("skill_id", skillIds)
-    .or(`department.eq.${department},department.eq.`)
-    .order("department", { ascending: false }) // dept-specific first
     .order("level");
 
   const map: Record<string, Record<number, LevelGuide>> = {};
   for (const row of (data || []) as LevelGuide[]) {
     if (!map[row.skill_id]) map[row.skill_id] = {};
-    // dept-specific overrides general (desc order = dept-specific first)
     if (!map[row.skill_id][row.level]) map[row.skill_id][row.level] = row;
   }
   return map;

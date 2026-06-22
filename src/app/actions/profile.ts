@@ -109,3 +109,55 @@ export async function saveContactProfile(formData: FormData) {
   revalidatePath("/employee/profile");
   return { success: true };
 }
+
+export async function saveBasicProfile(formData: FormData) {
+  const user = await requireRole("employee", "hrd", "superadmin");
+
+  const employeeId = formData.get("employeeId") as string;
+  if (!employeeId) return { error: "ID karyawan tidak ditemukan." };
+
+  if (user.role === "employee") {
+    const { data: emp } = await supabaseAdmin
+      .from("employees")
+      .select("id")
+      .eq("id", employeeId)
+      .eq("email", user.email)
+      .maybeSingle();
+    if (!emp) return { error: "Akses ditolak: data bukan milik Anda." };
+  }
+
+  const full_name = (formData.get("full_name") as string || "").trim();
+  const email = (formData.get("email") as string || "").trim();
+  const phone = (formData.get("phone") as string || "").trim();
+  const address = (formData.get("address") as string || "").trim();
+  const department = (formData.get("department") as string || "").trim();
+  const position = (formData.get("position") as string || "").trim();
+
+  if (!full_name) return { error: "Nama lengkap wajib diisi." };
+  if (!email) return { error: "Email wajib diisi." };
+
+  const { data: current } = await supabaseAdmin
+    .from("employees")
+    .select("address")
+    .eq("id", employeeId)
+    .single();
+
+  let storedAddress = address;
+  try {
+    const parsed = JSON.parse(current?.address as string || "{}");
+    if (parsed.__auth__) {
+      parsed.home_address = address;
+      storedAddress = JSON.stringify(parsed);
+    }
+  } catch { /* address is plain text, safe to overwrite */ }
+
+  const { error } = await supabaseAdmin
+    .from("employees")
+    .update({ full_name, email, phone, address: storedAddress, department, position })
+    .eq("id", employeeId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/employee/profile");
+  return { success: true };
+}

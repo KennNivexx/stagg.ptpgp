@@ -22,41 +22,47 @@ export default async function EmployeeCareer() {
     .limit(1)
     .single();
 
-  const CAREER_LEVELS = ["Staff", "Senior Staff", "Supervisor", "Manager", "Senior Manager"];
-
-  // Determine current career level based on position keyword
-  const positionStr = (employee?.position || "").toLowerCase();
-  const currentLevelIdx = positionStr.includes("senior manager") ? 4
-    : positionStr.includes("manager") ? 3
-    : positionStr.includes("supervisor") || positionStr.includes("spv") ? 2
-    : positionStr.includes("senior") ? 1
-    : 0;
-
-  // Fetch open job postings in same department for promotion opportunities
-  const { data: openJobs } = await supabaseAdmin
-    .from("job_postings")
-    .select("id, position, department, requirements, education, experience")
-    .eq("status", "Open")
+  // Fetch department positions from database for career path and promotion opportunities
+  const { data: deptPositions } = await supabaseAdmin
+    .from("positions")
+    .select("id, name, department, level, code")
     .eq("department", employee?.department || "")
-    .limit(3);
+    .order("level", { ascending: true });
 
-  const availablePromotions = (openJobs || []).map((j: Record<string, unknown>, idx: number) => ({
-    id: idx + 1,
-    position: j.position as string,
-    department: j.department as string,
-    requirements: [j.education, j.experience].filter(Boolean).join(", ") || "Lihat detail lowongan",
-    status: "Tersedia",
-    jobDept: j.department as string,
-  }));
+  const posList = (deptPositions || []) as { id: string; name: string; department: string; level: string; code: string }[];
+
+  function parseLevel(level: string): number {
+    const parts = level.split(".");
+    return parseFloat(parts.slice(0, 2).join(".")) || 0;
+  }
+
+  const currentPos = posList.find((p) => p.name === employee?.position);
+  const currentLevel = currentPos?.level || "";
+
+  const myCareerPath = posList.map((p) => p.name);
+
+  const currentLevelIdx = posList.findIndex((p) => p.name === employee?.position);
+
+  const availablePromotions = posList
+    .filter((p) => parseLevel(p.level) > parseLevel(currentLevel))
+    .map((p, idx) => ({
+      id: idx + 1,
+      position: p.name,
+      department: p.department,
+      requirements: `Level ${p.level} — Kode: ${p.code}`,
+      status: "Tersedia" as const,
+      jobDept: p.department,
+    }));
 
   if (availablePromotions.length === 0) {
-    const nextLevel = CAREER_LEVELS[Math.min(currentLevelIdx + 1, CAREER_LEVELS.length - 1)];
     availablePromotions.push({
       id: 1,
-      position: `${nextLevel} — ${employee?.department || "Departemen Anda"}`,
+      position: posList.length > 0
+        ? `${posList[posList.length - 1].name} — ${employee?.department || "Departemen Anda"}`
+        : `${employee?.position || "Posisi Anda"} — ${employee?.department || ""}`,
       department: employee?.department || "",
-      requirements: "Belum ada lowongan terbuka saat ini",
-      status: "Terkunci",
+      requirements: "Belum ada jabatan level lebih tinggi di departemen ini",
+      status: "Terkunci" as const,
       jobDept: employee?.department || "",
     });
   }
@@ -70,22 +76,24 @@ export default async function EmployeeCareer() {
     .limit(5);
 
   // Calculate tenure in months for progress
-  const joinDate = employee?.join_date ? new Date(employee.join_date as string) : null;
-  const tenureMonths = joinDate ? Math.floor((Date.now() - joinDate.getTime()) / (1000 * 60 * 60 * 24 * 30)) : 0;
+  const joinDateVal = employee?.join_date ? new Date(employee.join_date as string) : null;
+  const tenureMonths = joinDateVal ? Math.floor((Date.now() - joinDateVal.getTime()) / (1000 * 60 * 60 * 24 * 30)) : 0;
   const progressPct = Math.min(Math.round((tenureMonths / 24) * 100), 100);
 
+  const nextCareerPos = currentLevelIdx >= 0 && currentLevelIdx < posList.length - 1
+    ? posList[currentLevelIdx + 1].name
+    : null;
+
   const myDevelopmentPlan = {
-    goals: currentLevelIdx < CAREER_LEVELS.length - 1
-      ? `Mencapai posisi ${CAREER_LEVELS[currentLevelIdx + 1]} dalam departemen ${employee?.department || ""}`
+    goals: nextCareerPos
+      ? `Mencapai posisi ${nextCareerPos} dalam departemen ${employee?.department || ""}`
       : "Mempertahankan dan mengembangkan keahlian di posisi saat ini",
     trainings: (activeTrainings || []).map((t: Record<string, unknown>) => t.title as string),
-    timeline: joinDate
-      ? `${joinDate.toLocaleDateString("id-ID", { month: "short", year: "numeric" })} — ${new Date(joinDate.getTime() + 2 * 365 * 24 * 60 * 60 * 1000).toLocaleDateString("id-ID", { month: "short", year: "numeric" })}`
+    timeline: joinDateVal
+      ? `${joinDateVal.toLocaleDateString("id-ID", { month: "short", year: "numeric" })} — ${new Date(joinDateVal.getTime() + 2 * 365 * 24 * 60 * 60 * 1000).toLocaleDateString("id-ID", { month: "short", year: "numeric" })}`
       : "-",
     progress: progressPct,
   };
-
-  const myCareerPath = CAREER_LEVELS;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">

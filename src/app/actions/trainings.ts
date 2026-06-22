@@ -47,12 +47,12 @@ export async function saveTraining(formData: FormData) {
   const now = new Date().toISOString();
   if (id) {
     const { error } = await supabaseAdmin.from("trainings").update({
-      title, skill_id: skill_id || null, description, date_start, date_end, status, updated_at: now,
+      title, skill_id: skill_id || null, description, date_start, date_end, status
     }).eq("id", id);
     if (error) return { error: "Gagal mengupdate pelatihan." };
   } else {
     const { error } = await supabaseAdmin.from("trainings").insert({
-      id: uid(), title, skill_id: skill_id || null, description, date_start, date_end, status, created_at: now, updated_at: now,
+      id: uid(), title, skill_id: skill_id || null, description, date_start, date_end, status, created_at: now,
     });
     if (error) return { error: "Gagal menambah pelatihan." };
   }

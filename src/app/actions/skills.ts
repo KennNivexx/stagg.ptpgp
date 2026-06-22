@@ -65,14 +65,23 @@ export async function assessEmployee(
   // A department_manager may only assess employees within their OWN department.
   // hrd/superadmin are company-wide and bypass this scope check.
   if (assessor.role === "department_manager") {
-    const [{ data: managerEmp }, { data: targetEmp }] = await Promise.all([
-      supabaseAdmin.from("employees").select("department").eq("email", assessor.email).maybeSingle(),
-      supabaseAdmin.from("employees").select("department").eq("id", employeeId).maybeSingle(),
-    ]);
-    const managerDept = (managerEmp as { department?: string } | null)?.department;
+    // Dept managers exist in users table, not employees. Derive department from email.
+    const EMAIL_TO_DEPT: Record<string, string> = {
+      "hrga@ptpgp.co.id": "HR & GA",
+      "finance@ptpgp.co.id": "Finance",
+      "operational@ptpgp.co.id": "Operational Division",
+      "procurement@ptpgp.co.id": "Procurement Division",
+      "projectappraisal@ptpgp.co.id": "Project Appraisal",
+      "mr@ptpgp.co.id": "Management Representative",
+      "hse@ptpgp.co.id": "Health, Safety & Environment",
+    };
+    const managerDept = EMAIL_TO_DEPT[assessor.email] || "";
+
+    const { data: targetEmp } = await supabaseAdmin.from("employees").select("department").eq("id", employeeId).maybeSingle();
     const targetDept = (targetEmp as { department?: string } | null)?.department;
+    
     if (!managerDept || !targetDept || managerDept !== targetDept) {
-      throw new Error("Akses ditolak: karyawan berada di luar departemen Anda.");
+      return { error: "Akses ditolak: karyawan berada di luar departemen Anda." };
     }
   }
 
@@ -93,7 +102,7 @@ export async function assessEmployee(
         .eq("id", (existing as { id: string }).id);
     } else {
       await supabaseAdmin.from("employee_skills").insert({
-        id: "es-" + crypto.randomUUID(),
+        id: "es-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
         employee_id: employeeId,
         skill_id: sk.skill_id,
         current_level: sk.current_level,

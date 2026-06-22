@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Clock, CheckCircle2, XCircle, Users, Filter } from "lucide-react";
-import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getDeptData, getMyDept } from "@/app/actions/department";
 
 interface Request {
@@ -39,8 +38,6 @@ export default function DeptRequests() {
       }
     }).catch(() => setLoading(false));
   }, []);
-
-  useAutoRefresh(() => { if (deptName) loadData(deptName); });
 
   const filtered = statusFilter === "Semua"
     ? requests

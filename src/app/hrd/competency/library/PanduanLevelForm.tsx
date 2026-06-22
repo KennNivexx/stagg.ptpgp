@@ -27,41 +27,11 @@ const LEVEL_LABELS: Record<number, string> = {
   5: "Ahli & Inovator",
 };
 
-// Map department name to contextual strings used inside templates
-function getDeptCtx(dept: string): { ctx: string; exCtx: string } {
-  const map: Record<string, { ctx: string; exCtx: string }> = {
-    "Keuangan":            { ctx: "pelaporan dan pengelolaan keuangan perusahaan",        exCtx: "saat menyusun laporan keuangan bulanan" },
-    "Finance":             { ctx: "pelaporan dan pengelolaan keuangan perusahaan",        exCtx: "saat menyusun laporan keuangan bulanan" },
-    "Akuntansi":           { ctx: "pencatatan, rekonsiliasi, dan audit akuntansi",        exCtx: "dalam rekonsiliasi atau tutup buku akhir periode" },
-    "IT":                  { ctx: "pengelolaan sistem informasi dan infrastruktur TI",    exCtx: "dalam pengelolaan server, jaringan, atau aplikasi perusahaan" },
-    "Teknologi Informasi": { ctx: "pengembangan dan pemeliharaan sistem teknologi",       exCtx: "dalam proyek pengembangan sistem atau maintenance rutin" },
-    "HRD":                 { ctx: "pengelolaan sumber daya manusia dan kebijakan SDM",   exCtx: "dalam proses rekrutmen, pelatihan, atau evaluasi karyawan" },
-    "HR":                  { ctx: "administrasi dan pengembangan sumber daya manusia",   exCtx: "dalam pengelolaan data kepegawaian atau program SDM" },
-    "Operasional":         { ctx: "efisiensi dan keberlangsungan proses operasional",    exCtx: "dalam menjalankan alur kerja operasional harian" },
-    "Produksi":            { ctx: "proses produksi, kualitas, dan efisiensi lini",       exCtx: "di lantai produksi saat menangani batch atau target harian" },
-    "Marketing":           { ctx: "strategi pemasaran, branding, dan pengembangan pasar",exCtx: "dalam penyusunan kampanye atau analisis segmen pasar" },
-    "Pemasaran":           { ctx: "pemasaran, promosi, dan pertumbuhan penjualan",       exCtx: "dalam rencana pemasaran atau evaluasi efektivitas promosi" },
-    "Sales":               { ctx: "penjualan dan pengelolaan hubungan pelanggan",        exCtx: "saat berinteraksi dengan prospek, negosiasi, atau closing" },
-    "Penjualan":           { ctx: "penjualan, negosiasi, dan retensi pelanggan",         exCtx: "dalam proses pipeline penjualan dan follow-up klien" },
-    "Logistik":            { ctx: "rantai pasok, pengiriman, dan distribusi barang",     exCtx: "dalam koordinasi pengiriman atau manajemen vendor logistik" },
-    "Legal":               { ctx: "kepatuhan hukum, kontrak, dan regulasi perusahaan",  exCtx: "saat menyusun atau mereview perjanjian dan dokumen hukum" },
-    "Hukum":               { ctx: "regulasi, litigasi, dan kepatuhan hukum organisasi", exCtx: "dalam penanganan kasus hukum atau review regulasi terbaru" },
-    "K3":                  { ctx: "keselamatan, kesehatan kerja, dan pencegahan insiden",exCtx: "dalam inspeksi keselamatan rutin atau investigasi insiden" },
-    "Purchasing":          { ctx: "pengadaan barang, jasa, dan manajemen vendor",        exCtx: "dalam proses tender, evaluasi supplier, atau negosiasi harga" },
-    "Pengadaan":           { ctx: "seleksi vendor, kontrak pengadaan, dan efisiensi biaya",exCtx: "saat melakukan seleksi pemasok atau menyusun kontrak pengadaan" },
-    "Gudang":              { ctx: "pergudangan, manajemen stok, dan kelancaran inventaris",exCtx: "dalam penerimaan barang, stock opname, atau pengiriman ke user" },
-  };
-  if (dept && map[dept]) return map[dept];
-  return {
-    ctx: dept ? `lingkungan kerja departemen ${dept}` : "lingkungan kerja perusahaan",
-    exCtx: "dalam menjalankan tugas dan tanggung jawab sehari-hari",
-  };
-}
-
-function generateTemplate(skillName: string, level: number, category: string, department: string): LevelData {
+function generateTemplate(skillName: string, level: number, category: string): LevelData {
   const sk = skillName || "kompetensi ini";
   const cat = category || "Teknis";
-  const { ctx, exCtx } = getDeptCtx(department);
+  const ctx = "lingkungan kerja perusahaan";
+  const exCtx = "dalam menjalankan tugas sehari-hari";
 
   // ── TEKNIS / OPERASIONAL ──────────────────────────────────────────────────
   if (cat === "Teknis" || cat === "Operasional") {
@@ -286,13 +256,11 @@ function generateTemplate(skillName: string, level: number, category: string, de
 
 interface Props {
   skills: Skill[];
-  departments: string[];
 }
 
-export default function PanduanLevelForm({ skills, departments }: Props) {
+export default function PanduanLevelForm({ skills }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedSkillId, setSelectedSkillId] = useState("");
-  const [selectedDept, setSelectedDept] = useState("");
   const [guides, setGuides] = useState<GuideState>(EMPTY_GUIDES());
   const [expanded, setExpanded] = useState<number | null>(1);
   const [loadingGuides, setLoadingGuides] = useState(false);
@@ -307,7 +275,7 @@ export default function PanduanLevelForm({ skills, departments }: Props) {
     setMsg(null);
     if (!skillId) { setGuides(EMPTY_GUIDES()); return; }
     setLoadingGuides(true);
-    const map = await getSkillGuidesMap(skillId, selectedDept);
+    const map = await getSkillGuidesMap(skillId, "");
     const next = EMPTY_GUIDES();
     for (let level = 1; level <= 5; level++) {
       const g: LevelGuide | undefined = map[level];
@@ -317,26 +285,11 @@ export default function PanduanLevelForm({ skills, departments }: Props) {
     setLoadingGuides(false);
   }
 
-  async function handleSelectDept(dept: string) {
-    setSelectedDept(dept);
-    if (selectedSkillId) {
-      setLoadingGuides(true);
-      const map = await getSkillGuidesMap(selectedSkillId, dept);
-      const next = EMPTY_GUIDES();
-      for (let level = 1; level <= 5; level++) {
-        const g: LevelGuide | undefined = map[level];
-        if (g) next[level] = { title: g.title, description: g.description, indicators: g.indicators, example: g.example };
-      }
-      setGuides(next);
-      setLoadingGuides(false);
-    }
-  }
-
   function loadTemplate() {
     if (!selectedSkill) return;
     const next = EMPTY_GUIDES();
     for (let level = 1; level <= 5; level++) {
-      next[level] = generateTemplate(selectedSkill.name, level, selectedSkill.category, selectedDept);
+      next[level] = generateTemplate(selectedSkill.name, level, selectedSkill.category);
     }
     setGuides(next);
     setMsg(null);
@@ -353,7 +306,6 @@ export default function PanduanLevelForm({ skills, departments }: Props) {
     const fd = new FormData(formRef.current);
     // inject guides state (controlled inputs are not in formRef naturally)
     fd.set("skill_id", selectedSkillId);
-    fd.set("department", selectedDept);
     for (let level = 1; level <= 5; level++) {
       fd.set(`level_${level}_title`, guides[level]?.title || "");
       fd.set(`level_${level}_description`, guides[level]?.description || "");
@@ -429,11 +381,6 @@ export default function PanduanLevelForm({ skills, departments }: Props) {
                   <p className="text-xs text-slate-400 mt-0.5">{selectedSkill?.category}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <select value={selectedDept} onChange={(e) => handleSelectDept(e.target.value)}
-                    className="text-xs border border-slate-200 rounded-xl px-3 py-2 focus:border-[#CC0000] outline-none bg-white">
-                    <option value="">Semua Departemen (Umum)</option>
-                    {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
                   <button onClick={loadTemplate}
                     className="flex items-center gap-1.5 px-3 py-2 bg-sky-50 text-sky-700 border border-sky-200 text-xs font-bold rounded-xl hover:bg-sky-100 transition-colors">
                     <Wand2 size={13} /> Muat Template
@@ -444,11 +391,6 @@ export default function PanduanLevelForm({ skills, departments }: Props) {
                   </button>
                 </div>
               </div>
-              {selectedDept && (
-                <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                  <AlertTriangle size={12} /> Panduan ini berlaku khusus untuk departemen <strong>{selectedDept}</strong>
-                </div>
-              )}
               {msg && (
                 <div className={`mt-3 flex items-center gap-2 text-xs font-medium rounded-xl px-3 py-2 ${msg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
                   {msg.type === "success" ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}

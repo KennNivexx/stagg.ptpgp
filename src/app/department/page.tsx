@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Users, Briefcase, Clock, CheckCircle2, Plus, Send, AlertTriangle } from "lucide-react";
-import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getDeptData, submitRequest, getMyDept } from "@/app/actions/department";
 
 interface Employee {
@@ -61,8 +60,6 @@ export default function DeptDashboard() {
       else setLoading(false);
     })();
   }, []);
-
-  useAutoRefresh(() => { if (deptName) loadData(deptName); });
 
   const doSubmit = async () => {
     if (!fPos.trim()) { setFErr("Posisi wajib diisi."); return; }

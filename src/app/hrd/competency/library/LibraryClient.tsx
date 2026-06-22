@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { Plus, Pencil, Trash2, Award, Lightbulb, Save, X, AlertTriangle, CheckCircle2, Layers, Search, BookOpen } from "lucide-react";
 import {
   saveSkill, deleteSkill, saveRequiredLevel, getSkills, getPositionSkills,
@@ -17,8 +16,7 @@ interface Props {
   skills: Skill[];
   positionSkills: PositionSkill[];
   positions: Position[];
-  departments: string[];
-}
+  departments: string[];}
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Teknis": "bg-blue-50 text-blue-700 border-blue-200",
@@ -49,7 +47,7 @@ function getLevelLabel(level: number) {
   return "-";
 }
 
-export default function LibraryClient({ skills: initialSkills, positionSkills: initialPosSkills, positions, departments }: Props) {
+export default function LibraryClient({ skills: initialSkills, positionSkills: initialPosSkills, positions }: Props) {
   const router = useRouter();
   const [skills, setSkills] = useState<Skill[]>(initialSkills);
   const [posSkills, setPosSkills] = useState<PositionSkill[]>(initialPosSkills);
@@ -64,7 +62,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   const [selectedPosition, setSelectedPosition] = useState("");
   const [levelMap, setLevelMap] = useState<Record<string, number>>({});
   const [addSkillModal, setAddSkillModal] = useState(false);
-  const [addSkillForm, setAddSkillForm] = useState({ skill_id: "", level: 0 });
+  const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set());
   const [savingLevelIds, setSavingLevelIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -86,8 +84,6 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     setPosSkills(ps as PositionSkill[]);
     router.refresh();
   };
-
-  useAutoRefresh(() => { refreshData(); });
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -188,16 +184,21 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   };
 
   const doAddSkillToPos = async () => {
-    if (!addSkillForm.skill_id) return;
-    const fd = new FormData();
-    fd.append("position_code", selectedPosition);
-    fd.append("skill_id", addSkillForm.skill_id);
-    fd.append("required_level", String(addSkillForm.level));
-    const r = await saveRequiredLevel(fd);
-    if (r?.error) { showToast("error", r.error); return; }
-    showToast("success", "Skill berhasil ditambahkan ke jabatan.");
+    if (selectedSkillIds.size === 0) return;
+    let hasError = false;
+    for (const skillId of selectedSkillIds) {
+      const fd = new FormData();
+      fd.append("position_code", selectedPosition);
+      fd.append("skill_id", skillId);
+      fd.append("required_level", "0");
+      const r = await saveRequiredLevel(fd);
+      if (r?.error) { showToast("error", r.error); hasError = true; break; }
+    }
+    if (!hasError) {
+      showToast("success", `${selectedSkillIds.size} skill berhasil ditambahkan ke jabatan.`);
+    }
     setAddSkillModal(false);
-    setAddSkillForm({ skill_id: "", level: 0 });
+    setSelectedSkillIds(new Set());
     await refreshData();
   };
 
@@ -267,7 +268,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
           <div className="mb-4">
             <p className="text-xs text-slate-500">Isi panduan deskripsi per level (1–5) untuk setiap kompetensi. Kepala departemen akan melihat panduan ini saat menilai karyawan.</p>
           </div>
-          <PanduanLevelForm skills={skills} departments={departments} />
+          <PanduanLevelForm skills={skills} />
         </div>
       )}
 
@@ -331,7 +332,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
               <option value="">-- Pilih Jabatan --</option>
               {positions.map((p) => (
                 <option key={p.id} value={p.name}>
-                  {p.name} {p.department ? `(${p.department})` : ""}
+                  {p.name}
                 </option>
               ))}
             </select>
@@ -352,7 +353,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                   )}
                 </div>
                 <button
-                  onClick={() => { setAddSkillForm({ skill_id: "", level: 0 }); setAddSkillModal(true); }}
+                  onClick={() => { setSelectedSkillIds(new Set()); setAddSkillModal(true); }}
                   className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
                 >
                   <Plus size={14} /> Tambah Skill ke Jabatan
@@ -534,64 +535,104 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
       )}
 
       {addSkillModal && (
-        <div className="fixed inset-0 z-[9999] flex items-start justify-center p-6 pt-[8vh]" onClick={() => setAddSkillModal(false)}>
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center p-6 pt-[4vh]" onClick={() => { setAddSkillModal(false); setSelectedSkillIds(new Set()); }}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="px-5 py-4 flex items-center justify-between bg-slate-900">
+          <div className="relative z-10 w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 flex items-center justify-between bg-slate-900 shrink-0">
               <div className="flex items-center gap-2.5">
                 <Plus size={18} className="text-emerald-400" />
-                <h3 className="text-white font-bold text-sm">Tambah Skill ke Jabatan</h3>
+                <h3 className="text-white font-bold text-sm">Tambah Skill ke Jabatan — {selectedPosition}</h3>
               </div>
-              <button onClick={() => setAddSkillModal(false)} className="w-7 h-7 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center transition-colors">
+              <button onClick={() => { setAddSkillModal(false); setSelectedSkillIds(new Set()); }} className="w-7 h-7 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center transition-colors">
                 <X size={14} className="text-white" />
               </button>
             </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Jabatan</label>
-                <p className="text-sm font-bold text-slate-800 bg-slate-50 px-3.5 py-2.5 rounded-xl">{selectedPosition}</p>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Skill <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={addSkillForm.skill_id}
-                  onChange={(e) => setAddSkillForm({ ...addSkillForm, skill_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all"
-                >
-                  <option value="">Pilih Skill</option>
-                  {availableSkills.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.category})</option>
-                  ))}
-                </select>
-                {availableSkills.length === 0 && (
-                  <p className="text-[10px] text-amber-600 mt-1">Semua skill sudah ditambahkan ke jabatan ini.</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Required Level: {addSkillForm.level} — {getLevelLabel(addSkillForm.level)}
-                </label>
-                <input
-                  type="range"
-                  min={0}
-                  max={5}
-                  value={addSkillForm.level}
-                  onChange={(e) => setAddSkillForm({ ...addSkillForm, level: Number(e.target.value) })}
-                  className="w-full h-1.5 accent-[#CC0000]"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 mt-0.5">
-                  <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+              {/* LEFT: Available skills — 60% */}
+              <div className="lg:w-[60%] flex flex-col min-h-0 border-r border-slate-100">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pilih Kompetensi</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Klik untuk memilih. Skill yang dipilih akan ditambahkan dengan level awal 0 (atur level di tabel setelahnya).</p>
+                </div>
+                <div className="overflow-y-auto flex-1 p-2">
+                  {availableSkills.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Layers size={40} className="mx-auto text-slate-300 mb-3" />
+                      <p className="text-sm font-bold text-slate-500">Semua skill sudah ditambahkan.</p>
+                      <p className="text-xs text-slate-400 mt-1">Tidak ada skill yang tersisa untuk jabatan ini.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {availableSkills.map((s) => {
+                        const isSelected = selectedSkillIds.has(s.id);
+                        return (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              setSelectedSkillIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(s.id)) next.delete(s.id);
+                                else next.add(s.id);
+                                return next;
+                              });
+                            }}
+                            className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center justify-between group ${
+                              isSelected
+                                ? "bg-[#CC0000]/10 border border-[#CC0000]/30 shadow-sm"
+                                : "hover:bg-slate-50 border border-transparent"
+                            }`}
+                          >
+                            <div>
+                              <p className={`text-xs font-bold ${isSelected ? "text-[#CC0000]" : "text-slate-800"}`}>{s.name}</p>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-semibold shrink-0 ${getCategoryBadge(s.category)}`}>{s.category}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="p-4 border-t border-slate-100 bg-slate-50/50 shrink-0 flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-slate-500">
+                    {selectedSkillIds.size} skill dipilih
+                  </p>
+                  <button
+                    onClick={doAddSkillToPos}
+                    disabled={selectedSkillIds.size === 0}
+                    className="bg-[#CC0000] hover:bg-[#aa0000] disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors inline-flex items-center gap-2"
+                  >
+                    <Save size={14} /> Pilih
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={doAddSkillToPos}
-                disabled={!addSkillForm.skill_id}
-                className="w-full bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold transition-colors inline-flex items-center justify-center gap-2"
-              >
-                <Save size={14} /> Tambahkan
-              </button>
+
+              {/* RIGHT: Panduan Level reference — 40% */}
+              <div className="lg:w-[40%] flex flex-col min-h-0">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={14} className="text-sky-600" />
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Panduan Level (0–5)</p>
+                  </div>
+                </div>
+                <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                  {[
+                    { level: 0, title: "Tidak Dibutuhkan", color: "border-gray-200 bg-gray-50 text-gray-600", desc: "Belum memiliki pengetahuan terkait kompetensi ini. Belum pernah terpapar atau menerima pelatihan." },
+                    { level: 1, title: "Basic — Mengetahui Konsep Dasar", color: "border-red-200 bg-red-50 text-red-700", desc: "Memiliki pengetahuan dasar berupa pemahaman teori dan terminologi, namun belum dapat menerapkan secara praktis tanpa bimbingan." },
+                    { level: 2, title: "Intermediate — Dapat dgn Bimbingan", color: "border-orange-200 bg-orange-50 text-orange-700", desc: "Mampu melaksanakan tugas dasar terkait kompetensi, namun masih memerlukan supervisi dan arahan berkala." },
+                    { level: 3, title: "Advanced — Mandiri", color: "border-yellow-200 bg-yellow-50 text-yellow-700", desc: "Mampu melaksanakan tugas secara mandiri tanpa supervisi terus-menerus. Mulai mampu memecahkan masalah umum." },
+                    { level: 4, title: "Expert — Mahir & Membimbing", color: "border-blue-200 bg-blue-50 text-blue-700", desc: "Sangat menguasai, mampu menangani situasi kompleks, melatih, dan mentransfer pengetahuan kepada orang lain." },
+                    { level: 5, title: "Master — Ahli & Inovator", color: "border-emerald-200 bg-emerald-50 text-emerald-700", desc: "Diakui sebagai pakar. Mampu menciptakan standar, metodologi, dan inovasi baru di tingkat organisasi." },
+                  ].map((lv) => (
+                    <div key={lv.level} className={`border rounded-xl p-3 ${lv.color}`}>
+                      <div className="flex items-center gap-2.5 mb-1">
+                        <span className="w-7 h-7 rounded-lg bg-white/80 flex items-center justify-center font-black text-xs shadow-sm shrink-0">{lv.level}</span>
+                        <p className="text-[11px] font-extrabold leading-tight">{lv.title}</p>
+                      </div>
+                      <p className="text-[10px] leading-relaxed opacity-80 pl-9">{lv.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

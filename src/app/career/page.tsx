@@ -18,7 +18,7 @@ export default async function CareerPage(props: { searchParams: Promise<{ filter
     id: j.id as string,
     title: (j.title as string) || (j.position as string),
     department: j.department as string,
-    type: (j.type as string) || "Full-time",
+    type: (j.employment_type as string) || "Full-time",
     location: (j.location as string) || "Jakarta Utara",
     description: (j.description as string) || (j.requirements as string) || "",
     job_desk: (j.job_desk as string) || "",

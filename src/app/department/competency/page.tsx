@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Plus, X, BookOpen } from "lucide-react";
-import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, assessEmployee } from "@/app/actions/skills";
 import { addDeptSkill, getAllSkillGuidesMap, type LevelGuide } from "@/app/actions/competency-guides";
 import { getMyDept } from "@/app/actions/department";
@@ -54,70 +53,54 @@ const LEVEL_INDICATOR_DOT: Record<number, string> = {
 
 const CATEGORY_OPTIONS = ["Teknis", "Soft Skills", "Manajemen", "Operasional", "K3", "HR", "Lainnya"];
 
-// ─── Popup panduan yang muncul saat level diubah ──────────────────────────────
-function LevelChangePopup({ skill, level, guides, onClose }: {
+// ─── Popup 2-panel: kiri = panduan, kanan = kontrol level ─────────────────────
+function LevelChangePopup({ employeeId, employeeName, skill, level, guides, onClose, onLevelChange }: {
+  employeeId: string;
+  employeeName: string;
   skill: Skill;
   level: number;
   guides: Record<number, LevelGuide>;
   onClose: () => void;
+  onLevelChange: (delta: number) => void;
 }) {
+  void employeeId;
   const guide = guides[level];
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
-        className={`relative z-10 w-full max-w-lg rounded-2xl shadow-2xl border-2 bg-gradient-to-b overflow-hidden ${LEVEL_BG_POPUP[level]}`}
+        className="relative z-10 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="px-6 pt-5 pb-4 flex items-start gap-4">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-3xl shadow-sm shrink-0 bg-white/80`}>
-            <span className={LEVEL_TEXT[level]}>{level}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest truncate">{skill.name} · {skill.category}</p>
-            <p className={`text-xl font-extrabold mt-0.5 ${LEVEL_TEXT[level]}`}>Level {level} — {LEVEL_LABELS[level]}</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-black/10 rounded-full shrink-0 mt-0.5 transition-colors">
-            <X size={17} className="text-slate-500" />
-          </button>
-        </div>
+        {/* KIRI: Panduan */}
+        <div className={`flex-1 bg-gradient-to-b ${LEVEL_BG_POPUP[level]} p-5 overflow-y-auto max-h-[80vh] md:max-h-none`}>
+          <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-0.5">{skill.category}</p>
+          <p className={`text-base font-extrabold ${LEVEL_TEXT[level]} mb-3`}>Level {level} — {LEVEL_LABELS[level]}</p>
 
-        {/* Level bar indicator */}
-        <div className="px-6 pb-4">
-          <div className="flex items-center gap-1">
+          {/* Progress bar */}
+          <div className="flex items-center gap-1 mb-4">
             {[1, 2, 3, 4, 5].map((l) => (
               <div key={l} className="flex-1 h-1.5 rounded-full overflow-hidden bg-white/50">
                 <div className={`h-full rounded-full transition-all ${l <= level ? LEVEL_INDICATOR_DOT[level] : "bg-transparent"}`} />
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="px-6 pb-6 space-y-3">
           {!guide ? (
-            <div className="bg-white/60 rounded-xl p-6 text-center border border-white/80">
-              <BookOpen size={36} className="mx-auto mb-2 text-slate-300" />
+            <div className="bg-white/60 rounded-xl p-5 text-center border border-white/80">
+              <BookOpen size={32} className="mx-auto mb-2 text-slate-300" />
               <p className="text-sm font-bold text-slate-500">Panduan belum diisi HRD</p>
-              <p className="text-xs text-slate-400 mt-1">HRD belum mengisi deskripsi untuk level ini.</p>
+              <p className="text-xs text-slate-400 mt-0.5">HRD belum mengisi deskripsi untuk level ini.</p>
             </div>
           ) : (
-            <>
-              {/* Title + Description */}
+            <div className="space-y-3">
               {(guide.title || guide.description) && (
                 <div className="bg-white/70 rounded-xl p-4 border border-white/80 shadow-sm">
-                  {guide.title && (
-                    <p className={`font-extrabold text-sm leading-snug mb-2 ${LEVEL_TEXT[level]}`}>{guide.title}</p>
-                  )}
-                  {guide.description && (
-                    <p className="text-xs text-slate-600 leading-relaxed">{guide.description}</p>
-                  )}
+                  {guide.title && <p className={`font-extrabold text-sm mb-1 leading-snug ${LEVEL_TEXT[level]}`}>{guide.title}</p>}
+                  {guide.description && <p className="text-xs text-slate-600 leading-relaxed">{guide.description}</p>}
                 </div>
               )}
-
-              {/* Indicators */}
               {guide.indicators && (
                 <div className="bg-white/70 rounded-xl p-4 border border-white/80 shadow-sm">
                   <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Indikator Perilaku</p>
@@ -131,20 +114,59 @@ function LevelChangePopup({ skill, level, guides, onClose }: {
                   </ul>
                 </div>
               )}
-
-              {/* Example */}
               {guide.example && (
                 <div className="bg-white/50 rounded-xl px-4 py-3 border border-white/60">
                   <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Contoh Nyata</p>
                   <p className="text-xs text-slate-500 leading-relaxed italic">{guide.example}</p>
                 </div>
               )}
-            </>
+            </div>
           )}
+        </div>
+
+        {/* KANAN: Kontrol Level */}
+        <div className="flex flex-col justify-between p-5 bg-white md:w-60 shrink-0 border-t md:border-t-0 md:border-l border-slate-100">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-extrabold text-slate-800">Nilai Kompetensi</p>
+              <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
+                <X size={15} className="text-slate-400" />
+              </button>
+            </div>
+
+            <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Karyawan</p>
+            <p className="font-extrabold text-slate-800 text-sm mb-3 leading-tight">{employeeName}</p>
+
+            <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Kompetensi</p>
+            <p className="font-semibold text-slate-700 text-xs mb-5 leading-tight">{skill.name}</p>
+
+            <p className="text-[9px] font-bold text-slate-400 uppercase mb-2">Level Saat Ini</p>
+            <div className="flex items-center gap-2 mb-1">
+              <button
+                onClick={() => onLevelChange(-1)}
+                disabled={level <= 0}
+                className="w-10 h-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 flex items-center justify-center disabled:opacity-30 transition-colors text-xl font-bold"
+              >
+                −
+              </button>
+              <div className={`flex-1 h-10 rounded-xl flex items-center justify-center font-black text-2xl ${LEVEL_BADGE[level]}`}>
+                {level}
+              </div>
+              <button
+                onClick={() => onLevelChange(+1)}
+                disabled={level >= 5}
+                className="w-10 h-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 flex items-center justify-center disabled:opacity-30 transition-colors text-xl font-bold"
+              >
+                +
+              </button>
+            </div>
+            <p className={`text-center text-xs font-extrabold mb-1 ${LEVEL_TEXT[level]}`}>{LEVEL_LABELS[level]}</p>
+            <p className="text-center text-[9px] text-slate-400">Tekan Simpan Penilaian untuk menyimpan</p>
+          </div>
 
           <button
             onClick={onClose}
-            className={`w-full py-2.5 rounded-xl text-sm font-extrabold bg-white/80 hover:bg-white transition-colors mt-1 ${LEVEL_TEXT[level]}`}
+            className="mt-5 w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors"
           >
             Tutup
           </button>
@@ -294,7 +316,7 @@ export default function DeptCompetencyPage() {
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
   // Popup saat level diubah
-  const [levelPopup, setLevelPopup] = useState<{ skill: Skill; level: number } | null>(null);
+  const [levelPopup, setLevelPopup] = useState<{ employeeId: string; skill: Skill } | null>(null);
   // Modal semua level
   const [allLevelsModal, setAllLevelsModal] = useState<{ skill: Skill; currentLevel: number } | null>(null);
 
@@ -317,7 +339,7 @@ export default function DeptCompetencyPage() {
       setSkills(skillsData);
       setPositionSkills((posSkillsData as PositionSkill[]) || []);
 
-      const allGuides = await getAllSkillGuidesMap(skillsData.map((s) => s.id), department);
+      const allGuides = await getAllSkillGuidesMap(skillsData.map((s) => s.id));
       setSkillGuides(allGuides);
 
       if (empsData.length > 0) {
@@ -349,15 +371,13 @@ export default function DeptCompetencyPage() {
     }).catch(() => setLoading(false));
   }, [loadData]);
 
-  useAutoRefresh(() => { if (deptName) loadData(deptName); });
-
   // Ubah level via tombol +/- → tampilkan popup panduan
   const handleLevelStep = (employeeId: string, skill: Skill, delta: number) => {
     const key = `${employeeId}__${skill.id}`;
     const current = levels[key] ?? 0;
     const next = Math.max(0, Math.min(5, current + delta));
     setLevels((prev) => ({ ...prev, [key]: next }));
-    if (next > 0) setLevelPopup({ skill, level: next });
+    setLevelPopup({ employeeId, skill });
   };
 
   // Ubah level via input langsung (tidak tampilkan popup)
@@ -445,14 +465,26 @@ export default function DeptCompetencyPage() {
       )}
 
       {/* Popup panduan level — muncul saat + / - diklik */}
-      {levelPopup && (
-        <LevelChangePopup
-          skill={levelPopup.skill}
-          level={levelPopup.level}
-          guides={skillGuides[levelPopup.skill.id] || {}}
-          onClose={() => setLevelPopup(null)}
-        />
-      )}
+      {levelPopup && (() => {
+        const popLevel = levels[`${levelPopup.employeeId}__${levelPopup.skill.id}`] ?? 0;
+        const empName = employees.find(e => e.id === levelPopup.employeeId)?.full_name ?? "";
+        return (
+          <LevelChangePopup
+            employeeId={levelPopup.employeeId}
+            employeeName={empName}
+            skill={levelPopup.skill}
+            level={popLevel}
+            guides={skillGuides[levelPopup.skill.id] || {}}
+            onClose={() => setLevelPopup(null)}
+            onLevelChange={(delta) => {
+              const key = `${levelPopup.employeeId}__${levelPopup.skill.id}`;
+              const cur = levels[key] ?? 0;
+              const nxt = Math.max(0, Math.min(5, cur + delta));
+              setLevels(prev => ({ ...prev, [key]: nxt }));
+            }}
+          />
+        );
+      })()}
 
       {/* Modal semua level */}
       {allLevelsModal && (

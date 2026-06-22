@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { User, Mail, Phone, Building, Briefcase, Calendar, ShieldCheck, Save, MapPin, IdCard, Heart, Droplet, Users2, GraduationCap, Siren } from "lucide-react";
-import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getCurrentEmployee } from "@/app/actions/employee";
-import { saveEmployeeProfile, saveContactProfile } from "@/app/actions/profile";
+import { saveEmployeeProfile, saveContactProfile, saveBasicProfile } from "@/app/actions/profile";
 
 interface Employee {
   id: string; full_name: string; email: string; phone: string; address: string;
@@ -30,8 +29,6 @@ export default function EmployeeProfile() {
     });
   }, []);
 
-  useAutoRefresh(() => { getCurrentEmployee().then((emp) => setProfile(emp as Employee)); });
-
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const handleSaveContact = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,6 +37,18 @@ export default function EmployeeProfile() {
     const fd = new FormData(e.currentTarget);
     fd.set("employeeId", profile?.id || "");
     const r = await saveContactProfile(fd);
+    setSaving(false);
+    if (r.error) { showToast(r.error); return; }
+    showToast("Profil berhasil disimpan!");
+    getCurrentEmployee().then((emp) => setProfile(emp as Employee));
+  };
+
+  const handleSaveBasic = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    const fd = new FormData(e.currentTarget);
+    fd.set("employeeId", profile?.id || "");
+    const r = await saveBasicProfile(fd);
     setSaving(false);
     if (r.error) { showToast(r.error); return; }
     showToast("Profil berhasil disimpan!");
@@ -155,7 +164,7 @@ export default function EmployeeProfile() {
                 <p className="text-xs text-slate-400 mt-0.5">Perbarui informasi kontak dan data pribadi Anda</p>
               </div>
 
-              <form key={`contact-${profile?.full_name ?? ""}-${profile?.phone ?? ""}-${profile?.address ?? ""}`} onSubmit={handleSaveContact} className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <form key={`basic-${profile?.id ?? ""}`} onSubmit={handleSaveBasic} className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nama Lengkap</label>
                   <input
@@ -166,12 +175,39 @@ export default function EmployeeProfile() {
                   />
                 </div>
                 <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    defaultValue={profile?.email || ""}
+                    className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+                  />
+                </div>
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Telepon</label>
                   <input
                     type="text"
                     name="phone"
                     defaultValue={profile?.phone || ""}
                     placeholder="08123456789"
+                    className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Departemen</label>
+                  <input
+                    type="text"
+                    name="department"
+                    defaultValue={profile?.department || ""}
+                    className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Jabatan</label>
+                  <input
+                    type="text"
+                    name="position"
+                    defaultValue={profile?.position || ""}
                     className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
                   />
                 </div>
