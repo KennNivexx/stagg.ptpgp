@@ -17,30 +17,23 @@ type Position = {
 
 type PositionSkill = {
   id: string;
-  position: string;
+  position_code: string;
   skill_id: string;
   required_level: number;
 };
 
 export default async function LibraryPage() {
-  const [skillRes, posSkillRes, posRes, empRes] = await Promise.all([
+  const [skillRes, posSkillRes, posRes] = await Promise.all([
     supabaseAdmin.from("skills").select("id, name, category, department").order("category").order("name"),
-    supabaseAdmin.from("position_skills").select("id, position, skill_id, required_level"),
+    supabaseAdmin.from("position_skills").select("id, position_code, skill_id, required_level"),
     supabaseAdmin.from("positions").select("id, name, department, level").order("name"),
-    supabaseAdmin.from("employees").select("department").neq("status", "Inactive"),
   ]);
-
-  // Collect unique departments from employees
-  const deptSet = new Set<string>();
-  (empRes.data || []).forEach((e) => { if (e.department) deptSet.add(e.department); });
-  const departments = Array.from(deptSet).sort();
 
   return (
     <LibraryClient
       skills={(skillRes.data as Skill[]) || []}
       positionSkills={(posSkillRes.data as PositionSkill[]) || []}
       positions={(posRes.data as Position[]) || []}
-      departments={departments}
     />
   );
 }

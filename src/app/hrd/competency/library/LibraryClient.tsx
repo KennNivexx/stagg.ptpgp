@@ -10,13 +10,13 @@ import PanduanLevelForm from "./PanduanLevelForm";
 
 type Skill = { id: string; name: string; category: string; department?: string | null };
 type Position = { id: string; name: string; department: string; level?: string };
-type PositionSkill = { id: string; position: string; skill_id: string; required_level: number };
+type PositionSkill = { id: string; position_code: string; skill_id: string; required_level: number };
 
 interface Props {
   skills: Skill[];
   positionSkills: PositionSkill[];
   positions: Position[];
-  departments: string[];}
+}
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Teknis": "bg-blue-50 text-blue-700 border-blue-200",
@@ -68,7 +68,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   useEffect(() => {
     const map: Record<string, number> = {};
     posSkills
-      .filter((ps) => ps.position === selectedPosition)
+      .filter((ps) => ps.position_code === selectedPosition)
       .forEach((ps) => { map[ps.skill_id] = ps.required_level; });
     setLevelMap(map);
   }, [posSkills, selectedPosition]);
@@ -93,7 +93,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
 
   const currentPosSkills = useMemo(() => {
     if (!selectedPosition) return [];
-    return posSkills.filter((ps) => ps.position === selectedPosition);
+    return posSkills.filter((ps) => ps.position_code === selectedPosition);
   }, [posSkills, selectedPosition]);
 
   const availableSkills = useMemo(() => {
@@ -106,7 +106,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   }, [positions, selectedPosition]);
 
   const positionsWithStandard = useMemo(() => {
-    const set = new Set(posSkills.map((ps) => ps.position));
+    const set = new Set(posSkills.map((ps) => ps.position_code));
     return set.size;
   }, [posSkills]);
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getMyDept } from "@/app/actions/department";
@@ -42,26 +43,10 @@ export async function saveAllSkillLevelGuides(formData: FormData) {
     }
     return { error: error.message };
   }
+
+  revalidatePath("/hrd/competency/library");
+  revalidatePath("/department/competency");
   return { success: true };
-}
-
-export async function getSkillLevelGuides(skillId: string, department?: string): Promise<LevelGuide[]> {
-  await requireRole("hrd", "superadmin", "department_manager", "employee");
-
-  const query = supabaseAdmin
-    .from("skill_level_guides")
-    .select("*")
-    .eq("skill_id", skillId)
-    .order("level");
-
-  if (department !== undefined) {
-    // Dept-specific overrides the general guide (''), fallback to general
-    (query as unknown as { or: (s: string) => unknown }).or(`department.eq.${department},department.eq.`);
-  }
-
-  const { data, error } = await query;
-  if (error?.code === "42P01") return [];
-  return (data || []) as LevelGuide[];
 }
 
 // Returns guides indexed by level for easy lookup

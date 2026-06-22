@@ -9,7 +9,7 @@ import { getMyDept } from "@/app/actions/department";
 interface Employee { id: string; full_name: string; department: string; position: string }
 interface Skill { id: string; name: string; category: string; department?: string | null }
 interface EmployeeSkill { id: string; employee_id: string; skill_id: string; current_level: number }
-interface PositionSkill { id: string; position: string; skill_id: string; required_level: number }
+interface PositionSkill { id: string; position_code: string; skill_id: string; required_level: number }
 
 const LEVEL_LABELS: Record<number, string> = {
   0: "Tidak Ada", 1: "Dasar", 2: "Terbimbing", 3: "Mandiri", 4: "Mahir", 5: "Ahli"
@@ -54,8 +54,7 @@ const LEVEL_INDICATOR_DOT: Record<number, string> = {
 const CATEGORY_OPTIONS = ["Teknis", "Soft Skills", "Manajemen", "Operasional", "K3", "HR", "Lainnya"];
 
 // ─── Popup 2-panel: kiri = panduan, kanan = kontrol level ─────────────────────
-function LevelChangePopup({ employeeId, employeeName, skill, level, guides, onClose, onLevelChange }: {
-  employeeId: string;
+function LevelChangePopup({ employeeName, skill, level, guides, onClose, onLevelChange }: {
   employeeName: string;
   skill: Skill;
   level: number;
@@ -63,7 +62,6 @@ function LevelChangePopup({ employeeId, employeeName, skill, level, guides, onCl
   onClose: () => void;
   onLevelChange: (delta: number) => void;
 }) {
-  void employeeId;
   const guide = guides[level];
 
   return (
@@ -402,7 +400,7 @@ export default function DeptCompetencyPage() {
   };
 
   const getRequiredLevel = (position: string, skillId: string): number => {
-    const ps = positionSkills.find((p) => p.position === position && p.skill_id === skillId);
+    const ps = positionSkills.find((p) => p.position_code === position && p.skill_id === skillId);
     return ps?.required_level ?? 1;
   };
 
@@ -470,7 +468,6 @@ export default function DeptCompetencyPage() {
         const empName = employees.find(e => e.id === levelPopup.employeeId)?.full_name ?? "";
         return (
           <LevelChangePopup
-            employeeId={levelPopup.employeeId}
             employeeName={empName}
             skill={levelPopup.skill}
             level={popLevel}
