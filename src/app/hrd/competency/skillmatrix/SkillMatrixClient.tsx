@@ -26,11 +26,20 @@ function getCategoryBadge(category: string) {
   }
 }
 
-function getGapBg(gap: number | null) {
-  if (gap === null) return "bg-gray-100 text-gray-400";
-  if (gap >= 0) return "bg-emerald-100 text-emerald-700";
-  if (gap === -1) return "bg-amber-100 text-amber-700";
-  return "bg-red-100 text-red-700";
+function getLevelBg(level: number | null | undefined) {
+  if (level === null || level === undefined) return "bg-gray-100 text-gray-400";
+  if (level === 0) return "bg-slate-100 text-slate-400";
+  if (level === 1) return "bg-red-100 text-red-700";
+  if (level === 2) return "bg-orange-100 text-orange-700";
+  if (level === 3) return "bg-yellow-100 text-yellow-700";
+  if (level === 4) return "bg-blue-100 text-blue-700";
+  return "bg-emerald-100 text-emerald-700";
+}
+
+function getGapColor(gap: number) {
+  if (gap >= 0) return "text-emerald-600";
+  if (gap === -1) return "text-amber-600";
+  return "text-red-600";
 }
 
 export default function SkillMatrixClient({ employees, skills, cells }: Props) {
@@ -134,7 +143,7 @@ export default function SkillMatrixClient({ employees, skills, cells }: Props) {
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-slate-800 text-sm">Matriks Keahlian Karyawan</h3>
-            <p className="text-[10px] text-slate-400">Baris: Karyawan | Kolom: Keahlian | Angka: Gap Level</p>
+            <p className="text-[10px] text-slate-400">Baris: Karyawan | Kolom: Keahlian | Angka besar: Level Saat Ini | Angka kecil: Gap</p>
           </div>
         </div>
 
@@ -175,19 +184,25 @@ export default function SkillMatrixClient({ employees, skills, cells }: Props) {
                     {skills.map((skill) => {
                       const cell = cellMap[emp.id]?.[skill.id];
                       const gap = cell?.gap ?? null;
-                      const current = cell?.current;
-                      const required = cell?.required;
-                      const tooltip = cell
-                        ? `Current: ${current ?? "-"} / Required: ${required ?? "-"} (Gap: ${gap !== null ? (gap > 0 ? "+" + gap : gap) : "N/A"})`
-                        : "No data";
+                      const current = cell?.current ?? null;
+                      const required = cell?.required ?? null;
+                      const tooltip = current !== null
+                        ? `Level: ${current} / Required: ${required ?? "belum diset"} (Gap: ${gap !== null ? (gap > 0 ? "+" + gap : gap) : "N/A"})`
+                        : "Belum dinilai";
                       return (
                         <td key={skill.id} className="px-3 py-3 text-center">
-                          <span
-                            className={`inline-flex items-center justify-center w-9 h-9 rounded-lg text-[11px] font-extrabold ${getGapBg(gap)} cursor-default`}
-                            title={tooltip}
-                          >
-                            {gap !== null ? (gap > 0 ? "+" + gap : gap) : "——"}
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5" title={tooltip}>
+                            {/* Level badge — always show if current is set */}
+                            <span className={`inline-flex items-center justify-center w-9 h-9 rounded-lg text-[11px] font-extrabold cursor-default ${getLevelBg(current)}`}>
+                              {current !== null ? current : "—"}
+                            </span>
+                            {/* Gap badge — only shown when both current and required exist */}
+                            {gap !== null && (
+                              <span className={`text-[9px] font-bold leading-none ${getGapColor(gap)}`}>
+                                {gap > 0 ? "+" + gap : gap}
+                              </span>
+                            )}
+                          </div>
                         </td>
                       );
                     })}
@@ -201,10 +216,13 @@ export default function SkillMatrixClient({ employees, skills, cells }: Props) {
         <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30">
           <div className="flex items-center gap-4 flex-wrap text-[10px] text-slate-500">
             <span>Total: <b className="text-slate-800">{filteredEmployees.length}</b> karyawan</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 border border-red-200" /> Gap &le; -2 (Kritis)</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-100 border border-amber-200" /> Gap -1 (Waspada)</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-200" /> Gap &ge; 0 (Kompeten)</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200" /> No Data</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-200" /> Level 5</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-200" /> Level 4</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-100 border border-yellow-200" /> Level 3</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-orange-100 border border-orange-200" /> Level 2</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 border border-red-200" /> Level 1</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200" /> Belum dinilai</span>
+            <span className="flex items-center gap-1 ml-2 border-l border-slate-200 pl-2">Angka kecil di bawah = gap (gap &ge; 0 kompeten, negatif = kurang)</span>
           </div>
         </div>
       </div>

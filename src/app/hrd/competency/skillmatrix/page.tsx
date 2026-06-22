@@ -64,6 +64,7 @@ export default async function SkillMatrixPage() {
     for (const skill of skills) {
       const current = empSkillMap[emp.id]?.[skill.id] ?? null;
       const required = posSkillMap[emp.position]?.[skill.id] ?? null;
+      // gap only calculable when both exist; show current even without required
       const gap = current !== null && required !== null ? current - required : null;
       cells.push({ empId: emp.id, skillId: skill.id, current, required, gap });
     }
