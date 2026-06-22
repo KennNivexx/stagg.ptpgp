@@ -275,7 +275,7 @@ export default function PanduanLevelForm({ skills }: Props) {
     setMsg(null);
     if (!skillId) { setGuides(EMPTY_GUIDES()); return; }
     setLoadingGuides(true);
-    const map = await getSkillGuidesMap(skillId, "");
+    const map = await getSkillGuidesMap(skillId);
     const next = EMPTY_GUIDES();
     for (let level = 1; level <= 5; level++) {
       const g: LevelGuide | undefined = map[level];
