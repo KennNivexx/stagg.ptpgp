@@ -2,9 +2,10 @@
 ALTER TABLE skills ADD COLUMN IF NOT EXISTS department TEXT DEFAULT NULL;
 
 -- Panduan per level per kompetensi (dibuat HRD)
+-- skill_id adalah TEXT bukan UUID karena skills.id bisa berupa string pendek
 CREATE TABLE IF NOT EXISTS skill_level_guides (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  skill_id UUID NOT NULL,
+  skill_id TEXT NOT NULL,
   department TEXT NOT NULL DEFAULT '',   -- '' = berlaku semua departemen
   level INTEGER NOT NULL CHECK (level BETWEEN 1 AND 5),
   title TEXT NOT NULL DEFAULT '',

@@ -84,6 +84,31 @@ export async function getSkillGuidesMap(skillId: string, department = ""): Promi
   return map;
 }
 
+// Ambil semua panduan untuk banyak skill sekaligus (efisien untuk halaman dept)
+// Return: { [skill_id]: { [level]: LevelGuide } }
+export async function getAllSkillGuidesMap(
+  skillIds: string[],
+  department = ""
+): Promise<Record<string, Record<number, LevelGuide>>> {
+  if (skillIds.length === 0) return {};
+
+  const { data } = await supabaseAdmin
+    .from("skill_level_guides")
+    .select("*")
+    .in("skill_id", skillIds)
+    .or(`department.eq.${department},department.eq.`)
+    .order("department", { ascending: false }) // dept-specific first
+    .order("level");
+
+  const map: Record<string, Record<number, LevelGuide>> = {};
+  for (const row of (data || []) as LevelGuide[]) {
+    if (!map[row.skill_id]) map[row.skill_id] = {};
+    // dept-specific overrides general (desc order = dept-specific first)
+    if (!map[row.skill_id][row.level]) map[row.skill_id][row.level] = row;
+  }
+  return map;
+}
+
 // Kepala departemen tambah kompetensi untuk dept mereka sendiri
 export async function addDeptSkill(formData: FormData) {
   const { dept } = await getMyDept();

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, BookOpen, Plus, X } from "lucide-react";
+import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Plus, X, BookOpen } from "lucide-react";
 import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, assessEmployee } from "@/app/actions/skills";
-import { addDeptSkill, getSkillGuidesMap, type LevelGuide } from "@/app/actions/competency-guides";
+import { addDeptSkill, getAllSkillGuidesMap, type LevelGuide } from "@/app/actions/competency-guides";
 import { getMyDept } from "@/app/actions/department";
 
 interface Employee { id: string; full_name: string; department: string; position: string }
@@ -15,82 +15,60 @@ const LEVEL_LABELS: Record<number, string> = {
   0: "Tidak Ada", 1: "Dasar", 2: "Terbimbing", 3: "Mandiri", 4: "Mahir", 5: "Ahli"
 };
 
+const LEVEL_COLORS: Record<number, string> = {
+  0: "text-slate-400",
+  1: "text-red-600",
+  2: "text-orange-600",
+  3: "text-yellow-600",
+  4: "text-blue-600",
+  5: "text-emerald-600",
+};
+
+const LEVEL_BG: Record<number, string> = {
+  0: "bg-slate-50 border-slate-200",
+  1: "bg-red-50 border-red-200",
+  2: "bg-orange-50 border-orange-200",
+  3: "bg-yellow-50 border-yellow-200",
+  4: "bg-blue-50 border-blue-200",
+  5: "bg-emerald-50 border-emerald-200",
+};
+
 const CATEGORY_OPTIONS = ["Teknis", "Soft Skills", "Manajemen", "Operasional", "K3", "HR", "Lainnya"];
 
-function GuidesModal({ skill, dept, onClose }: { skill: Skill; dept: string; onClose: () => void }) {
-  const [guides, setGuides] = useState<Record<number, LevelGuide>>({});
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getSkillGuidesMap(skill.id, dept).then((map) => { setGuides(map); setLoading(false); });
-  }, [skill.id, dept]);
-
-  const hasAny = Object.keys(guides).length > 0;
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative z-10 bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-          <div>
-            <h3 className="font-extrabold text-slate-800">Panduan: {skill.name}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Deskripsi per level yang dibuat HRD</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
-            <X size={18} className="text-slate-500" />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 p-6 space-y-4">
-          {loading ? (
-            <p className="text-center text-sm text-slate-400 py-8">Memuat panduan...</p>
-          ) : !hasAny ? (
-            <div className="text-center py-8">
-              <BookOpen size={40} className="mx-auto text-slate-300 mb-3" />
-              <p className="text-sm text-slate-500 font-bold">Panduan belum diisi HRD</p>
-              <p className="text-xs text-slate-400 mt-1">HRD belum mengisi deskripsi level untuk kompetensi ini.</p>
-            </div>
-          ) : (
-            [1, 2, 3, 4, 5].map((level) => {
-              const g = guides[level];
-              if (!g) return null;
-              const COLORS: Record<number, string> = {
-                1: "border-red-200 bg-red-50 text-red-700",
-                2: "border-orange-200 bg-orange-50 text-orange-700",
-                3: "border-yellow-200 bg-yellow-50 text-yellow-700",
-                4: "border-blue-200 bg-blue-50 text-blue-700",
-                5: "border-emerald-200 bg-emerald-50 text-emerald-700",
-              };
-              return (
-                <div key={level} className={`border rounded-xl p-4 ${COLORS[level]}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-7 h-7 rounded-lg bg-white/70 flex items-center justify-center font-black text-sm shadow-sm shrink-0">{level}</span>
-                    <p className="font-extrabold text-sm">{g.title || `Level ${level}`}</p>
-                  </div>
-                  {g.description && <p className="text-xs leading-relaxed opacity-80 mb-3">{g.description}</p>}
-                  {g.indicators && (
-                    <div className="mb-3">
-                      <p className="text-[10px] font-bold uppercase opacity-60 mb-1">Indikator</p>
-                      <ul className="space-y-1">
-                        {g.indicators.split("\n").filter(Boolean).map((ind, i) => (
-                          <li key={i} className="text-xs flex gap-2 opacity-80 leading-relaxed">
-                            <span className="shrink-0">•</span>{ind}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {g.example && (
-                    <div className="bg-white/60 rounded-lg p-2.5">
-                      <p className="text-[10px] font-bold uppercase opacity-60 mb-1">Contoh</p>
-                      <p className="text-xs opacity-80 leading-relaxed">{g.example}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
+// Panel panduan level yang muncul saat level dipilih
+function LevelGuidePanel({ guide, level }: { guide: LevelGuide | undefined; level: number }) {
+  const [expanded, setExpanded] = useState(false);
+  if (level === 0) return null;
+  if (!guide) {
+    return (
+      <div className="mt-1.5 text-[9px] text-slate-400 italic text-center">
+        Panduan belum diisi HRD
       </div>
+    );
+  }
+  return (
+    <div className={`mt-1.5 rounded-xl border p-2 text-left ${LEVEL_BG[level]}`}>
+      <p className={`text-[10px] font-extrabold leading-tight ${LEVEL_COLORS[level]}`}>{guide.title}</p>
+      {guide.description && (
+        <p className="text-[9px] text-slate-600 mt-1 leading-relaxed">
+          {expanded ? guide.description : guide.description.slice(0, 80) + (guide.description.length > 80 ? "…" : "")}
+        </p>
+      )}
+      {guide.indicators && expanded && (
+        <ul className="mt-1.5 space-y-0.5">
+          {guide.indicators.split("\n").filter(Boolean).map((ind, i) => (
+            <li key={i} className="text-[9px] text-slate-500 flex gap-1 leading-relaxed">
+              <span className="shrink-0">•</span>{ind}
+            </li>
+          ))}
+        </ul>
+      )}
+      {(guide.description.length > 80 || guide.indicators) && (
+        <button onClick={() => setExpanded(v => !v)}
+          className={`mt-1.5 text-[9px] font-bold flex items-center gap-0.5 ${LEVEL_COLORS[level]}`}>
+          {expanded ? <><ChevronUp size={10} /> Ringkas</> : <><ChevronDown size={10} /> Selengkapnya</>}
+        </button>
+      )}
     </div>
   );
 }
@@ -164,17 +142,86 @@ function AddKompetensiForm({ dept, onSuccess }: { dept: string; onSuccess: () =>
   );
 }
 
+// Modal detail semua level panduan
+function AllLevelsModal({ skill, guides, currentLevel, onClose }: {
+  skill: Skill;
+  guides: Record<number, LevelGuide>;
+  currentLevel: number;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative z-10 bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+          <div>
+            <h3 className="font-extrabold text-slate-800">{skill.name}</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Panduan per Level — dibuat oleh HRD</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-full">
+            <X size={18} className="text-slate-500" />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-6 space-y-4">
+          {Object.keys(guides).length === 0 ? (
+            <div className="text-center py-8">
+              <BookOpen size={40} className="mx-auto text-slate-300 mb-3" />
+              <p className="text-sm text-slate-500 font-bold">Panduan belum diisi HRD</p>
+            </div>
+          ) : (
+            [1, 2, 3, 4, 5].map((level) => {
+              const g = guides[level];
+              if (!g) return null;
+              const isCurrent = level === currentLevel;
+              return (
+                <div key={level} id={`guide-level-${level}`}
+                  className={`border rounded-xl p-4 transition-all ${LEVEL_BG[level]} ${isCurrent ? "ring-2 ring-offset-1 ring-current" : ""}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`w-7 h-7 rounded-lg bg-white/70 flex items-center justify-center font-black text-sm shadow-sm shrink-0 ${LEVEL_COLORS[level]}`}>{level}</span>
+                    <p className={`font-extrabold text-sm ${LEVEL_COLORS[level]}`}>{g.title || `Level ${level}`}</p>
+                    {isCurrent && <span className="ml-auto text-[9px] font-bold bg-white/80 px-2 py-0.5 rounded-full border border-current/20">Level saat ini</span>}
+                  </div>
+                  {g.description && <p className="text-xs leading-relaxed text-slate-600 mb-3">{g.description}</p>}
+                  {g.indicators && (
+                    <div className="mb-3">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Indikator</p>
+                      <ul className="space-y-1">
+                        {g.indicators.split("\n").filter(Boolean).map((ind, i) => (
+                          <li key={i} className="text-xs text-slate-500 flex gap-2 leading-relaxed">
+                            <span className="shrink-0">•</span>{ind}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {g.example && (
+                    <div className="bg-white/60 rounded-lg p-2.5">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Contoh</p>
+                      <p className="text-xs text-slate-500 leading-relaxed">{g.example}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DeptCompetencyPage() {
   const [deptName, setDeptName] = useState("");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [positionSkills, setPositionSkills] = useState<PositionSkill[]>([]);
+  const [skillGuides, setSkillGuides] = useState<Record<string, Record<number, LevelGuide>>>({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
   const [levels, setLevels] = useState<Record<string, number>>({});
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
-  const [guideModal, setGuideModal] = useState<Skill | null>(null);
+  const [guideModal, setGuideModal] = useState<{ skill: Skill; currentLevel: number } | null>(null);
 
   const showToast = (type: "error" | "success", msg: string) => {
     setToast({ type, msg });
@@ -194,6 +241,10 @@ export default function DeptCompetencyPage() {
       setEmployees(empsData);
       setSkills(skillsData);
       setPositionSkills((posSkillsData as PositionSkill[]) || []);
+
+      // Load all guides for all skills at once (for inline display)
+      const allGuides = await getAllSkillGuidesMap(skillsData.map(s => s.id), department);
+      setSkillGuides(allGuides);
 
       if (empsData.length > 0) {
         const ids = empsData.map((e) => e.id);
@@ -280,6 +331,7 @@ export default function DeptCompetencyPage() {
     const kompeten = allGaps.filter((g) => g >= 0).length;
     const pct = allGaps.length > 0 ? ((kompeten / allGaps.length) * 100).toFixed(1) : "0";
     return { total, assessed: assessedCount, notAssessed: total - assessedCount, pctKompeten: pct };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employees, skills, levels, positionSkills]);
 
   if (loading) {
@@ -298,21 +350,26 @@ export default function DeptCompetencyPage() {
   return (
     <div className="p-6 lg:p-8">
       {toast && (
-        <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-bold animate-in slide-in-from-top-2 ${toast.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+        <div className={`fixed top-6 right-6 z-[9998] px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-bold ${toast.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
           {toast.type === "error" ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
           {toast.msg}
-          <button onClick={() => setToast(null)} className="ml-2 text-current opacity-50 hover:opacity-100">&times;</button>
+          <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100">&times;</button>
         </div>
       )}
 
       {guideModal && (
-        <GuidesModal skill={guideModal} dept={deptName} onClose={() => setGuideModal(null)} />
+        <AllLevelsModal
+          skill={guideModal.skill}
+          guides={skillGuides[guideModal.skill.id] || {}}
+          currentLevel={guideModal.currentLevel}
+          onClose={() => setGuideModal(null)}
+        />
       )}
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#1A2530]">Kompetensi Karyawan</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {deptName || "Departemen tidak ditemukan"} &mdash; Nilai kompetensi setiap karyawan di departemen Anda.
+          {deptName || "Departemen tidak ditemukan"} — Nilai kompetensi setiap karyawan di departemen Anda.
         </p>
       </div>
 
@@ -386,7 +443,7 @@ export default function DeptCompetencyPage() {
                           <tr className="border-b border-slate-100 bg-slate-50/50">
                             <th className="text-left px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase">Kompetensi</th>
                             <th className="text-center px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase w-28">Dibutuhkan</th>
-                            <th className="text-center px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase w-36">Level Saat Ini</th>
+                            <th className="text-center px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase w-52">Level Saat Ini + Panduan</th>
                             <th className="text-center px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase w-20">Gap</th>
                           </tr>
                         </thead>
@@ -395,52 +452,65 @@ export default function DeptCompetencyPage() {
                             const currentLevel = levels[`${emp.id}__${sk.id}`] ?? 0;
                             const requiredLevel = getRequiredLevel(emp.position, sk.id);
                             const gap = currentLevel - requiredLevel;
+                            const guideForLevel = skillGuides[sk.id]?.[currentLevel];
+                            const hasAnyGuide = Object.keys(skillGuides[sk.id] || {}).length > 0;
+
                             return (
-                              <tr key={sk.id} className="hover:bg-slate-50/30">
-                                <td className="px-4 py-2.5">
-                                  <div className="flex items-center gap-2">
+                              <tr key={sk.id} className="hover:bg-slate-50/30 align-top">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-start gap-2">
                                     <div>
                                       <p className="text-xs text-slate-700 font-medium">{sk.name}</p>
                                       <p className="text-[9px] text-slate-400">{sk.category}{sk.department ? ` · ${sk.department}` : ""}</p>
                                     </div>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setGuideModal(sk); }}
-                                      title="Lihat panduan level"
-                                      className="p-1 rounded-lg hover:bg-sky-100 text-sky-500 transition-colors shrink-0">
-                                      <BookOpen size={12} />
-                                    </button>
+                                    {hasAnyGuide && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setGuideModal({ skill: sk, currentLevel }); }}
+                                        title="Lihat semua panduan level"
+                                        className="shrink-0 mt-0.5 p-1 rounded-lg hover:bg-sky-100 text-sky-400 hover:text-sky-600 transition-colors">
+                                        <BookOpen size={11} />
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
-                                <td className="px-4 py-2.5 text-center">
+                                <td className="px-4 py-3 text-center">
                                   <span className="inline-flex flex-col items-center">
-                                    <span className="inline-flex items-center justify-center min-w-[28px] h-7 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-bold px-1.5">
-                                      Lv. {requiredLevel}
+                                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-[10px] font-black bg-slate-100 text-slate-700`}>
+                                      {requiredLevel}
                                     </span>
                                     <span className="text-[9px] text-slate-400 mt-0.5">{LEVEL_LABELS[requiredLevel]}</span>
                                   </span>
                                 </td>
-                                <td className="px-4 py-2.5 text-center">
-                                  <div className="inline-flex flex-col items-center gap-0.5">
+                                <td className="px-4 py-3 text-center">
+                                  <div className="flex flex-col items-center gap-0.5 w-full">
+                                    {/* Level selector */}
                                     <div className="inline-flex items-center gap-0.5">
-                                      <button type="button" onClick={() => handleLevelChange(emp.id, sk.id, currentLevel - 1)}
+                                      <button type="button"
+                                        onClick={() => handleLevelChange(emp.id, sk.id, currentLevel - 1)}
                                         disabled={currentLevel <= 0}
                                         className="w-6 h-6 rounded-l-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 flex items-center justify-center disabled:opacity-30">
                                         <ChevronDown size={12} />
                                       </button>
                                       <input type="number" min={0} max={5} value={currentLevel}
                                         onChange={(e) => handleLevelChange(emp.id, sk.id, parseInt(e.target.value) || 0)}
-                                        className="w-10 text-center py-1.5 border-y border-slate-200 text-xs font-bold outline-none focus:border-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                                      <button type="button" onClick={() => handleLevelChange(emp.id, sk.id, currentLevel + 1)}
+                                        className="w-10 text-center py-1.5 border-y border-slate-200 text-xs font-bold outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                      <button type="button"
+                                        onClick={() => handleLevelChange(emp.id, sk.id, currentLevel + 1)}
                                         disabled={currentLevel >= 5}
                                         className="w-6 h-6 rounded-r-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 flex items-center justify-center disabled:opacity-30">
                                         <ChevronUp size={12} />
                                       </button>
                                     </div>
-                                    <span className="text-[9px] text-slate-400">{LEVEL_LABELS[currentLevel]}</span>
+                                    <span className={`text-[9px] font-bold ${LEVEL_COLORS[currentLevel]}`}>{LEVEL_LABELS[currentLevel]}</span>
+
+                                    {/* Panduan untuk level yang dipilih — auto-update */}
+                                    <div className="w-full max-w-[180px]">
+                                      <LevelGuidePanel guide={guideForLevel} level={currentLevel} />
+                                    </div>
                                   </div>
                                 </td>
-                                <td className="px-4 py-2.5 text-center">
-                                  <span className={`inline-flex items-center justify-center min-w-[28px] h-7 rounded-lg text-[10px] font-bold px-1.5 ${getGapBadge(gap)}`}>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`inline-flex items-center justify-center w-9 h-7 rounded-lg text-[10px] font-bold ${getGapBadge(gap)}`}>
                                     {gap > 0 ? `+${gap}` : gap}
                                   </span>
                                 </td>
