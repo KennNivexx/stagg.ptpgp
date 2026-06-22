@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import PanduanLevel from "@/components/PanduanLevel";
-import { Plus, Pencil, Trash2, Award, Lightbulb, Save, X, AlertTriangle, CheckCircle2, Layers, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Award, Lightbulb, Save, X, AlertTriangle, CheckCircle2, Layers, Search, BookOpen } from "lucide-react";
 import {
   saveSkill, deleteSkill, saveRequiredLevel, getSkills, getPositionSkills,
 } from "@/app/actions/skills";
+import PanduanLevelForm from "./PanduanLevelForm";
 
-type Skill = { id: string; name: string; category: string };
+type Skill = { id: string; name: string; category: string; department?: string | null };
 type Position = { id: string; name: string; department: string; level?: string };
 type PositionSkill = { id: string; position: string; skill_id: string; required_level: number };
 
@@ -16,6 +16,7 @@ interface Props {
   skills: Skill[];
   positionSkills: PositionSkill[];
   positions: Position[];
+  departments: string[];
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -47,11 +48,11 @@ function getLevelLabel(level: number) {
   return "-";
 }
 
-export default function LibraryClient({ skills: initialSkills, positionSkills: initialPosSkills, positions }: Props) {
+export default function LibraryClient({ skills: initialSkills, positionSkills: initialPosSkills, positions, departments }: Props) {
   const router = useRouter();
   const [skills, setSkills] = useState<Skill[]>(initialSkills);
   const [posSkills, setPosSkills] = useState<PositionSkill[]>(initialPosSkills);
-  const [activeTab, setActiveTab] = useState<"catalog" | "required">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "required" | "guides">("catalog");
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
 
   const [skillModal, setSkillModal] = useState<null | "add" | "edit" | "del">(null);
@@ -212,7 +213,6 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
         <p className="text-sm text-gray-500 mt-1">Kelola katalog skill dan required level per jabatan.</p>
       </div>
 
-      <PanduanLevel />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -244,31 +244,35 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
         </div>
       </div>
 
-      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit mb-6">
-        <button
-          onClick={() => setActiveTab("catalog")}
-          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "catalog" ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700"}`}
-        >
-          Katalog Skill
+      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit mb-6 flex-wrap">
+        <button onClick={() => setActiveTab("catalog")}
+          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "catalog" ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700"}`}>
+          Katalog Kompetensi
         </button>
-        <button
-          onClick={() => setActiveTab("required")}
-          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "required" ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700"}`}
-        >
+        <button onClick={() => setActiveTab("guides")}
+          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === "guides" ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700"}`}>
+          <BookOpen size={12} /> Panduan per Level
+        </button>
+        <button onClick={() => setActiveTab("required")}
+          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "required" ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700"}`}>
           Required Level per Jabatan
         </button>
       </div>
 
+      {activeTab === "guides" && (
+        <div>
+          <div className="mb-4">
+            <p className="text-xs text-slate-500">Isi panduan deskripsi per level (1–5) untuk setiap kompetensi. Kepala departemen akan melihat panduan ini saat menilai karyawan.</p>
+          </div>
+          <PanduanLevelForm skills={skills} departments={departments} />
+        </div>
+      )}
+
       {activeTab === "catalog" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">{skills.length} skill dalam katalog</p>
-            <button
-              onClick={openAddSkill}
-              className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
-            >
-              <Plus size={14} /> Tambah Skill
-            </button>
+            <p className="text-xs text-slate-500">{skills.length} kompetensi dalam katalog</p>
+            <p className="text-xs text-slate-400 italic">Kompetensi hanya bisa ditambah oleh Kepala Departemen</p>
           </div>
 
           {skills.length === 0 ? (
@@ -298,9 +302,6 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => openEditSkill(s)} className="p-1.5 rounded-lg hover:bg-sky-100 text-sky-600 transition-colors" title="Edit">
-                            <Pencil size={13} />
-                          </button>
                           <button onClick={() => openDelSkill(s)} className="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition-colors" title="Hapus">
                             <Trash2 size={13} />
                           </button>

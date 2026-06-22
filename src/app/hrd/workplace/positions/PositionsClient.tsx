@@ -275,8 +275,8 @@ export default function PositionsClient({ departments, employees }: Props) {
                       const emps = empCountByPos[pos.name] || [];
                       return (
                         <tr key={pos.id} className="hover:bg-slate-50/50 transition-colors group">
-                          <td className="py-2.5 px-4 cursor-pointer hover:bg-sky-50/50 transition-colors" onClick={() => openEdit(pos)} title="Klik untuk edit">
-                            <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded group-hover:bg-sky-100 group-hover:text-sky-700 transition-colors">{pos.code}</span>
+                          <td className="py-2.5 px-4">
+                            <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{pos.code}</span>
                           </td>
                           <td className="py-2.5 px-4">
                             <div className="flex items-center gap-1.5">
@@ -379,9 +379,16 @@ export default function PositionsClient({ departments, employees }: Props) {
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                     Nama Jabatan <span className="text-red-500">*</span>
                   </label>
-                  <input type="text" value={formName} onChange={e => setFormName(e.target.value)}
-                    placeholder="Contoh: Staff Akuntansi"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                  {modal === "edit" ? (
+                    <div className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-500 font-medium select-none">
+                      {formName}
+                      <span className="ml-2 text-[10px] text-slate-400">(tidak dapat diubah)</span>
+                    </div>
+                  ) : (
+                    <input type="text" value={formName} onChange={e => setFormName(e.target.value)}
+                      placeholder="Contoh: Staff Akuntansi"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                  )}
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
