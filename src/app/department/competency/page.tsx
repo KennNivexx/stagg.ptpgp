@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Plus, X, BookOpen } from "lucide-react";
-import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, assessEmployee } from "@/app/actions/skills";
+import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Plus, X, BookOpen, Settings2 } from "lucide-react";
+import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, getDeptSkillList, saveDeptSkillList, assessEmployee } from "@/app/actions/skills";
 import { addDeptSkill, getAllSkillGuidesMap, type LevelGuide } from "@/app/actions/competency-guides";
 import { getMyDept } from "@/app/actions/department";
 
@@ -305,6 +305,8 @@ export default function DeptCompetencyPage() {
   const [deptName, setDeptName] = useState("");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [allSkills, setAllSkills] = useState<Skill[]>([]);
+  const [deptSkillIds, setDeptSkillIds] = useState<Set<string>>(new Set());
   const [positionSkills, setPositionSkills] = useState<PositionSkill[]>([]);
   const [skillGuides, setSkillGuides] = useState<Record<string, Record<number, LevelGuide>>>({});
   const [loading, setLoading] = useState(true);
@@ -312,6 +314,10 @@ export default function DeptCompetencyPage() {
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
   const [levels, setLevels] = useState<Record<string, number>>({});
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+  const [showKelola, setShowKelola] = useState(false);
+  const [kelolaSelected, setKelolaSelected] = useState<Set<string>>(new Set());
+  const [kelolaSaving, setKelolaSaving] = useState(false);
+  const [kelolaSearch, setKelolaSearch] = useState("");
 
   // Popup saat level diubah
   const [levelPopup, setLevelPopup] = useState<{ employeeId: string; skill: Skill } | null>(null);
@@ -326,13 +332,25 @@ export default function DeptCompetencyPage() {
   const loadData = useCallback(async (department: string) => {
     setLoading(true);
     try {
-      const [emps, sk, posSkillsData] = await Promise.all([
+      const [emps, sk, posSkillsData, deptSkills] = await Promise.all([
         getDeptEmployees(department),
         getSkills(),
         getPositionSkills(),
+        getDeptSkillList(department),
       ]);
-      const skillsData = sk as Skill[];
+      const allSk = sk as Skill[];
       const empsData = emps as Employee[];
+      const selectedIds = new Set<string>(deptSkills as string[]);
+
+      setAllSkills(allSk);
+      setDeptSkillIds(selectedIds);
+      setKelolaSelected(new Set(selectedIds));
+
+      // Filter skills: hanya yang dipilih untuk dept ini (jika sudah dikonfigurasi)
+      const skillsData = selectedIds.size > 0
+        ? allSk.filter((s) => selectedIds.has(s.id))
+        : allSk;
+
       setEmployees(empsData);
       setSkills(skillsData);
       setPositionSkills((posSkillsData as PositionSkill[]) || []);
@@ -500,7 +518,107 @@ export default function DeptCompetencyPage() {
         </p>
       </div>
 
-      {deptName && <AddKompetensiForm dept={deptName} onSuccess={() => loadData(deptName)} />}
+      {/* ─── Kelola Kompetensi Departemen ─── */}
+      {deptName && (
+        <div className="mb-6">
+          {!showKelola ? (
+            <div className="flex items-center gap-3">
+              <button onClick={() => setShowKelola(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#1A2530] text-white text-xs font-bold rounded-xl hover:bg-slate-700 transition-colors">
+                <Plus size={14} /> Kelola Kompetensi Departemen
+              </button>
+              {deptSkillIds.size > 0 && (
+                <span className="text-xs text-slate-500">
+                  <span className="font-bold text-slate-700">{deptSkillIds.size}</span> kompetensi dikonfigurasi untuk {deptName}
+                </span>
+              )}
+              {deptSkillIds.size === 0 && (
+                <span className="text-xs text-amber-600 font-semibold">⚠ Belum dikonfigurasi — menampilkan semua kompetensi</span>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                <div>
+                  <h4 className="font-extrabold text-slate-800 text-sm">Pilih Kompetensi untuk {deptName}</h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Centang kompetensi yang relevan. Hanya kompetensi yang dicentang yang akan dinilai.</p>
+                </div>
+                <button onClick={() => { setShowKelola(false); setKelolaSearch(""); }} className="p-1.5 hover:bg-slate-100 rounded-full">
+                  <X size={16} className="text-slate-500" />
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="px-5 py-3 border-b border-slate-100">
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 max-w-xs">
+                  <Award size={13} className="text-slate-400 shrink-0" />
+                  <input type="text" placeholder="Cari kompetensi..." value={kelolaSearch}
+                    onChange={(e) => setKelolaSearch(e.target.value)}
+                    className="text-xs bg-transparent outline-none text-slate-700 placeholder:text-slate-400 w-full" />
+                </div>
+              </div>
+
+              {/* Skill list with checkboxes grouped by category */}
+              <div className="max-h-80 overflow-y-auto px-5 py-3">
+                {(() => {
+                  const q = kelolaSearch.toLowerCase();
+                  const filtered = allSkills.filter((s) => !q || s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+                  const byCategory: Record<string, Skill[]> = {};
+                  for (const s of filtered) {
+                    if (!byCategory[s.category]) byCategory[s.category] = [];
+                    byCategory[s.category].push(s);
+                  }
+                  return Object.keys(byCategory).sort().map((cat) => (
+                    <div key={cat} className="mb-4">
+                      <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">{cat}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                        {byCategory[cat].map((s) => {
+                          const checked = kelolaSelected.has(s.id);
+                          return (
+                            <label key={s.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-colors ${checked ? "bg-[#CC0000]/5 border-[#CC0000]/30" : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"}`}>
+                              <input type="checkbox" checked={checked}
+                                onChange={() => setKelolaSelected((prev) => {
+                                  const n = new Set(prev);
+                                  if (n.has(s.id)) n.delete(s.id); else n.add(s.id);
+                                  return n;
+                                })}
+                                className="accent-[#CC0000] shrink-0" />
+                              <span className={`text-xs font-semibold leading-tight ${checked ? "text-[#CC0000]" : "text-slate-700"}`}>{s.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3">
+                <span className="text-xs text-slate-500"><span className="font-bold text-slate-700">{kelolaSelected.size}</span> kompetensi dipilih</span>
+                <div className="flex items-center gap-2">
+                  <AddKompetensiForm dept={deptName} onSuccess={() => loadData(deptName)} />
+                  <button
+                    onClick={async () => {
+                      setKelolaSaving(true);
+                      const r = await saveDeptSkillList(deptName, Array.from(kelolaSelected));
+                      setKelolaSaving(false);
+                      if (r?.error) { showToast("error", r.error); return; }
+                      showToast("success", "Daftar kompetensi departemen berhasil disimpan.");
+                      setShowKelola(false);
+                      loadData(deptName);
+                    }}
+                    disabled={kelolaSaving}
+                    className="px-5 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] disabled:opacity-50 transition-colors inline-flex items-center gap-2"
+                  >
+                    <Save size={13} /> {kelolaSaving ? "Menyimpan..." : "Simpan Pilihan"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         {[

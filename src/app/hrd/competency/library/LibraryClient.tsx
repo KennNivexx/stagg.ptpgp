@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Award, Lightbulb, Save, X, AlertTriangle, CheckCircle2, Layers, Search, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Award, Lightbulb, Save, X, AlertTriangle, CheckCircle2, Layers, Search, BookOpen, ChevronDown } from "lucide-react";
 import {
-  saveSkill, deleteSkill, saveRequiredLevel, getSkills, getPositionSkills,
+  saveSkill, deleteSkill, saveRequiredLevel, removeSkillFromPosition,
+  getDeptSkillList, saveDeptSkillList, getSkills, getPositionSkills,
 } from "@/app/actions/skills";
 import PanduanLevelForm from "./PanduanLevelForm";
 
@@ -51,19 +52,28 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   const router = useRouter();
   const [skills, setSkills] = useState<Skill[]>(initialSkills);
   const [posSkills, setPosSkills] = useState<PositionSkill[]>(initialPosSkills);
-  const [activeTab, setActiveTab] = useState<"catalog" | "required" | "guides">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "required" | "guides" | "dept">("catalog");
+  const [deptTab, setDeptTab] = useState("");
+  const [deptSkillMap, setDeptSkillMap] = useState<Record<string, Set<string>>>({});
+  const [deptSelected, setDeptSelected] = useState<Set<string>>(new Set());
+  const [deptSaving, setDeptSaving] = useState(false);
+  const [deptSearch, setDeptSearch] = useState("");
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
 
   const [skillModal, setSkillModal] = useState<null | "add" | "edit" | "del">(null);
-  const [skillForm, setSkillForm] = useState({ id: "", name: "", category: "" });
+  const [skillForm, setSkillForm] = useState({ id: "", name: "", category: "", department: "" });
   const [skillFormErr, setSkillFormErr] = useState("");
   const [skillFormLoading, setSkillFormLoading] = useState(false);
 
   const [selectedPosition, setSelectedPosition] = useState("");
+  const [posSearch, setPosSearch] = useState("");
   const [levelMap, setLevelMap] = useState<Record<string, number>>({});
   const [addSkillModal, setAddSkillModal] = useState(false);
   const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set());
   const [savingLevelIds, setSavingLevelIds] = useState<Set<string>>(new Set());
+  const [removingSkillIds, setRemovingSkillIds] = useState<Set<string>>(new Set());
+  const [modalCategoryFilter, setModalCategoryFilter] = useState<string>("__dept__");
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   useEffect(() => {
     const map: Record<string, number> = {};
@@ -83,6 +93,23 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     setSkills(s as Skill[]);
     setPosSkills(ps as PositionSkill[]);
     router.refresh();
+  };
+
+  const loadDeptSkills = async (dept: string) => {
+    if (deptSkillMap[dept]) {
+      setDeptSelected(new Set(deptSkillMap[dept]));
+      return;
+    }
+    const ids = await getDeptSkillList(dept) as string[];
+    const s = new Set<string>(ids);
+    setDeptSkillMap((prev) => ({ ...prev, [dept]: s }));
+    setDeptSelected(new Set(s));
+  };
+
+  const handleDeptTabChange = async (dept: string) => {
+    setDeptTab(dept);
+    setDeptSearch("");
+    if (dept) await loadDeptSkills(dept);
   };
 
   const categories = useMemo(() => {
@@ -105,32 +132,71 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     return positions.find((p) => p.name === selectedPosition);
   }, [positions, selectedPosition]);
 
+  // Kategori yang dianggap relevan untuk tiap dept (berlaku hanya untuk skill tanpa dept tag)
+  const DEPT_CATEGORIES: Record<string, string[]> = {
+    "HR & GA":                      ["HR", "Soft Skills", "Manajemen"],
+    "Finance":                      ["Soft Skills", "Manajemen"],
+    "Operational Division":         ["Operasional", "K3", "Teknis", "Soft Skills"],
+    "Procurement Division":         ["Operasional", "K3", "Teknis", "Soft Skills"],
+    "Project Appraisal":            ["Manajemen", "Soft Skills"],
+    "Management Representative":    ["Manajemen", "Soft Skills"],
+    "Health, Safety & Environment": ["K3", "Teknis", "Soft Skills"],
+  };
+
+  const positionsByDept = useMemo(() => {
+    const q = posSearch.toLowerCase();
+    const map: Record<string, Position[]> = {};
+    for (const p of positions) {
+      if (q && !p.name.toLowerCase().includes(q) && !p.department.toLowerCase().includes(q)) continue;
+      if (!map[p.department]) map[p.department] = [];
+      map[p.department].push(p);
+    }
+    return map;
+  }, [positions, posSearch]);
+
+  const modalFilteredSkills = useMemo(() => {
+    const deptName = selectedPosInfo?.department || "";
+    if (showAllCategories || modalCategoryFilter === "__all__") return availableSkills;
+    if (modalCategoryFilter === "__dept__") {
+      const allowedCategories = DEPT_CATEGORIES[deptName] || [];
+      return availableSkills.filter((s) => {
+        // Skill dengan dept tag → hanya tampil jika dept cocok
+        if (s.department) return s.department === deptName;
+        // Skill universal (tanpa dept tag) → filter berdasarkan kategori
+        if (!deptName || allowedCategories.length === 0) return true;
+        return allowedCategories.includes(s.category);
+      });
+    }
+    return availableSkills.filter((s) => s.category === modalCategoryFilter);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableSkills, modalCategoryFilter, selectedPosInfo, showAllCategories]);
+
   const positionsWithStandard = useMemo(() => {
     const set = new Set(posSkills.map((ps) => ps.position_code));
     return set.size;
   }, [posSkills]);
 
   const openAddSkill = () => {
-    setSkillForm({ id: "", name: "", category: "" });
+    setSkillForm({ id: "", name: "", category: "", department: "" });
     setSkillFormErr("");
     setSkillModal("add");
   };
 
   const openEditSkill = (s: Skill) => {
-    setSkillForm({ id: s.id, name: s.name, category: s.category });
+    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "" });
     setSkillFormErr("");
     setSkillModal("edit");
   };
 
   const openDelSkill = (s: Skill) => {
-    setSkillForm({ id: s.id, name: s.name, category: s.category });
+    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "" });
     setSkillFormErr("");
     setSkillModal("del");
   };
 
   const closeSkillModal = () => {
     setSkillModal(null);
-    setSkillForm({ id: "", name: "", category: "" });
+    setSkillForm({ id: "", name: "", category: "", department: "" });
     setSkillFormErr("");
   };
 
@@ -146,6 +212,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     if (skillForm.id) fd.append("id", skillForm.id);
     fd.append("name", name);
     fd.append("category", category);
+    if (skillForm.department) fd.append("department", skillForm.department);
     const r = await saveSkill(fd);
     setSkillFormLoading(false);
     if (r?.error) { showToast("error", r.error); setSkillFormErr(r.error); return; }
@@ -199,6 +266,15 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     }
     setAddSkillModal(false);
     setSelectedSkillIds(new Set());
+    await refreshData();
+  };
+
+  const doRemoveSkill = async (skillId: string) => {
+    setRemovingSkillIds((prev) => new Set(prev).add(skillId));
+    const r = await removeSkillFromPosition(selectedPosition, skillId);
+    setRemovingSkillIds((prev) => { const n = new Set(prev); n.delete(skillId); return n; });
+    if (r?.error) { showToast("error", r.error); return; }
+    showToast("success", "Skill dihapus dari jabatan.");
     await refreshData();
   };
 
@@ -261,6 +337,10 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
           className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "required" ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700"}`}>
           Required Level per Jabatan
         </button>
+        <button onClick={() => setActiveTab("dept")}
+          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "dept" ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700"}`}>
+          Kompetensi per Departemen
+        </button>
       </div>
 
       {activeTab === "guides" && (
@@ -276,7 +356,9 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-500">{skills.length} kompetensi dalam katalog</p>
-            <p className="text-xs text-slate-400 italic">Kompetensi hanya bisa ditambah oleh Kepala Departemen</p>
+            <button onClick={openAddSkill} className="bg-[#1A2530] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors inline-flex items-center gap-2">
+              <Plus size={13} /> Tambah Kompetensi
+            </button>
           </div>
 
           {skills.length === 0 ? (
@@ -306,6 +388,9 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => openEditSkill(s)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors" title="Edit">
+                            <Pencil size={13} />
+                          </button>
                           <button onClick={() => openDelSkill(s)} className="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition-colors" title="Hapus">
                             <Trash2 size={13} />
                           </button>
@@ -321,115 +406,276 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
       )}
 
       {activeTab === "required" && (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">Pilih Jabatan</label>
-            <select
-              value={selectedPosition}
-              onChange={(e) => setSelectedPosition(e.target.value)}
-              className="w-full max-w-md border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000]/20 outline-none"
-            >
-              <option value="">-- Pilih Jabatan --</option>
-              {positions.map((p) => (
-                <option key={p.id} value={p.name}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+        <div className="flex gap-4 min-h-[600px]">
+          {/* LEFT PANEL — daftar jabatan per departemen */}
+          <div className="w-64 shrink-0 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden">
+            <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2">
+                <Search size={13} className="text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Cari jabatan..."
+                  value={posSearch}
+                  onChange={(e) => setPosSearch(e.target.value)}
+                  className="text-xs bg-transparent outline-none text-slate-700 placeholder:text-slate-400 w-full"
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1 py-2">
+              {Object.keys(positionsByDept).sort().length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-8">Tidak ada jabatan ditemukan.</p>
+              ) : (
+                Object.keys(positionsByDept).sort().map((dept) => (
+                  <div key={dept} className="mb-2">
+                    <p className="px-3 py-1 text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">{dept}</p>
+                    {positionsByDept[dept].map((p) => {
+                      const hasStandard = posSkills.some((ps) => ps.position_code === p.name);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => setSelectedPosition(p.name)}
+                          className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors ${
+                            selectedPosition === p.name
+                              ? "bg-[#CC0000]/10 border-r-2 border-[#CC0000]"
+                              : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className={`text-xs font-semibold leading-tight ${selectedPosition === p.name ? "text-[#CC0000]" : "text-slate-700"}`}>
+                            {p.name}
+                          </span>
+                          {hasStandard && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title="Sudah ada standar" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
-          {!selectedPosition ? (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-              <Search size={48} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500 font-bold">Pilih jabatan untuk melihat required skill.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-extrabold text-slate-800">{selectedPosition}</p>
-                  {selectedPosInfo && (
-                    <p className="text-[10px] text-slate-400">{selectedPosInfo.department} / {selectedPosInfo.level || "-"}</p>
-                  )}
+          {/* RIGHT PANEL — skill untuk jabatan terpilih */}
+          <div className="flex-1 min-w-0">
+            {!selectedPosition ? (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm h-full flex flex-col items-center justify-center text-center p-12">
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                  <Layers size={28} className="text-slate-300" />
                 </div>
-                <button
-                  onClick={() => { setSelectedSkillIds(new Set()); setAddSkillModal(true); }}
-                  className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
-                >
-                  <Plus size={14} /> Tambah Skill ke Jabatan
-                </button>
+                <p className="text-sm font-bold text-slate-500">Pilih jabatan di sebelah kiri</p>
+                <p className="text-xs text-slate-400 mt-1">untuk melihat dan mengatur standar kompetensinya.</p>
               </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-800">{selectedPosition}</p>
+                    {selectedPosInfo && (
+                      <p className="text-[10px] text-slate-400 mt-0.5">{selectedPosInfo.department}{selectedPosInfo.level ? ` · ${selectedPosInfo.level}` : ""}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setSelectedSkillIds(new Set()); setModalCategoryFilter("__dept__"); setShowAllCategories(false); setAddSkillModal(true); }}
+                    className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2 shrink-0"
+                  >
+                    <Plus size={14} /> Tambah Kompetensi
+                  </button>
+                </div>
 
-              {currentPosSkills.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-                  <Layers size={48} className="mx-auto text-slate-300 mb-4" />
-                  <p className="text-sm text-slate-500 font-bold">Belum ada required skill untuk jabatan ini.</p>
-                  <p className="text-xs text-slate-400 mt-1">Klik &ldquo;Tambah Skill ke Jabatan&rdquo; untuk menambahkan.</p>
+                {currentPosSkills.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
+                    <Layers size={48} className="mx-auto text-slate-300 mb-4" />
+                    <p className="text-sm text-slate-500 font-bold">Belum ada standar kompetensi untuk jabatan ini.</p>
+                    <p className="text-xs text-slate-400 mt-1">Klik &ldquo;Tambah Kompetensi&rdquo; untuk memulai.</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50/50">
+                          <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kompetensi</th>
+                          <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kategori</th>
+                          <th className="text-center py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Level Minimum yang Dibutuhkan</th>
+                          <th className="text-center py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-24">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {currentPosSkills.map((ps) => {
+                          const skill = skills.find((s) => s.id === ps.skill_id);
+                          const localLevel = levelMap[ps.skill_id] ?? ps.required_level;
+                          return (
+                            <tr key={ps.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3 px-4">
+                                <span className="text-xs font-bold text-slate-800">{skill?.name || ps.skill_id}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                {skill?.category ? (
+                                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold ${getCategoryBadge(skill.category)}`}>{skill.category}</span>
+                                ) : (
+                                  <span className="text-xs text-slate-400">—</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2 justify-center">
+                                  <button
+                                    onClick={() => setLevelMap((prev) => ({ ...prev, [ps.skill_id]: Math.max(0, (prev[ps.skill_id] ?? ps.required_level) - 1) }))}
+                                    className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center transition-colors"
+                                  >−</button>
+                                  <div className="text-center min-w-[100px]">
+                                    <span className={`block text-base font-extrabold ${getLevelColor(localLevel).replace("bg-", "text-").replace("-50", "-700").replace("-100", "-700")}`}>
+                                      {localLevel}
+                                    </span>
+                                    <span className="text-[9px] text-slate-500 font-semibold">{getLevelLabel(localLevel)}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => setLevelMap((prev) => ({ ...prev, [ps.skill_id]: Math.min(5, (prev[ps.skill_id] ?? ps.required_level) + 1) }))}
+                                    className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center transition-colors"
+                                  >+</button>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => doSaveLevel(ps.skill_id)}
+                                    disabled={savingLevelIds.has(ps.skill_id)}
+                                    className="px-2.5 py-1.5 bg-[#1A2530] text-white text-xs font-bold rounded-lg hover:bg-slate-700 disabled:opacity-50 transition-colors inline-flex items-center gap-1"
+                                  >
+                                    <Save size={11} /> Simpan
+                                  </button>
+                                  <button
+                                    onClick={() => doRemoveSkill(ps.skill_id)}
+                                    disabled={removingSkillIds.has(ps.skill_id)}
+                                    className="px-2.5 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors inline-flex items-center gap-1"
+                                    title="Hapus kompetensi ini dari jabatan"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "dept" && (() => {
+        const DEPTS = ["HR & GA", "Finance", "Operational Division", "Procurement Division", "Project Appraisal", "Management Representative", "Health, Safety & Environment"];
+        const q = deptSearch.toLowerCase();
+        const filteredSkills = skills.filter((s) => !q || s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+        const byCategory: Record<string, Skill[]> = {};
+        for (const s of filteredSkills) {
+          if (!byCategory[s.category]) byCategory[s.category] = [];
+          byCategory[s.category].push(s);
+        }
+        return (
+          <div className="flex gap-4 min-h-[600px]">
+            {/* LEFT: Dept list */}
+            <div className="w-56 shrink-0 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+              <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pilih Departemen</p>
+              </div>
+              <div className="overflow-y-auto flex-1 py-2">
+                {DEPTS.map((d) => {
+                  const count = deptSkillMap[d]?.size ?? null;
+                  return (
+                    <button key={d} onClick={() => handleDeptTabChange(d)}
+                      className={`w-full text-left px-4 py-2.5 flex items-center justify-between gap-2 transition-colors ${deptTab === d ? "bg-[#CC0000]/10 border-r-2 border-[#CC0000]" : "hover:bg-slate-50"}`}>
+                      <span className={`text-xs font-semibold leading-tight ${deptTab === d ? "text-[#CC0000]" : "text-slate-700"}`}>{d}</span>
+                      {count !== null && (
+                        <span className="text-[9px] font-bold text-slate-400 shrink-0">{count}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* RIGHT: Skill checklist */}
+            <div className="flex-1 min-w-0">
+              {!deptTab ? (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm h-full flex flex-col items-center justify-center text-center p-12">
+                  <Layers size={32} className="mx-auto text-slate-300 mb-3" />
+                  <p className="text-sm font-bold text-slate-500">Pilih departemen</p>
+                  <p className="text-xs text-slate-400 mt-1">untuk mengatur kompetensi yang dinilai di departemen itu.</p>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/50">
-                        <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Skill</th>
-                        <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kategori</th>
-                        <th className="text-center py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-52">Required Level</th>
-                        <th className="text-center py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-20">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {currentPosSkills.map((ps) => {
-                        const skill = skills.find((s) => s.id === ps.skill_id);
-                        const localLevel = levelMap[ps.skill_id] ?? ps.required_level;
-                        return (
-                          <tr key={ps.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-3 px-4">
-                              <span className="text-xs font-bold text-slate-800">{skill?.name || ps.skill_id}</span>
-                            </td>
-                            <td className="py-3 px-4">
-                              {skill?.category ? (
-                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold ${getCategoryBadge(skill.category)}`}>{skill.category}</span>
-                              ) : (
-                                <span className="text-xs text-slate-400">—</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-3 justify-center">
-                                <input
-                                  type="range"
-                                  min={0}
-                                  max={5}
-                                  value={localLevel}
-                                  onChange={(e) => setLevelMap((prev) => ({ ...prev, [ps.skill_id]: Number(e.target.value) }))}
-                                  className="w-24 h-1.5 accent-[#CC0000]"
-                                />
-                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold min-w-[60px] text-center ${getLevelColor(localLevel)}`}>
-                                  {localLevel} — {getLevelLabel(localLevel)}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center justify-center">
-                                <button
-                                  onClick={() => doSaveLevel(ps.skill_id)}
-                                  disabled={savingLevelIds.has(ps.skill_id)}
-                                  className="px-3 py-1.5 bg-[#1A2530] text-white text-xs font-bold rounded-lg hover:bg-slate-700 disabled:opacity-50 transition-colors inline-flex items-center gap-1"
-                                >
-                                  <Save size={11} /> Simpan
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-800">{deptTab}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Centang kompetensi yang harus dinilai untuk karyawan departemen ini.</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                      <Search size={13} className="text-slate-400" />
+                      <input type="text" placeholder="Cari..." value={deptSearch} onChange={(e) => setDeptSearch(e.target.value)}
+                        className="text-xs bg-transparent outline-none text-slate-700 placeholder:text-slate-400 w-32" />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto px-5 py-4 max-h-[480px]">
+                    {Object.keys(byCategory).sort().map((cat) => (
+                      <div key={cat} className="mb-5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">{cat}</p>
+                          <button onClick={() => {
+                            const ids = byCategory[cat].map((s) => s.id);
+                            const allChecked = ids.every((id) => deptSelected.has(id));
+                            setDeptSelected((prev) => {
+                              const n = new Set(prev);
+                              ids.forEach((id) => allChecked ? n.delete(id) : n.add(id));
+                              return n;
+                            });
+                          }} className="text-[9px] text-[#CC0000] hover:underline font-bold">
+                            {byCategory[cat].every((s) => deptSelected.has(s.id)) ? "Batal semua" : "Pilih semua"}
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5">
+                          {byCategory[cat].map((s) => {
+                            const checked = deptSelected.has(s.id);
+                            return (
+                              <label key={s.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-colors ${checked ? "bg-[#CC0000]/5 border-[#CC0000]/30" : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"}`}>
+                                <input type="checkbox" checked={checked}
+                                  onChange={() => setDeptSelected((prev) => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })}
+                                  className="accent-[#CC0000] shrink-0" />
+                                <span className={`text-xs font-semibold leading-tight ${checked ? "text-[#CC0000]" : "text-slate-700"}`}>{s.name}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+                    <span className="text-xs text-slate-500"><span className="font-bold text-slate-700">{deptSelected.size}</span> kompetensi dipilih</span>
+                    <button
+                      onClick={async () => {
+                        setDeptSaving(true);
+                        const r = await saveDeptSkillList(deptTab, Array.from(deptSelected));
+                        setDeptSaving(false);
+                        if (r?.error) { showToast("error", r.error as string); return; }
+                        setDeptSkillMap((prev) => ({ ...prev, [deptTab]: new Set(deptSelected) }));
+                        showToast("success", `Kompetensi untuk ${deptTab} berhasil disimpan.`);
+                      }}
+                      disabled={deptSaving}
+                      className="px-5 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] disabled:opacity-50 transition-colors inline-flex items-center gap-2"
+                    >
+                      <Save size={13} /> {deptSaving ? "Menyimpan..." : "Simpan Pilihan"}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {skillModal && (
         <div className="fixed inset-0 z-[9999] flex items-start justify-center p-6 pt-[8vh]" onClick={closeSkillModal}>
@@ -515,6 +761,22 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                     </div>
                   )}
                 </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Khusus Departemen
+                    <span className="ml-1 font-normal normal-case text-slate-400">(kosongkan = berlaku semua dept)</span>
+                  </label>
+                  <select
+                    value={skillForm.department}
+                    onChange={(e) => setSkillForm({ ...skillForm, department: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all"
+                  >
+                    <option value="">— Semua Departemen —</option>
+                    {["HR & GA", "Finance", "Operational Division", "Procurement Division", "Project Appraisal", "Management Representative", "Health, Safety & Environment"].map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
                 {skillFormErr && (
                   <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
                     <AlertTriangle size={14} className="text-red-500 shrink-0" />
@@ -541,7 +803,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
             <div className="px-5 py-4 flex items-center justify-between bg-slate-900 shrink-0">
               <div className="flex items-center gap-2.5">
                 <Plus size={18} className="text-emerald-400" />
-                <h3 className="text-white font-bold text-sm">Tambah Skill ke Jabatan — {selectedPosition}</h3>
+                <h3 className="text-white font-bold text-sm">Tambah Kompetensi ke Jabatan — {selectedPosition}</h3>
               </div>
               <button onClick={() => { setAddSkillModal(false); setSelectedSkillIds(new Set()); }} className="w-7 h-7 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center transition-colors">
                 <X size={14} className="text-white" />
@@ -550,20 +812,44 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
             <div className="flex flex-col lg:flex-row flex-1 min-h-0">
               {/* LEFT: Available skills — 60% */}
               <div className="lg:w-[60%] flex flex-col min-h-0 border-r border-slate-100">
-                <div className="p-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 shrink-0 space-y-2">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pilih Kompetensi</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Klik untuk memilih. Skill yang dipilih akan ditambahkan dengan level awal 0 (atur level di tabel setelahnya).</p>
+                  {/* Category filter */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => { setModalCategoryFilter("__dept__"); setShowAllCategories(false); }}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${!showAllCategories && modalCategoryFilter === "__dept__" ? "bg-[#CC0000] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                    >
+                      Relevan ({selectedPosInfo?.department || "Dept"})
+                    </button>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => { setModalCategoryFilter(cat); setShowAllCategories(false); }}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${!showAllCategories && modalCategoryFilter === cat ? "bg-[#CC0000] text-white" : `${getCategoryBadge(cat)} border`}`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setShowAllCategories(true)}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1 ${showAllCategories ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                    >
+                      Semua <ChevronDown size={10} />
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-slate-400">{modalFilteredSkills.length} kompetensi ditampilkan · Klik untuk memilih</p>
                 </div>
                 <div className="overflow-y-auto flex-1 p-2">
-                  {availableSkills.length === 0 ? (
+                  {modalFilteredSkills.length === 0 ? (
                     <div className="p-8 text-center">
                       <Layers size={40} className="mx-auto text-slate-300 mb-3" />
-                      <p className="text-sm font-bold text-slate-500">Semua skill sudah ditambahkan.</p>
-                      <p className="text-xs text-slate-400 mt-1">Tidak ada skill yang tersisa untuk jabatan ini.</p>
+                      <p className="text-sm font-bold text-slate-500">Tidak ada kompetensi tersedia.</p>
+                      <p className="text-xs text-slate-400 mt-1">Semua sudah ditambahkan atau tidak ada yang cocok dengan filter.</p>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {availableSkills.map((s) => {
+                      {modalFilteredSkills.map((s) => {
                         const isSelected = selectedSkillIds.has(s.id);
                         return (
                           <button
@@ -594,14 +880,14 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                 </div>
                 <div className="p-4 border-t border-slate-100 bg-slate-50/50 shrink-0 flex items-center justify-between">
                   <p className="text-[10px] font-bold text-slate-500">
-                    {selectedSkillIds.size} skill dipilih
+                    {selectedSkillIds.size} kompetensi dipilih
                   </p>
                   <button
                     onClick={doAddSkillToPos}
                     disabled={selectedSkillIds.size === 0}
                     className="bg-[#CC0000] hover:bg-[#aa0000] disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors inline-flex items-center gap-2"
                   >
-                    <Save size={14} /> Pilih
+                    <Save size={14} /> Tambahkan
                   </button>
                 </div>
               </div>

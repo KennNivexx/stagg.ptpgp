@@ -179,16 +179,18 @@ export async function saveSkill(formData: FormData) {
   const id = (formData.get("id") as string || "").trim();
   const name = (formData.get("name") as string || "").trim();
   const category = (formData.get("category") as string || "").trim();
+  // null = berlaku semua dept; string = hanya departemen tertentu
+  const department = (formData.get("department") as string || "").trim() || null;
 
   if (!name || !category) return { error: "Nama dan kategori skill wajib diisi." };
 
   const now = new Date().toISOString();
   if (id) {
-    const { error } = await supabaseAdmin.from("skills").update({ name, category, updated_at: now }).eq("id", id);
+    const { error } = await supabaseAdmin.from("skills").update({ name, category, department, updated_at: now }).eq("id", id);
     if (error) return { error: "Gagal mengupdate skill." };
   } else {
     const { error } = await supabaseAdmin.from("skills").insert({
-      id: suid(), name, category, created_at: now, updated_at: now,
+      id: suid(), name, category, department, created_at: now, updated_at: now,
     });
     if (error) return { error: "Gagal menambah skill." };
   }
@@ -239,6 +241,64 @@ export async function saveRequiredLevel(formData: FormData) {
     });
     if (error) return { error: "Gagal menambah required level." };
   }
+
+  revalidatePath("/hrd/competency/library");
+  return { success: true };
+}
+
+// ─── Dept skill list — stored as position_skills with position_code = "_dept_DEPTNAME" ───
+export async function getDeptSkillList(dept: string): Promise<string[]> {
+  await requireRole("department_manager", "hrd", "superadmin");
+  const { data } = await supabaseAdmin
+    .from("position_skills")
+    .select("skill_id")
+    .eq("position_code", "_dept_" + dept);
+  return ((data || []) as { skill_id: string }[]).map((r) => r.skill_id);
+}
+
+export async function saveDeptSkillList(dept: string, skillIds: string[]) {
+  const user = await requireRole("department_manager", "hrd", "superadmin");
+
+  if (user.role === "department_manager") {
+    const EMAIL_TO_DEPT: Record<string, string> = {
+      "hrga@ptpgp.co.id": "HR & GA",
+      "finance@ptpgp.co.id": "Finance",
+      "operational@ptpgp.co.id": "Operational Division",
+      "procurement@ptpgp.co.id": "Procurement Division",
+      "projectappraisal@ptpgp.co.id": "Project Appraisal",
+      "mr@ptpgp.co.id": "Management Representative",
+      "hse@ptpgp.co.id": "Health, Safety & Environment",
+    };
+    const managerDept = EMAIL_TO_DEPT[user.email] || "";
+    if (!managerDept || managerDept !== dept) {
+      return { error: "Akses ditolak: hanya bisa mengatur departemen sendiri." };
+    }
+  }
+
+  const prefix = "_dept_" + dept;
+  await supabaseAdmin.from("position_skills").delete().eq("position_code", prefix);
+  if (skillIds.length > 0) {
+    await supabaseAdmin.from("position_skills").insert(
+      skillIds.map((id) => ({ position_code: prefix, skill_id: id, required_level: 0 }))
+    );
+  }
+  revalidatePath("/hrd/competency/library");
+  revalidatePath("/department/competency");
+  return { success: true };
+}
+
+export async function removeSkillFromPosition(positionCode: string, skillId: string) {
+  await requireRole("hrd", "superadmin");
+
+  if (!positionCode || !skillId) return { error: "Data tidak lengkap." };
+
+  const { error } = await supabaseAdmin
+    .from("position_skills")
+    .delete()
+    .eq("position_code", positionCode)
+    .eq("skill_id", skillId);
+
+  if (error) return { error: "Gagal menghapus skill dari jabatan." };
 
   revalidatePath("/hrd/competency/library");
   return { success: true };

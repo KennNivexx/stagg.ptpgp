@@ -79,9 +79,12 @@ export default async function GapAnalysisPage() {
   const gapRows: GapRow[] = [];
   for (const emp of employees) {
     for (const skill of skills) {
-      const current = empSkillMap[emp.id]?.[skill.id] ?? 0;
-      const required = posSkillMap[emp.position]?.[skill.id] ?? 1;
-      const gap = current - required;
+      const current = empSkillMap[emp.id]?.[skill.id] ?? null;
+      const required = posSkillMap[emp.position]?.[skill.id] ?? null;
+      // Skip if no required standard set for this position-skill combo
+      if (required === null) continue;
+      const effectiveCurrent = current ?? 0;
+      const gap = effectiveCurrent - required;
       if (gap < 0) {
         gapRows.push({
           employeeId: emp.id,
@@ -90,7 +93,7 @@ export default async function GapAnalysisPage() {
           position: emp.position,
           skillName: skill.name,
           skillCategory: skill.category,
-          currentLevel: current,
+          currentLevel: effectiveCurrent,
           requiredLevel: required,
           gap,
         });
