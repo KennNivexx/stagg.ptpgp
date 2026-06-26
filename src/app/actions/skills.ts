@@ -14,7 +14,7 @@ export async function getDeptEmployees(deptName: string) {
     .neq("status", "Inactive")
     .order("full_name");
 
-  if (error) throw new Error(error.message);
+  if (error) return [];
   return data || [];
 }
 
@@ -27,7 +27,7 @@ export async function getSkills() {
     .order("category")
     .order("name");
 
-  if (error) throw new Error(error.message);
+  if (error) return [];
   return data || [];
 }
 
@@ -41,7 +41,7 @@ export async function getEmployeeSkills(employeeIds: string[]) {
     .select("*")
     .in("employee_id", employeeIds);
 
-  if (error) throw new Error(error.message);
+  if (error) return [];
   return data || [];
 }
 
@@ -52,8 +52,8 @@ export async function getPositionSkills() {
     .from("position_skills")
     .select("*");
 
-  if (error) throw new Error(error.message);
-  return data || [];
+  if (error) return [];
+  return (data || []).filter((r) => !r.position_code.startsWith("_dept_"));
 }
 
 export async function assessEmployee(
@@ -62,10 +62,7 @@ export async function assessEmployee(
 ) {
   const assessor = await requireRole("department_manager", "superadmin", "hrd");
 
-  // A department_manager may only assess employees within their OWN department.
-  // hrd/superadmin are company-wide and bypass this scope check.
   if (assessor.role === "department_manager") {
-    // Dept managers exist in users table, not employees. Derive department from email.
     const EMAIL_TO_DEPT: Record<string, string> = {
       "hrga@ptpgp.co.id": "HR & GA",
       "finance@ptpgp.co.id": "Finance",
@@ -86,20 +83,28 @@ export async function assessEmployee(
   }
 
   const now = new Date().toISOString();
+  const skillIds = skills.map(s => s.skill_id);
 
+  // Batch: fetch all existing employee skills in ONE query
+  const { data: existingSkills } = await supabaseAdmin
+    .from("employee_skills")
+    .select("id, skill_id")
+    .eq("employee_id", employeeId)
+    .in("skill_id", skillIds);
+
+  const existingMap = new Map<string, string>();
+  for (const es of (existingSkills || [])) {
+    existingMap.set((es as Record<string, string>).skill_id, (es as Record<string, string>).id);
+  }
+
+  // Batch: upsert all skills
   for (const sk of skills) {
-    const { data: existing } = await supabaseAdmin
-      .from("employee_skills")
-      .select("id")
-      .eq("employee_id", employeeId)
-      .eq("skill_id", sk.skill_id)
-      .maybeSingle();
-
-    if (existing) {
+    const existingId = existingMap.get(sk.skill_id);
+    if (existingId) {
       await supabaseAdmin
         .from("employee_skills")
         .update({ current_level: sk.current_level, assessed_by: assessor.email, updated_at: now })
-        .eq("id", (existing as { id: string }).id);
+        .eq("id", existingId);
     } else {
       await supabaseAdmin.from("employee_skills").insert({
         id: "es-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
@@ -112,7 +117,7 @@ export async function assessEmployee(
     }
   }
 
-  // Auto-enroll in training when skill gap >= 2 (required - current >= 2)
+  // Auto-enroll in training when skill gap >= 2 — batch queries
   const { data: employee } = await supabaseAdmin
     .from("employees")
     .select("position")
@@ -126,32 +131,41 @@ export async function assessEmployee(
       .select("skill_id, required_level")
       .eq("position_code", posCode);
 
-    if (posSkills) {
+    if (posSkills && posSkills.length > 0) {
+      // Identify skills with gap >= 2
+      const gapSkillIds: string[] = [];
       for (const sk of skills) {
         const req = (posSkills as { skill_id: string; required_level: number }[]).find(p => p.skill_id === sk.skill_id);
         if (req && req.required_level - sk.current_level >= 2) {
-          // Find active training for this skill
-          const { data: trainings } = await supabaseAdmin
-            .from("trainings")
-            .select("id")
-            .eq("skill_id", sk.skill_id)
-            .in("status", ["Planned", "Ongoing"])
-            .limit(1);
+          gapSkillIds.push(sk.skill_id);
+        }
+      }
 
-          if (trainings && trainings.length > 0) {
-            const trainingId = (trainings[0] as { id: string }).id;
-            // Check if already enrolled
-            const { data: enrolled } = await supabaseAdmin
-              .from("training_enrollments")
-              .select("id")
-              .eq("training_id", trainingId)
-              .eq("employee_id", employeeId)
-              .maybeSingle();
+      if (gapSkillIds.length > 0) {
+        // Batch: fetch all relevant trainings
+        const { data: trainings } = await supabaseAdmin
+          .from("trainings")
+          .select("id, skill_id")
+          .in("skill_id", gapSkillIds)
+          .in("status", ["Planned", "Ongoing"]);
 
-            if (!enrolled) {
+        if (trainings && trainings.length > 0) {
+          const trainingIds = (trainings as { id: string; skill_id: string }[]).map(t => t.id);
+          // Batch: check existing enrollments
+          const { data: existingEnrollments } = await supabaseAdmin
+            .from("training_enrollments")
+            .select("training_id")
+            .eq("employee_id", employeeId)
+            .in("training_id", trainingIds);
+
+          const enrolledSet = new Set((existingEnrollments || []).map((e: Record<string, unknown>) => e.training_id as string));
+
+          // Insert new enrollments
+          for (const t of (trainings as { id: string }[])) {
+            if (!enrolledSet.has(t.id)) {
               await supabaseAdmin.from("training_enrollments").insert({
                 id: "te-" + crypto.randomUUID(),
-                training_id: trainingId,
+                training_id: t.id,
                 employee_id: employeeId,
                 status: "Enrolled",
                 enrolled_at: now,

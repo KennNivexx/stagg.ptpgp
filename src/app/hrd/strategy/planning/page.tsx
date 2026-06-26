@@ -1,6 +1,11 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Target, Plus, Calendar, User, Flag, Trash2 } from "lucide-react";
 
+async function saveInitiative(formData: FormData) {
+  "use server";
+  // Fitur akan segera tersedia
+}
+
 export default async function PerencanaanStrategis() {
   const [{ data: evaluations }, { data: employees }, { data: departments }] = await Promise.all([
     supabaseAdmin
@@ -77,26 +82,26 @@ export default async function PerencanaanStrategis() {
             </div>
           </div>
           <div className="p-6">
-            <form className="space-y-4">
+            <form action={saveInitiative} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Nama Inisiatif</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Transformasi Digital HR" required />
+                <input type="text" name="nama_inisiatif" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Transformasi Digital HR" required />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Tujuan</label>
-                <textarea className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" rows={3} placeholder="Deskripsikan tujuan strategis..." required />
+                <textarea name="tujuan" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" rows={3} placeholder="Deskripsikan tujuan strategis..." required />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Timeline</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Jan - Des 2026" />
+                <input type="text" name="timeline" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Jan - Des 2026" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Penanggung Jawab (PIC)</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Nama atau jabatan PIC" />
+                <input type="text" name="pic" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Nama atau jabatan PIC" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Status</label>
-                <select className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
+                <select name="status" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
                   <option value="Planning">Planning</option>
                   <option value="In Progress">In Progress</option>
                   <option value="Completed">Completed</option>

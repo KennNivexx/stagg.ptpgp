@@ -35,8 +35,8 @@ export async function saveJobSpec(formData: FormData) {
       position, department, education, experience, skills, certifications, updated_at: now,
     }).eq("id", id);
     if (error) {
-      console.error("saveJobSpec error:", error);
-      return { error: `Gagal: ${error.message || "Coba lagi."}` };
+      console.error("[jobspec] saveJobSpec error:", error.message);
+      return { error: "Gagal memproses. Silakan coba lagi." };
     }
   } else {
     const newId = uid();
@@ -44,8 +44,8 @@ export async function saveJobSpec(formData: FormData) {
       id: newId, position, department, education, experience, skills, certifications, created_at: now, updated_at: now,
     });
     if (error) {
-      console.error("addJobSpec error:", error);
-      return { error: `Gagal: ${error.message || "Coba lagi."}` };
+      console.error("[jobspec] addJobSpec error:", error.message);
+      return { error: "Gagal memproses. Silakan coba lagi." };
     }
   }
 
@@ -55,7 +55,8 @@ export async function saveJobSpec(formData: FormData) {
 
 export async function deleteJobSpec(id: string) {
   await requireRole("hrd", "superadmin");
-  await supabaseAdmin.from("job_specifications").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("job_specifications").delete().eq("id", id);
+  if (error) { console.error("[jobspec] deleteJobSpec error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/workplace/jobspec");
   return { success: true };
 }

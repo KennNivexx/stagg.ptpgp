@@ -2,8 +2,11 @@
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
-import { hashPassword, generateRandomPassword, generateNumericPassword, generateCompanyEmailUnique } from "@/lib/auth";
+import { hashPassword, generateNumericPassword, generateCompanyEmailUnique } from "@/lib/auth";
+import { generateOneTimeToken } from "@/lib/otp-token";
 import { requireRole } from "@/lib/auth-guard";
+import { sendMail, emailApplicantLoginLink, emailEmployeeLoginLink } from "@/lib/mailer";
+import { auditLog } from "@/lib/audit";
 
 // Always query fresh — a module-level cache would permanently freeze to false
 // if the DB returned a transient error on the first cold request.
@@ -33,12 +36,12 @@ export async function createJob(formData: FormData) {
     ]);
 
   if (error) {
-    return { error: error.message };
+    console.error("[hrd] createJob error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
   revalidatePath("/hrd/recruitment");
   revalidatePath("/career");
-  const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "job.create",
     targetName: title,
@@ -61,25 +64,27 @@ export async function createEmployee(formData: FormData) {
   const status = formData.get("status") as string || "Tetap";
   const orgCode = (formData.get("org_code") as string) || "";
   const password = generateNumericPassword();
+  const oneTimeToken = generateOneTimeToken(email || "");
+  const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
-  const { data: existingEmails } = await supabaseAdmin
-    .from("employees")
-    .select("email");
+  let normalizedEmail: string;
 
-  const usedEmails = (existingEmails || []).map((e: Record<string, unknown>) => e.email as string);
-
-  const companyEmail = email
-    ? email.toLowerCase().trim()
-    : generateCompanyEmailUnique(full_name, usedEmails);
-
-  const normalizedEmail = companyEmail.toLowerCase().trim();
-
-  if (usedEmails.includes(normalizedEmail) && !email) {
-    return { error: "Gagal membuat email unik. Silakan masukkan email manual." };
-  }
-
-  if (usedEmails.includes(normalizedEmail) && email) {
-    return { error: `Email ${normalizedEmail} sudah digunakan. Gunakan email lain.` };
+  if (email) {
+    normalizedEmail = email.toLowerCase().trim();
+    const { data: dup } = await supabaseAdmin
+      .from("employees")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+    if (dup) {
+      return { error: `Email ${normalizedEmail} sudah digunakan. Gunakan email lain.` };
+    }
+  } else {
+    const { data: existingEmails } = await supabaseAdmin
+      .from("employees")
+      .select("email");
+    const usedEmails = (existingEmails || []).map((e: Record<string, unknown>) => e.email as string);
+    normalizedEmail = generateCompanyEmailUnique(full_name, usedEmails);
   }
 
   const tableExists = await usersTableExists();
@@ -151,12 +156,13 @@ export async function createEmployee(formData: FormData) {
           password_hash: passwordHash,
           role: "employee",
           full_name,
+          one_time_token: oneTimeToken,
+          one_time_token_expires: tokenExpires,
         },
       ]);
   }
 
   revalidatePath("/hrd/employees");
-  const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "employee.create",
     targetId: normalizedEmail,
@@ -183,17 +189,19 @@ export async function updateApplicationStatus(applicationId: string, status: str
     .eq("id", applicationId);
 
   if (error) {
-    return { error: error.message };
+    console.error("[hrd] updateApplicationStatus error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
-  // Auto-delete temporary applicant account when rejected
+  // Mark temporary applicant account for deletion in 24 hours when rejected
+  // so the applicant can still login and see the rejection notice.
   if (status === "Ditolak" && application) {
     const appEmail = (application as { email: string }).email;
     if (appEmail) {
-      // Only delete if the account is a temporary applicant account
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       await supabaseAdmin
         .from("users")
-        .delete()
+        .update({ expires_at: expiresAt })
         .eq("email", appEmail)
         .eq("role", "applicant")
         .eq("is_temporary", true);
@@ -201,7 +209,6 @@ export async function updateApplicationStatus(applicationId: string, status: str
   }
 
   revalidatePath("/hrd/recruitment");
-  const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "application.update",
     targetId: applicationId,
@@ -232,16 +239,22 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   }
 
   const normalizedEmail = (application.email as string).toLowerCase().trim();
+  const oneTimeToken = generateOneTimeToken(normalizedEmail);
+  const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
+  // Check if a non-applicant user already exists with this email
   if (await usersTableExists()) {
     const { data: existing } = await supabaseAdmin
       .from("users")
-      .select("id")
+      .select("id, role")
       .eq("email", normalizedEmail)
       .limit(1);
 
     if (existing && existing.length > 0) {
-      return { error: "Email sudah terdaftar sebagai user." };
+      const existingRole = existing[0].role as string;
+      if (existingRole !== "applicant") {
+        return { error: "Email sudah terdaftar sebagai karyawan." };
+      }
     }
   }
 
@@ -261,20 +274,49 @@ export async function convertApplicantToEmployee(applicationId: string, formData
     return { error: empError.message };
   }
 
+  // Upgrade the existing applicant account to employee (persist, don't delete)
   if (await usersTableExists()) {
     const passwordHash = hashPassword(password);
-
-    const { error: userError } = await supabaseAdmin
+    const { data: existingApplicant } = await supabaseAdmin
       .from("users")
-      .insert([{
-        email: normalizedEmail,
-        password_hash: passwordHash,
-        role: "employee",
-        full_name: application.full_name,
-      }]);
+      .select("id")
+      .eq("email", normalizedEmail)
+      .eq("role", "applicant")
+      .maybeSingle();
 
-    if (userError) {
-      return { error: "Akun karyawan dibuat tetapi gagal membuat login: " + userError.message };
+    if (existingApplicant) {
+      const { error: updateError } = await supabaseAdmin
+        .from("users")
+        .update({
+          password_hash: passwordHash,
+          role: "employee",
+          is_temporary: false,
+          expires_at: null,
+          application_id: null,
+          one_time_token: oneTimeToken,
+          one_time_token_expires: tokenExpires,
+        })
+        .eq("email", normalizedEmail)
+        .eq("role", "applicant");
+
+      if (updateError) {
+        return { error: "Data karyawan dibuat tetapi gagal meng-upgrade akun: " + updateError.message };
+      }
+    } else {
+      const { error: insertError } = await supabaseAdmin
+        .from("users")
+        .insert([{
+          email: normalizedEmail,
+          password_hash: passwordHash,
+          role: "employee",
+          full_name: application.full_name,
+          one_time_token: oneTimeToken,
+          one_time_token_expires: tokenExpires,
+        }]);
+
+      if (insertError) {
+        return { error: "Data karyawan dibuat tetapi gagal membuat akun login: " + insertError.message };
+      }
     }
   }
 
@@ -283,18 +325,27 @@ export async function convertApplicantToEmployee(applicationId: string, formData
     .update({ status: "Diterima" })
     .eq("id", applicationId);
 
-  // Delete the temporary applicant user so their old "applicant" session no
-  // longer grants access to /applicant/*. The new employee entry (created above)
-  // has role "employee" — they must log in again to get the updated token.
-  await supabaseAdmin
-    .from("users")
-    .delete()
-    .eq("email", normalizedEmail)
-    .eq("role", "applicant");
-
   revalidatePath("/hrd/recruitment");
   revalidatePath("/hrd/employees");
-  const { auditLog } = await import("@/lib/audit");
+
+  // Send welcome email with employee credentials
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://portal.ptpgp.co.id";
+  let emailWarning: string | undefined;
+  try {
+    await sendMail({
+      to: normalizedEmail,
+      subject: "Selamat! Anda Resmi Bergabung — PT Pratama Galuh Perkasa",
+      html: emailEmployeeLoginLink({
+        name: application.full_name as string,
+        email: normalizedEmail,
+        loginUrl: `${appUrl}/login/token?t=${oneTimeToken}`,
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to send employee credentials email:", err);
+    emailWarning = "Akun berhasil dibuat tetapi email kredensial gagal dikirim. Beritahu karyawan untuk login dengan email mereka.";
+  }
+
   auditLog({
     action: "applicant.convert",
     targetId: applicationId,
@@ -302,7 +353,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
     performedBy: user,
     detail: `Dikonversi menjadi karyawan - ${department}/${position}`,
   });
-  return { success: true, password: await usersTableExists() ? password : undefined };
+  return { success: true, password: await usersTableExists() ? password : undefined, ...(emailWarning ? { warning: emailWarning } : {}) };
 }
 
 export async function updateEmployeeStatus(employeeId: string, status: string) {
@@ -314,7 +365,8 @@ export async function updateEmployeeStatus(employeeId: string, status: string) {
     .eq("id", employeeId);
 
   if (error) {
-    return { error: error.message };
+    console.error("[hrd] updateEmployeeStatus error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
   if (status === "Inactive" || status === "Suspended" || status === "Resigned" || status === "Terminated") {
@@ -326,16 +378,16 @@ export async function updateEmployeeStatus(employeeId: string, status: string) {
         .single();
 
       if (emp) {
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         await supabaseAdmin
           .from("users")
-          .delete()
+          .update({ expires_at: expiresAt })
           .eq("email", emp.email as string);
       }
     }
   }
 
   revalidatePath("/hrd/employees");
-  const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "employee.status_change",
     targetId: employeeId,
@@ -392,7 +444,8 @@ export async function updateEmployee(formData: FormData) {
     .eq("id", id);
 
   if (error) {
-    return { error: error.message };
+    console.error("[hrd] updateEmployee error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
   if (await usersTableExists()) {
@@ -447,7 +500,6 @@ export async function updateEmployee(formData: FormData) {
   }
 
   revalidatePath("/hrd/employees");
-  const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "employee.update",
     targetId: id,
@@ -481,11 +533,11 @@ export async function resetEmployeePassword(employeeId: string) {
       .eq("email", emp.email as string);
 
     if (error) {
-      return { error: error.message };
+      console.error("[hrd] resetEmployeePassword error:", error.message);
+      return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
     }
   }
 
-  const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "employee.password_reset",
     targetId: employeeId,
@@ -495,7 +547,29 @@ export async function resetEmployeePassword(employeeId: string) {
 
   const phone = (emp.phone as string) || "";
 
+  revalidatePath("/superadmin/employees");
+
   return { success: true, password: newPassword, email: emp.email as string, phone };
+}
+
+export async function resetUserPasswordByEmail(userEmail: string) {
+  await requireRole("superadmin");
+
+  const newPassword = generateNumericPassword();
+  const passwordHash = hashPassword(newPassword);
+
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ password_hash: passwordHash })
+    .eq("email", userEmail.toLowerCase().trim());
+
+  if (error) {
+    console.error("[hrd] resetUserPasswordByEmail error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
+  }
+
+  revalidatePath("/superadmin/employees");
+  return { success: true, password: newPassword, email: userEmail };
 }
 
 export async function deleteEmployee(employeeId: string) {
@@ -522,10 +596,10 @@ export async function deleteEmployee(employeeId: string) {
     .eq("id", employeeId);
 
   if (error) {
-    return { error: error.message };
+    console.error("[hrd] deleteEmployee error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
-  const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "employee.delete",
     targetId: employeeId,
@@ -545,12 +619,12 @@ export async function updateJobStatus(jobId: string, status: string) {
     .eq("id", jobId);
 
   if (error) {
-    return { error: error.message };
+    console.error("[hrd] updateJobStatus error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
   revalidatePath("/hrd/recruitment");
   revalidatePath("/career");
-  const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "job.status_change",
     targetId: jobId,
@@ -581,7 +655,7 @@ export async function submitApplication(formData: FormData) {
     .eq("job_id", job_id)
     .maybeSingle();
 
-  if (dupApp) {
+  if (dupApp && (dupApp.status as string) !== "Ditolak") {
     return { error: "Anda sudah pernah melamar untuk posisi ini." };
   }
 
@@ -600,13 +674,43 @@ export async function submitApplication(formData: FormData) {
     }]);
 
   if (error) {
-    console.error("submitApplication error:", error);
-    return { error: `Gagal mengirim lamaran: ${error.message}` };
+    console.error("[hrd] submitApplication error:", error.message);
+    return { error: "Gagal memproses. Silakan coba lagi." };
+  }
+
+  // Handle CV file upload
+  let cvUploadError: string | undefined;
+  const cvFile = formData.get("cv_file") as File | null;
+  if (cvFile && cvFile.size > 0) {
+    const MAX_CV_SIZE = 5 * 1024 * 1024;
+    if (cvFile.size > MAX_CV_SIZE) {
+      cvUploadError = "File CV terlalu besar (maksimal 5 MB). Lamaran tetap tercatat.";
+    } else {
+      try {
+        const cvBuffer = Buffer.from(await cvFile.arrayBuffer());
+        const cvFilename = `applications/${normalizedEmail}/${crypto.randomUUID()}.pdf`;
+        const { error: cvErr } = await supabaseAdmin.storage
+          .from("attendance-photos")
+          .upload(cvFilename, cvBuffer, { contentType: "application/pdf", upsert: true });
+        if (!cvErr) {
+          const { data: cvUrlData } = await supabaseAdmin.storage
+            .from("attendance-photos")
+            .createSignedUrl(cvFilename, 7200);
+          if (cvUrlData?.signedUrl) {
+            await supabaseAdmin.from("applications").update({ resume_url: cvUrlData.signedUrl }).eq("id", applicationId);
+          }
+        }
+      } catch {
+        cvUploadError = "Gagal mengunggah CV. Lamaran tetap tercatat tanpa CV.";
+      }
+    }
   }
 
   // Create temporary applicant account so they can track their application
   let tempPassword: string | undefined;
+  let oneTimeToken = "";
   let accountCreated = false;
+  let accountWarning: string | undefined;
 
   try {
     // Check if user with this email already exists (might have applied before)
@@ -628,32 +732,71 @@ export async function submitApplication(formData: FormData) {
       tempPassword = `Lamar${randomNum}${suffix}`;
 
       const passwordHash = hashPassword(tempPassword);
+      oneTimeToken = generateOneTimeToken(normalizedEmail);
+      const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
-      await supabaseAdmin.from("users").insert([{
+      const { error: insertErr } = await supabaseAdmin.from("users").insert([{
         email: normalizedEmail,
         password_hash: passwordHash,
         role: "applicant",
         full_name,
         application_id: applicationId,
         is_temporary: true,
+        one_time_token: oneTimeToken,
+        one_time_token_expires: tokenExpires,
       }]);
 
-      accountCreated = true;
+      if (insertErr) {
+        console.error("Failed to create applicant user record:", insertErr);
+        accountWarning = "Akun portal pelamar gagal dibuat. Silakan hubungi HRD untuk mendapatkan akun.";
+      } else {
+        accountCreated = true;
+      }
     } else if (existingUser.role === "applicant") {
       // Update application_id to the latest application
-      await supabaseAdmin.from("users").update({ application_id: applicationId }).eq("email", normalizedEmail);
+      const { error: updateErr } = await supabaseAdmin.from("users").update({ application_id: applicationId }).eq("email", normalizedEmail);
+      if (updateErr) {
+        console.error("Failed to update applicant user application_id:", updateErr);
+      } else {
+        accountWarning = "Anda sudah memiliki akun pelamar. Gunakan password yang sama seperti sebelumnya untuk login.";
+      }
+    } else {
+      // Existing user is employee/hrd/etc — don't overwrite their account
+      accountWarning = "Email Anda sudah terdaftar sebagai karyawan. Gunakan akun karyawan Anda untuk login.";
     }
-    // If existing user is employee/hrd/etc, don't overwrite their account
   } catch (e) {
     // Account creation failure is non-fatal — application still submitted
     console.error("Failed to create applicant account:", e);
+    accountWarning = "Akun portal pelamar gagal dibuat. Silakan hubungi HRD.";
   }
+
+  // Send credentials via Gmail (non-fatal)
+  let emailWarning: string | undefined;
+  if (accountCreated && tempPassword) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://portal.ptpgp.co.id";
+    sendMail({
+      to: normalizedEmail,
+      subject: "Akun Portal Pelamar Anda — PT Pratama Galuh Perkasa",
+      html: emailApplicantLoginLink({
+        name: full_name,
+        email: normalizedEmail,
+        loginUrl: `${appUrl}/login/token?t=${oneTimeToken}`,
+      }),
+    }).catch(err => {
+      console.error("Failed to send applicant credentials email:", err);
+      emailWarning = "Lamaran tercatat tetapi email kredensial gagal dikirim.";
+    });
+  }
+
+  revalidatePath("/career");
+  revalidatePath("/hrd/recruitment");
 
   return {
     success: true,
     applicationId,
     accountCreated,
     credentials: accountCreated ? { email: normalizedEmail, password: tempPassword } : null,
+    accountWarning: accountWarning || emailWarning || cvUploadError || null,
   };
 }
 
@@ -685,7 +828,9 @@ export async function updateEmployeeAsSuperadmin(formData: FormData) {
         if (parsed.__auth__?.password_hash) {
           authData.password_hash = parsed.__auth__.password_hash;
         }
-      } catch {}
+      } catch {
+        // address JSON is malformed, skip auth data
+      }
     }
   }
 
@@ -701,10 +846,32 @@ export async function updateEmployeeAsSuperadmin(formData: FormData) {
     })
     .eq("id", id);
 
-  if (error) return { error: error.message };
+  if (error) { console.error("[hrd] updateEmployeeAsSuperadmin error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
+
+  // Also update the users table if it exists
+  if (email) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const { data: existingUser } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+
+    if (existingUser) {
+      const userUpdates: Record<string, unknown> = {
+        full_name: full_name || undefined,
+      };
+      if (newPassword) {
+        userUpdates.password_hash = hashPassword(newPassword);
+      }
+      if (role) {
+        userUpdates.role = role;
+      }
+      await supabaseAdmin.from("users").update(userUpdates).eq("email", normalizedEmail);
+    }
+  }
 
   revalidatePath("/superadmin/employees");
-  const { auditLog } = await import("@/lib/audit");
   auditLog({
     action: "employee.update",
     targetId: id,

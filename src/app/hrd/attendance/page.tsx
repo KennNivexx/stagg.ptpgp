@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Users, Search, CheckCircle2, LogIn, LogOut, Camera, MapPin, X } from "lucide-react";
-import { getAllAttendance, clockIn, clockOut, getTodayAttendance } from "@/app/actions/attendance";
+import { Clock, Users, Search, CheckCircle2, LogIn, LogOut, Camera, MapPin, X, FileSpreadsheet } from "lucide-react";
+import { getAllAttendance, clockIn, clockOut, getTodayAttendance, getAttendanceForExport } from "@/app/actions/attendance";
 
 interface AttRecord {
   id: string; employee_id: string; employee_name: string; department: string;
@@ -18,6 +18,7 @@ export default function AttendancePage() {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
   const [clocking, setClocking] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,6 +49,43 @@ export default function AttendancePage() {
     getAllAttendance({ date: dateFilter }).then(setData);
   };
 
+  const handleExportExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const records = await getAttendanceForExport();
+      if (!records.length) { showToast("Belum ada data untuk diekspor."); return; }
+
+      const fmtTime = (v: unknown) => v ? new Date(v as string).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "—";
+      const fmtDate = (v: unknown) => v ? new Date(v as string).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+
+      const rows = records.map((r) => ({
+        "Tanggal": fmtDate(r.date),
+        "Nama Karyawan": (r.employee_name as string) || "—",
+        "Departemen": (r.department as string) || "—",
+        "Jam Masuk": fmtTime(r.check_in),
+        "Jam Keluar": fmtTime(r.check_out),
+        "Status": (r.status as string) || "—",
+        "Lokasi": (r.location_name as string) || "—",
+        "Keterangan": (r.notes as string) || "",
+      }));
+
+      const XLSX = await import("xlsx");
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [{ wch: 20 }, { wch: 28 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 30 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Rekap Absensi");
+      const stamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Rekap-Absensi-${stamp}.xlsx`);
+      showToast(`Berhasil ekspor ${rows.length} data absensi.`);
+    } catch (e) {
+      console.error("[attendance] export error:", e);
+      showToast("Gagal mengekspor data. Silakan coba lagi.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const filtered = data.filter(d => !search || d.employee_name?.toLowerCase().includes(search.toLowerCase()));
 
   const hadir = data.filter(d => d.status === "Hadir" && d.check_in).length;
@@ -63,6 +101,9 @@ export default function AttendancePage() {
           <p className="text-sm text-gray-500">Rekap kehadiran karyawan. Clock-in / Clock-out untuk mencatat kehadiran.</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={handleExportExcel} disabled={exporting} className="flex items-center gap-2 px-4 py-2.5 bg-green-700 hover:bg-green-800 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50">
+            <FileSpreadsheet size={14} /> {exporting ? "Mengekspor..." : "Export Excel"}
+          </button>
           {!today?.check_in ? (
             <button onClick={doClockIn} disabled={clocking} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50">
               <LogIn size={14} /> {clocking ? "..." : "Clock In"}

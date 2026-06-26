@@ -258,7 +258,7 @@ function AddKompetensiForm({ dept, onSuccess }: { dept: string; onSuccess: () =>
     <div className="mb-6">
       {!open ? (
         <button onClick={() => setOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#1A2530] text-white text-xs font-bold rounded-xl hover:bg-slate-700 transition-colors">
+          className="flex items-center gap-2 px-4 py-2.5 bg-pgp-navy text-white text-xs font-bold rounded-xl hover:bg-slate-700 transition-colors">
           <Plus size={14} /> Tambah Kompetensi Departemen
         </button>
       ) : (
@@ -271,12 +271,12 @@ function AddKompetensiForm({ dept, onSuccess }: { dept: string; onSuccess: () =>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Nama Kompetensi *</label>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Analisis Data Logistik"
-                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 focus:border-pgp-red outline-none" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Kategori</label>
               <select value={category} onChange={(e) => setCategory(e.target.value)}
-                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 focus:border-pgp-red outline-none bg-white">
                 {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -290,7 +290,7 @@ function AddKompetensiForm({ dept, onSuccess }: { dept: string; onSuccess: () =>
           <div className="flex gap-2 mt-4">
             <button onClick={() => { setOpen(false); setErr(""); }} className="px-4 py-2 text-xs font-bold bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200">Batal</button>
             <button onClick={handleAdd} disabled={loading}
-              className="px-4 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] disabled:opacity-60 flex items-center gap-1.5">
+              className="px-4 py-2 bg-pgp-red text-white text-xs font-bold rounded-xl hover:bg-pgp-red/80 disabled:opacity-60 flex items-center gap-1.5">
               <Save size={12} /> {loading ? "Menyimpan..." : "Tambahkan"}
             </button>
           </div>
@@ -512,7 +512,7 @@ export default function DeptCompetencyPage() {
       )}
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#1A2530]">Kompetensi Karyawan</h1>
+        <h1 className="text-2xl font-bold text-pgp-navy">Kompetensi Karyawan</h1>
         <p className="text-sm text-gray-500 mt-1">
           {deptName || "Departemen tidak ditemukan"} — Nilai kompetensi setiap karyawan. Klik <strong>+</strong> atau <strong>-</strong> untuk melihat panduan tiap level.
         </p>
@@ -524,7 +524,7 @@ export default function DeptCompetencyPage() {
           {!showKelola ? (
             <div className="flex items-center gap-3">
               <button onClick={() => setShowKelola(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#1A2530] text-white text-xs font-bold rounded-xl hover:bg-slate-700 transition-colors">
+                className="flex items-center gap-2 px-4 py-2.5 bg-pgp-navy text-white text-xs font-bold rounded-xl hover:bg-slate-700 transition-colors">
                 <Plus size={14} /> Kelola Kompetensi Departemen
               </button>
               {deptSkillIds.size > 0 && (
@@ -575,15 +575,15 @@ export default function DeptCompetencyPage() {
                         {byCategory[cat].map((s) => {
                           const checked = kelolaSelected.has(s.id);
                           return (
-                            <label key={s.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-colors ${checked ? "bg-[#CC0000]/5 border-[#CC0000]/30" : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"}`}>
+                            <label key={s.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-colors ${checked ? "bg-pgp-red/5 border-pgp-red/30" : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"}`}>
                               <input type="checkbox" checked={checked}
                                 onChange={() => setKelolaSelected((prev) => {
                                   const n = new Set(prev);
                                   if (n.has(s.id)) n.delete(s.id); else n.add(s.id);
                                   return n;
                                 })}
-                                className="accent-[#CC0000] shrink-0" />
-                              <span className={`text-xs font-semibold leading-tight ${checked ? "text-[#CC0000]" : "text-slate-700"}`}>{s.name}</span>
+                                className="accent-pgp-red shrink-0" />
+                              <span className={`text-xs font-semibold leading-tight ${checked ? "text-pgp-red" : "text-slate-700"}`}>{s.name}</span>
                             </label>
                           );
                         })}
@@ -609,7 +609,7 @@ export default function DeptCompetencyPage() {
                       loadData(deptName);
                     }}
                     disabled={kelolaSaving}
-                    className="px-5 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] disabled:opacity-50 transition-colors inline-flex items-center gap-2"
+                    className="px-5 py-2 bg-pgp-red text-white text-xs font-bold rounded-xl hover:bg-pgp-red/80 disabled:opacity-50 transition-colors inline-flex items-center gap-2"
                   >
                     <Save size={13} /> {kelolaSaving ? "Menyimpan..." : "Simpan Pilihan"}
                   </button>

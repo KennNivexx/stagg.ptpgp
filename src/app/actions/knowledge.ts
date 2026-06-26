@@ -31,7 +31,7 @@ export async function saveSop(formData: FormData) {
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
   if (error?.code === "23505") return { error: `Nomor SOP "${finalNumber}" sudah ada.` };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[knowledge] saveSop error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/knowledge/sop");
   return { success: true };
 }

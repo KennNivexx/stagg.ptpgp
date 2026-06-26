@@ -1,6 +1,9 @@
 ﻿import { Shield, Search, Calendar, FileText, Filter } from "lucide-react";
 
-export default async function PoliciesPage() {
+export default async function PoliciesPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+  const params = await searchParams;
+  const activeCategory = params.category || "Semua";
+
   const policyCategories = ["Semua", "Kepegawaian", "Keuangan", "Operasional", "IT", "HSE"];
 
   const policyData = [
@@ -15,6 +18,8 @@ export default async function PoliciesPage() {
     { id: 9, title: "Kebijakan Lingkungan Hidup", category: "HSE", effectiveDate: "15 Jan 2024", revision: "Rev. 1", description: "Komitmen perusahaan terhadap kelestarian lingkungan." },
     { id: 10, title: "Kebijakan Keamanan Data", category: "IT", effectiveDate: "01 Mar 2024", revision: "Rev. 2", description: "Perlindungan data perusahaan, karyawan, dan pelanggan." },
   ];
+
+  const filteredPolicies = activeCategory === "Semua" ? policyData : policyData.filter((p) => p.category === activeCategory);
 
   const categoryColorMap: Record<string, string> = {
     Kepegawaian: "bg-blue-50 text-blue-700",
@@ -42,23 +47,25 @@ export default async function PoliciesPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Filter size={14} className="text-slate-400" />
-          {policyCategories.map((cat) => (
-            <button
-              key={cat}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
-                cat === "Semua"
-                  ? "bg-[#CC0000] text-white"
-                  : "bg-white border border-slate-200 text-slate-600 hover:border-[#CC0000]"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+          {policyCategories.map((cat) => {
+            const href = cat === "Semua" ? "?" : `?category=${encodeURIComponent(cat)}`;
+            const active = "px-4 py-2 rounded-xl text-xs font-bold bg-pgp-red text-white shadow-sm";
+            const inactive = "px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200";
+            return (
+              <a
+                key={cat}
+                href={href}
+                className={activeCategory === cat ? active : inactive}
+              >
+                {cat}
+              </a>
+            );
+          })}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {policyData.map((policy) => (
+        {filteredPolicies.map((policy) => (
           <div key={policy.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-md transition-all group cursor-pointer">
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 bg-slate-50 text-slate-600 rounded-xl">

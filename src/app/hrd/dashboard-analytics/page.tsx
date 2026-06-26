@@ -311,7 +311,7 @@ export default async function DashboardAnalytics() {
               <p className="text-xs text-slate-400 text-center py-4">Belum ada data.</p>
             ) : (
               (recentHires as Record<string, unknown>[]).map((emp, i) => (
-                <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50">
+                <div key={(emp.id as string) || i} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50">
                   <div>
                     <p className="text-xs font-bold text-slate-700">{emp.full_name as string || "-"}</p>
                     <p className="text-[10px] text-slate-400">{emp.department as string || "-"} &middot; {emp.position as string || "-"}</p>

@@ -37,7 +37,7 @@ export interface Job {
   department?: string;
   location?: string;
   description: string;
-  requirements?: string[];
+  requirements?: string;
   created_at?: string;
   type?: string;
   job_desk?: string;

@@ -1,6 +1,11 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { DollarSign, Plus, TrendingUp, AlertCircle, CheckCircle2, Wallet, Briefcase, Users, GraduationCap, Building2 } from "lucide-react";
 
+async function saveBudget(formData: FormData) {
+  "use server";
+  // Fitur akan segera tersedia
+}
+
 const SEED_BUDGET = [
   { id: 1, category: "Rekrutmen", allocated: 150000000, used: 85000000, icon: <Briefcase size={14} />, color: "blue" },
   { id: 2, category: "Pelatihan & Pengembangan", allocated: 300000000, used: 120000000, icon: <GraduationCap size={14} />, color: "emerald" },
@@ -69,10 +74,10 @@ export default async function AnggaranSDM() {
             </div>
           </div>
           <div className="p-6">
-            <form className="space-y-4">
+            <form action={saveBudget} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Kategori</label>
-                <select className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
+                <select name="kategori" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
                   <option value="">Pilih Kategori</option>
                   <option>Rekrutmen</option>
                   <option>Pelatihan & Pengembangan</option>
@@ -84,11 +89,11 @@ export default async function AnggaranSDM() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Anggaran Dialokasikan (Rp)</label>
-                <input type="number" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: 150000000" />
+                <input type="number" name="anggaran_dialokasikan" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: 150000000" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Sudah Terpakai (Rp)</label>
-                <input type="number" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: 85000000" />
+                <input type="number" name="sudah_terpakai" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: 85000000" />
               </div>
               <button type="submit" className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center justify-center gap-2">
                 <Plus size={14} /> Simpan Anggaran

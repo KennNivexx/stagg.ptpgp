@@ -44,7 +44,7 @@ export default function CoverageSection({
   const internasional = international?.length ? international : defaultInternational;
 
   return (
-    <section id="coverage" className="py-24 bg-zinc-50 text-pgp-navy overflow-hidden relative border-y border-zinc-200/40">
+    <section id="coverage" className="py-24 bg-zinc-50 text-pgp-navy overflow-hidden relative border-y border-zinc-200/40 scroll-mt-[72px]">
       <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

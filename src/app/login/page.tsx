@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { User, Lock, Eye, ArrowRight, ShieldCheck, Globe, HelpCircle, LayoutDashboard } from "lucide-react";
 import { loginAction } from "@/app/actions/auth";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -18,20 +17,12 @@ export default function LoginPage() {
     setError("");
     try {
       const formData = new FormData(e.currentTarget);
-      console.log("Form submitted. Email:", formData.get("email"));
       const res = await loginAction(formData);
-      console.log("loginAction response received:", res);
       if (res?.error) {
         setError(res.error);
         setLoading(false);
-      } else if (res?.redirect) {
-        console.log("Redirecting to:", res.redirect);
-        router.push(res.redirect);
-      } else {
-        setLoading(false);
       }
-    } catch (err) {
-      console.error("Login submit error:", err);
+    } catch {
       setError("Gagal masuk. Terjadi kesalahan pada server atau koneksi.");
       setLoading(false);
     }
@@ -43,10 +34,12 @@ export default function LoginPage() {
       {/* Left Side: Brand Showcase */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-center p-12 overflow-hidden border-r border-zinc-100">
         <div className="absolute inset-0 z-0">
-          <img 
+          <Image 
             src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop" 
-            alt="Port at sunset" 
-            className="w-full h-full object-cover"
+            alt="" 
+            fill
+            className="object-cover" 
+            priority
           />
           <div className="absolute inset-0 bg-black/10"></div>
         </div>
@@ -54,10 +47,12 @@ export default function LoginPage() {
         <div className="relative z-10 bg-[#FCFBF9]/95 backdrop-blur-md p-8 md:p-10 rounded-[32px] border border-orange-100/50 shadow-2xl max-w-lg mx-auto flex flex-col justify-between h-[80%] w-full">
           <div>
             <div className="flex items-center gap-3 mb-10 w-fit">
-              <img 
+              <Image 
                 src="https://stag.ptpgp.co.id/web/image/website/1/logo/PRATAMA%20GALUH%20PERKASA?unique=af2b0b3" 
                 alt="PT Pratama Galuh Perkasa Logo" 
+                width={56} height={56} 
                 className="h-14 w-auto" 
+                priority 
               />
             </div>
             
@@ -92,18 +87,19 @@ export default function LoginPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-semibold">
+              <div role="alert" className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-semibold">
                 {error}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-2">Email or Username</label>
+              <label htmlFor="email" className="block text-xs font-semibold text-gray-600 mb-2">Email or Username</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <User size={16} className="text-gray-400" />
                 </div>
-                <input 
+                <input
+                  id="email"
                   type="text" 
                   name="email"
                   placeholder="superadmin@ptpgp.co.id / hrd@ptpgp.co.id" 
@@ -114,35 +110,24 @@ export default function LoginPage() {
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-semibold text-gray-600">Password</label>
-                <a href="#" className="text-xs text-pgp-red hover:text-pgp-red-hover font-bold transition-colors">Forgot Password?</a>
+                <label htmlFor="password" className="block text-xs font-semibold text-gray-600">Password</label>
+                <Link href="/login/forgot" className="text-xs text-pgp-red hover:text-pgp-red-hover font-bold transition-colors">Lupa Password?</Link>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock size={16} className="text-gray-400" />
                 </div>
-                <input 
+                <input
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   name="password"
                   placeholder="••••••••" 
                   className="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-pgp-red focus:ring-1 focus:ring-pgp-red/20 bg-white transition-all"
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                <button type="button" aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
                   <Eye size={16} />
                 </button>
               </div>
-            </div>
-
-            <div className="flex items-center">
-              <input 
-                id="remember-me" 
-                name="remember-me" 
-                type="checkbox" 
-                className="h-4 w-4 text-pgp-red focus:ring-pgp-red border-gray-300 rounded-lg cursor-pointer"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-xs text-gray-600 cursor-pointer select-none">
-                Remember me for 30 days
-              </label>
             </div>
 
             <button 
@@ -156,9 +141,9 @@ export default function LoginPage() {
 
           <div className="mt-16 pt-6 border-t border-gray-200">
             <div className="flex justify-between items-center mb-6">
-              <a href="#" className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-900 transition-colors font-medium">
-                <HelpCircle size={14} /> Support Center
-              </a>
+              <span className="flex items-center gap-2 text-xs text-gray-400 font-medium">
+                <HelpCircle size={14} /> hrd@ptpgp.co.id
+              </span>
               <Link href="/" className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-900 transition-colors font-medium">
                 <LayoutDashboard size={14} /> Public Website
               </Link>

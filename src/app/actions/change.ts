@@ -29,7 +29,7 @@ export async function saveInitiative(formData: FormData) {
     created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[change] saveInitiative error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/change/initiatives");
   return { success: true };
 }
@@ -60,7 +60,7 @@ export async function saveCommunication(formData: FormData) {
     created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[change] saveCommunication error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/change/communications");
   return { success: true };
 }
@@ -91,7 +91,7 @@ export async function savePolicy(formData: FormData) {
     created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[change] savePolicy error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/change/policies");
   return { success: true };
 }

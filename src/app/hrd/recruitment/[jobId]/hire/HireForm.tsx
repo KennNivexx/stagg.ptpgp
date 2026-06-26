@@ -4,12 +4,23 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, UserPlus, CheckCircle2, Mail, Phone, Calendar, CalendarClock, XCircle } from "lucide-react";
 import Link from "next/link";
-import { hireCandidate } from "@/app/actions/recruitment";
+import { hireCandidate, rejectApplicant } from "@/app/actions/recruitment";
 import { supabase } from "@/lib/supabase";
+
+interface Applicant {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  applied_at?: string;
+  created_at?: string;
+  status: string;
+  job_id: string;
+}
 
 export default function HireForm({ jobPosting }: { jobPosting: Record<string, unknown> }) {
   const router = useRouter();
-  const [applicants, setApplicants] = useState<any[]>([]);
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState("");
@@ -36,10 +47,19 @@ export default function HireForm({ jobPosting }: { jobPosting: Record<string, un
     setActionLoading(null);
     if (error) { showToast("Gagal update status."); return; }
     setApplicants(prev => prev.map(a => a.id === applicantId ? { ...a, status } : a));
-    showToast(status === "Interview" ? "Kandidat dijadwalkan interview." : "Kandidat ditolak.");
+    showToast(status === "Interview" ? "Kandidat dijadwalkan interview." : "Status diperbarui.");
   };
 
-  const handleHire = async (applicant: any) => {
+  const handleReject = async (applicant: Applicant) => {
+    setActionLoading(applicant.id);
+    const res = await rejectApplicant(applicant.id, applicant.email || "");
+    setActionLoading(null);
+    if (res.error) { showToast(res.error); return; }
+    setApplicants(prev => prev.map(a => a.id === applicant.id ? { ...a, status: "Rejected" } : a));
+    showToast("Kandidat ditolak. Akun sementara dihapus.");
+  };
+
+  const handleHire = async (applicant: Applicant) => {
     setActionLoading(applicant.id);
     const fd = new FormData();
     fd.append("job_posting_id", jobPosting.id as string);
@@ -120,7 +140,7 @@ export default function HireForm({ jobPosting }: { jobPosting: Record<string, un
                     <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-0.5">
                       {applicant.email && <span className="flex items-center gap-1"><Mail size={10} />{applicant.email}</span>}
                       {applicant.phone && <span className="flex items-center gap-1"><Phone size={10} />{applicant.phone}</span>}
-                      <span className="flex items-center gap-1"><Calendar size={10} />{new Date(applicant.applied_at || applicant.created_at).toLocaleDateString("id-ID")}</span>
+                      <span className="flex items-center gap-1"><Calendar size={10} />{new Date((applicant.applied_at || applicant.created_at) || new Date()).toLocaleDateString("id-ID")}</span>
                     </div>
                   </div>
                 </div>
@@ -140,7 +160,7 @@ export default function HireForm({ jobPosting }: { jobPosting: Record<string, un
                         className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-[10px] font-bold transition-colors disabled:opacity-50">
                         <CalendarClock size={12} className="inline mr-0.5" />Interview
                       </button>
-                      <button onClick={() => updateStatus(applicant.id, "Rejected")} disabled={actionLoading === applicant.id}
+                      <button onClick={() => handleReject(applicant)} disabled={actionLoading === applicant.id}
                         className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded text-[10px] font-bold transition-colors disabled:opacity-50">
                         <XCircle size={12} className="inline mr-0.5" />Tolak
                       </button>
@@ -153,7 +173,7 @@ export default function HireForm({ jobPosting }: { jobPosting: Record<string, un
                         className="px-3 py-1 bg-[#CC0000] hover:bg-[#aa0000] text-white rounded text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1">
                         <UserPlus size={12} />Rekrut
                       </button>
-                      <button onClick={() => updateStatus(applicant.id, "Rejected")} disabled={actionLoading === applicant.id}
+                      <button onClick={() => handleReject(applicant)} disabled={actionLoading === applicant.id}
                         className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded text-[10px] font-bold transition-colors disabled:opacity-50">Tolak</button>
                     </>
                   )}

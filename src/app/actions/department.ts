@@ -113,7 +113,7 @@ export async function submitRequest(formData: FormData) {
   });
   if (error) {
     console.error("submitRequest error:", error);
-    return { error: `Gagal: ${error.message || "Silakan coba lagi."}` };
+    return { error: "Gagal memproses. Silakan coba lagi." };
   }
 
   revalidatePath("/department");

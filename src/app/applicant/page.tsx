@@ -26,6 +26,10 @@ export default async function ApplicantDashboard() {
     ? new Date(data.application.applied_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
     : "-";
 
+  const expiresAt = data?.account?.expires_at ? new Date(data.account.expires_at) : null;
+  const remainingMs = expiresAt ? expiresAt.getTime() - Date.now() : 0;
+  const remainingHours = remainingMs > 0 ? Math.max(1, Math.ceil(remainingMs / (1000 * 60 * 60))) : 0;
+
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-4xl mx-auto">
       {/* Header */}
@@ -80,13 +84,13 @@ export default async function ApplicantDashboard() {
 
             <Link href="/applicant/company" className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-md transition-all group">
               <div className="flex items-center gap-3 mb-3">
-                <div className="p-2.5 bg-red-50 text-[#CC0000] rounded-xl">
+                <div className="p-2.5 bg-red-50 text-pgp-red rounded-xl">
                   <Building2 size={18} />
                 </div>
                 <h3 className="font-bold text-slate-800 text-sm">Info Perusahaan</h3>
               </div>
               <p className="text-xs text-slate-500">Kenali lebih dalam PT Pratama Galuh Perkasa — visi, misi, dan budaya kerja.</p>
-              <p className="text-[10px] text-[#CC0000] font-bold mt-3 group-hover:underline flex items-center gap-1">
+              <p className="text-[10px] text-pgp-red font-bold mt-3 group-hover:underline flex items-center gap-1">
                 Lihat Profil <ArrowRight size={10} />
               </p>
             </Link>
@@ -104,11 +108,21 @@ export default async function ApplicantDashboard() {
 
           {/* Notice if rejected */}
           {data.application.status === "Ditolak" && (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-              <h3 className="font-bold text-slate-700 text-sm mb-2">Terima kasih atas minat Anda</h3>
-              <p className="text-xs text-slate-500">
-                Kami mengapresiasi waktu dan usaha Anda dalam proses seleksi ini. Jangan menyerah — peluang karir lain mungkin lebih cocok untuk Anda. Akun portal ini akan segera dinonaktifkan.
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+              <h3 className="font-extrabold text-red-700 text-sm mb-2">Lamaran Tidak Lolos</h3>
+              <p className="text-xs text-red-600 leading-relaxed">
+                Mohon maaf, saat ini lamaran Anda untuk posisi <strong>{data.job?.position || "—"}</strong> belum berhasil.
+                Jangan berkecil hati — masih banyak peluang karir lain yang tersedia.
               </p>
+              {expiresAt && remainingHours > 0 && (
+                <div className="mt-4 bg-white/60 border border-red-100 rounded-xl p-3 flex items-center gap-3">
+                  <Clock size={18} className="text-red-500 shrink-0" />
+                  <p className="text-xs text-red-700">
+                    Akun ini akan <strong>otomatis dihapus</strong> dalam <strong>{remainingHours} jam</strong> lagi.
+                    Harap simpan data penting sebelum akun berakhir.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </>
@@ -121,11 +135,12 @@ export default async function ApplicantDashboard() {
       )}
 
       {/* Info box */}
-      <div className="bg-[#1A2530] rounded-2xl p-6 text-white">
+      <div className="bg-pgp-navy rounded-2xl p-6 text-white">
         <h4 className="text-sm font-bold mb-3">ℹ️ Tentang Portal Ini</h4>
         <ul className="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
           <li>Portal ini bersifat <strong className="text-white">sementara</strong> khusus untuk memantau perkembangan lamaran Anda.</li>
-          <li>Akun akan <strong className="text-white">otomatis dihapus</strong> apabila lamaran tidak lolos seleksi.</li>
+          <li>Akun akan <strong className="text-white">di-upgrade menjadi akun karyawan</strong> apabila lamaran diterima.</li>
+          <li>Akun akan <strong className="text-white">otomatis dihapus 24 jam</strong> setelah status lamaran ditolak, agar Anda sempat melihat pemberitahuan.</li>
           <li>Untuk pertanyaan, hubungi HRD di <strong className="text-white">hrga@ptpgp.co.id</strong>.</li>
         </ul>
       </div>

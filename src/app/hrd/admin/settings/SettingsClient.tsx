@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
-import { Building2, Clock, Calendar } from "lucide-react";
-import { saveMultipleSettings } from "@/app/actions/admin";
+import { Building2, Clock, Calendar, Mail, Eye, EyeOff, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { saveMultipleSettings, testGmailConfig } from "@/app/actions/admin";
 
 function Msg({ m }: { m: { type: "success" | "error"; text: string } | null }) {
   if (!m) return null;
@@ -32,13 +32,26 @@ function Section({ title, icon: Icon, color, children, onSave, loading, msg }: {
   );
 }
 
-export default function SettingsClient() {
+export default function SettingsClient({ initialSettings = {} }: { initialSettings?: Record<string, string> }) {
+  const s = initialSettings;
   const companyRef = useRef<HTMLFormElement>(null);
   const workRef = useRef<HTMLFormElement>(null);
   const leaveRef = useRef<HTMLFormElement>(null);
+  const mailRef = useRef<HTMLFormElement>(null);
 
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
   const [msgMap, setMsgMap] = useState<Record<string, { type: "success" | "error"; text: string } | null>>({});
+  const [showPass, setShowPass] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; error?: string; user?: string } | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  async function handleTestGmail() {
+    setTesting(true);
+    setTestResult(null);
+    const res = await testGmailConfig();
+    setTestResult(res);
+    setTesting(false);
+  }
 
   async function save(key: string, ref: React.RefObject<HTMLFormElement | null>) {
     if (!ref.current) return;
@@ -57,36 +70,36 @@ export default function SettingsClient() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       <Section title="Informasi Perusahaan" icon={Building2} color="bg-blue-50 text-blue-600"
         onSave={() => save("company", companyRef)} loading={!!loadingMap.company} msg={msgMap.company || null}>
         <form ref={companyRef} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Nama Perusahaan</label>
-              <input name="name" type="text" defaultValue="PT Pratama Galuh Perkasa" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              <input name="name" type="text" defaultValue={s.company_name ?? "PT Pratama Galuh Perkasa"} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Bidang Usaha</label>
-              <input name="industry" type="text" defaultValue="Logistik & Ekspedisi" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              <input name="industry" type="text" defaultValue={s.company_industry ?? "Logistik & Ekspedisi"} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
             </div>
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Alamat</label>
-            <textarea name="address" rows={2} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="Alamat lengkap perusahaan..." />
+            <textarea name="address" rows={2} defaultValue={s.company_address ?? ""} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="Alamat lengkap perusahaan..." />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Telepon</label>
-              <input name="phone" type="text" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="+62 xxx" />
+              <input name="phone" type="text" defaultValue={s.company_phone ?? ""} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="+62 xxx" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Email</label>
-              <input name="email" type="email" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="info@..." />
+              <input name="email" type="email" defaultValue={s.company_email ?? ""} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="info@..." />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Website</label>
-              <input name="website" type="text" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="www..." />
+              <input name="website" type="text" defaultValue={s.company_website ?? ""} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="www..." />
             </div>
           </div>
         </form>
@@ -98,11 +111,11 @@ export default function SettingsClient() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Jam Masuk</label>
-              <input name="start_time" type="time" defaultValue="08:00" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              <input name="start_time" type="time" defaultValue={s.work_start_time ?? "08:00"} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Jam Keluar</label>
-              <input name="end_time" type="time" defaultValue="17:00" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              <input name="end_time" type="time" defaultValue={s.work_end_time ?? "17:00"} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
             </div>
           </div>
           <div>
@@ -118,7 +131,7 @@ export default function SettingsClient() {
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Toleransi Keterlambatan (menit)</label>
-            <input name="late_tolerance" type="number" defaultValue={15} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+            <input name="late_tolerance" type="number" defaultValue={s.work_late_tolerance ?? 15} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
           </div>
         </form>
       </Section>
@@ -129,16 +142,16 @@ export default function SettingsClient() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Cuti Tahunan (hari)</label>
-              <input name="annual_leave" type="number" defaultValue={12} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              <input name="annual_leave" type="number" defaultValue={s.leave_annual_leave ?? 12} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Cuti Sakit (hari)</label>
-              <input name="sick_leave" type="number" defaultValue={12} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              <input name="sick_leave" type="number" defaultValue={s.leave_sick_leave ?? 12} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
             </div>
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pengajuan Cuti Min. (hari sebelumnya)</label>
-            <input name="leave_notice_days" type="number" defaultValue={3} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+            <input name="leave_notice_days" type="number" defaultValue={s.leave_leave_notice_days ?? 3} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Carry Over Sisa Cuti</label>
@@ -149,6 +162,73 @@ export default function SettingsClient() {
           </div>
         </form>
       </Section>
+
+      {/* Gmail / Email Pengirim — full width */}
+      <div className="lg:col-span-2">
+        <Section title="Email Pengirim (Gmail)" icon={Mail} color="bg-red-50 text-red-600"
+          onSave={() => save("mail", mailRef)} loading={!!loadingMap.mail} msg={msgMap.mail || null}>
+          <form ref={mailRef} className="space-y-4">
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-800 leading-relaxed">
+              <strong>Cara setup Gmail App Password:</strong><br />
+              1. Buka <strong>myaccount.google.com/apppasswords</strong><br />
+              2. Pastikan 2-Step Verification aktif di akun Gmail pengirim<br />
+                             3. Buat App Password baru → pilih &quot;Mail&quot; → salin kode 16 karakter<br />
+              4. Isi di bawah. Setiap email pengirim punya App Password masing-masing.
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">
+                Email Pengirim (Gmail)
+              </label>
+              <div className="relative">
+                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  name="gmail_user"
+                  type="email"
+                  defaultValue={s.mail_gmail_user ?? ""}
+                  placeholder="contoh: hrga@ptpgp.co.id atau gmail pribadi"
+                  className="w-full pl-8 text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">Email ini akan tampil sebagai pengirim di setiap notifikasi yang dikirim sistem.</p>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">
+                Gmail App Password
+              </label>
+              <div className="relative">
+                <input
+                  name="gmail_app_password"
+                  type={showPass ? "text" : "password"}
+                  defaultValue={s.mail_gmail_app_password ?? ""}
+                  placeholder="xxxx xxxx xxxx xxxx"
+                  className="w-full pr-10 text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono"
+                />
+                <button type="button" onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">Bukan password Gmail biasa. Harus berupa App Password 16 karakter dari Google.</p>
+            </div>
+
+            {/* Test connection */}
+            <div className="flex items-center gap-3 pt-2">
+              <button type="button" onClick={handleTestGmail} disabled={testing}
+                className="px-4 py-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2">
+                {testing ? <><Loader2 size={12} className="animate-spin" /> Menguji...</> : "Test Koneksi Gmail"}
+              </button>
+              {testResult && (
+                <span className={`text-xs font-bold flex items-center gap-1.5 ${testResult.ok ? "text-emerald-600" : "text-red-600"}`}>
+                  {testResult.ok
+                    ? <><CheckCircle2 size={14} /> Berhasil! Kirim dari {testResult.user}</>
+                    : <><XCircle size={14} /> Gagal: {testResult.error}</>
+                  }
+                </span>
+              )}
+            </div>
+          </form>
+        </Section>
+      </div>
     </div>
   );
 }

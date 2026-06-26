@@ -38,7 +38,9 @@ function getReadIds(role: string): string[] {
 function saveReadIds(role: string, ids: string[]) {
   try {
     localStorage.setItem(READ_KEY(role), JSON.stringify(ids));
-  } catch {}
+  } catch {
+    // localStorage may be unavailable (private browsing, quota exceeded)
+  }
 }
 
 export default function NotificationBell({ role }: { role: "hrd" | "employee" }) {
@@ -57,7 +59,7 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
         const unreadCount = fetched.filter((n) => !readIds.includes(n.id)).length;
         setUnread(unreadCount);
       })
-      .catch(() => {});
+      .catch((e) => console.error("[NotificationBell] Fetch failed:", e));
   }, [role]);
 
   useEffect(() => {
@@ -87,6 +89,7 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
   return (
     <div ref={ref} className="relative">
       <button
+        aria-label={`Notifikasi${unread > 0 ? ` (${unread} belum dibaca)` : ""}`}
         onClick={() => setOpen(!open)}
         className="p-2 hover:bg-slate-100 rounded-xl relative transition-colors text-slate-500"
       >

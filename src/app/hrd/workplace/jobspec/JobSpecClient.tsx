@@ -55,7 +55,12 @@ export default function JobSpecClient({ departments, positions }: Props) {
     getJobSpecs().then(setData);
   };
 
-  const doDelete = async (id: string) => { await deleteJobSpec(id); getJobSpecs().then(setData); showToast("Dihapus."); };
+  const doDelete = async (id: string) => {
+    const result = await deleteJobSpec(id);
+    if (result?.error) { showToast(result.error); return; }
+    getJobSpecs().then(setData);
+    showToast("Dihapus.");
+  };
 
   const filtered = data.filter(d => {
     if (!search.trim()) return true;

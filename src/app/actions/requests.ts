@@ -46,8 +46,8 @@ export async function addRequest(formData: FormData) {
     id, department, position, quantity, reason, urgency, status: "Pending", requested_by, created_at: now,
   });
   if (error) {
-    console.error("addRequest error:", error);
-    return { error: `Gagal: ${error.message || "Silakan coba lagi."}` };
+    console.error("[requests] addRequest error:", error.message);
+    return { error: "Gagal memproses. Silakan coba lagi." };
   }
 
   revalidatePath("/hrd/workforce/requests");
@@ -69,11 +69,19 @@ export async function updateRequestStatus(id: string, status: string) {
     const { data: req } = await supabaseAdmin.from("workforce_requests").select("department, quantity").eq("id", id).maybeSingle();
     if (req) {
       const dept = req as { department: string; quantity: number };
-      const { data: deptRow } = await supabaseAdmin.from("departments").select("id, headcount, name").eq("name", dept.department).maybeSingle();
-      if (deptRow) {
-        const row = deptRow as { id: string; headcount: number };
-        const newHC = (row.headcount || 0) + dept.quantity;
-        await supabaseAdmin.from("departments").update({ headcount: newHC }).eq("id", row.id);
+      // Atomic headcount increment via RPC or raw SQL increment
+      const { error: hcError } = await supabaseAdmin.rpc("increment_headcount", {
+        dept_name: dept.department,
+        amount: dept.quantity,
+      });
+      if (hcError) {
+        // Fallback: update directly if RPC not available
+        const { data: deptRow } = await supabaseAdmin.from("departments").select("id, headcount, name").eq("name", dept.department).maybeSingle();
+        if (deptRow) {
+          const row = deptRow as { id: string; headcount: number };
+          const newHC = (row.headcount || 0) + dept.quantity;
+          await supabaseAdmin.from("departments").update({ headcount: newHC }).eq("id", row.id);
+        }
       }
     }
 
@@ -88,7 +96,8 @@ export async function updateRequestStatus(id: string, status: string) {
 
 export async function deleteRequest(id: string) {
   await requireRole("hrd", "superadmin");
-  await supabaseAdmin.from("workforce_requests").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("workforce_requests").delete().eq("id", id);
+  if (error) { console.error("[requests] deleteRequest error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/workforce/requests");
   return { success: true };
 }

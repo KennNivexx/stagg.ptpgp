@@ -54,7 +54,7 @@ export default function ResignationForm() {
       <div className="p-6 space-y-6">
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider" htmlFor="resign-reason">Alasan Pengunduran Diri</label>
-          <select id="resign-reason" name="reason" required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
+          <select id="resign-reason" name="reason" required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-pgp-red bg-white">
             <option value="">Pilih Alasan</option>
             <option value="Kesempatan karir yang lebih baik">Kesempatan karir yang lebih baik</option>
             <option value="Alasan pribadi/keluarga">Alasan pribadi/keluarga</option>
@@ -66,16 +66,16 @@ export default function ResignationForm() {
         </div>
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider" htmlFor="resign-lastday">Hari Kerja Terakhir</label>
-          <input id="resign-lastday" type="date" name="last_day" required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]" />
+          <input id="resign-lastday" type="date" name="last_day" required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-pgp-red" />
           <p className="text-[9px] text-amber-600 mt-1">Minimal 30 hari dari tanggal pengajuan (notice period)</p>
         </div>
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider" htmlFor="resign-notes">Catatan Tambahan</label>
-          <textarea id="resign-notes" name="notes" rows={4} placeholder="Sampaikan pesan atau catatan tambahan untuk HRD..." className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] resize-none" />
+          <textarea id="resign-notes" name="notes" rows={4} placeholder="Sampaikan pesan atau catatan tambahan untuk HRD..." className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-pgp-red resize-none" />
         </div>
         <div className="space-y-1.5">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" required className="rounded border-slate-300 text-[#CC0000] focus:ring-[#CC0000]" />
+            <input type="checkbox" required className="rounded border-slate-300 text-pgp-red focus:ring-pgp-red" />
             <span className="text-xs text-slate-600">Saya memahami bahwa pengajuan ini bersifat final dan akan diproses sesuai kebijakan perusahaan</span>
           </label>
         </div>
@@ -84,7 +84,7 @@ export default function ResignationForm() {
           <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
         )}
 
-        <button type="submit" disabled={loading} className="px-6 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] disabled:opacity-60 transition-colors flex items-center gap-2">
+        <button type="submit" disabled={loading} className="px-6 py-2.5 bg-pgp-red text-white text-xs font-bold rounded-xl hover:bg-pgp-red/80 disabled:opacity-60 transition-colors flex items-center gap-2">
           <Send size={14} /> {loading ? "Mengirim..." : "Ajukan Resign"}
         </button>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Mail, Phone, MapPin } from "lucide-react";
 
@@ -28,20 +29,20 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
   };
 
   const companyName = info?.company_name || "PT Pratama Galuh Perkasa";
-  const companyPhone = info?.company_phone || "(0524) 570700";
+  const companyPhone = info?.company_phone || "(0254) 570700";
   const companyDesc = info?.company_description || footer?.footer_description || "Industrial Excellence in Logistics. Delivering precision and reliability across the archipelago.";
   const copyright = footer?.footer_copyright || `\u00a9 ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
 
   const quickLinks = links?.footer_quick?.length ? links.footer_quick : [
-    { name: "About Us", href: "/" },
-    { name: "Safety & Compliance", href: "/" },
-    { name: "Sustainability", href: "/" },
+    { name: "Tentang Kami", href: "/#about" },
+    { name: "Karir", href: "/career" },
+    { name: "E-Procurement", href: "/e-procurement" },
   ];
 
   const supportLinks = links?.footer_support?.length ? links.footer_support : [
-    { name: "Network", href: "/#services" },
-    { name: "Client Portal", href: "/" },
-    { name: "Privacy Policy", href: "/" },
+    { name: "Layanan", href: "/#services" },
+    { name: "Sertifikasi", href: "/#faq" },
+    { name: "Kontak", href: "/#contact" },
   ];
 
   return (
@@ -51,9 +52,10 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
           
           <div className="lg:col-span-1">
             <Link href="/" className="inline-block mb-4">
-              <img 
+              <Image 
                 src="https://stag.ptpgp.co.id/web/image/website/1/logo/PRATAMA%20GALUH%20PERKASA?unique=af2b0b3" 
                 alt={companyName} 
+                width={64} height={64} 
                 className="h-16 w-auto" 
               />
             </Link>

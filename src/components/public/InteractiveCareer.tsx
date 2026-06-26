@@ -29,7 +29,9 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [accountWarning, setAccountWarning] = useState<string | null>(null);
   const [step, setStep] = useState(1);
+  const [showingJobInfo, setShowingJobInfo] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -127,14 +129,17 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
   const openModal = (job: Job | null, spontaneous: boolean) => {
     setStep(1);
     setSubmitError(null);
+    setStepError(null);
     setSubmitSuccess(false);
     resetForm();
     if (spontaneous) {
       setIsSpontaneousOpen(true);
       setActiveJob(null);
+      setShowingJobInfo(false);
     } else {
       setActiveJob(job);
       setIsSpontaneousOpen(false);
+      setShowingJobInfo(true);
     }
   };
 
@@ -144,8 +149,43 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
       setIsSpontaneousOpen(false);
       setSubmitSuccess(false);
       setCredentials(null);
+      setAccountWarning(null);
+      setShowingJobInfo(false);
       resetForm();
     }
+  };
+
+  const [stepError, setStepError] = useState<string | null>(null);
+
+  const validateAndNextStep = () => {
+    setStepError(null);
+    if (step === 1) {
+      if (!formData.name.trim()) { setStepError("Nama lengkap wajib diisi."); return; }
+      if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        setStepError("Alamat email tidak valid."); return;
+      }
+      if (!formData.phone.trim()) { setStepError("Nomor telepon wajib diisi."); return; }
+    }
+    if (step === 2) {
+      if (formData.experiences.length === 0) {
+        setStepError("Tambahkan minimal 1 riwayat pengalaman kerja. Klik '+ Tambah' di atas."); return;
+      }
+      const incomplete = formData.experiences.some(e => !e.company.trim() || !e.position.trim());
+      if (incomplete) { setStepError("Lengkapi nama perusahaan dan posisi jabatan untuk setiap pengalaman."); return; }
+    }
+    if (step === 3) {
+      if (formData.educations.length === 0) {
+        setStepError("Tambahkan minimal 1 riwayat pendidikan. Klik '+ Tambah' di atas."); return;
+      }
+      const incomplete = formData.educations.some(e => !e.school.trim() || !e.degree.trim());
+      if (incomplete) { setStepError("Lengkapi nama sekolah/universitas dan gelar untuk setiap pendidikan."); return; }
+    }
+    if (step === 4) {
+      if (formData.skills.length === 0) {
+        setStepError("Tambahkan minimal 1 keahlian (skill) sebelum melanjutkan."); return;
+      }
+    }
+    setStep(step + 1);
   };
 
   const handleApplySubmit = async (e: React.FormEvent) => {
@@ -173,7 +213,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
     data.append("phone", formData.phone);
     data.append("job_id", isSpontaneousOpen ? "00000000-0000-0000-0000-000000000000" : activeJob?.id || "");
     if (formData.cvFile) {
-      data.append("cv_filename", formData.cvFile.name);
+      data.append("cv_file", formData.cvFile);
     }
     data.append("profile_data", JSON.stringify(profileData));
 
@@ -187,6 +227,9 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
         setSubmitting(false);
         if (result.credentials) {
           setCredentials(result.credentials as { email: string; password: string });
+        }
+        if (result.accountWarning) {
+          setAccountWarning(result.accountWarning as string);
         }
       }
     } catch {
@@ -208,8 +251,8 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
       {steps.map((s, i) => (
         <div key={s.num} className="flex items-center gap-1">
           <button
-            onClick={() => !submitting && setStep(s.num)}
-            disabled={submitting}
+            onClick={() => !submitting && step > s.num && setStep(s.num)}
+            disabled={submitting || step <= s.num}
             className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
               step === s.num
                 ? "bg-pgp-red text-white shadow-md shadow-pgp-red/20"
@@ -336,7 +379,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white shadow-2xl w-full max-h-screen overflow-hidden relative z-10 flex flex-col border-b border-gray-100"
+              className="bg-white shadow-2xl w-full h-screen overflow-hidden relative z-10 flex flex-col"
             >
               {/* Header */}
               <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
@@ -353,8 +396,9 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                 </button>
               </div>
 
-              <div className="overflow-y-auto p-8 flex-1 max-w-3xl mx-auto w-full">
+              <div className="overflow-y-auto flex-1">
                 {submitSuccess ? (
+                  <div className="p-8 max-w-3xl mx-auto w-full">
                   <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     className="flex flex-col items-center justify-center py-8 text-center">
                     <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4 animate-bounce" />
@@ -390,40 +434,115 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                     )}
 
                     {!credentials && (
-                      <a
-                        href="/login"
-                        className="mt-2 px-6 py-2.5 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors"
-                      >
-                        Login ke Portal Pelamar →
-                      </a>
-                    )}
-                  </motion.div>
-                ) : (
-                  <>
-                    {/* Job Requirements */}
-                    {activeJob && (
-                      <div className="mb-6 bg-sky-50 border border-sky-100 rounded-2xl p-5">
-                        <h4 className="font-bold text-sky-800 text-sm mb-3">Detail Lowongan</h4>
-                        {activeJob.description && (
-                          <div className="mb-3 pb-3 border-b border-sky-200/50">
-                            <p className="font-bold text-sky-600 text-xs mb-1">Deskripsi Pekerjaan:</p>
-                            <p className="text-xs text-sky-800 whitespace-pre-line">{activeJob.description}</p>
+                      <div className="w-full max-w-sm mt-2">
+                        {accountWarning && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3 text-left">
+                            <p className="text-xs text-amber-700 font-semibold">{accountWarning}</p>
                           </div>
                         )}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                          {activeJob.education && <div><span className="font-bold text-sky-600">Pendidikan:</span> <span className="text-sky-800">{activeJob.education}</span></div>}
-                          {activeJob.experience && <div><span className="font-bold text-sky-600">Pengalaman:</span> <span className="text-sky-800">{activeJob.experience}</span></div>}
-                          {(activeJob.age_min || activeJob.age_max) && <div><span className="font-bold text-sky-600">Usia:</span> <span className="text-sky-800">{activeJob.age_min || "-"} - {activeJob.age_max || "-"} tahun</span></div>}
-                          {activeJob.location && <div><span className="font-bold text-sky-600">Lokasi:</span> <span className="text-sky-800">{activeJob.location}</span></div>}
-                        </div>
-                        {activeJob.job_desk && (
-                          <div className="mt-3 pt-3 border-t border-sky-200/50">
-                            <p className="font-bold text-sky-600 text-xs mb-1">Job Desk:</p>
-                            <p className="text-xs text-sky-800 whitespace-pre-line">{activeJob.job_desk}</p>
-                          </div>
-                        )}
+                        <a
+                          href="/login"
+                          className="mt-2 px-6 py-2.5 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors inline-block"
+                        >
+                          Login ke Portal Pelamar →
+                        </a>
                       </div>
                     )}
+                  </motion.div>
+                  </div>
+                ) : showingJobInfo && activeJob ? (
+                  /* ── STEP 0: Job info / persyaratan ── */
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 md:p-10 max-w-3xl mx-auto w-full">
+                    {/* Badge + Title */}
+                    <div className="mb-6">
+                      {activeJob.department && (
+                        <span className="inline-block px-3 py-1 bg-orange-50 text-pgp-red text-[11px] font-bold rounded-full border border-orange-100 uppercase tracking-wider mb-3">
+                          {activeJob.department}
+                        </span>
+                      )}
+                      <h3 className="text-2xl font-extrabold text-pgp-navy">{activeJob.title}</h3>
+                      {activeJob.location && (
+                        <p className="flex items-center gap-1.5 text-sm text-gray-500 mt-2">
+                          <MapPin size={14} className="text-pgp-red/70" /> {activeJob.location}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Quick info pills */}
+                    {(activeJob.education || activeJob.experience || activeJob.age_min || activeJob.age_max) && (
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {activeJob.education && (
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-full">
+                            <GraduationCap size={12} className="text-pgp-red" /> {activeJob.education}
+                          </span>
+                        )}
+                        {activeJob.experience && (
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-full">
+                            <Briefcase size={12} className="text-pgp-red" /> {activeJob.experience}
+                          </span>
+                        )}
+                        {(activeJob.age_min || activeJob.age_max) && (
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-full">
+                            Usia {activeJob.age_min || "-"}–{activeJob.age_max || "-"} tahun
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-pgp-red text-xs font-semibold rounded-full border border-orange-100">
+                          Penuh Waktu
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    {activeJob.description && (
+                      <div className="mb-5">
+                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tentang Posisi Ini</h4>
+                        <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{activeJob.description}</p>
+                      </div>
+                    )}
+
+                    {/* Job Desk */}
+                    {activeJob.job_desk && (
+                      <div className="mb-5">
+                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tanggung Jawab</h4>
+                        <ul className="space-y-1.5">
+                          {activeJob.job_desk.split("\n").filter(Boolean).map((line, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-pgp-red shrink-0" />
+                              {line}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Requirements */}
+                    {activeJob.requirements && (
+                      <div className="mb-6 bg-amber-50 border border-amber-100 rounded-2xl p-5">
+                        <h4 className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-3">Persyaratan</h4>
+                        <ul className="space-y-2">
+                          {activeJob.requirements.split("\n").filter(Boolean).map((req, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-amber-900">
+                              <CheckCircle2 size={14} className="mt-0.5 text-amber-500 shrink-0" />
+                              {req}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* CTA */}
+                    <div className="pt-2 border-t border-gray-100 mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <p className="text-xs text-gray-400">Pastikan Anda memenuhi persyaratan di atas sebelum melamar.</p>
+                      <button
+                        onClick={() => setShowingJobInfo(false)}
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-pgp-red hover:bg-pgp-red-hover text-white text-sm font-bold rounded-full transition-all shadow-md shadow-pgp-red/15 cursor-pointer"
+                      >
+                        Saya Mengerti, Lanjut Melamar <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <div className="p-8 max-w-3xl mx-auto w-full">
                     {renderStepIndicator()}
                     {submitError && (
                       <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{submitError}</div>
@@ -510,7 +629,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                             </button>
                           </div>
                           {formData.experiences.length === 0 && (
-                            <p className="text-xs text-gray-400 text-center py-6">Belum ada pengalaman kerja. Klik "Tambah" untuk menambahkan.</p>
+                            <p className="text-xs text-gray-400 text-center py-6">Belum ada pengalaman kerja. Klik &quot;Tambah&quot; untuk menambahkan.</p>
                           )}
                           {formData.experiences.map((exp, idx) => (
                             <div key={idx} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-3 relative">
@@ -536,16 +655,9 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                                 </div>
                                 <div>
                                   <label className="text-[10px] font-bold text-gray-500 uppercase">Selesai</label>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <input type="month" value={exp.end} disabled={exp.current}
-                                      onChange={(e) => updateExperience(idx, "end", e.target.value)}
-                                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-pgp-red outline-none disabled:bg-gray-100 disabled:text-gray-400" />
-                                    <label className="flex items-center gap-1 text-[10px] text-gray-500 whitespace-nowrap">
-                                      <input type="checkbox" checked={exp.current}
-                                        onChange={(e) => { updateExperience(idx, "current", e.target.checked); if (e.target.checked) updateExperience(idx, "end", ""); }}
-                                        className="w-3 h-3" /> Saat ini
-                                    </label>
-                                  </div>
+                                  <input type="month" value={exp.end}
+                                    onChange={(e) => updateExperience(idx, "end", e.target.value)}
+                                    className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-pgp-red focus:ring-1 focus:ring-pgp-red/20 outline-none" />
                                 </div>
                               </div>
                               <div>
@@ -736,7 +848,12 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                       )}
 
                       {/* Navigation Buttons */}
-                      <div className="flex gap-3 mt-8 pt-4 border-t border-gray-100">
+                      {stepError && (
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-semibold">
+                          {stepError}
+                        </div>
+                      )}
+                      <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
                         {step > 1 && (
                           <button type="button" onClick={() => setStep(step - 1)}
                             className="px-5 py-2.5 text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full transition-colors flex items-center gap-1.5">
@@ -745,7 +862,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                         )}
                         <div className="flex-1" />
                         {step < 5 && (
-                          <button type="button" onClick={() => setStep(step + 1)}
+                          <button type="button" onClick={validateAndNextStep}
                             className="px-5 py-2.5 text-sm font-bold bg-pgp-red hover:bg-pgp-red-hover text-white rounded-full transition-colors flex items-center gap-1.5 shadow-md shadow-pgp-red/10">
                             Selanjutnya <ChevronRight size={16} />
                           </button>
@@ -758,7 +875,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                         )}
                       </div>
                     </form>
-                  </>
+                  </div>
                 )}
               </div>
             </motion.div>

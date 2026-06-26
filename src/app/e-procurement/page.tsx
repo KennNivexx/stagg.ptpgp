@@ -13,17 +13,17 @@ export default function EProcurementPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="flex flex-col md:flex-row items-center gap-12">
             <div className="flex-1">
-              <span className="inline-block py-1 px-3 bg-red-50 text-[#CC0000] font-semibold text-xs tracking-wider uppercase rounded-sm mb-6">
+              <span className="inline-block py-1 px-3 bg-red-50 text-pgp-red font-semibold text-xs tracking-wider uppercase rounded-sm mb-6">
                 Peluang Kemitraan
               </span>
-              <h1 className="text-4xl md:text-5xl font-extrabold text-[#1A2530] leading-tight mb-6 tracking-tight">
+              <h1 className="text-4xl md:text-5xl font-extrabold text-pgp-navy leading-tight mb-6 tracking-tight">
                 Pengadaan Strategis untuk Keunggulan Logistik
               </h1>
               <p className="text-gray-500 text-lg mb-8 leading-relaxed max-w-lg">
                 Bergabunglah dengan ekosistem mitra terpercaya kami. Kami menjalankan proses pengadaan yang transparan dan profesional untuk memastikan keandalan operasional dan pertumbuhan bersama.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/e-procurement/register" className="bg-[#CC0000] text-white px-6 py-3 rounded-sm font-semibold hover:bg-[#aa0000] transition-colors shadow-sm text-sm text-center inline-flex items-center justify-center gap-2">
+                <Link href="/e-procurement/register" className="bg-pgp-red text-white px-6 py-3 rounded-sm font-semibold hover:bg-pgp-red/80 transition-colors shadow-sm text-sm text-center inline-flex items-center justify-center gap-2">
                   Daftar sebagai Vendor <ArrowRight size={16} />
                 </Link>
                 <a href="#guidelines" className="bg-white text-gray-700 border border-gray-300 px-6 py-3 rounded-sm font-semibold hover:bg-gray-50 transition-colors text-sm text-center">
@@ -32,9 +32,9 @@ export default function EProcurementPage() {
               </div>
             </div>
             <div className="flex-1 w-full">
-              <div className="aspect-[4/3] rounded-md overflow-hidden shadow-xl relative bg-gradient-to-br from-[#1A2530] to-[#2A3140] flex items-center justify-center">
+              <div className="aspect-[4/3] rounded-md overflow-hidden shadow-xl relative bg-gradient-to-br from-pgp-navy to-[#2A3140] flex items-center justify-center">
                 <div className="text-center p-8">
-                  <Building2 size={48} className="text-[#CC0000] mx-auto mb-4" />
+                  <Building2 size={48} className="text-pgp-red mx-auto mb-4" />
                   <p className="text-white font-bold text-xl mb-2">500+ Vendor Aktif</p>
                   <p className="text-gray-400 text-sm">Tergabung dalam ekosistem pengadaan kami</p>
                 </div>
@@ -71,43 +71,43 @@ export default function EProcurementPage() {
       {/* Guidelines */}
       <section id="guidelines" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
-          <h2 className="text-3xl font-bold text-[#1A2530] mb-4 tracking-tight">Pedoman Pengadaan</h2>
+          <h2 className="text-3xl font-bold text-pgp-navy mb-4 tracking-tight">Pedoman Pengadaan</h2>
           <p className="text-gray-500 max-w-xl mx-auto text-sm">Standar dan prosedur yang kami terapkan untuk menjamin kemitraan yang adil dan profesional.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white p-8 rounded-md border border-gray-100 shadow-sm flex gap-5 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 bg-red-50 text-[#CC0000] flex items-center justify-center rounded-sm shrink-0">
+            <div className="w-12 h-12 bg-red-50 text-pgp-red flex items-center justify-center rounded-sm shrink-0">
               <ShieldCheck size={22} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#1A2530] mb-2">Standar Etika & Kepatuhan</h3>
+              <h3 className="text-sm font-bold text-pgp-navy mb-2">Standar Etika & Kepatuhan</h3>
               <p className="text-xs text-gray-500 leading-relaxed">Kami menerapkan kebijakan tanpa toleransi terhadap penyuapan dan korupsi. Semua vendor wajib menandatangani Kode Etik dan mematuhi regulasi yang berlaku.</p>
             </div>
           </div>
           <div className="bg-white p-8 rounded-md border border-gray-100 shadow-sm flex gap-5 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 bg-red-50 text-[#CC0000] flex items-center justify-center rounded-sm shrink-0">
+            <div className="w-12 h-12 bg-red-50 text-pgp-red flex items-center justify-center rounded-sm shrink-0">
               <FileText size={22} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#1A2530] mb-2">Dokumentasi & Legalitas</h3>
+              <h3 className="text-sm font-bold text-pgp-navy mb-2">Dokumentasi & Legalitas</h3>
               <p className="text-xs text-gray-500 leading-relaxed">Lisensi bisnis yang sah (NIB), NPWP, dan sertifikasi khusus industri wajib diserahkan saat proses orientasi vendor baru.</p>
             </div>
           </div>
           <div className="bg-white p-8 rounded-md border border-gray-100 shadow-sm flex gap-5 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 bg-red-50 text-[#CC0000] flex items-center justify-center rounded-sm shrink-0">
+            <div className="w-12 h-12 bg-red-50 text-pgp-red flex items-center justify-center rounded-sm shrink-0">
               <Receipt size={22} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#1A2530] mb-2">Ketentuan Pembayaran</h3>
+              <h3 className="text-sm font-bold text-pgp-navy mb-2">Ketentuan Pembayaran</h3>
               <p className="text-xs text-gray-500 leading-relaxed">Siklus pembayaran standar Net 30-45 hari dari verifikasi faktur melalui portal penagihan elektronik kami yang terintegrasi.</p>
             </div>
           </div>
           <div className="bg-white p-8 rounded-md border border-gray-100 shadow-sm flex gap-5 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 bg-red-50 text-[#CC0000] flex items-center justify-center rounded-sm shrink-0">
+            <div className="w-12 h-12 bg-red-50 text-pgp-red flex items-center justify-center rounded-sm shrink-0">
               <BarChart3 size={22} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#1A2530] mb-2">Evaluasi & Ulasan Berkala</h3>
+              <h3 className="text-sm font-bold text-pgp-navy mb-2">Evaluasi & Ulasan Berkala</h3>
               <p className="text-xs text-gray-500 leading-relaxed">Vendor dievaluasi setiap kuartal berdasarkan ketepatan pengiriman, kualitas layanan, dan tingkat kepatuhan terhadap kontrak.</p>
             </div>
           </div>
@@ -116,7 +116,7 @@ export default function EProcurementPage() {
 
       {/* Become Partner CTA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="bg-[#1A2530] rounded-md p-10 md:p-14 flex flex-col md:flex-row items-center gap-8 shadow-lg">
+        <div className="bg-pgp-navy rounded-md p-10 md:p-14 flex flex-col md:flex-row items-center gap-8 shadow-lg">
           <div className="flex-1 text-white">
             <h2 className="text-2xl font-bold mb-4 tracking-tight">Siap Menjadi Mitra Kami?</h2>
             <p className="text-gray-400 text-sm leading-relaxed mb-0">
@@ -124,7 +124,7 @@ export default function EProcurementPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-            <Link href="/e-procurement/register" className="bg-[#CC0000] hover:bg-[#aa0000] text-white font-semibold px-8 py-3 rounded-sm transition-colors text-sm text-center whitespace-nowrap inline-flex items-center justify-center gap-2">
+            <Link href="/e-procurement/register" className="bg-pgp-red hover:bg-pgp-red/80 text-white font-semibold px-8 py-3 rounded-sm transition-colors text-sm text-center whitespace-nowrap inline-flex items-center justify-center gap-2">
               Daftar Sekarang <ArrowRight size={16} />
             </Link>
           </div>
@@ -132,16 +132,16 @@ export default function EProcurementPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           <div className="flex items-center gap-3 bg-white p-4 rounded-md border border-gray-100 shadow-sm">
-            <CheckCircle2 size={18} className="text-[#CC0000] shrink-0" />
-            <span className="text-xs font-semibold text-[#1A2530]">Isi formulir online</span>
+            <CheckCircle2 size={18} className="text-pgp-red shrink-0" />
+            <span className="text-xs font-semibold text-pgp-navy">Isi formulir online</span>
           </div>
           <div className="flex items-center gap-3 bg-white p-4 rounded-md border border-gray-100 shadow-sm">
-            <CheckCircle2 size={18} className="text-[#CC0000] shrink-0" />
-            <span className="text-xs font-semibold text-[#1A2530]">Unggah dokumen legalitas</span>
+            <CheckCircle2 size={18} className="text-pgp-red shrink-0" />
+            <span className="text-xs font-semibold text-pgp-navy">Unggah dokumen legalitas</span>
           </div>
           <div className="flex items-center gap-3 bg-white p-4 rounded-md border border-gray-100 shadow-sm">
-            <CheckCircle2 size={18} className="text-[#CC0000] shrink-0" />
-            <span className="text-xs font-semibold text-[#1A2530]">Verifikasi & approval</span>
+            <CheckCircle2 size={18} className="text-pgp-red shrink-0" />
+            <span className="text-xs font-semibold text-pgp-navy">Verifikasi & approval</span>
           </div>
         </div>
       </section>
@@ -153,34 +153,34 @@ export default function EProcurementPage() {
             <div className="w-full md:w-1/2">
               <div className="aspect-[4/3] rounded-md overflow-hidden relative bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                 <div className="text-center p-8">
-                  <Clock size={40} className="text-[#CC0000] mx-auto mb-3" />
-                  <p className="text-[#1A2530] font-bold text-lg mb-1">Butuh Bantuan?</p>
+                  <Clock size={40} className="text-pgp-red mx-auto mb-3" />
+                  <p className="text-pgp-navy font-bold text-lg mb-1">Butuh Bantuan?</p>
                   <p className="text-gray-500 text-sm">Tim kami siap membantu Anda</p>
                 </div>
               </div>
             </div>
             <div className="w-full md:w-1/2 md:pl-4">
-              <h2 className="text-3xl font-bold text-[#1A2530] mb-4 tracking-tight">Hubungi Tim Pengadaan</h2>
+              <h2 className="text-3xl font-bold text-pgp-navy mb-4 tracking-tight">Hubungi Tim Pengadaan</h2>
               <p className="text-gray-500 mb-10 leading-relaxed text-sm">
                 Meja pengadaan kami tersedia untuk membantu calon vendor dengan masalah registrasi atau pertanyaan seputar proses pengadaan.
               </p>
               <div className="space-y-4">
                 <div className="flex items-center gap-5 border border-gray-100 bg-[#F9F7F6] p-5 rounded-md">
-                  <div className="w-12 h-12 bg-red-50 text-[#CC0000] flex items-center justify-center rounded-sm shrink-0">
+                  <div className="w-12 h-12 bg-red-50 text-pgp-red flex items-center justify-center rounded-sm shrink-0">
                     <Mail size={20} />
                   </div>
                   <div>
                     <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Email Pengadaan</h4>
-                    <a href="mailto:procurement@ptpgp.co.id" className="text-sm font-semibold text-[#1A2530] hover:text-[#CC0000] transition-colors">procurement@ptpgp.co.id</a>
+                    <a href="mailto:procurement@ptpgp.co.id" className="text-sm font-semibold text-pgp-navy hover:text-pgp-red transition-colors">procurement@ptpgp.co.id</a>
                   </div>
                 </div>
                 <div className="flex items-center gap-5 border border-gray-100 bg-[#F9F7F6] p-5 rounded-md">
-                  <div className="w-12 h-12 bg-red-50 text-[#CC0000] flex items-center justify-center rounded-sm shrink-0">
+                  <div className="w-12 h-12 bg-red-50 text-pgp-red flex items-center justify-center rounded-sm shrink-0">
                     <Phone size={20} />
                   </div>
                   <div>
                     <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Telepon</h4>
-                    <p className="text-sm font-semibold text-[#1A2530]">(0254) 570700</p>
+                    <p className="text-sm font-semibold text-pgp-navy">(0254) 570700</p>
                     <p className="text-xs text-gray-400 mt-0.5">Senin - Jumat, 08:00 - 17:00</p>
                   </div>
                 </div>

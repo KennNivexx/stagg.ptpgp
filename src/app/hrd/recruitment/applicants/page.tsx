@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { supabaseAdmin } from "@/lib/supabase";
-import { Users, Search, Filter, FileText, Mail, Phone, Calendar, ChevronRight } from "lucide-react";
+import { getHrdApplications } from "@/app/actions/applicant";
+import { Users, Search, Mail, Phone, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -25,18 +25,9 @@ function DataPelamar() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      supabaseAdmin.from("applications").select("*").order("applied_at", { ascending: false }).limit(100),
-      supabaseAdmin.from("job_postings").select("id, position, department").order("position", { ascending: true }),
-    ]).then(([{ data: apps }, { data: jbs }]) => {
-      // Manually attach job info to each application
-      const jobMap = new Map((jbs || []).map((j: Record<string, unknown>) => [j.id as string, j]));
-      const enrichedApps = (apps || []).map((app: Record<string, unknown>) => ({
-        ...app,
-        job_postings: jobMap.get(app.job_id as string) || null,
-      }));
-      setApplications(enrichedApps);
-      setJobs(jbs || []);
+    getHrdApplications().then(({ applications: apps, jobs: jbs }) => {
+      setApplications(apps);
+      setJobs(jbs);
       setLoading(false);
     });
   }, []);

@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { cookies } from "next/headers";
+import { requireRole } from "@/lib/auth-guard";
 import DirectorActions from "./DirectorActions";
 import {
   Users,
@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 
 export default async function DirectorDashboard() {
-  const cookieStore = await cookies();
-  const userName = cookieStore.get("user_name")?.value || "Direktur";
+  const user = await requireRole("director", "superadmin");
+  const userName = user.name || "Direktur";
 
   const now = new Date();
   const currentDateStr = now.toLocaleDateString("id-ID", {

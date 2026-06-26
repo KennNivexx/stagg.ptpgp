@@ -63,11 +63,11 @@ export default function SalaryForm({ employees, salaryRecords }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Gaji Pokok</label>
-                <input name="base_salary" type="number" min="0" placeholder="0" className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
+                <input name="basic_salary" type="number" min="0" placeholder="0" className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tunjangan Jabatan</label>
-                <input name="position_allowance" type="number" min="0" defaultValue={0} className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tunjangan Perumahan</label>
+                <input name="housing_allowance" type="number" min="0" defaultValue={0} className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tunjangan Transport</label>
@@ -76,14 +76,6 @@ export default function SalaryForm({ employees, salaryRecords }: Props) {
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tunjangan Makan</label>
                 <input name="meal_allowance" type="number" min="0" defaultValue={0} className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Potongan BPJS TK</label>
-                <input name="bpjs_tk_deduction" type="number" min="0" defaultValue={0} className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Potongan BPJS Kes</label>
-                <input name="bpjs_kes_deduction" type="number" min="0" defaultValue={0} className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
               </div>
             </div>
             <Msg m={msg} />
@@ -113,12 +105,12 @@ export default function SalaryForm({ employees, salaryRecords }: Props) {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {salaryRecords.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">Belum ada struktur gaji. Klik "Edit Komponen Gaji" untuk mulai.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">Belum ada struktur gaji. Klik &quot;Edit Komponen Gaji&quot; untuk mulai.</td></tr>
               ) : salaryRecords.map((rec) => {
                 const emp = rec.employees as Record<string, string> | undefined;
-                const base = Number(rec.base_salary) || 0;
-                const allowances = (Number(rec.position_allowance) || 0) + (Number(rec.transport_allowance) || 0) + (Number(rec.meal_allowance) || 0);
-                const deductions = (Number(rec.bpjs_tk_deduction) || 0) + (Number(rec.bpjs_kes_deduction) || 0);
+                const base = Number(rec.basic_salary) || 0;
+                const allowances = (Number(rec.housing_allowance) || 0) + (Number(rec.transport_allowance) || 0) + (Number(rec.meal_allowance) || 0);
+                const deductions = 0;
                 const take_home = base + allowances - deductions;
                 return (
                   <tr key={rec.id as string} className="hover:bg-slate-50/30 transition-colors">

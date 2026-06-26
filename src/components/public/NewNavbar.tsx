@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
@@ -34,6 +35,7 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
     { name: "Tentang Kami", href: "/#about" },
     { name: "Layanan", href: "/#services" },
     { name: "Karir", href: "/career" },
+    { name: "E-Procurement", href: "/e-procurement" },
     { name: "Kontak", href: "/#contact" },
   ];
 
@@ -45,7 +47,7 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
         <div className="flex justify-between items-center h-full">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2">
-              <img src="https://stag.ptpgp.co.id/web/image/website/1/logo/PRATAMA%20GALUH%20PERKASA?unique=af2b0b3" alt={companyName || "PT Pratama Galuh Perkasa"} className="h-14 w-auto" />
+              <Image src="https://stag.ptpgp.co.id/web/image/website/1/logo/PRATAMA%20GALUH%20PERKASA?unique=af2b0b3" alt={companyName || "PT Pratama Galuh Perkasa"} width={56} height={56} className="h-14 w-auto" priority />
             </Link>
           </div>
           

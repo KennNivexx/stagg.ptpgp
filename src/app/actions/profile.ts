@@ -51,7 +51,7 @@ export async function saveEmployeeProfile(formData: FormData) {
     })
     .eq("id", employeeId);
 
-  if (error) return { error: error.message };
+  if (error) { console.error("[profile] saveEmployeeProfile error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
 
   revalidatePath("/employee/profile");
   return { success: true };
@@ -104,7 +104,7 @@ export async function saveContactProfile(formData: FormData) {
     .update({ full_name, phone, address: storedAddress })
     .eq("id", employeeId);
 
-  if (error) return { error: error.message };
+  if (error) { console.error("[profile] saveContactProfile error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
 
   revalidatePath("/employee/profile");
   return { success: true };
@@ -151,12 +151,20 @@ export async function saveBasicProfile(formData: FormData) {
     }
   } catch { /* address is plain text, safe to overwrite */ }
 
+  const updateData: Record<string, unknown> = { full_name, email, phone, address: storedAddress, department: department || null, position: position || null };
+
+  // Employees cannot change their own department or position
+  if (user.role === "employee") {
+    delete updateData.department;
+    delete updateData.position;
+  }
+
   const { error } = await supabaseAdmin
     .from("employees")
-    .update({ full_name, email, phone, address: storedAddress, department, position })
+    .update(updateData)
     .eq("id", employeeId);
 
-  if (error) return { error: error.message };
+  if (error) { console.error("[profile] saveBasicProfile error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
 
   revalidatePath("/employee/profile");
   return { success: true };

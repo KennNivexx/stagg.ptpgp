@@ -124,7 +124,7 @@ export default function KpiForm({ employees, evaluations }: Props) {
           </thead>
           <tbody className="divide-y divide-slate-50">
             {evaluations.length === 0 ? (
-              <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">Belum ada evaluasi KPI. Klik "Buat Evaluasi Baru" untuk mulai.</td></tr>
+              <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">Belum ada evaluasi KPI. Klik &quot;Buat Evaluasi Baru&quot; untuk mulai.</td></tr>
             ) : evaluations.map((ev) => {
               const emp = ev.employees as Record<string, string> | undefined;
               const score = Number(ev.score) || 0;

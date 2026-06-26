@@ -21,14 +21,14 @@ export default function CompanyInfoPage() {
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-4xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Info Perusahaan</h1>
+        <h1 className="text-2xl font-bold text-pgp-navy mb-2">Info Perusahaan</h1>
         <p className="text-sm text-gray-500">Kenali PT Pratama Galuh Perkasa lebih dalam.</p>
       </div>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-[#1A2530] to-slate-700 rounded-2xl p-8 text-white">
+      <div className="bg-gradient-to-br from-pgp-navy to-slate-700 rounded-2xl p-8 text-white">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-[#CC0000] rounded-2xl flex items-center justify-center font-extrabold text-xl shrink-0">
+          <div className="w-16 h-16 bg-pgp-red rounded-2xl flex items-center justify-center font-extrabold text-xl shrink-0">
             PGP
           </div>
           <div>
@@ -45,8 +45,8 @@ export default function CompanyInfoPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 bg-[#CC0000]/10 rounded-xl">
-              <Eye size={18} className="text-[#CC0000]" />
+            <div className="p-2.5 bg-pgp-red/10 rounded-xl">
+              <Eye size={18} className="text-pgp-red" />
             </div>
             <h3 className="font-extrabold text-slate-800">Visi</h3>
           </div>
@@ -63,10 +63,10 @@ export default function CompanyInfoPage() {
             <h3 className="font-extrabold text-slate-800">Misi</h3>
           </div>
           <ul className="text-sm text-slate-600 space-y-2 leading-relaxed">
-            <li className="flex items-start gap-2"><span className="text-[#CC0000] font-bold mt-0.5">•</span>Memberikan layanan berkualitas tinggi dengan standar internasional.</li>
-            <li className="flex items-start gap-2"><span className="text-[#CC0000] font-bold mt-0.5">•</span>Mengembangkan SDM yang kompeten, berintegritas, dan berdedikasi.</li>
-            <li className="flex items-start gap-2"><span className="text-[#CC0000] font-bold mt-0.5">•</span>Menerapkan sistem manajemen K3 yang ketat di setiap operasional.</li>
-            <li className="flex items-start gap-2"><span className="text-[#CC0000] font-bold mt-0.5">•</span>Membangun kemitraan jangka panjang yang saling menguntungkan.</li>
+            <li className="flex items-start gap-2"><span className="text-pgp-red font-bold mt-0.5">•</span>Memberikan layanan berkualitas tinggi dengan standar internasional.</li>
+            <li className="flex items-start gap-2"><span className="text-pgp-red font-bold mt-0.5">•</span>Mengembangkan SDM yang kompeten, berintegritas, dan berdedikasi.</li>
+            <li className="flex items-start gap-2"><span className="text-pgp-red font-bold mt-0.5">•</span>Menerapkan sistem manajemen K3 yang ketat di setiap operasional.</li>
+            <li className="flex items-start gap-2"><span className="text-pgp-red font-bold mt-0.5">•</span>Membangun kemitraan jangka panjang yang saling menguntungkan.</li>
           </ul>
         </div>
       </div>
@@ -81,7 +81,7 @@ export default function CompanyInfoPage() {
           {VALUES.map(({ title, desc, icon: Icon }) => (
             <div key={title} className="flex gap-4">
               <div className="p-2.5 bg-slate-50 rounded-xl shrink-0 h-fit">
-                <Icon size={16} className="text-[#CC0000]" />
+                <Icon size={16} className="text-pgp-red" />
               </div>
               <div>
                 <p className="font-bold text-slate-800 text-sm">{title}</p>
@@ -101,7 +101,7 @@ export default function CompanyInfoPage() {
         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {DEPARTMENTS.map((dept) => (
             <div key={dept} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <div className="w-2 h-2 rounded-full bg-[#CC0000] shrink-0" />
+              <div className="w-2 h-2 rounded-full bg-pgp-red shrink-0" />
               <span className="text-sm font-medium text-slate-700">{dept}</span>
             </div>
           ))}

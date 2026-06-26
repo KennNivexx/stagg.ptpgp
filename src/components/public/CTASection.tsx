@@ -28,7 +28,7 @@ export default function CTASection({
   if (!show) return null;
 
   return (
-    <section id="contact" className="py-24 bg-orange-50/25 border-y border-orange-500/5 relative overflow-hidden">
+    <section id="cta" className="py-24 bg-orange-50/25 border-y border-orange-500/5 relative overflow-hidden scroll-mt-[72px]">
       <div className="absolute -top-32 -right-32 w-96 h-96 bg-pgp-red rounded-full blur-3xl opacity-5 pointer-events-none"></div>
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">

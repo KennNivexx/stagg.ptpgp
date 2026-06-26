@@ -44,7 +44,8 @@ export default function LeavesPage() {
   };
 
   const doStatus = async (id: string, status: string) => {
-    await updateLeaveStatus(id, status);
+    const result = await updateLeaveStatus(id, status);
+    if (result?.error) { showToast(result.error); return; }
     setData(prev => prev.map(d => d.id === id ? { ...d, status } : d));
     showToast(status === "Disetujui" ? "Cuti disetujui." : "Cuti ditolak.");
   };

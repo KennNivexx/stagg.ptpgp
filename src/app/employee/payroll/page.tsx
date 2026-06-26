@@ -1,11 +1,12 @@
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
-import { Download, FileText, DollarSign, Eye } from "lucide-react";
+import { requireAuth } from "@/lib/auth-guard";
+import { FileText, DollarSign } from "lucide-react";
+import PayslipActions from "@/app/employee/payslip/PayslipActions";
 
 export default async function EmployeePayroll() {
-  const cookieStore = await cookies();
-  const userEmail = cookieStore.get("user_email")?.value || "";
-  const userName = cookieStore.get("user_name")?.value || "";
+  const user = await requireAuth();
+  const userEmail = user.email;
+  const userName = user.name || "";
 
   const { data: employee } = await supabaseAdmin
     .from("employees")
@@ -74,14 +75,7 @@ export default async function EmployeePayroll() {
                         Rp {(Number(slip.net_salary) || 0).toLocaleString("id-ID")}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-1">Total Bersih</p>
-                      <div className="flex gap-2 mt-3">
-                        <button className="px-3 py-1.5 text-[10px] font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1">
-                          <Eye size={11} /> Lihat
-                        </button>
-                        <button className="px-3 py-1.5 text-[10px] font-bold bg-[#0F172A] text-white rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-1">
-                          <Download size={11} /> Unduh PDF
-                        </button>
-                      </div>
+                      <PayslipActions slipId={slip.id as string} />
                     </div>
                   </div>
                 </div>

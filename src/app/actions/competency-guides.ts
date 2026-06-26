@@ -41,7 +41,8 @@ export async function saveAllSkillLevelGuides(formData: FormData) {
     if ((error as unknown as Record<string, unknown>)?.code === "42P01") {
       return { error: "Jalankan migrasi SQL 20260622001 terlebih dahulu." };
     }
-    return { error: error.message };
+    console.error("[competency-guides] saveAllSkillLevelGuides error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
   revalidatePath("/hrd/competency/library");
@@ -87,20 +88,25 @@ export async function getAllSkillGuidesMap(
   return map;
 }
 
-// Kepala departemen tambah kompetensi untuk dept mereka sendiri
+// Kepala departemen (dan HRD/superadmin) tambah kompetensi untuk dept
 export async function addDeptSkill(formData: FormData) {
-  const { dept } = await getMyDept();
-  if (!dept) return { error: "Departemen tidak ditemukan." };
+  const user = await requireRole("department_manager", "superadmin", "hrd");
 
-  // Allow dept manager or higher
-  await requireRole("department_manager", "superadmin", "hrd");
+  let dept: string | null;
+  if (user.role === "superadmin" || user.role === "hrd") {
+    dept = (formData.get("department") as string || "").trim() || null;
+    if (!dept) return { error: "Departemen wajib dipilih." };
+  } else {
+    const myDept = await getMyDept();
+    dept = myDept.dept;
+    if (!dept) return { error: "Departemen tidak ditemukan." };
+  }
 
   const name = (formData.get("name") as string || "").trim();
   const category = (formData.get("category") as string || "Teknis").trim();
 
   if (!name) return { error: "Nama kompetensi wajib diisi." };
 
-  // Check duplicate per dept
   const { data: existing } = await supabaseAdmin
     .from("skills")
     .select("id")
@@ -108,12 +114,12 @@ export async function addDeptSkill(formData: FormData) {
     .eq("department", dept)
     .maybeSingle();
 
-  if (existing) return { error: "Kompetensi dengan nama ini sudah ada untuk departemen Anda." };
+  if (existing) return { error: "Kompetensi dengan nama ini sudah ada untuk departemen ini." };
 
   const { error } = await supabaseAdmin
     .from("skills")
     .insert({ id: crypto.randomUUID(), name, category, department: dept });
 
-  if (error) return { error: error.message };
+  if (error) { console.error("[competency-guides] addDeptSkill error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
   return { success: true };
 }

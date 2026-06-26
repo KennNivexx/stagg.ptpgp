@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
-import { Briefcase, Plus, MapPin, Clock, Users, CheckCircle2 } from "lucide-react";
+import { Briefcase, MapPin, Clock, Users, CheckCircle2 } from "lucide-react";
+import VacancyFormClient from "./VacancyFormClient";
 
 export default async function PerencanaanLowongan() {
   const { data: jobs } = await supabaseAdmin
@@ -56,52 +57,7 @@ export default async function PerencanaanLowongan() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <Plus size={16} className="text-[#CC0000]" />
-              <div>
-                <h3 className="font-extrabold text-slate-800 text-sm">Rencana Lowongan Baru</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Ajukan persetujuan lowongan baru</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-6">
-            <form className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Judul Posisi</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Staff Akuntansi" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Departemen</label>
-                <select className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
-                  <option value="">Pilih Departemen</option>
-                  {Object.keys(deptCounts).map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Lokasi</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Jakarta" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Status Persetujuan</label>
-                <select className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
-                  <option value="Draft">Draft (Menunggu Review)</option>
-                  <option value="Open">Disetujui - Langsung Buka</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Deskripsi</label>
-                <textarea className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" rows={3} placeholder="Deskripsikan kebutuhan lowongan..." />
-              </div>
-              <button type="submit" className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center justify-center gap-2">
-                <Plus size={14} /> Simpan Lowongan
-              </button>
-            </form>
-          </div>
-        </div>
+        <VacancyFormClient departments={Object.keys(deptCounts)} />
 
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">

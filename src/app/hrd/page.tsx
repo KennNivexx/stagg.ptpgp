@@ -203,9 +203,11 @@ function getLast7Days() {
 
 const DEPT_COLORS = ["#CC0000", "#2563eb", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
 
+import { requireRole } from "@/lib/auth-guard";
+
 export default async function HRDDashboard() {
-  const cookieStore = await cookies();
-  const userName = cookieStore.get("user_name")?.value || "Administrator HRD";
+  const user = await requireRole("hrd", "superadmin");
+  const userName = user.name || "Administrator HRD";
 
   const now = new Date();
   const today = now.toISOString().split("T")[0];

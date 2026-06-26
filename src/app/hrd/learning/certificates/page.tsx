@@ -69,9 +69,9 @@ export default function Sertifikat() {
           <h1 className="text-2xl font-bold text-[#1A2530]">Sertifikat</h1>
           <p className="text-sm text-gray-500 mt-1">Kelola sertifikat pelatihan yang diterbitkan untuk karyawan.</p>
         </div>
-        <button className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2">
+        <span className="bg-slate-300 text-white px-4 py-2 rounded-xl text-sm font-bold cursor-not-allowed inline-flex items-center gap-2" title="Segera tersedia">
           <Award size={14} /> Terbitkan Sertifikat
-        </button>
+        </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -166,9 +166,9 @@ export default function Sertifikat() {
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${getStatusColor(cert.status)}`}>{cert.status}</span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-[#CC0000] transition-colors" title="Unduh Sertifikat">
+                    <span className="p-2 rounded-lg text-slate-300 cursor-not-allowed inline-flex" title="Segera tersedia">
                       <Download size={14} />
-                    </button>
+                    </span>
                   </td>
                 </tr>
               ))}

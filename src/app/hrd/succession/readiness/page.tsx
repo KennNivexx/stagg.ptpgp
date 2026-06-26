@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { BarChart3, ClipboardCheck, Star, TrendingUp, Award } from "lucide-react";
+import ReadinessForm from "./ReadinessForm";
 
 export default async function PenilaianKesiapan() {
   const { data: candidates } = await supabaseAdmin
@@ -36,8 +37,6 @@ export default async function PenilaianKesiapan() {
     .filter((c: Record<string, unknown>) => (c.avgScore as number) >= 50)
     .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.avgScore as number) - (a.avgScore as number))
     .slice(0, 10);
-
-  const criteriaLabels = ["Kepemimpinan", "Keahlian Teknis", "Pengalaman", "Kinerja", "Potensi"];
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -98,54 +97,13 @@ export default async function PenilaianKesiapan() {
             <p className="text-xs text-slate-400 mt-0.5">Nilai setiap kriteria kesiapan suksesor</p>
           </div>
           <div className="p-6 space-y-6">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pilih Kandidat</label>
-              <select className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none">
-                <option value="">Pilih kandidat...</option>
-                {(candidates || []).map((c: Record<string, unknown>) => (
-                  <option key={c.id as string} value={c.id as string}>{c.full_name as string} - {c.position as string}</option>
-                ))}
-              </select>
-            </div>
-
-            {criteriaLabels.map((label, i) => (
-              <div key={label}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-slate-700">{label}</label>
-                  <span className="text-[10px] text-slate-400">Skor 0-100</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    defaultValue={50 + i * 5}
-                    className="flex-1 accent-[#CC0000] h-1.5"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    defaultValue={50 + i * 5}
-                    className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 text-center focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none"
-                  />
-                </div>
-              </div>
-            ))}
-
-            <div className="bg-slate-50 rounded-xl p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Skor Kesiapan Total</span>
-                <span className="text-lg font-extrabold text-[#CC0000]">72%</span>
-              </div>
-              <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-[#CC0000] rounded-full" style={{ width: "72%" }} />
-              </div>
-            </div>
-
-            <button className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors">
-              Simpan Penilaian Kesiapan
-            </button>
+            <ReadinessForm
+              candidates={(candidates || []).map((c: Record<string, unknown>) => ({
+                id: c.id as string,
+                full_name: c.full_name as string,
+                position: (c.position as string) || "-",
+              }))}
+            />
           </div>
         </div>
 
@@ -160,7 +118,7 @@ export default async function PenilaianKesiapan() {
                 {(evaluations || []).slice(0, 8).map((ev: Record<string, unknown>, i: number) => {
                   const emp = (candidates || []).find((c: Record<string, unknown>) => c.id === ev.employee_id);
                   return (
-                    <div key={i} className="px-6 py-4 hover:bg-slate-50/30 transition-colors">
+                    <div key={(ev.id as string) || `${ev.employee_id}-${i}`} className="px-6 py-4 hover:bg-slate-50/30 transition-colors">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-bold text-slate-800 truncate">
                           {emp ? emp.full_name as string : `ID: ${ev.employee_id}`}

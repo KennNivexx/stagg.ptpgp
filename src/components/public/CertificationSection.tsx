@@ -22,12 +22,15 @@ interface CertificationProps {
 }
 
 const defaultCertifications: CertItem[] = [
-  { name: "NIB", icon: "fileText" },
-  { name: "NPWP", icon: "fileText" },
   { name: "ISO 9001", icon: "shield" },
   { name: "ISO 45001", icon: "checkCircle" },
   { name: "ISO 14001", icon: "award" },
-  { name: "Sertifikasi Logistik", icon: "award" }
+  { name: "Sertifikasi Logistik", icon: "award" },
+];
+
+const legalItems: CertItem[] = [
+  { name: "NIB", icon: "fileText" },
+  { name: "NPWP", icon: "fileText" },
 ];
 
 export default function CertificationSection({
@@ -52,7 +55,10 @@ export default function CertificationSection({
           </h2>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-6 md:gap-12">
+        <div className="text-center max-w-3xl mx-auto mb-8">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sertifikasi</h3>
+        </div>
+        <div className="flex flex-wrap justify-center gap-6 md:gap-12 mb-16">
           {items.map((cert, index) => {
             const IconComponent = cert.icon ? iconMap[cert.icon] : null;
             return (
@@ -75,6 +81,27 @@ export default function CertificationSection({
               </div>
             );
           })}
+        </div>
+
+        <div className="border-t border-gray-100 pt-10">
+          <div className="text-center max-w-3xl mx-auto mb-8">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Legalitas Perusahaan</h3>
+          </div>
+          <div className="flex flex-wrap justify-center gap-6 md:gap-12">
+            {legalItems.map((cert, index) => {
+              const IconComponent = cert.icon ? iconMap[cert.icon] : null;
+              return (
+                <div key={index} className="flex flex-col items-center gap-4 group cursor-default">
+                  <div className="w-20 h-20 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center border border-gray-100 group-hover:bg-pgp-navy group-hover:text-white group-hover:border-pgp-navy group-hover:shadow-lg transition-all duration-300">
+                    {IconComponent ? <IconComponent size={32} /> : <Award size={32} />}
+                  </div>
+                  <div className="text-sm font-bold text-gray-500 group-hover:text-pgp-navy transition-colors text-center">
+                    {cert.name}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

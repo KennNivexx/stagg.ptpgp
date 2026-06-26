@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { BarChart3, Users, Building2, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
 import { syncAllHeadcounts } from "@/app/actions/headcount";
 
@@ -13,7 +14,8 @@ export default function HeadcountClient({
 }: {
   initialData: DeptHC[];
 }) {
-  const [data, setData] = useState(initialData);
+  const router = useRouter();
+  const [data] = useState(initialData);
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState("");
 
@@ -23,6 +25,7 @@ export default function HeadcountClient({
     setSyncing(true);
     try {
       await syncAllHeadcounts();
+      router.refresh();
       showToast("Headcount disinkronkan dari data karyawan + permintaan disetujui.");
     } catch (_e) {
       showToast("Sinkronisasi gagal.");

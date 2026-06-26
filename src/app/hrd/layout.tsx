@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,7 +10,7 @@ import {
   LogOut, Search, Menu, X, ChevronRight, Clock,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
-import { getCookie } from "@/lib/cookie-client";
+import { useSession } from "@/hooks/useSession";
 import NotificationBell from "@/components/NotificationBell";
 
 const MENU_GROUPS = [
@@ -308,20 +308,18 @@ const ITEM_TOOLTIPS: Record<string, string> = {
 export default function HRDLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [clientUserName, setClientUserName] = useState("Administrator HRD");
-  const [clientUserEmail, setClientUserEmail] = useState("admin@pratamagaluh.co.id");
-
-  useEffect(() => {
-    const name = getCookie("user_name");
-    const email = getCookie("user_email");
-    if (name) setClientUserName(name);
-    if (email) setClientUserEmail(email);
-  }, []);
+  const { user } = useSession();
+  const clientUserName = user?.name || "Administrator HRD";
+  const clientUserEmail = user?.email || "hrd@ptpgp.co.id";
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-slate-900 focus:text-white focus:rounded-lg focus:text-sm focus:font-bold">
+        Lewati ke konten utama
+      </a>
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
+          aria-label={isSidebarOpen ? "Tutup sidebar" : "Buka sidebar"}
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="p-2 bg-[#1E293B] text-white rounded-lg shadow-md hover:bg-slate-800 transition-colors"
         >
@@ -418,7 +416,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">{children}</main>
+        <main id="main-content" className="flex-1 overflow-y-auto bg-[#F8FAFC]">{children}</main>
       </div>
     </div>
   );

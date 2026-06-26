@@ -33,8 +33,8 @@ export async function saveJobDesc(formData: FormData) {
       position, department, responsibilities, requirements, updated_at: now,
     }).eq("id", id);
     if (error) {
-      console.error("saveJobDesc error:", error);
-      return { error: `Gagal: ${error.message || "Coba lagi."}` };
+      console.error("[jobdesc] saveJobDesc error:", error.message);
+      return { error: "Gagal memproses. Silakan coba lagi." };
     }
   } else {
     const newId = uid();
@@ -42,8 +42,8 @@ export async function saveJobDesc(formData: FormData) {
       id: newId, position, department, responsibilities, requirements, created_at: now, updated_at: now,
     });
     if (error) {
-      console.error("addJobDesc error:", error);
-      return { error: `Gagal: ${error.message || "Coba lagi."}` };
+      console.error("[jobdesc] addJobDesc error:", error.message);
+      return { error: "Gagal memproses. Silakan coba lagi." };
     }
   }
 
@@ -53,7 +53,8 @@ export async function saveJobDesc(formData: FormData) {
 
 export async function deleteJobDesc(id: string) {
   await requireRole("hrd", "superadmin");
-  await supabaseAdmin.from("job_descriptions").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("job_descriptions").delete().eq("id", id);
+  if (error) { console.error("[jobdesc] deleteJobDesc error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/workplace/jobdesc");
   return { success: true };
 }

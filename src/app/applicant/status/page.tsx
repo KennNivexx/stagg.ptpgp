@@ -47,7 +47,7 @@ export default async function ApplicantStatusPage() {
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Status Lamaran</h1>
+        <h1 className="text-2xl font-bold text-pgp-navy mb-2">Status Lamaran</h1>
         <p className="text-sm text-gray-500">Detail perkembangan proses seleksi Anda.</p>
       </div>
 
@@ -101,7 +101,7 @@ export default async function ApplicantStatusPage() {
                 <div className="flex flex-col items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${
                     stageStatus === "done" ? "bg-emerald-500 border-emerald-500 text-white" :
-                    stageStatus === "current" ? "bg-[#CC0000] border-[#CC0000] text-white" :
+                    stageStatus === "current" ? "bg-pgp-red border-pgp-red text-white" :
                     stageStatus === "rejected" ? "bg-slate-200 border-slate-200 text-slate-400" :
                     "bg-white border-slate-200 text-slate-300"
                   }`}>
@@ -126,13 +126,13 @@ export default async function ApplicantStatusPage() {
                 <div className={`pb-6 flex-1 ${isLast ? "pb-2" : ""}`}>
                   <p className={`text-sm font-bold ${
                     stageStatus === "done" ? "text-emerald-700" :
-                    stageStatus === "current" ? "text-[#CC0000]" :
+                    stageStatus === "current" ? "text-pgp-red" :
                     stageStatus === "rejected" ? "text-slate-400" :
                     "text-slate-400"
                   }`}>
                     {stage.label}
                     {stageStatus === "current" && (
-                      <span className="ml-2 text-[9px] bg-[#CC0000] text-white px-1.5 py-0.5 rounded-full font-bold">SAAT INI</span>
+                      <span className="ml-2 text-[9px] bg-pgp-red text-white px-1.5 py-0.5 rounded-full font-bold">SAAT INI</span>
                     )}
                   </p>
                   <p className={`text-xs mt-1 ${
@@ -194,7 +194,7 @@ export default async function ApplicantStatusPage() {
       {/* Contact HRD */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-sm text-slate-600">
         <p className="font-bold text-slate-800 mb-1">Ada pertanyaan?</p>
-        <p className="text-xs">Hubungi tim HRD kami melalui email <a href="mailto:hrga@ptpgp.co.id" className="text-[#CC0000] font-bold hover:underline">hrga@ptpgp.co.id</a> atau melalui telepon kantor pada jam kerja (Senin–Jumat, 08.00–17.00 WIB).</p>
+        <p className="text-xs">Hubungi tim HRD kami melalui email <a href="mailto:hrga@ptpgp.co.id" className="text-pgp-red font-bold hover:underline">hrga@ptpgp.co.id</a> atau melalui telepon kantor pada jam kerja (Senin–Jumat, 08.00–17.00 WIB).</p>
       </div>
     </div>
   );

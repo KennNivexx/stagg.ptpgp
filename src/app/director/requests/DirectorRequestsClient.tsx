@@ -140,7 +140,7 @@ export default function DirectorRequestsClient({ requests }: Props) {
             onClick={() => { setFilter(opt); setPage(0); }}
             className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
               filter === opt
-                ? "bg-[#CC0000] text-white"
+                ? "bg-pgp-red text-white"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >

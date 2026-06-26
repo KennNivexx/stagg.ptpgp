@@ -13,13 +13,13 @@ import {
   UserCheck
 } from "lucide-react";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireAuth } from "@/lib/auth-guard";
 
 export default async function EmployeeDashboard() {
-  const cookieStore = await cookies();
-  const userName = cookieStore.get("user_name")?.value || "Karyawan";
-  const userEmail = cookieStore.get("user_email")?.value || "";
+  const user = await requireAuth();
+  const userName = user.name || "Karyawan";
+  const userEmail = user.email || "";
 
   const todayDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
@@ -39,14 +39,14 @@ export default async function EmployeeDashboard() {
   const department = employee?.department || "-";
 
   let annualLeaveUsed = 0;
-  let annualLeaveTotal = 12;
+  const annualLeaveTotal = 12;
   if (employeeId) {
     const { data: approvedLeaves } = await supabaseAdmin
       .from("leave_requests")
       .select("id")
       .eq("employee_id", employeeId)
       .eq("type", "Cuti Tahunan")
-      .eq("status", "Approved");
+      .eq("status", "Disetujui");
     annualLeaveUsed = (approvedLeaves || []).length;
   }
 

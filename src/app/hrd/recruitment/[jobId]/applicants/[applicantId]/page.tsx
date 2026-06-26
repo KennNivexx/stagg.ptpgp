@@ -49,9 +49,9 @@ export default function ApplicantDetailPage() {
     const res = await convertApplicantToEmployee(applicantId, formData);
     if (res?.error) {
       setError(res.error);
-    } else {
+    } else if ("success" in res) {
       setSuccess("Pelamar berhasil dikonversi menjadi karyawan!");
-      if (res?.password) {
+      if (res.password) {
         setGeneratedPassword(res.password);
       }
       setShowConvert(false);

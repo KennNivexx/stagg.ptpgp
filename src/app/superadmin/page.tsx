@@ -36,7 +36,10 @@ function parseRole(address: unknown): string {
   }
 }
 
+import { requireRole } from "@/lib/auth-guard";
+
 export default async function SuperadminDashboard() {
+  await requireRole("superadmin");
   const currentDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
     year: "numeric",

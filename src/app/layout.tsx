@@ -13,6 +13,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "PT Pratama Galuh Perkasa - Comprehensive Logistics Solutions",
   description: "PT Pratama Galuh Perkasa offers premier land transport, ocean freight, and custom logistics solutions.",
+  icons: {
+    icon: "/favicon.ico",
+  },
+  openGraph: {
+    title: "PT Pratama Galuh Perkasa",
+    description: "Comprehensive logistics solutions — land transport, ocean freight, and custom logistics.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

@@ -1,51 +1,67 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, Search, Clock, User, Filter } from "lucide-react";
 
+function getModuleFromAction(action: string): string {
+  if (action.startsWith("employee.")) return "Karyawan";
+  if (action.startsWith("job.") || action.startsWith("application.") || action.startsWith("applicant.")) return "Rekrutmen";
+  if (action.startsWith("leave.")) return "Cuti";
+  if (action.startsWith("org.")) return "Organisasi";
+  if (action.startsWith("headcount.")) return "Headcount";
+  if (action.startsWith("request.")) return "Permintaan";
+  if (action.startsWith("attendance.")) return "Kehadiran";
+  if (action.startsWith("settings.")) return "Pengaturan";
+  if (action.startsWith("position.") || action.startsWith("jobdesc.") || action.startsWith("jobspec.")) return "Jabatan";
+  return "Sistem";
+}
+
+function getActionLabel(action: string): string {
+  const labels: Record<string, string> = {
+    "employee.create": "Karyawan dibuat",
+    "employee.update": "Karyawan diubah",
+    "employee.delete": "Karyawan dihapus",
+    "employee.status_change": "Status karyawan diubah",
+    "employee.password_reset": "Password direset",
+    "job.create": "Lowongan dibuat",
+    "job.status_change": "Status lowongan diubah",
+    "application.update": "Lamaran diperbarui",
+    "applicant.convert": "Pelamar dikonversi",
+    "leave.submit": "Cuti diajukan",
+    "leave.status_change": "Status cuti diubah",
+    "org.add_unit": "Unit org ditambah",
+    "org.update_unit": "Unit org diubah",
+    "org.delete_unit": "Unit org dihapus",
+    "org.move_unit": "Unit org dipindah",
+    "settings.save": "Pengaturan disimpan",
+    "position.add": "Jabatan ditambah",
+    "position.update": "Jabatan diubah",
+    "position.delete": "Jabatan dihapus",
+    "headcount.update": "Headcount diubah",
+    "headcount.sync": "Headcount disinkron",
+    "request.add": "Permintaan SDM dibuat",
+    "request.status_change": "Status permintaan diubah",
+    "request.delete": "Permintaan SDM dihapus",
+    "attendance.clock_in": "Clock-in",
+    "attendance.clock_out": "Clock-out",
+  };
+  return labels[action] || action;
+}
+
 export default async function AuditLog() {
-  const { data: recentEmployees } = await supabaseAdmin
-    .from("employees")
+  const { data: logs } = await supabaseAdmin
+    .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(50);
 
-  const { data: recentKPIs } = await supabaseAdmin
-    .from("kpi_evaluations")
-    .select("*, employees!inner(full_name)")
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  const { data: recentJobs } = await supabaseAdmin
-    .from("job_postings")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  const auditEntries = [
-    ...((recentEmployees || []).map((e: Record<string, unknown>) => ({
-      timestamp: e.created_at as string,
-      user: e.full_name as string,
-      action: "Karyawan dibuat",
-      module: "Karyawan",
-      details: `Karyawan baru: ${e.full_name} - ${e.position || "N/A"}`,
-    }))),
-    ...((recentKPIs || []).map((k: Record<string, unknown>) => {
-      const emp = k.employees as Record<string, string> | undefined;
-      return {
-        timestamp: k.created_at as string,
-        user: emp?.full_name || "System",
-        action: "Evaluasi KPI",
-        module: "KPI & Feedback",
-        details: `Evaluasi KPI: Skor ${k.score}`,
-      };
-    })),
-    ...((recentJobs || []).map((j: Record<string, unknown>) => ({
-      timestamp: j.created_at as string,
-      user: "System",
-      action: "Lowongan dibuat",
-      module: "Rekrutmen",
-      details: `Lowongan: ${j.title} - ${j.department || "N/A"}`,
-    }))),
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 50);
+  const auditEntries = (logs || []).map((log: Record<string, unknown>) => ({
+    id: log.id as string,
+    timestamp: log.created_at as string,
+    user: (log.performed_by_name as string) || (log.performed_by_email as string) || "System",
+    role: log.performed_by_role as string,
+    action: getActionLabel(log.action as string),
+    module: getModuleFromAction(log.action as string),
+    details: [log.target_name, log.detail].filter(Boolean).join(" — ") || (log.action as string),
+  }));
 
   const uniqueModules = [...new Set(auditEntries.map((a) => a.module))];
   const uniqueUsers = [...new Set(auditEntries.map((a) => a.user))];
@@ -104,7 +120,7 @@ export default async function AuditLog() {
         <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <div>
             <h3 className="font-extrabold text-slate-800 text-sm">Aktivitas Sistem</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Catatan perubahan data karyawan, KPI, dan aktivitas lainnya</p>
+            <p className="text-xs text-slate-400 mt-0.5">50 aktivitas terbaru dari seluruh modul</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <select className="text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-600 focus:border-[#CC0000] outline-none">
@@ -143,7 +159,7 @@ export default async function AuditLog() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {auditEntries.map((entry, i) => (
-                  <tr key={i} className="hover:bg-slate-50/30 transition-colors">
+                  <tr key={entry.id || `${entry.timestamp}-${i}`} className="hover:bg-slate-50/30 transition-colors">
                     <td className="px-6 py-3.5 text-xs text-slate-500 whitespace-nowrap">
                       {new Date(entry.timestamp).toLocaleDateString("id-ID", {
                         day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
@@ -154,7 +170,10 @@ export default async function AuditLog() {
                         <div className="h-6 w-6 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 text-white flex items-center justify-center font-bold text-[9px] shrink-0">
                           {entry.user.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-xs text-slate-700">{entry.user}</span>
+                        <div>
+                          <span className="text-xs text-slate-700 block">{entry.user}</span>
+                          {entry.role && <span className="text-[9px] text-slate-400">{entry.role}</span>}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-3.5">

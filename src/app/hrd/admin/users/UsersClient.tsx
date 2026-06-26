@@ -1,7 +1,8 @@
 "use client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Pencil, UserPlus } from "lucide-react";
+import { Shield, Pencil, UserPlus, X } from "lucide-react";
+import Link from "next/link";
 import { createAdminUser } from "@/app/actions/admin";
 
 type Employee = Record<string, unknown>;
@@ -17,6 +18,7 @@ export default function UsersClient({ employees, roles }: Props) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [roleModal, setRoleModal] = useState<Employee | null>(null);
 
   async function handleCreateUser() {
     if (!formRef.current) return;
@@ -83,14 +85,18 @@ export default function UsersClient({ employees, roles }: Props) {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => alert(`Edit Role untuk: ${emp.full_name as string}\n(Fitur manajemen role akan menampilkan dialog konfirmasi)`)}
-                          className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors" title="Edit Role">
+                        <button
+                          onClick={() => setRoleModal(emp)}
+                          className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors" title="Edit Role"
+                        >
                           <Shield size={14} />
                         </button>
-                        <button onClick={() => alert(`Edit profil: ${emp.full_name as string}\nGunakan menu Karyawan > Detail untuk mengedit lengkap.`)}
-                          className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors" title="Edit">
+                        <Link
+                          href={`/hrd/employees/${emp.id as string}/edit`}
+                          className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors inline-flex" title="Edit Profil"
+                        >
                           <Pencil size={14} />
-                        </button>
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -99,6 +105,41 @@ export default function UsersClient({ employees, roles }: Props) {
             </table>
           </div>
         </div>
+
+        {/* Role Info Modal */}
+        {roleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setRoleModal(null)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="relative z-10 bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2"><Shield size={16} className="text-blue-600" /> Info Akun</h3>
+                <button onClick={() => setRoleModal(null)} className="p-1.5 hover:bg-slate-100 rounded-lg"><X size={14} /></button>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                    {(roleModal.full_name as string)?.charAt(0)?.toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{roleModal.full_name as string}</p>
+                    <p className="text-xs text-slate-500">{roleModal.email as string}</p>
+                  </div>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-xl">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Role saat ini</p>
+                  <p className="text-sm font-bold text-blue-700">Karyawan (employee)</p>
+                </div>
+                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                  <p className="text-xs text-amber-700 font-semibold">Untuk mengubah role karyawan, edit data karyawan di halaman <span className="font-bold">Data Karyawan → Edit</span> dan sesuaikan pengaturan akun.</p>
+                </div>
+                <Link href={`/hrd/employees/${roleModal.id as string}/edit`}
+                  className="w-full py-2.5 bg-[#CC0000] hover:bg-[#aa0000] text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+                  <Pencil size={14} /> Buka Halaman Edit
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showForm && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">

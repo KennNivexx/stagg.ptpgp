@@ -53,7 +53,8 @@ export async function submitComplaint(formData: FormData) {
   ]);
 
   if (error && !error.message.includes("Could not find the table")) {
-    return { error: error.message };
+    console.error("[employee] submitComplaint error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
   revalidatePath("/employee/complaints");
@@ -85,7 +86,8 @@ export async function submitResignation(formData: FormData) {
   ]);
 
   if (error && !error.message.includes("Could not find the table")) {
-    return { error: error.message };
+    console.error("[employee] submitResignation error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
   revalidatePath("/employee/resignation");
@@ -179,7 +181,8 @@ export async function issueWarning(formData: FormData) {
   ]);
 
   if (error && !error.message.includes("Could not find the table")) {
-    return { error: error.message };
+    console.error("[employee] issueWarning error:", error.message);
+    return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
   revalidatePath("/hrd/relations/warnings");

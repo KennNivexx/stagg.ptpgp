@@ -1,10 +1,10 @@
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireAuth } from "@/lib/auth-guard";
 import { AlertTriangle, Shield, Clock } from "lucide-react";
 
 export default async function EmployeeWarnings() {
-  const cookieStore = await cookies();
-  const userEmail = cookieStore.get("user_email")?.value || "";
+  const user = await requireAuth();
+  const userEmail = user.email;
 
   const { data: employee } = await supabaseAdmin
     .from("employees")

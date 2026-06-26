@@ -1,6 +1,9 @@
 ﻿import { Database, Search, BookOpen, TrendingUp, Eye, Clock, User } from "lucide-react";
 
-export default async function KnowledgeBasePage() {
+export default async function KnowledgeBasePage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+  const params = await searchParams;
+  const activeCategory = params.category || "Semua";
+
   const categories = ["Semua", "HR & Kepegawaian", "Keuangan", "Operasional", "IT & Sistem", "HSE", "Umum"];
 
   const articles = [
@@ -14,6 +17,8 @@ export default async function KnowledgeBasePage() {
     { id: 8, title: "Kebijakan Work From Home (WFH)", category: "HR & Kepegawaian", author: "HRD", date: "10 Mei 2026", views: 276, popular: false },
     { id: 9, title: "Prosedur Pelaporan Insiden K3", category: "HSE", author: "HSE Dept", date: "05 Mei 2026", views: 87, popular: false },
   ];
+
+  const filteredArticles = activeCategory === "Semua" ? articles : articles.filter((a) => a.category === activeCategory);
 
   const categoryColorMap: Record<string, string> = {
     "HR & Kepegawaian": "bg-blue-50 text-blue-700",
@@ -45,18 +50,20 @@ export default async function KnowledgeBasePage() {
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
-              cat === "Semua"
-                ? "bg-[#CC0000] text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:border-[#CC0000]"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+        {categories.map((cat) => {
+          const href = cat === "Semua" ? "?" : `?category=${encodeURIComponent(cat)}`;
+          const active = "px-4 py-2 rounded-xl text-xs font-bold bg-pgp-red text-white shadow-sm";
+          const inactive = "px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200";
+          return (
+            <a
+              key={cat}
+              href={href}
+              className={activeCategory === cat ? active : inactive}
+            >
+              {cat}
+            </a>
+          );
+        })}
       </div>
 
       <div>
@@ -93,7 +100,7 @@ export default async function KnowledgeBasePage() {
           Semua Artikel
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {articles.map((article) => (
+          {filteredArticles.map((article) => (
             <div key={article.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md transition-all cursor-pointer group">
               <div className="flex items-start justify-between mb-3">
                 <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${categoryColorMap[article.category] || "bg-slate-50 text-slate-600"}`}>

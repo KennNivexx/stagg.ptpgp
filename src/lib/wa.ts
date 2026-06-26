@@ -4,6 +4,6 @@ export function generateWhatsAppUrl(phone: string, message: string): string {
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
 }
 
-export function formatPasswordMessage(name: string, email: string, password: string): string {
-  return `Halo *${name}*,\n\nAkun HRIS PT Pratama Galuh Perkasa Anda telah dibuat.\n\n📧 Email: ${email}\n🔑 Password: *${password}*\n\n🔗 Login di: https://hr.ptpgp.co.id/login\n\nHarap segera ganti password setelah login pertama.\n\nTerima kasih,\n*PT Pratama Galuh Perkasa*`;
+export function formatPasswordMessage(name: string, email: string): string {
+  return `Halo *${name}*,\n\nAkun HRIS PT Pratama Galuh Perkasa Anda telah dibuat.\n\n📧 Email: ${email}\n🔑 Password telah dikirim melalui email terpisah.\n\n🔗 Login di: https://hr.ptpgp.co.id/login\n\nHarap segera ganti password setelah login pertama.\n\nTerima kasih,\n*PT Pratama Galuh Perkasa*`;
 }

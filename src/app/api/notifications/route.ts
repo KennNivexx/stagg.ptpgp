@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
             title: "Pengajuan Cuti",
             message: `${emp?.full_name || "Karyawan"} mengajukan ${l.type} (${l.start_date} - ${l.end_date}).`,
             time: new Date().toLocaleDateString("id-ID"),
-            link: "/hrd/relations/leaves",
+            link: "/hrd/leaves",
             priority: "high",
           });
         });
@@ -130,8 +130,8 @@ export async function GET(request: NextRequest) {
         ]);
 
         if (myLeaves?.length) {
-          const approved = myLeaves.filter((l: Record<string, unknown>) => l.status === "Approved");
-          const rejected = myLeaves.filter((l: Record<string, unknown>) => l.status === "Rejected");
+          const approved = myLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui");
+          const rejected = myLeaves.filter((l: Record<string, unknown>) => l.status === "Ditolak");
           const pending = myLeaves.filter((l: Record<string, unknown>) => l.status === "Pending");
 
           if (approved.length > 0) {

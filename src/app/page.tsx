@@ -16,6 +16,8 @@ import TestimonialSection from "@/components/public/TestimonialSection";
 import CertificationSection from "@/components/public/CertificationSection";
 import FAQSection from "@/components/public/FAQSection";
 import CTASection from "@/components/public/CTASection";
+import ContactSection from "@/components/public/ContactSection";
+import TeaserSection from "@/components/public/TeaserSection";
 
 async function getSettings() {
   try {
@@ -27,7 +29,9 @@ async function getSettings() {
     if (data?.address) {
       return JSON.parse(data.address as string);
     }
-  } catch {}
+  } catch {
+    console.error("[getSettings] Failed to parse website settings, returning empty config.");
+  }
   return {};
 }
 
@@ -72,6 +76,8 @@ export default async function Home() {
       {certification.show !== false && <CertificationSection {...certification} />}
       {faq.show !== false && <FAQSection {...faq} />}
       {cta.show !== false && <CTASection {...cta} />}
+      <ContactSection />
+      <TeaserSection />
       <PGPFooter info={info} footer={footer} links={links} />
     </main>
   );

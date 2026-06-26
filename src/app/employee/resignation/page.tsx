@@ -1,12 +1,12 @@
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireAuth } from "@/lib/auth-guard";
 import { LogOut, Calendar, CheckCircle, XCircle, Clock, FileText, AlertTriangle } from "lucide-react";
 import ResignationForm from "@/components/ResignationForm";
 
 export default async function EmployeeResignation() {
-  const cookieStore = await cookies();
-  const userEmail = cookieStore.get("user_email")?.value || "";
-  const userName = cookieStore.get("user_name")?.value || "Karyawan";
+  const user = await requireAuth();
+  const userEmail = user.email;
+  const userName = user.name || "Karyawan";
 
   const { data: employee } = await supabaseAdmin
     .from("employees")
@@ -163,9 +163,9 @@ export default async function EmployeeResignation() {
             <p className="text-[11px] text-slate-300 leading-relaxed mb-4">
               Jika Anda memiliki pertanyaan tentang prosedur resign atau hak-hak Anda, silakan hubungi tim HRD.
             </p>
-            <button className="w-full px-4 py-2 bg-white text-slate-800 text-[10px] font-bold rounded-xl hover:bg-slate-100 transition-colors">
+            <a href="mailto:hrga@ptpgp.co.id" className="w-full px-4 py-2 bg-white text-slate-800 text-[10px] font-bold rounded-xl hover:bg-slate-100 transition-colors text-center block">
               Hubungi HRD
-            </button>
+            </a>
           </div>
         </div>
       </div>

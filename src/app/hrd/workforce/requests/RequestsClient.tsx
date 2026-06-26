@@ -32,7 +32,12 @@ export default function RequestsClient({ departments: _departments, positions: _
     }
   };
 
-  const doDelete = async (id: string) => { await deleteRequest(id); getRequests().then(setData); };
+  const doDelete = async (id: string) => {
+    const result = await deleteRequest(id);
+    if (result?.error) { showToast(result.error); return; }
+    getRequests().then(setData);
+    showToast("Permintaan dihapus.");
+  };
 
   const getStatusBadge = (s: string) => {
     const m: Record<string, string> = { Pending: "bg-amber-50 text-amber-700", "Direview HRD": "bg-blue-50 text-blue-700", Disetujui: "bg-emerald-50 text-emerald-700", Ditolak: "bg-red-50 text-red-700" };

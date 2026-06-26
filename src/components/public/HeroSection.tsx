@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, MessageSquare } from "lucide-react";
 import QuotationModal from "./QuotationModal";
 
@@ -53,7 +54,7 @@ export default function HeroSection({
             title="Hero background video"
           />
         ) : bgImageUrl ? (
-          <img src={bgImageUrl} alt="Hero background" className="w-full h-full object-cover" />
+          <Image src={bgImageUrl} alt="" fill className="object-cover" priority />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
         )}

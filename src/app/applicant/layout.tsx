@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/session";
+import { supabaseAdmin } from "@/lib/supabase";
 import ApplicantSidebar from "./ApplicantSidebar";
 
 export default async function ApplicantLayout({ children }: { children: React.ReactNode }) {
@@ -11,6 +12,21 @@ export default async function ApplicantLayout({ children }: { children: React.Re
 
   const session = await verifySession(token);
   if (!session || session.role !== "applicant") redirect("/login");
+
+  // Verify account hasn't expired (rejected applicants past 24h grace)
+  const { data: userRecord } = await supabaseAdmin
+    .from("users")
+    .select("expires_at, is_temporary")
+    .eq("email", session.email)
+    .maybeSingle();
+
+  if (userRecord && (userRecord as Record<string, unknown>).is_temporary) {
+    const expiresAt = (userRecord as Record<string, unknown>).expires_at as string | null;
+    if (expiresAt && new Date(expiresAt) < new Date()) {
+      await supabaseAdmin.from("users").delete().eq("email", session.email).eq("role", "applicant");
+      redirect("/login");
+    }
+  }
 
   const userName = cookieStore.get("user_name")?.value || "Pelamar";
   const userEmail = cookieStore.get("user_email")?.value || "";

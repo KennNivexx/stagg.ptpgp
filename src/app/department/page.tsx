@@ -105,7 +105,7 @@ export default function DeptDashboard() {
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-1">Dashboard Departemen</h1>
+        <h1 className="text-2xl font-bold text-pgp-navy mb-1">Dashboard Departemen</h1>
         <p className="text-sm text-gray-500">{deptName || "Departemen tidak ditemukan"}</p>
       </div>
 

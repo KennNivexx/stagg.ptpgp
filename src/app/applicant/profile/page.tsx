@@ -27,18 +27,18 @@ export default async function ApplicantProfilePage() {
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Profil Lamaran</h1>
+        <h1 className="text-2xl font-bold text-pgp-navy mb-2">Profil Lamaran</h1>
         <p className="text-sm text-gray-500">Data yang Anda kirimkan saat mendaftar.</p>
       </div>
 
       {/* Avatar & posisi */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex items-center gap-6">
-        <div className="w-20 h-20 rounded-2xl bg-[#1A2530] text-white flex items-center justify-center text-2xl font-extrabold shrink-0">
+        <div className="w-20 h-20 rounded-2xl bg-pgp-navy text-white flex items-center justify-center text-2xl font-extrabold shrink-0">
           {initials}
         </div>
         <div>
           <h2 className="text-lg font-extrabold text-slate-800">{data.application.full_name}</h2>
-          <p className="text-sm text-slate-500 mt-1">Melamar sebagai: <span className="font-bold text-[#CC0000]">{data.job?.position || "—"}</span></p>
+          <p className="text-sm text-slate-500 mt-1">Melamar sebagai: <span className="font-bold text-pgp-red">{data.job?.position || "—"}</span></p>
           <p className="text-xs text-slate-400 mt-0.5">{data.job?.department || "—"}</p>
           <span className={`inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
             data.application.status === "Diterima" ? "bg-emerald-50 text-emerald-700" :
@@ -54,7 +54,7 @@ export default async function ApplicantProfilePage() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         <div className="p-5 border-b border-slate-100">
           <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
-            <User size={15} className="text-[#CC0000]" /> Data Kontak
+            <User size={15} className="text-pgp-red" /> Data Kontak
           </h3>
         </div>
         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -70,7 +70,7 @@ export default async function ApplicantProfilePage() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
           <div className="p-5 border-b border-slate-100">
             <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
-              <GraduationCap size={15} className="text-[#CC0000]" /> Pendidikan & Pengalaman
+              <GraduationCap size={15} className="text-pgp-red" /> Pendidikan & Pengalaman
             </h3>
           </div>
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -90,7 +90,7 @@ export default async function ApplicantProfilePage() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
           <div className="p-5 border-b border-slate-100">
             <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
-              <Award size={15} className="text-[#CC0000]" /> Keahlian & Bahasa
+              <Award size={15} className="text-pgp-red" /> Keahlian & Bahasa
             </h3>
           </div>
           <div className="p-6 space-y-4">
@@ -131,7 +131,7 @@ export default async function ApplicantProfilePage() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
           <div className="p-5 border-b border-slate-100">
             <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
-              <FileText size={15} className="text-[#CC0000]" /> Motivasi
+              <FileText size={15} className="text-pgp-red" /> Motivasi
             </h3>
           </div>
           <div className="p-6">

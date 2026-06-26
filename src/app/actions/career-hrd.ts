@@ -31,7 +31,7 @@ export async function submitMutation(formData: FormData) {
     requested_by: user.email, created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[career-hrd] submitMutation error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/mutations");
   return { success: true };
 }
@@ -40,7 +40,7 @@ export async function updateMutationStatus(id: string, status: "Disetujui" | "Di
   await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin.from("career_mutations").update({ status }).eq("id", id);
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL." };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[career-hrd] updateMutationStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/mutations");
   return { success: true };
 }
@@ -72,7 +72,7 @@ export async function submitPromotion(formData: FormData) {
     requested_by: user.email, created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[career-hrd] submitPromotion error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/promotions");
   return { success: true };
 }
@@ -81,7 +81,7 @@ export async function updatePromotionStatus(id: string, status: "Disetujui" | "D
   await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin.from("career_promotions").update({ status }).eq("id", id);
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL." };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[career-hrd] updatePromotionStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/promotions");
   return { success: true };
 }
@@ -112,7 +112,7 @@ export async function createDevelopmentPlan(formData: FormData) {
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[career-hrd] createDevelopmentPlan error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/plans");
   return { success: true };
 }
@@ -145,7 +145,7 @@ export async function addCareerPathPosition(formData: FormData) {
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   });
   if (error?.code === "23505") return { error: `Posisi "${name}" atau kode sudah ada. Coba lagi.` };
-  if (error) return { error: "Gagal: " + error.message };
+  if (error) { console.error("[career-hrd] addCareerPathPosition error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/path");
   return { success: true };
 }

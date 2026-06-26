@@ -18,7 +18,7 @@ export async function submitInternalApplication(jobTitle: string, jobDept: strin
   if (error && (error.message.includes("Could not find the table") || error.code === "42P01")) {
     return { success: true };
   }
-  if (error) return { error: "Gagal mengirim lamaran: " + error.message };
+  if (error) { console.error("[career] submitInternalApplication error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   return { success: true };
 }
 
@@ -35,6 +35,6 @@ export async function requestCareerConsultation() {
   if (error && (error.message.includes("Could not find the table") || error.code === "42P01")) {
     return { success: true };
   }
-  if (error) return { error: "Gagal mengirim request: " + error.message };
+  if (error) { console.error("[career] requestCareerConsultation error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   return { success: true };
 }

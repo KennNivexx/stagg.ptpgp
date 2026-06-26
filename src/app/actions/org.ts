@@ -435,5 +435,5 @@ export async function saveChartLayout(
 export async function getChartLayout(): Promise<{ nodePositions: Record<string, { x: number; y: number }>; customEdges: { id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }[] } | null> {
   await requireRole("hrd", "superadmin");
   const settings = await getSettings();
-  return (settings as Record<string, unknown>).chart_layout as any || null;
+  return ((settings as Record<string, unknown>).chart_layout as { nodePositions: Record<string, { x: number; y: number }>; customEdges: { id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }[] }) || null;
 }

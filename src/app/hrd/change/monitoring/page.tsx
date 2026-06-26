@@ -1,5 +1,4 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
-import { TrendingUp, Target, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+﻿import { TrendingUp, Target, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export default async function MonitoringPerubahan() {
   const statusCards = [

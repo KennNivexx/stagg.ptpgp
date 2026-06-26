@@ -31,7 +31,11 @@ export type AuditAction =
   | "attendance.clock_in"
   | "attendance.clock_out"
   | "leave.submit"
-  | "leave.status_change";
+  | "leave.status_change"
+  | "face.register"
+  | "face.remove"
+  | "face.change_request"
+  | "face.verify";
 
 export async function auditLog(params: {
   action: AuditAction;
@@ -42,21 +46,25 @@ export async function auditLog(params: {
 }) {
   const { action, targetId, targetName, performedBy, detail } = params;
 
-  supabaseAdmin
-    .from("audit_logs")
-    .insert([
-      {
-        action,
-        target_id: targetId || null,
-        target_name: targetName || null,
-        performed_by_id: performedBy.id,
-        performed_by_role: performedBy.role,
-        performed_by_name: performedBy.name,
-        performed_by_email: performedBy.email,
-        detail: detail || null,
-      },
-    ])
-    .then(({ error }: { error: Error | null }) => {
-      if (error) console.error("[audit] Failed to write audit log:", error.message);
-    });
+  try {
+    const { error } = await supabaseAdmin
+      .from("audit_logs")
+      .insert([
+        {
+          action,
+          target_id: targetId || null,
+          target_name: targetName || null,
+          performed_by_id: performedBy.id,
+          performed_by_role: performedBy.role,
+          performed_by_name: performedBy.name,
+          performed_by_email: performedBy.email,
+          detail: detail || null,
+        },
+      ]);
+    if (error) {
+      console.error("[audit] Failed to write audit log:", error.message);
+    }
+  } catch (err) {
+    console.error("[audit] Unexpected audit log error:", (err as Error).message);
+  }
 }

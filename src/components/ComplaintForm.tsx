@@ -50,7 +50,7 @@ export default function ComplaintForm() {
       <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider" htmlFor="comp-cat">Kategori</label>
-          <select id="comp-cat" name="category" required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
+          <select id="comp-cat" name="category" required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-pgp-red bg-white">
             <option value="">Pilih Kategori</option>
             <option value="Keluhan">Keluhan</option>
             <option value="Saran">Saran</option>
@@ -60,11 +60,11 @@ export default function ComplaintForm() {
         </div>
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider" htmlFor="comp-subject">Subjek</label>
-          <input id="comp-subject" type="text" name="subject" required placeholder="Judul singkat laporan Anda" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]" />
+          <input id="comp-subject" type="text" name="subject" required placeholder="Judul singkat laporan Anda" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-pgp-red" />
         </div>
         <div className="md:col-span-2 space-y-1.5">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider" htmlFor="comp-desc">Deskripsi</label>
-          <textarea id="comp-desc" name="description" rows={4} required placeholder="Jelaskan keluhan atau saran Anda secara detail..." className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] resize-none" />
+          <textarea id="comp-desc" name="description" rows={4} required placeholder="Jelaskan keluhan atau saran Anda secara detail..." className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-pgp-red resize-none" />
         </div>
         {error && (
           <div className="md:col-span-2">
@@ -72,7 +72,7 @@ export default function ComplaintForm() {
           </div>
         )}
         <div className="md:col-span-2">
-          <button type="submit" disabled={loading} className="px-6 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] disabled:opacity-60 transition-colors flex items-center gap-2">
+          <button type="submit" disabled={loading} className="px-6 py-2.5 bg-pgp-red text-white text-xs font-bold rounded-xl hover:bg-pgp-red/80 disabled:opacity-60 transition-colors flex items-center gap-2">
             <Send size={14} /> {loading ? "Mengirim..." : "Kirim Laporan"}
           </button>
         </div>

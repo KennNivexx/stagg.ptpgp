@@ -22,10 +22,9 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
   const [q, setQ] = useState("");
   const [modal, setModal] = useState<null | "info" | "edit" | "add" | "del">(null);
   const [sel, setSel] = useState<OrgUnit | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [mounted] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
 
   const handleExportPDF = async () => {
     if (!contentRef.current || exporting) return;

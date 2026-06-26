@@ -51,9 +51,9 @@ export default function CareerSection({ jobs }: { jobs: Job[] }) {
                 {job.description}
               </p>
 
-              <button className="text-pgp-red font-semibold hover:text-pgp-red-hover flex items-center gap-2 transition-colors mt-auto">
+              <a href="/career" className="text-pgp-red font-semibold hover:text-pgp-red-hover flex items-center gap-2 transition-colors mt-auto">
                 View Details <ArrowRight size={16} />
-              </button>
+              </a>
             </motion.div>
           ))}
         </div>

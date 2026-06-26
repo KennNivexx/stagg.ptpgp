@@ -1,14 +1,16 @@
 import { randomBytes, randomInt, pbkdf2Sync } from "crypto";
 
+const PBKDF2_ITERATIONS = 100_000;
+
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
-  const hash = pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
+  const hash = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, 64, "sha512").toString("hex");
   return `${salt}:${hash}`;
 }
 
 function verifyPassword(password: string, stored: string): boolean {
   const [salt, hash] = stored.split(":");
-  const verify = pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
+  const verify = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, 64, "sha512").toString("hex");
   return hash === verify;
 }
 
@@ -18,21 +20,27 @@ function generateRandomPassword(): string {
   const digits = "23456789";
   const special = "!@#$%&*";
   const all = upper + lower + digits + special;
-  let pw = "";
-  pw += upper[randomInt(upper.length)];
-  pw += lower[randomInt(lower.length)];
-  pw += digits[randomInt(digits.length)];
-  pw += special[randomInt(special.length)];
+  const arr = [
+    upper[randomInt(upper.length)],
+    lower[randomInt(lower.length)],
+    digits[randomInt(digits.length)],
+    special[randomInt(special.length)],
+  ];
   for (let i = 4; i < 12; i++) {
-    pw += all[randomInt(all.length)];
+    arr.push(all[randomInt(all.length)]);
   }
-  return pw.split("").sort(() => randomInt(3) - 1).join("");
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.join("");
 }
 
-function generateNumericPassword(length = 8): string {
+function generateNumericPassword(length = 12): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
   let pw = "";
   for (let i = 0; i < length; i++) {
-    pw += randomInt(10).toString();
+    pw += chars[randomInt(chars.length)];
   }
   return pw;
 }

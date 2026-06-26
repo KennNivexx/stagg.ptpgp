@@ -22,6 +22,7 @@ export default function KeputusanHiring() {
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"diterima" | "ditolak">("diterima");
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -51,21 +52,19 @@ export default function KeputusanHiring() {
   const ditolak = decisions.filter((d) => d.status === "Ditolak");
 
   const handleAccept = async (id: string) => {
-    try {
-      await supabase.from("applications").update({ status: "Diterima", decision_date: new Date().toISOString() }).eq("id", id);
-      setDecisions((prev) => prev.map((d) => (d.id === id ? { ...d, status: "Diterima", decision_date: new Date().toISOString() } : d)));
-    } catch {
-      alert("Gagal memperbarui status.");
-    }
+    setActionError(null);
+    const { error } = await supabase.from("applications").update({ status: "Diterima", decision_date: new Date().toISOString() }).eq("id", id);
+    if (error) { setActionError("Gagal menerima kandidat: " + error.message); return; }
+    setDecisions((prev) => prev.map((d) => (d.id === id ? { ...d, status: "Diterima", decision_date: new Date().toISOString() } : d)));
+    setPending((prev) => prev.filter((p) => p.id !== id));
   };
 
   const handleReject = async (id: string) => {
-    try {
-      await supabase.from("applications").update({ status: "Ditolak", decision_date: new Date().toISOString() }).eq("id", id);
-      setDecisions((prev) => prev.map((d) => (d.id === id ? { ...d, status: "Ditolak", decision_date: new Date().toISOString() } : d)));
-    } catch {
-      alert("Gagal memperbarui status.");
-    }
+    setActionError(null);
+    const { error } = await supabase.from("applications").update({ status: "Ditolak", decision_date: new Date().toISOString() }).eq("id", id);
+    if (error) { setActionError("Gagal menolak kandidat: " + error.message); return; }
+    setDecisions((prev) => prev.map((d) => (d.id === id ? { ...d, status: "Ditolak", decision_date: new Date().toISOString() } : d)));
+    setPending((prev) => prev.filter((p) => p.id !== id));
   };
 
   // Also fetch pending applicants that need decisions
@@ -100,6 +99,12 @@ export default function KeputusanHiring() {
         <p className="text-sm text-gray-500 mt-1">Kelola keputusan akhir rekrutmen: terima atau tolak kandidat.</p>
       </div>
 
+      {actionError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 font-semibold flex items-center gap-2">
+          <XCircle size={14} className="shrink-0" /> {actionError}
+          <button onClick={() => setActionError(null)} className="ml-auto text-red-400 hover:text-red-600"><XCircle size={13} /></button>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-3">

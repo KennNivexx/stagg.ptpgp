@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Mail, Key, CheckCircle2, Copy, Eye, EyeOff } from "lucide-react";
 import { generateWhatsAppUrl, formatPasswordMessage } from "@/lib/wa";
 import { createEmployee } from "@/app/actions/hrd";
 import { getOrgStructure, getDepartments } from "@/app/actions/org";
 import { generateCompanyEmail } from "@/lib/auth";
+import type { OrgUnit } from "@/types/org";
 
 export default function NewEmployeeForm() {
   const [loading, setLoading] = useState(false);
@@ -28,16 +29,15 @@ export default function NewEmployeeForm() {
   const [orgCode, setOrgCode] = useState("");
   const [deptList, setDeptList] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (fullName && !email) {
-      setGeneratedEmail(generateCompanyEmail(fullName));
-    }
+  const autoEmail = useMemo(() => {
+    if (fullName && !email) return generateCompanyEmail(fullName);
+    return "";
   }, [fullName, email]);
 
   useEffect(() => {
     getOrgStructure().then(tree => {
       const flat: {code: string; name: string}[] = [];
-      function walk(units: any[]) {
+      function walk(units: OrgUnit[]) {
         for (const u of units) {
           flat.push({ code: u.code, name: u.name });
           if (u.children) walk(u.children);
@@ -52,7 +52,7 @@ export default function NewEmployeeForm() {
   }, []);
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).catch(() => {});
+    navigator.clipboard.writeText(text).catch(() => {/* clipboard unavailable */});
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -113,10 +113,10 @@ export default function NewEmployeeForm() {
                 <Mail size={16} className="text-slate-400" />
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Email Perusahaan</p>
-                  <p className="text-sm font-mono font-bold text-slate-800">{generatedEmail}</p>
+                  <p className="text-sm font-mono font-bold text-slate-800">{generatedEmail || autoEmail}</p>
                 </div>
               </div>
-              <button onClick={() => copyToClipboard(generatedEmail)} className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
+              <button onClick={() => copyToClipboard(generatedEmail || autoEmail)} className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
                 <Copy size={14} />
               </button>
             </div>
@@ -144,7 +144,7 @@ export default function NewEmployeeForm() {
 
           {phone && (
             <a
-              href={generateWhatsAppUrl(phone, formatPasswordMessage(fullName, generatedEmail, generatedPassword))}
+              href={generateWhatsAppUrl(phone, formatPasswordMessage(fullName, generatedEmail || autoEmail))}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition-colors"
@@ -224,7 +224,7 @@ export default function NewEmployeeForm() {
                 </label>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                   className="w-full border border-gray-200 p-3 rounded-xl text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000]/20 outline-none transition-all bg-gray-50"
-                  placeholder={generatedEmail || "kevin.pratama@ptpgp.co.id"} />
+                  placeholder={generatedEmail || autoEmail || "kevin.pratama@ptpgp.co.id"} />
                 <p className="text-[10px] text-gray-400 mt-1">Ketik manual untuk override, atau kosongkan untuk auto-generate.</p>
               </div>
               <div>

@@ -51,7 +51,7 @@ export default function FAQSection({
   const items = faqs?.length ? faqs : defaultFaqs;
 
   return (
-    <section id="faq" className="py-24 bg-[#FCF9F6]">
+    <section id="faq" className="py-24 bg-[#FCF9F6] scroll-mt-[72px]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">

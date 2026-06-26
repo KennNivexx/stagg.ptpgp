@@ -66,7 +66,7 @@ export default function IssueWarningButton({ employees }: { employees: Employee[
     <>
       <button
         onClick={() => setOpen(true)}
-        className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
+        className="bg-pgp-red text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-pgp-red/80 transition-colors inline-flex items-center gap-2"
       >
         <Plus size={14} /> Keluarkan SP
       </button>
@@ -76,7 +76,7 @@ export default function IssueWarningButton({ employees }: { employees: Employee[
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !loading && setOpen(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 z-10">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-[#1A2530] flex items-center gap-2">
+              <h2 className="text-lg font-bold text-pgp-navy flex items-center gap-2">
                 <AlertTriangle size={20} className="text-red-500" />
                 Keluarkan Surat Peringatan
               </h2>
@@ -104,7 +104,7 @@ export default function IssueWarningButton({ employees }: { employees: Employee[
                       value={empSearch}
                       onChange={(e) => { setEmpSearch(e.target.value); setShowResults(true); }}
                       onFocus={() => setShowResults(true)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none"
                     />
                     {showResults && empSearch && filtered.length > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto z-20">
@@ -132,7 +132,7 @@ export default function IssueWarningButton({ employees }: { employees: Employee[
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5" htmlFor="sp-level">Level SP</label>
-                  <select id="sp-level" name="sp_level" required className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none bg-white">
+                  <select id="sp-level" name="sp_level" required className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none bg-white">
                     <option value="">Pilih level...</option>
                     <option value="SP1">SP1 - Peringatan Pertama</option>
                     <option value="SP2">SP2 - Peringatan Kedua</option>
@@ -142,19 +142,19 @@ export default function IssueWarningButton({ employees }: { employees: Employee[
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5" htmlFor="sp-reason">Alasan Pelanggaran</label>
-                  <textarea id="sp-reason" name="reason" rows={3} required placeholder="Jelaskan pelanggaran yang dilakukan..." className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none resize-none" />
+                  <textarea id="sp-reason" name="reason" rows={3} required placeholder="Jelaskan pelanggaran yang dilakukan..." className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none resize-none" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5" htmlFor="sp-until">Berlaku Hingga (opsional)</label>
-                  <input id="sp-until" type="date" name="valid_until" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none" />
+                  <input id="sp-until" type="date" name="valid_until" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none" />
                 </div>
 
                 {error && (
                   <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
                 )}
 
-                <button type="submit" disabled={loading || !selectedEmp} className="w-full bg-[#CC0000] hover:bg-[#aa0000] disabled:opacity-60 text-white font-bold text-sm py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                <button type="submit" disabled={loading || !selectedEmp} className="w-full bg-pgp-red hover:bg-pgp-red/80 disabled:opacity-60 text-white font-bold text-sm py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
                   {loading ? "Mengirim..." : "Keluarkan Surat Peringatan"}
                   <Send size={14} />
                 </button>

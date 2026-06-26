@@ -1,6 +1,11 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { TrendingUp, Plus, Calendar, Users, Save } from "lucide-react";
 
+async function saveForecast(formData: FormData) {
+  "use server";
+  // Fitur akan segera tersedia
+}
+
 const CURRENT_YEAR = 2026;
 const quarters = ["Q1", "Q2", "Q3", "Q4"];
 
@@ -73,10 +78,10 @@ export default async function ProyeksiKebutuhanSDM() {
             </div>
           </div>
           <div className="p-6">
-            <form className="space-y-4">
+            <form action={saveForecast} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Departemen</label>
-                <select className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
+                <select name="departemen" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
                   <option value="">Pilih Departemen</option>
                   {SEED_FORECAST.map((f) => (
                     <option key={f.department} value={f.department}>{f.department}</option>
@@ -86,7 +91,7 @@ export default async function ProyeksiKebutuhanSDM() {
               {quarters.map((q) => (
                 <div key={q}>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5">{q} - {CURRENT_YEAR}</label>
-                  <input type="number" min="0" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Jumlah karyawan" />
+                  <input type="number" name={`proyeksi_${q.toLowerCase()}`} min="0" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Jumlah karyawan" />
                 </div>
               ))}
               <button type="submit" className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center justify-center gap-2">

@@ -68,7 +68,7 @@ export default function ServicesGridSection({
   const hasImages = items.some(s => s.image_url);
 
   return (
-    <section id="services" className="py-24 bg-white border-t border-gray-100">
+    <section id="services" className="py-24 bg-white border-t border-gray-100 scroll-mt-[72px]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-end mb-16">
           <div className="max-w-2xl">

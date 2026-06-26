@@ -21,11 +21,11 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 shrink-0 bg-[#1A2530] text-white flex flex-col min-h-screen sticky top-0">
+    <aside className="w-64 shrink-0 bg-pgp-navy text-white flex flex-col min-h-screen sticky top-0">
       {/* Logo */}
       <div className="px-6 py-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#CC0000] rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0">
+          <div className="w-9 h-9 bg-pgp-red rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0">
             PGP
           </div>
           <div>
@@ -61,7 +61,7 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
               href={href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                 isActive
-                  ? "bg-[#CC0000] text-white"
+                  ? "bg-pgp-red text-white"
                   : "text-slate-400 hover:bg-white/5 hover:text-white"
               }`}
             >

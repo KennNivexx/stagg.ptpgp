@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
@@ -21,19 +21,15 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
-import { getCookie } from "@/lib/cookie-client";
+import { useSession } from "@/hooks/useSession";
 import NotificationBell from "@/components/NotificationBell";
 
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [clientUserName, setClientUserName] = useState("Karyawan");
+  const { user } = useSession();
+  const clientUserName = user?.name || "Karyawan";
   const userRoleLabel = "Karyawan";
-
-  useEffect(() => {
-    const name = getCookie("user_name");
-    if (name) setClientUserName(name);
-  }, []);
 
   const menuItems = [
     { href: "/employee", label: "Dashboard", icon: LayoutDashboard },
@@ -52,9 +48,13 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-slate-900 focus:text-white focus:rounded-lg focus:text-sm focus:font-bold">
+        Lewati ke konten utama
+      </a>
       {/* Mobile Toggle Button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button 
+        <button
+          aria-label={isSidebarOpen ? "Tutup sidebar" : "Buka sidebar"}
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="p-2 bg-slate-900 text-white rounded-lg shadow-md hover:bg-slate-800 transition-colors"
         >
@@ -143,11 +143,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 w-64 lg:w-80">
               <Search size={16} className="text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Cari info internal, slip..." 
-                className="bg-transparent border-none text-xs focus:outline-none w-full text-slate-600"
-              />
+              <span className="text-xs text-slate-400">Portal Karyawan</span>
             </div>
           </div>
 
@@ -164,7 +160,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page Content Container */}
-        <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">
+        <main id="main-content" className="flex-1 overflow-y-auto bg-[#F8FAFC]">
           {children}
         </main>
       </div>

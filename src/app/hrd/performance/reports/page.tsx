@@ -53,9 +53,9 @@ export default async function PerformanceReportsPage() {
           <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Kinerja</h1>
           <p className="text-sm text-gray-500">Ringkasan dan analisis performa seluruh karyawan.</p>
         </div>
-        <button className="px-4 py-2 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
+        <span className="px-4 py-2 bg-slate-300 text-white text-sm font-bold rounded-xl cursor-not-allowed flex items-center gap-2" title="Segera tersedia">
           <Download size={14} /> Ekspor Laporan
-        </button>
+        </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -204,12 +204,12 @@ export default async function PerformanceReportsPage() {
               Unduh laporan kinerja lengkap dalam format PDF atau Excel untuk keperluan rapat manajemen dan audit.
             </p>
             <div className="flex gap-2">
-              <button className="px-4 py-2 bg-white text-slate-800 text-[10px] font-bold rounded-xl hover:bg-slate-100 transition-colors flex items-center gap-2">
+              <span className="px-4 py-2 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-xl cursor-not-allowed flex items-center gap-2" title="Segera tersedia">
                 <Download size={12} /> PDF
-              </button>
-              <button className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-bold rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2">
+              </span>
+              <span className="px-4 py-2 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-xl cursor-not-allowed flex items-center gap-2" title="Segera tersedia">
                 <Download size={12} /> Excel
-              </button>
+              </span>
             </div>
           </div>
         </div>

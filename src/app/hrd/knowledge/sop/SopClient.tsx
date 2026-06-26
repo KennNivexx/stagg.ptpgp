@@ -143,10 +143,9 @@ export default function SopClient({ initialSops, categories }: Props) {
                     <ExternalLink size={12} />
                   </a>
                 ) : (
-                  <button onClick={() => alert(`Dokumen: ${sop.title as string}\n\nBelum ada link dokumen yang ditautkan.`)}
-                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
+                  <span title="Belum ada link dokumen" className="p-1.5 rounded-lg text-slate-200 cursor-not-allowed">
                     <ExternalLink size={12} />
-                  </button>
+                  </span>
                 )}
               </div>
             </div>

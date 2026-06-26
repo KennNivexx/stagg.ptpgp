@@ -183,9 +183,9 @@ export default async function PosisiKritis() {
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tanggal Risiko Kekosongan</label>
               <input type="date" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none" />
             </div>
-            <button className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors">
+            <span className="w-full px-4 py-2.5 bg-slate-300 text-white text-xs font-bold rounded-xl cursor-not-allowed inline-flex items-center justify-center" title="Segera tersedia">
               Tandai sebagai Posisi Kritis
-            </button>
+            </span>
           </div>
         </div>
       </div>

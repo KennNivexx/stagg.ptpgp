@@ -6,20 +6,30 @@ import { requireRole } from "@/lib/auth-guard";
 export async function getMyApplicationData() {
   const user = await requireRole("applicant");
 
-  // Get latest application by email
-  const { data: application } = await supabaseAdmin
-    .from("applications")
-    .select("*")
-    .eq("email", user.email)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Run independent queries in parallel
+  const [
+    { data: userRecord },
+    { data: application },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("users")
+      .select("is_temporary, expires_at")
+      .eq("email", user.email)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("applications")
+      .select("*")
+      .eq("email", user.email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   if (!application) return null;
 
   const app = application as Record<string, unknown>;
 
-  // Get job details
+  // Get job details (depends on application.job_id)
   const { data: job } = await supabaseAdmin
     .from("job_postings")
     .select("position, department, location, requirements, education, experience, description")
@@ -53,6 +63,10 @@ export async function getMyApplicationData() {
       description: (job as Record<string, unknown>).description as string,
     } : null,
     profileData,
+    account: {
+      is_temporary: (userRecord as Record<string, unknown> | null)?.is_temporary as boolean ?? false,
+      expires_at: (userRecord as Record<string, unknown> | null)?.expires_at as string || null,
+    },
   };
 }
 
@@ -85,4 +99,21 @@ export async function getAllMyApplications() {
       department: job?.department as string || "—",
     };
   });
+}
+
+export async function getHrdApplications() {
+  await requireRole("hrd", "superadmin");
+
+  const [{ data: apps }, { data: jbs }] = await Promise.all([
+    supabaseAdmin.from("applications").select("*").order("applied_at", { ascending: false }).limit(100),
+    supabaseAdmin.from("job_postings").select("id, position, department").order("position", { ascending: true }),
+  ]);
+
+  const jobMap = new Map((jbs || []).map((j: Record<string, unknown>) => [j.id as string, j]));
+  const applications = (apps || []).map((app: Record<string, unknown>) => ({
+    ...app,
+    job_postings: jobMap.get(app.job_id as string) || null,
+  }));
+
+  return { applications, jobs: jbs || [] };
 }

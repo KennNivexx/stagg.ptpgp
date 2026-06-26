@@ -1,10 +1,13 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyPassword } from "@/lib/auth";
 import { signSession } from "@/lib/session";
+import { rateLimit } from "@/lib/rate-limit";
+import { verifyOneTimeToken } from "@/lib/otp-token";
 
 const COOKIE_OPTS = {
   path: "/",
@@ -14,23 +17,16 @@ const COOKIE_OPTS = {
   maxAge: 60 * 60 * 24 * 7,
 };
 
-const MOCK_USERS: Record<string, { id: string; role: string; name: string; email: string; password: string }> = {
-  "superadmin@ptpgp.co.id": { id: "mock-sa-001", role: "superadmin", name: "Super Administrator", email: "superadmin@ptpgp.co.id", password: "superadmin123" },
-  "hrd@ptpgp.co.id": { id: "mock-hrd-001", role: "hrd", name: "Administrator HRD", email: "hrd@ptpgp.co.id", password: "password" },
-  "employee@ptpgp.co.id": { id: "mock-emp-001", role: "employee", name: "Budi Santoso", email: "employee@ptpgp.co.id", password: "password" },
-  "director@ptpgp.co.id": { id: "mock-dir-001", role: "director", name: "Ade Fajar Nurcahman", email: "director@ptpgp.co.id", password: "password" },
-  "hrga@ptpgp.co.id": { id: "mock-dm-001", role: "department_manager", name: "Manager HR & GA", email: "hrga@ptpgp.co.id", password: "password" },
-  "finance@ptpgp.co.id": { id: "mock-dm-002", role: "department_manager", name: "Manager Finance", email: "finance@ptpgp.co.id", password: "password" },
-  "operational@ptpgp.co.id": { id: "mock-dm-003", role: "department_manager", name: "Manager Operational", email: "operational@ptpgp.co.id", password: "password" },
-};
+
 
 async function setLoginCookies(user: { id: string; role: string; name: string; email: string }) {
   const token = await signSession(user);
   const cookieStore = await cookies();
   cookieStore.set("session_token", token, COOKIE_OPTS);
-  cookieStore.set("user_role", user.role, { ...COOKIE_OPTS, httpOnly: false });
-  cookieStore.set("user_name", user.name, { ...COOKIE_OPTS, httpOnly: false });
-  cookieStore.set("user_email", user.email, { ...COOKIE_OPTS, httpOnly: false });
+  cookieStore.set("user_role", user.role, COOKIE_OPTS);
+  cookieStore.set("user_name", user.name, COOKIE_OPTS);
+  cookieStore.set("user_email", user.email, COOKIE_OPTS);
+  cookieStore.set("user_id", user.id, COOKIE_OPTS);
 }
 
 function getRedirectPath(role: string): string {
@@ -79,13 +75,26 @@ async function tryEmployeesAuth(email: string, password: string) {
 async function tryUsersTableAuth(email: string, password: string) {
   const { data: users, error } = await supabaseAdmin
     .from("users")
-    .select("id, email, password_hash, role, full_name")
+    .select("id, email, password_hash, role, full_name, is_temporary, expires_at")
     .eq("email", email)
     .limit(1);
 
   if (error || !users || users.length === 0) return null;
 
   const u = users[0];
+
+  // Reject expired temporary accounts (rejected applicants past 24h grace)
+  if (u.is_temporary && u.expires_at) {
+    const expiresAt = new Date(u.expires_at as string);
+    if (expiresAt < new Date()) {
+      await supabaseAdmin
+        .from("users")
+        .delete()
+        .eq("id", u.id);
+      return null;
+    }
+  }
+
   if (verifyPassword(password, u.password_hash)) {
     return {
       id: u.id,
@@ -108,21 +117,23 @@ export async function loginAction(formData: FormData) {
 
   const normalizedEmail = email.toLowerCase().trim();
 
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
+  const rlKey = `login:${ip}:${normalizedEmail}`;
+  const rlResult = await rateLimit(rlKey, 10, 15 * 60 * 1000);
+  if (rlResult.limited) {
+    return { error: "Terlalu banyak percobaan login. Silakan coba lagi dalam beberapa menit." };
+  }
+
   // 1. Try database authentication first
   const dbUser = (await tryUsersTableAuth(normalizedEmail, password))
     || (await tryEmployeesAuth(normalizedEmail, password));
 
   if (dbUser) {
     await setLoginCookies(dbUser);
-    return { success: true, redirect: getRedirectPath(dbUser.role) };
+    redirect(getRedirectPath(dbUser.role));
   }
 
-  // 2. Fallback to mock users if database is unavailable
-  const mockUser = MOCK_USERS[normalizedEmail];
-  if (mockUser && mockUser.password === password) {
-    await setLoginCookies(mockUser);
-    return { success: true, redirect: getRedirectPath(mockUser.role) };
-  }
 
   return { error: "Email atau password salah." };
 }
@@ -133,5 +144,41 @@ export async function logoutAction() {
   cookieStore.delete("user_role");
   cookieStore.delete("user_name");
   cookieStore.delete("user_email");
+  cookieStore.delete("user_id");
   redirect("/login");
+}
+
+export async function loginWithToken(token: string) {
+  if (!token) return { error: "Token tidak valid." };
+
+  const payload = verifyOneTimeToken(token);
+  if (!payload) return { error: "Token tidak valid atau sudah kedaluwarsa." };
+
+  // Find user with this token
+  const { data: user } = await supabaseAdmin
+    .from("users")
+    .select("id, email, role, full_name, one_time_token_expires")
+    .eq("one_time_token", token)
+    .maybeSingle();
+
+  if (!user) return { error: "Token tidak ditemukan. Mungkin sudah digunakan." };
+
+  const expiresAt = new Date(user.one_time_token_expires as string);
+  if (expiresAt < new Date()) {
+    // Clear expired token
+    await supabaseAdmin.from("users").update({ one_time_token: null, one_time_token_expires: null }).eq("id", user.id);
+    return { error: "Token sudah kedaluwarsa." };
+  }
+
+  // Consume token (one-time use)
+  await supabaseAdmin.from("users").update({ one_time_token: null, one_time_token_expires: null }).eq("id", user.id);
+
+  await setLoginCookies({
+    id: user.id as string,
+    role: user.role as string,
+    name: user.full_name as string,
+    email: user.email as string,
+  });
+
+  redirect(getRedirectPath(user.role as string));
 }

@@ -1,11 +1,11 @@
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireAuth } from "@/lib/auth-guard";
 import { MessageCircle, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import ComplaintForm from "@/components/ComplaintForm";
 
 export default async function EmployeeComplaints() {
-  const cookieStore = await cookies();
-  const userEmail = cookieStore.get("user_email")?.value || "";
+  const user = await requireAuth();
+  const userEmail = user.email;
 
   const { data: employee } = await supabaseAdmin
     .from("employees")
@@ -145,9 +145,9 @@ export default async function EmployeeComplaints() {
             <p className="text-[11px] text-slate-300 leading-relaxed mb-4">
               Untuk situasi darurat atau urgensi tinggi, segera hubungi HRD langsung.
             </p>
-            <button className="w-full px-4 py-2 bg-red-600 text-white text-[10px] font-bold rounded-xl hover:bg-red-700 transition-colors">
+            <a href="mailto:hrga@ptpgp.co.id" className="w-full px-4 py-2 bg-red-600 text-white text-[10px] font-bold rounded-xl hover:bg-red-700 transition-colors text-center block">
               Kontak Darurat HRD
-            </button>
+            </a>
           </div>
         </div>
       </div>

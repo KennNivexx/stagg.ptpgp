@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -8,7 +8,6 @@ import {
   UserCog,
   LogOut,
   LayoutDashboard,
-  Bell,
   Search,
   Menu,
   X,
@@ -22,18 +21,15 @@ import {
   Footprints,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
-import { getCookie } from "@/lib/cookie-client";
+import { useSession } from "@/hooks/useSession";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function SuperadminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userName, setUserName] = useState("Super Administrator");
-  const [userEmail, setUserEmail] = useState("superadmin@ptpgp.co.id");
-
-  useEffect(() => {
-    setUserName(getCookie("user_name") || "Super Administrator");
-    setUserEmail(getCookie("user_email") || "superadmin@ptpgp.co.id");
-  }, []);
+  const { user } = useSession();
+  const userName = user?.name || "Super Administrator";
+  const userEmail = user?.email || "superadmin@ptpgp.co.id";
 
   const menuItems = [
     { href: "/superadmin", label: "Dashboard", icon: LayoutDashboard },
@@ -57,9 +53,13 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-slate-900 focus:text-white focus:rounded-lg focus:text-sm focus:font-bold">
+        Lewati ke konten utama
+      </a>
       {/* Sidebar Mobile Toggle */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
+          aria-label={isSidebarOpen ? "Tutup sidebar" : "Buka sidebar"}
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="p-2 bg-[#1E293B] text-white rounded-lg shadow-md hover:bg-slate-800 transition-colors"
         >
@@ -259,11 +259,8 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
           </div>
 
           <div className="flex items-center gap-4 ml-auto">
-            {/* Notification Bell */}
-            <button className="p-2 hover:bg-slate-100 rounded-xl relative transition-colors text-slate-500">
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white"></span>
-            </button>
+            {/* Notification Bell — superadmin sees HRD notifications */}
+            <NotificationBell role="hrd" />
 
             {/* Quick Status / Lang */}
             <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
@@ -279,7 +276,7 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
         </header>
 
         {/* Page Container */}
-        <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">
+        <main id="main-content" className="flex-1 overflow-y-auto bg-[#F8FAFC]">
           {children}
         </main>
       </div>

@@ -72,10 +72,9 @@ export default function RolesClient() {
             <h3 className="font-extrabold text-slate-800 text-sm">Matriks Permission</h3>
             <p className="text-xs text-slate-400 mt-0.5">Hak akses setiap role ke modul sistem</p>
           </div>
-          <button onClick={() => alert("Role baru harus dikonfigurasi oleh superadmin di sistem auth.\nHubungi administrator untuk penambahan role.")}
-            className="px-3 py-1.5 text-xs font-bold text-[#CC0000] border border-[#CC0000] rounded-xl hover:bg-red-50 transition-colors flex items-center gap-1">
-            <Plus size={12} /> Tambah Role
-          </button>
+          <span className="px-3 py-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 rounded-xl border border-slate-100">
+            Role sistem ditentukan oleh developer
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

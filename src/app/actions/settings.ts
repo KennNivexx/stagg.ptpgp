@@ -44,7 +44,7 @@ export async function saveWebsiteSettings(
     { onConflict: "email" }
   );
 
-  if (error) return { error: error.message };
+  if (error) { console.error("[settings] saveWebsiteSettings error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
 
   revalidatePath("/", "layout");
   revalidatePath("/superadmin/website");

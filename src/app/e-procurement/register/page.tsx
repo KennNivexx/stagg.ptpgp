@@ -68,32 +68,32 @@ export default function VendorRegistrationForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-gray-600 mb-2">Nama Perusahaan</label>
-                  <input type="text" name="company_name" required className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors" placeholder="PT Contoh Vendor" />
+                  <input type="text" name="company_name" required className="w-full border border-gray-200 p-3 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none transition-colors" placeholder="PT Contoh Vendor" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-2">Email Perusahaan</label>
-                  <input type="email" name="company_email" required className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors" placeholder="info@vendor.co.id" />
+                  <input type="email" name="company_email" required className="w-full border border-gray-200 p-3 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none transition-colors" placeholder="info@vendor.co.id" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-2">Nomor Telepon Kantor</label>
-                  <input type="tel" name="company_phone" required className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors" placeholder="021-xxxxxxx" />
+                  <input type="tel" name="company_phone" required className="w-full border border-gray-200 p-3 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none transition-colors" placeholder="021-xxxxxxx" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-2">Nomor Pokok Wajib Pajak (NPWP)</label>
-                  <input type="text" name="npwp" required className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors" placeholder="00.000.000.0-000.000" />
+                  <input type="text" name="npwp" required className="w-full border border-gray-200 p-3 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none transition-colors" placeholder="00.000.000.0-000.000" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-2">Nomor Induk Berusaha (NIB)</label>
-                  <input type="text" name="nib" required className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors" placeholder="1234567890123" />
+                  <input type="text" name="nib" required className="w-full border border-gray-200 p-3 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none transition-colors" placeholder="1234567890123" />
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-gray-600 mb-2">Kategori Bisnis/Layanan</label>
-                  <select name="business_type" className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white">
+                  <select name="business_type" className="w-full border border-gray-200 p-3 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none transition-colors bg-white">
                     <option>Penyedia Armada (Truk, Kapal, dll)</option>
                     <option>Suku Cadang & Perawatan Kendaraan</option>
                     <option>Layanan IT & Infrastruktur</option>
@@ -105,12 +105,12 @@ export default function VendorRegistrationForm() {
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-gray-600 mb-2">Alamat Lengkap Perusahaan</label>
-                  <textarea name="address" required rows={4} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors" placeholder="Jalan Raya No. 123, Kota..."></textarea>
+                  <textarea name="address" required rows={4} className="w-full border border-gray-200 p-3 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none transition-colors" placeholder="Jalan Raya No. 123, Kota..."></textarea>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                <button type="submit" disabled={loading} className="w-full bg-[#CC0000] hover:bg-[#aa0000] text-white font-bold py-4 rounded-sm transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                <button type="submit" disabled={loading} className="w-full bg-pgp-red hover:bg-pgp-red/80 text-white font-bold py-4 rounded-sm transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                   {loading ? "Mengirim Data..." : "Kirim Formulir Pendaftaran"}
                 </button>
                 <p className="text-[10px] text-gray-400 text-center mt-4">

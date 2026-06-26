@@ -92,7 +92,7 @@ export default function OkrForm({ employees, okrData }: Props) {
         {okrData.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
             <Target size={40} className="mx-auto text-slate-300 mb-3" />
-            <p className="text-sm text-slate-500">Belum ada OKR. Klik "Tambah OKR Baru" untuk mulai.</p>
+            <p className="text-sm text-slate-500">Belum ada OKR. Klik &quot;Tambah OKR Baru&quot; untuk mulai.</p>
           </div>
         ) : okrData.map((okr) => {
           const progress = Number(okr.progress) || 0;

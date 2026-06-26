@@ -11,7 +11,7 @@ import PanduanLevelForm from "./PanduanLevelForm";
 
 type Skill = { id: string; name: string; category: string; department?: string | null };
 type Position = { id: string; name: string; department: string; level?: string };
-type PositionSkill = { id: string; position_code: string; skill_id: string; required_level: number };
+type PositionSkill = { id?: string; position_code: string; skill_id: string; required_level: number };
 
 interface Props {
   skills: Skill[];
@@ -504,7 +504,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                           const skill = skills.find((s) => s.id === ps.skill_id);
                           const localLevel = levelMap[ps.skill_id] ?? ps.required_level;
                           return (
-                            <tr key={ps.id} className="hover:bg-slate-50/50 transition-colors">
+                            <tr key={ps.position_code + "-" + ps.skill_id} className="hover:bg-slate-50/50 transition-colors">
                               <td className="py-3 px-4">
                                 <span className="text-xs font-bold text-slate-800">{skill?.name || ps.skill_id}</span>
                               </td>

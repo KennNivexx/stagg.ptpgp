@@ -1,6 +1,9 @@
 ﻿import { Video, Play, Clock, Filter, Search } from "lucide-react";
 
-export default async function VideoTutorialPage() {
+export default async function VideoTutorialPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+  const params = await searchParams;
+  const activeCategory = params.category || "Semua";
+
   const categories = ["Semua", "Onboarding", "Sistem HRIS", "Safety", "Technical"];
 
   const videos = [
@@ -17,6 +20,8 @@ export default async function VideoTutorialPage() {
     { id: 11, title: "P3K & Pertolongan Pertama Kecelakaan", category: "Safety", duration: "25:10", uploadDate: "20 Apr 2026", thumbnail: "bg-gradient-to-br from-pink-500 to-pink-700" },
     { id: 12, title: "Manajemen Inventori & Stok Gudang", category: "Technical", duration: "16:30", uploadDate: "15 Apr 2026", thumbnail: "bg-gradient-to-br from-lime-500 to-lime-700" },
   ];
+
+  const filteredVideos = activeCategory === "Semua" ? videos : videos.filter((v) => v.category === activeCategory);
 
   const categoryColorMap: Record<string, string> = {
     Onboarding: "bg-blue-50 text-blue-700",
@@ -43,23 +48,25 @@ export default async function VideoTutorialPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Filter size={14} className="text-slate-400" />
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
-                cat === "Semua"
-                  ? "bg-[#CC0000] text-white"
-                  : "bg-white border border-slate-200 text-slate-600 hover:border-[#CC0000]"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const href = cat === "Semua" ? "?" : `?category=${encodeURIComponent(cat)}`;
+            const active = "px-4 py-2 rounded-xl text-xs font-bold bg-pgp-red text-white shadow-sm";
+            const inactive = "px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200";
+            return (
+              <a
+                key={cat}
+                href={href}
+                className={activeCategory === cat ? active : inactive}
+              >
+                {cat}
+              </a>
+            );
+          })}
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {videos.map((video) => (
+        {filteredVideos.map((video) => (
           <div key={video.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-all group cursor-pointer">
             <div className={`h-40 ${video.thumbnail} relative flex items-center justify-center`}>
               <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 group-hover:bg-white transition-all">

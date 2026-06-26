@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import PositionsClient from "./PositionsClient";
+import type { Employee } from "@/types/org";
 
 export default async function Jabatan() {
   const { data: employees } = await supabaseAdmin
@@ -23,7 +24,7 @@ export default async function Jabatan() {
 
       <PositionsClient
         departments={deptList}
-        employees={(employees || []) as any[]}
+        employees={(employees || []) as Employee[]}
       />
     </div>
   );

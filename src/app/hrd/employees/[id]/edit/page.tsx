@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, KeyRound } from "lucide-react";
+import { ArrowLeft, KeyRound, Camera } from "lucide-react";
 import { getEmployeeById, updateEmployee, resetEmployeePassword } from "@/app/actions/hrd";
 import { getDepartments } from "@/app/actions/org";
+import { getEmployeeFaceStatus } from "@/app/actions/attendance";
 import { generateWhatsAppUrl, formatPasswordMessage } from "@/lib/wa";
+import FaceRegistration from "@/components/FaceRegistration";
 
 export default function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState<string>("");
@@ -15,6 +17,8 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
   const [error, setError] = useState("");
   const [passwordResult, setPasswordResult] = useState<{ password: string; email: string; phone: string } | null>(null);
   const [deptList, setDeptList] = useState<string[]>([]);
+  const [faceStatus, setFaceStatus] = useState<Record<string, unknown> | null>(null);
+  const [showFaceReg, setShowFaceReg] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -52,6 +56,9 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
       }).catch(() => {
         setError("Gagal memuat data karyawan.");
         setLoading(false);
+      });
+      getEmployeeFaceStatus(id).then((status) => {
+        setFaceStatus(status as Record<string, unknown> | null);
       });
     });
   }, []);
@@ -141,7 +148,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
           <p className="text-xs text-emerald-500 mt-2">Salin password di atas, tidak akan ditampilkan lagi.</p>
           {passwordResult.phone && (
             <a
-              href={generateWhatsAppUrl(passwordResult.phone, formatPasswordMessage(formData.full_name, passwordResult.email, passwordResult.password))}
+              href={generateWhatsAppUrl(passwordResult.phone, formatPasswordMessage(formData.full_name, passwordResult.email))}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-colors"
@@ -207,6 +214,44 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
               </div>
             </div>
           </div>
+
+          <div className="p-8 border-b border-gray-100">
+            <h2 className="text-lg font-bold text-[#1A2530] mb-4">Registrasi Wajah (Face Recognition)</h2>
+            {faceStatus ? (
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <Camera size={20} className="text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-emerald-800">Wajah sudah terdaftar</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">
+                      {faceStatus.photo_count as number} foto referensi · Terakhir: {new Date(faceStatus.updated_at as string).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setShowFaceReg(true)} className="px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-xl text-xs font-bold transition-colors">
+                  Daftarkan Ulang
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setShowFaceReg(true)} className="w-full py-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-sky-300 hover:bg-sky-50/30 transition-colors flex items-center justify-center gap-2 text-sm font-bold text-slate-500 hover:text-sky-600">
+                <Camera size={18} />
+                Daftarkan Wajah untuk Face Recognition
+              </button>
+            )}
+          </div>
+
+          {showFaceReg && (
+            <FaceRegistration
+              employeeId={id}
+              employeeName={formData.full_name}
+              onClose={() => {
+                setShowFaceReg(false);
+                getEmployeeFaceStatus(id).then((status) => {
+                  setFaceStatus(status as Record<string, unknown> | null);
+                });
+              }}
+            />
+          )}
 
           <div className="p-8 flex justify-between items-center bg-gray-50">
             <button type="button" onClick={handleResetPassword} disabled={resetting} className="px-4 py-2.5 text-sm font-semibold text-[#CC0000] bg-white border border-red-200 hover:bg-red-50 rounded-sm transition-colors disabled:opacity-50 inline-flex items-center gap-2">

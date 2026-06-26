@@ -42,10 +42,10 @@ export default async function DataIndukKaryawan({
           <p className="text-sm text-gray-500 mt-1">Kelola data master seluruh karyawan perusahaan.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors inline-flex items-center gap-2">
+          <span className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-400 bg-slate-50 cursor-not-allowed inline-flex items-center gap-2" title="Segera tersedia">
             <Download size={14} />
             Ekspor
-          </button>
+          </span>
           <Link
             href="/hrd/employees/new"
             className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"

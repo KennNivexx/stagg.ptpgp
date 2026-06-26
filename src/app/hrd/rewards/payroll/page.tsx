@@ -56,13 +56,9 @@ export default async function PayrollPage() {
             <h3 className="font-extrabold text-slate-800 text-sm">Daftar Slip Gaji</h3>
             <p className="text-xs text-slate-400 mt-0.5">Riwayat penggajian karyawan</p>
           </div>
-          <button
-            disabled={(totalEmployees || 0) === 0}
-            title={(totalEmployees || 0) === 0 ? "Tambahkan data karyawan terlebih dahulu" : ""}
-            className="px-4 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <span className="px-4 py-2 bg-slate-300 text-white text-xs font-bold rounded-xl cursor-not-allowed flex items-center gap-2" title="Segera tersedia">
             + Generate Slip Baru
-          </button>
+          </span>
         </div>
 
         {error ? (
@@ -122,9 +118,9 @@ export default async function PayrollPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors" title="Download Slip">
+                        <span className="p-2 rounded-lg text-slate-300 cursor-not-allowed inline-flex" title="Segera tersedia">
                           <Download size={14} />
-                        </button>
+                        </span>
                       </td>
                     </tr>
                   );

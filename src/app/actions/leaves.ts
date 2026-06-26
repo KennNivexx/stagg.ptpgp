@@ -58,6 +58,7 @@ export async function updateLeaveStatus(id: string, status: string) {
   }
 
   revalidatePath("/hrd/leaves");
+  revalidatePath("/employee");
   return { success: true };
 }
 
@@ -67,9 +68,13 @@ async function getEmployeeEmail(employeeId: string): Promise<string | null> {
 }
 
 export async function getLeaves(params?: { employeeId?: string; status?: string }) {
-  await requireRole("hrd", "superadmin", "employee");
+  const user = await requireRole("hrd", "superadmin", "employee");
   let q = supabaseAdmin.from("leave_requests").select("*").order("created_at", { ascending: false });
-  if (params?.employeeId) q = q.eq("employee_id", params.employeeId);
+  if (user.role === "employee") {
+    q = q.eq("employee_id", user.id);
+  } else {
+    if (params?.employeeId) q = q.eq("employee_id", params.employeeId);
+  }
   if (params?.status) q = q.eq("status", params.status);
   const { data } = await q.limit(100);
   return (data || []);

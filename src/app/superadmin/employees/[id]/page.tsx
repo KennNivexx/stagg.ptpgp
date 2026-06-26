@@ -295,9 +295,9 @@ export default function SuperadminEditEmployee({
                   Reset Password (Opsional)
                 </label>
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    name="new_password"
+                    <input
+                      type="password"
+                      name="new_password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Kosongkan jika tidak ingin reset"

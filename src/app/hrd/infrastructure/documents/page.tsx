@@ -189,9 +189,9 @@ export default function DokumenPerusahaan() {
                 </p>
                 <div className="pt-3 border-t border-slate-50 flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${cat.color}`}>{cat.label}</span>
-                  <button className="ml-auto text-[10px] text-slate-400 hover:text-[#CC0000] transition-colors flex items-center gap-1">
+                  <span className="ml-auto text-[10px] text-slate-300 cursor-not-allowed flex items-center gap-1" title="Segera tersedia">
                     <FileText size={10} /> Lihat
-                  </button>
+                  </span>
                 </div>
               </div>
             );

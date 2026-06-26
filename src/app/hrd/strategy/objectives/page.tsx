@@ -1,6 +1,11 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Crosshair, Plus, Target, Calendar, TrendingUp, Clock } from "lucide-react";
 
+async function saveObjective(formData: FormData) {
+  "use server";
+  // Fitur akan segera tersedia
+}
+
 const SEED_OBJECTIVES = [
   { id: 1, title: "Meningkatkan Employee Engagement Score", kpiTarget: "85% engagement score", deadline: "Des 2026", progress: 62, status: "In Progress" },
   { id: 2, title: "Mengurangi Turnover Rate", kpiTarget: "Turnover < 5% per tahun", deadline: "Des 2026", progress: 78, status: "In Progress" },
@@ -64,22 +69,22 @@ export default async function TujuanSasaran() {
             </div>
           </div>
           <div className="p-6">
-            <form className="space-y-4">
+            <form action={saveObjective} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Judul Tujuan</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Meningkatkan Employee Engagement" required />
+                <input type="text" name="judul_tujuan" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Meningkatkan Employee Engagement" required />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Target KPI</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Engagement score 85%" required />
+                <input type="text" name="target_kpi" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Engagement score 85%" required />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Batas Waktu</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Des 2026" />
+                <input type="text" name="batas_waktu" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Contoh: Des 2026" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Progress Awal (%)</label>
-                <input type="number" min="0" max="100" defaultValue="0" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" />
+                <input type="number" name="progress_awal" min="0" max="100" defaultValue="0" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" />
               </div>
               <button type="submit" className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center justify-center gap-2">
                 <Plus size={14} /> Simpan Tujuan

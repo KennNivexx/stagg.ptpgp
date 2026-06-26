@@ -154,9 +154,9 @@ export default async function HRDRewards() {
                           Rp {(Number(p.net_salary) || 0).toLocaleString("id-ID")}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors" title="Download Slip">
+                          <span className="p-2 rounded-lg text-slate-300 cursor-not-allowed inline-flex" title="Segera tersedia">
                             <Download size={14} />
-                          </button>
+                          </span>
                         </td>
                       </tr>
                     );

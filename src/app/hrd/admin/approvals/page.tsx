@@ -21,6 +21,17 @@ export default async function AlurPersetujuan() {
 
   const workflowNames = workflowDefs.map((w) => w.name);
 
+  const today = new Date().toISOString().split("T")[0];
+  const [
+    { count: pendingCount },
+    { count: approvedCount },
+    { count: rejectedCount },
+  ] = await Promise.all([
+    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Menunggu"),
+    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Disetujui").gte("updated_at", today),
+    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Ditolak").gte("updated_at", today),
+  ]);
+
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div>
@@ -65,9 +76,9 @@ export default async function AlurPersetujuan() {
         </div>
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "Menunggu", value: "-", color: "text-amber-600" },
-            { label: "Disetujui", value: "-", color: "text-emerald-600" },
-            { label: "Ditolak", value: "-", color: "text-red-600" },
+            { label: "Menunggu",  value: pendingCount  ?? 0, color: "text-amber-600" },
+            { label: "Disetujui (Hari Ini)", value: approvedCount ?? 0, color: "text-emerald-600" },
+            { label: "Ditolak (Hari Ini)",   value: rejectedCount ?? 0, color: "text-red-600" },
           ].map((s) => (
             <div key={s.label} className="text-center p-4 bg-slate-50 rounded-xl">
               <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>

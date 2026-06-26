@@ -51,7 +51,12 @@ export default function JobDescClient({ departments, positions }: Props) {
     getJobDescs().then(setData);
   };
 
-  const doDelete = async (id: string) => { await deleteJobDesc(id); getJobDescs().then(setData); showToast("Dihapus."); };
+  const doDelete = async (id: string) => {
+    const result = await deleteJobDesc(id);
+    if (result?.error) { showToast(result.error); return; }
+    getJobDescs().then(setData);
+    showToast("Dihapus.");
+  };
 
   const filtered = data.filter(d => {
     if (!search.trim()) return true;
