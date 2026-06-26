@@ -28,6 +28,12 @@ export default async function EmployeeResignation() {
 
   const r = resignation;
 
+  const deleteAtRaw = r?.delete_at as string | null | undefined;
+  const deletionScheduled = r?.status === "Disetujui" && !!deleteAtRaw && new Date(deleteAtRaw).getTime() > Date.now();
+  const deleteAtLabel = deleteAtRaw
+    ? new Date(deleteAtRaw).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })
+    : "";
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Disetujui": return "bg-emerald-50 text-emerald-700 border-emerald-200";
@@ -52,17 +58,33 @@ export default async function EmployeeResignation() {
         <p className="text-sm text-gray-500">Ajukan pengunduran diri secara resmi melalui sistem.</p>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex items-start gap-4">
-        <div className="p-2.5 bg-amber-100 text-amber-600 rounded-xl shrink-0">
-          <AlertTriangle size={20} />
+      {deletionScheduled ? (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4">
+          <div className="p-2.5 bg-red-100 text-red-600 rounded-xl shrink-0">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 className="text-sm font-extrabold text-red-800 mb-1">Pengunduran Diri Berhasil</h3>
+            <p className="text-xs text-red-700 leading-relaxed">
+              Pengunduran diri Anda telah <span className="font-bold">disetujui HRD</span>. Sesuai kebijakan, akun Anda akan
+              <span className="font-bold"> dihapus permanen pada {deleteAtLabel}</span> (24 jam sejak persetujuan).
+              Pastikan Anda telah menyimpan data atau dokumen pribadi yang diperlukan sebelum akun dihapus.
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-sm font-extrabold text-amber-800 mb-1">Perhatian!</h3>
-          <p className="text-xs text-amber-700 leading-relaxed">
-            Pengajuan resign bersifat serius dan akan diproses sesuai ketentuan perusahaan. Pastikan Anda telah mempertimbangkan keputusan ini dengan matang. Sesuai kebijakan, masa notice period adalah 30 hari sejak pengajuan disetujui.
-          </p>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex items-start gap-4">
+          <div className="p-2.5 bg-amber-100 text-amber-600 rounded-xl shrink-0">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 className="text-sm font-extrabold text-amber-800 mb-1">Perhatian!</h3>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              Pengajuan resign bersifat serius dan akan diproses sesuai ketentuan perusahaan. Pastikan Anda telah mempertimbangkan keputusan ini dengan matang. Sesuai kebijakan, masa notice period adalah 30 hari sejak pengajuan disetujui.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

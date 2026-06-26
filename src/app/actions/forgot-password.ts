@@ -21,6 +21,28 @@ function newId(): string {
   return "otp-" + crypto.randomUUID();
 }
 
+/**
+ * Resolve every employee_faces.employee_id this email could be stored under.
+ * The same person can exist in BOTH `users` and `employees` tables with the
+ * same email but DIFFERENT ids. Login prefers the `users` id, so face data is
+ * registered under that id — but `employees` may carry a different id. We must
+ * check face data across all candidate ids, otherwise verification falsely
+ * reports "no face data".
+ */
+async function resolveFaceIdentity(email: string): Promise<{ ids: string[]; name: string }> {
+  const [{ data: emp }, { data: usr }] = await Promise.all([
+    supabaseAdmin.from("employees").select("id, full_name").eq("email", email).maybeSingle(),
+    supabaseAdmin.from("users").select("id, full_name").eq("email", email).maybeSingle(),
+  ]);
+  const ids: string[] = [];
+  const e = emp as Record<string, unknown> | null;
+  const u = usr as Record<string, unknown> | null;
+  if (u?.id) ids.push(u.id as string);
+  if (e?.id) ids.push(e.id as string);
+  const name = (u?.full_name as string) || (e?.full_name as string) || email;
+  return { ids, name };
+}
+
 // ── Step 1: send OTP ────────────────────────────────────────────────
 export async function sendPasswordResetOTP(email: string) {
   const normalizedEmail = email.toLowerCase().trim();
@@ -105,19 +127,15 @@ export async function verifyPasswordResetOTP(email: string, code: string) {
     .update({ step: "otp_verified" })
     .eq("email", normalizedEmail);
 
-  // Check if this user has face data registered
-  const { data: emp } = await supabaseAdmin
-    .from("employees")
-    .select("id")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
+  // Check if this user has face data registered under ANY of their candidate ids
+  const { ids } = await resolveFaceIdentity(normalizedEmail);
 
   let hasFaceData = false;
-  if (emp) {
+  if (ids.length > 0) {
     const { count } = await supabaseAdmin
       .from("employee_faces")
       .select("*", { count: "exact", head: true })
-      .eq("employee_id", (emp as Record<string, unknown>).id as string);
+      .in("employee_id", ids);
     hasFaceData = (count ?? 0) > 0;
   }
 
@@ -143,58 +161,54 @@ export async function verifyFaceForReset(email: string, descriptor: number[]) {
   if (o.step !== "otp_verified") return { error: "Verifikasi OTP diperlukan terlebih dahulu." };
   if (new Date(o.expires_at as string) < new Date()) return { error: "Sesi kedaluwarsa. Mulai ulang." };
 
-  // Find employee
-  const { data: emp } = await supabaseAdmin
-    .from("employees")
-    .select("id, full_name")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
+  // Resolve all candidate ids (users + employees) and the display name
+  const { ids, name: empName } = await resolveFaceIdentity(normalizedEmail);
+  if (ids.length === 0) return { error: "Akun karyawan tidak ditemukan." };
+  const empId = ids[0];
 
-  if (!emp) return { error: "Akun karyawan tidak ditemukan." };
-
-  const empId = (emp as Record<string, unknown>).id as string;
-
-  // Get all face descriptors for this employee
+  // Get all face descriptors stored under ANY of the candidate ids.
+  // Only select encrypted_* columns when encryption is enabled — those
+  // columns do NOT exist otherwise and would break the entire query.
   const hasEncryption = !!process.env.FACE_ENCRYPTION_KEY;
+  const cols: string = hasEncryption
+    ? "encrypted_descriptor, encrypted_descriptors"
+    : "descriptor, descriptors";
   const { data: faces } = await supabaseAdmin
     .from("employee_faces")
-    .select(hasEncryption ? "encrypted_descriptor, encrypted_descriptors" : "descriptor, descriptors")
-    .eq("employee_id", empId);
+    .select(cols)
+    .in("employee_id", ids) as { data: Record<string, unknown>[] | null };
 
   if (!faces || faces.length === 0) {
     return { error: "Tidak ada data wajah terdaftar. Hubungi HRD untuk reset manual." };
   }
 
-  // Compare input descriptor against all stored descriptors
-  const THRESHOLD = 0.5;
+  // Compare input descriptor against all stored descriptors.
+  // 0.6 balances security (password reset) with TinyFaceDetector's real-world variance.
+  const THRESHOLD = 0.6;
   let bestDistance = Infinity;
 
-  for (const face of faces as Record<string, unknown>[]) {
-    let storedDescriptor: number[] | null = null;
+  // Gather EVERY stored descriptor (averaged + all individual captures) across rows
+  const stored: number[][] = [];
+  for (const face of faces) {
     if (hasEncryption) {
       const encDesc = face.encrypted_descriptor as string | null;
-      if (encDesc) {
-        storedDescriptor = decryptDescriptor(encDesc);
-      } else {
-        const encDescriptors = face.encrypted_descriptors as string[] | null;
-        if (encDescriptors && Array.isArray(encDescriptors) && encDescriptors.length > 0) {
-          storedDescriptor = decryptDescriptor(encDescriptors[0]);
-        }
+      if (encDesc) { const d = decryptDescriptor(encDesc); if (d?.length) stored.push(d); }
+      const encList = face.encrypted_descriptors as string[] | null;
+      if (Array.isArray(encList)) {
+        for (const enc of encList) { const d = decryptDescriptor(enc); if (d?.length) stored.push(d); }
       }
     } else {
       const desc = face.descriptor as number[] | null;
-      if (desc && Array.isArray(desc) && desc.length > 0) {
-        storedDescriptor = desc;
-      } else {
-        const descriptors = face.descriptors as number[][] | null;
-        if (descriptors && Array.isArray(descriptors) && descriptors.length > 0) {
-          storedDescriptor = descriptors[0];
-        }
+      if (Array.isArray(desc) && desc.length > 0) stored.push(desc);
+      const list = face.descriptors as number[][] | null;
+      if (Array.isArray(list)) {
+        for (const d of list) { if (Array.isArray(d) && d.length > 0) stored.push(d); }
       }
     }
-    if (!storedDescriptor) continue;
+  }
 
-    const dist = euclideanDistance(descriptor, storedDescriptor);
+  for (const s of stored) {
+    const dist = euclideanDistance(descriptor, s);
     if (dist < bestDistance) bestDistance = dist;
   }
 
@@ -210,7 +224,7 @@ export async function verifyFaceForReset(email: string, descriptor: number[]) {
   auditLog({
     action: "face.verify",
     targetId: empId,
-    targetName: (emp as Record<string, unknown>).full_name as string || normalizedEmail,
+    targetName: empName || normalizedEmail,
     performedBy: { id: "forgot-password", role: "system", name: "Forgot Password Flow", email: normalizedEmail },
     detail: `Distance: ${bestDistance.toFixed(4)}`,
   });

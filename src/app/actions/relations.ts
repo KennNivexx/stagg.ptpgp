@@ -135,10 +135,20 @@ export async function updateResignationStatus(id: string, status: string) {
       const r = res as Record<string, unknown>;
       await supabaseAdmin.from("employees").update({ status: "Resigned" }).eq("id", r.employee_id as string);
     }
+    // Schedule permanent account deletion 24 hours from approval.
+    updateData.delete_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   }
-  const { error } = await supabaseAdmin.from("resignations").update(updateData).eq("id", id);
+  let { error } = await supabaseAdmin.from("resignations").update(updateData).eq("id", id);
+  // Resilience: if the delete_at column hasn't been migrated yet, approve anyway
+  // (without scheduling deletion) so the HRD flow is never blocked.
+  if (error && updateData.delete_at && /delete_at|column/i.test(error.message)) {
+    console.warn("[relations] resignations.delete_at missing — run migration 20260626_resignation_delete_at.sql to enable auto-delete");
+    delete updateData.delete_at;
+    ({ error } = await supabaseAdmin.from("resignations").update(updateData).eq("id", id));
+  }
   if (error) { console.error("[relations] updateResignationStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/relations/resignations");
   revalidatePath("/hrd/employees");
+  revalidatePath("/employee/resignation");
   return { success: true };
 }

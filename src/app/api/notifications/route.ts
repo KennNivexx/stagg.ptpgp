@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session";
+import { purgeExpiredResignedAccounts } from "@/lib/account-purge";
 
 export async function GET(request: NextRequest) {
   // Authentication: a valid signed session is required. The notification feed
@@ -34,6 +35,9 @@ export async function GET(request: NextRequest) {
     link: string;
     priority: string;
   }[] = [];
+
+  // Lazy "cron": every poll sweeps accounts whose 24h deletion deadline passed.
+  await purgeExpiredResignedAccounts();
 
   try {
     if (role === "hrd") {
@@ -119,7 +123,35 @@ export async function GET(request: NextRequest) {
     if (role === "employee") {
       const userEmail = session.email || "";
 
-      const { data: employee } = await supabaseAdmin.from("employees").select("id").eq("email", userEmail).limit(1).single();
+      // Resignation approved → account scheduled for permanent deletion.
+      // Query by email (resignation may be stored under a different id source)
+      // and select * so a not-yet-migrated delete_at column can't break the feed.
+      const { data: myResign } = await supabaseAdmin
+        .from("resignations")
+        .select("*")
+        .eq("employee_email", userEmail)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const resign = myResign as Record<string, unknown> | null;
+      if (resign?.status === "Disetujui" && resign.delete_at) {
+        const deleteAt = new Date(resign.delete_at as string);
+        const msLeft = deleteAt.getTime() - Date.now();
+        if (msLeft > 0) {
+          const hoursLeft = Math.max(1, Math.ceil(msLeft / 3_600_000));
+          notifications.push({
+            id: "resignation-approved",
+            type: "warning",
+            title: "Pengunduran Diri Berhasil",
+            message: `Pengunduran diri Anda telah disetujui. Akun Anda akan dihapus permanen dalam ±${hoursLeft} jam (${deleteAt.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}).`,
+            time: new Date().toLocaleDateString("id-ID"),
+            link: "/employee/resignation",
+            priority: "high",
+          });
+        }
+      }
+
+      const { data: employee } = await supabaseAdmin.from("employees").select("id").eq("email", userEmail).limit(1).maybeSingle();
       const empId = employee?.id;
 
       if (empId) {

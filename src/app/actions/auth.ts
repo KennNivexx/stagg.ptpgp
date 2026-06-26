@@ -8,6 +8,7 @@ import { verifyPassword } from "@/lib/auth";
 import { signSession } from "@/lib/session";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyOneTimeToken } from "@/lib/otp-token";
+import { purgeExpiredResignedAccounts } from "@/lib/account-purge";
 
 const COOKIE_OPTS = {
   path: "/",
@@ -124,6 +125,10 @@ export async function loginAction(formData: FormData) {
   if (rlResult.limited) {
     return { error: "Terlalu banyak percobaan login. Silakan coba lagi dalam beberapa menit." };
   }
+
+  // Purge accounts past their 24h post-resignation deletion deadline before auth,
+  // so a deleted account cannot log back in.
+  await purgeExpiredResignedAccounts();
 
   // 1. Try database authentication first
   const dbUser = (await tryUsersTableAuth(normalizedEmail, password))

@@ -71,6 +71,14 @@ export default function ForgotPasswordPage() {
 
   useEffect(() => { return () => { stopCamera(); }; }, [stopCamera]);
 
+  // Attach the camera stream once the <video> element is mounted (cameraActive=true)
+  useEffect(() => {
+    if (cameraActive && streamRef.current && videoRef.current && !videoRef.current.srcObject) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => { /* autoplay race — retries on next render */ });
+    }
+  }, [cameraActive]);
+
   const startFaceScan = useCallback(async () => {
     setFaceLoading(true);
     setCameraError("");
@@ -80,33 +88,37 @@ export default function ForgotPasswordPage() {
       const faceapi = await import("face-api.js");
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ]);
       setFaceReady(true);
 
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      // The <video> element only mounts once cameraActive is true, so attaching
+      // the stream here (videoRef is still null) would be lost. A useEffect keyed
+      // on cameraActive attaches the stream after the element renders.
       setCameraActive(true);
 
       intervalRef.current = setInterval(async () => {
-        if (!videoRef.current || !canvasRef.current) return;
+        const video = videoRef.current;
+        if (!video || !canvasRef.current) return;
         const detection = await faceapi.detectSingleFace(
-          videoRef.current,
+          video,
           new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 })
-        ).withFaceLandmarks();
+        ).withFaceLandmarks(true);
+        // Re-check refs: the camera may have been stopped (canvas unmounted)
+        // while the async detection above was in flight.
+        const canvas = canvasRef.current;
+        if (!canvas || !videoRef.current) return;
         setFaceDetected(!!detection);
-        const ctx = canvasRef.current.getContext("2d");
+        const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (detection) {
           const { x, y, width, height } = detection.detection.box;
-          const scaleX = canvasRef.current.width / (videoRef.current.videoWidth || 640);
-          const scaleY = canvasRef.current.height / (videoRef.current.videoHeight || 480);
+          const scaleX = canvas.width / (video.videoWidth || 640);
+          const scaleY = canvas.height / (video.videoHeight || 480);
           ctx.strokeStyle = "#22c55e";
           ctx.lineWidth = 2;
           ctx.strokeRect(x * scaleX, y * scaleY, width * scaleX, height * scaleY);
@@ -130,7 +142,7 @@ export default function ForgotPasswordPage() {
       const detection = await faceapi.detectSingleFace(
         videoRef.current,
         new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 })
-      ).withFaceLandmarks().withFaceDescriptor();
+      ).withFaceLandmarks(true).withFaceDescriptor();
 
       if (!detection) {
         setScanStatus("fail");

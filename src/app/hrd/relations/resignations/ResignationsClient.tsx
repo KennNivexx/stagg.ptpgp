@@ -61,7 +61,7 @@ export default function ResignationsClient({
     const result = await updateResignationStatus(id, status);
     setActing(false); setActionId("");
     if (result?.error) { showToast(result.error); return; }
-    showToast(status === "Disetujui" ? "Resign disetujui. Status karyawan diperbarui." : "Resign ditolak.");
+    showToast(status === "Disetujui" ? "Resign disetujui. Akun karyawan akan dihapus permanen dalam 24 jam." : "Resign ditolak.");
     setResignations(prev => prev.map(r => r.id === id ? { ...r, status } : r));
   };
 
