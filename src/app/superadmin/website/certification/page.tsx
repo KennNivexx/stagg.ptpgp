@@ -21,6 +21,7 @@ export default function CertificationCMS() {
   const [form, setForm] = useState({
     show: true,
     title: "",
+    subtitle: "",
     certifications: [] as Certification[],
   });
 
@@ -31,6 +32,7 @@ export default function CertificationCMS() {
         setForm({
           show: (s.show as boolean) ?? true,
           title: (s.title as string) || "Sertifikasi",
+          subtitle: (s.subtitle as string) || "",
           certifications:
             (s.certifications as Certification[])?.length
               ? (s.certifications as Certification[])
@@ -165,6 +167,18 @@ export default function CertificationCMS() {
               onChange={handleChange}
               className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
               placeholder="Sertifikasi"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2">Subtitle (opsional)</label>
+            <input
+              type="text"
+              name="subtitle"
+              value={form.subtitle}
+              onChange={handleChange}
+              className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+              placeholder="Kepercayaan Anda Prioritas Kami"
             />
           </div>
 

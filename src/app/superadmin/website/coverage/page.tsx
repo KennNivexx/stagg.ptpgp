@@ -5,12 +5,11 @@ import Link from "next/link";
 import { ArrowLeft, Save, Plus, Trash2, RefreshCw } from "lucide-react";
 import { getWebsiteSettings, saveWebsiteSettings } from "@/app/actions/settings";
 
-interface Coverage {
-  region_name: string;
-  description: string;
+interface CoverageItem {
+  region: string;
 }
 
-const defaultItem: Coverage = { region_name: "", description: "" };
+const defaultItem: CoverageItem = { region: "" };
 
 export default function CoverageCMS() {
   const [loading, setLoading] = useState(true);
@@ -21,7 +20,8 @@ export default function CoverageCMS() {
     show: true,
     title: "",
     subtitle: "",
-    coverage: [] as Coverage[],
+    domestic: [] as CoverageItem[],
+    international: [] as CoverageItem[],
   });
 
   useEffect(() => {
@@ -30,41 +30,43 @@ export default function CoverageCMS() {
         const s = settings.coverage || {};
         setForm({
           show: (s.show as boolean) ?? true,
-          title: (s.title as string) || "Cakupan Wilayah",
-          subtitle: (s.subtitle as string) || "",
-          coverage:
-            (s.coverage as Coverage[])?.length
-              ? (s.coverage as Coverage[])
-              : [{ region_name: "", description: "" }],
+          title: (s.title as string) || "Area Layanan",
+          subtitle: (s.subtitle as string) || "Cakupan Pengiriman",
+          domestic:
+            (s.domestic as CoverageItem[])?.length
+              ? (s.domestic as CoverageItem[])
+              : [{ region: "Jakarta" }, { region: "Surabaya" }, { region: "Medan" }],
+          international:
+            (s.international as CoverageItem[])?.length
+              ? (s.international as CoverageItem[])
+              : [{ region: "Singapura" }, { region: "Malaysia" }, { region: "China" }],
         });
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleItemChange = (
+    list: "domestic" | "international",
     idx: number,
-    field: keyof Coverage,
     value: string
   ) => {
-    const updated = [...form.coverage];
-    updated[idx] = { ...updated[idx], [field]: value };
-    setForm({ ...form, coverage: updated });
+    const updated = [...form[list]];
+    updated[idx] = { region: value };
+    setForm({ ...form, [list]: updated });
   };
 
-  const addItem = () => {
-    setForm({ ...form, coverage: [...form.coverage, { ...defaultItem }] });
+  const addItem = (list: "domestic" | "international") => {
+    setForm({ ...form, [list]: [...form[list], { ...defaultItem }] });
   };
 
-  const removeItem = (idx: number) => {
-    if (form.coverage.length <= 1) return;
-    setForm({ ...form, coverage: form.coverage.filter((_, i) => i !== idx) });
+  const removeItem = (list: "domestic" | "international", idx: number) => {
+    if (form[list].length <= 1) return;
+    setForm({ ...form, [list]: form[list].filter((_, i) => i !== idx) });
   };
 
   const handleSave = async () => {
@@ -98,6 +100,39 @@ export default function CoverageCMS() {
     );
   }
 
+  const renderList = (list: "domestic" | "international", label: string) => (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-semibold text-gray-600">{label}</label>
+        <button
+          onClick={() => addItem(list)}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-700"
+        >
+          <Plus size={14} /> Tambah Wilayah
+        </button>
+      </div>
+      {form[list].map((item, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Nama wilayah / negara"
+            value={item.region}
+            onChange={(e) => handleItemChange(list, idx, e.target.value)}
+            className="flex-1 border border-slate-200 rounded-xl p-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+          />
+          {form[list].length > 1 && (
+            <button
+              onClick={() => removeItem(list, idx)}
+              className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="p-6 lg:p-8 max-w-4xl mx-auto">
       <div className="mb-8">
@@ -109,7 +144,7 @@ export default function CoverageCMS() {
         </Link>
         <h1 className="text-2xl font-bold text-[#1A2530]">Edit Coverage Section</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Edit judul dan daftar cakupan wilayah.
+          Edit judul dan daftar cakupan wilayah domestik & internasional.
         </p>
       </div>
 
@@ -128,7 +163,7 @@ export default function CoverageCMS() {
         <div className="p-6 border-b border-slate-100 bg-slate-50/50">
           <h2 className="text-lg font-bold text-[#1A2530]">Pengaturan Coverage</h2>
         </div>
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-6">
           <div className="flex items-center justify-between p-4 bg-amber-50/50 rounded-xl border border-amber-100">
             <div>
               <p className="text-sm font-semibold text-slate-800">Tampilkan Seksi</p>
@@ -136,15 +171,9 @@ export default function CoverageCMS() {
             </div>
             <button
               onClick={() => setForm({ ...form, show: !form.show })}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                form.show ? "bg-amber-600" : "bg-gray-300"
-              }`}
+              className={`relative w-12 h-6 rounded-full transition-colors ${form.show ? "bg-amber-600" : "bg-gray-300"}`}
             >
-              <span
-                className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  form.show ? "left-[26px]" : "left-0.5"
-                }`}
-              />
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.show ? "left-[26px]" : "left-0.5"}`} />
             </button>
           </div>
 
@@ -156,7 +185,7 @@ export default function CoverageCMS() {
               value={form.title}
               onChange={handleChange}
               className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
-              placeholder="Cakupan Wilayah"
+              placeholder="Area Layanan"
             />
           </div>
 
@@ -168,52 +197,18 @@ export default function CoverageCMS() {
               value={form.subtitle}
               onChange={handleChange}
               className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
-              placeholder="Subtitle cakupan wilayah..."
+              placeholder="Cakupan Pengiriman"
             />
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-gray-600">Wilayah</label>
-              <button
-                onClick={addItem}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-700"
-              >
-                <Plus size={14} /> Tambah Wilayah
-              </button>
-            </div>
-            {form.coverage.map((item, idx) => (
-              <div
-                key={idx}
-                className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500">Wilayah #{idx + 1}</span>
-                  {form.coverage.length > 1 && (
-                    <button
-                      onClick={() => removeItem(idx)}
-                      className="text-red-400 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  placeholder="Nama wilayah"
-                  value={item.region_name}
-                  onChange={(e) => handleItemChange(idx, "region_name", e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
-                />
-                <textarea
-                  rows={2}
-                  placeholder="Deskripsi wilayah"
-                  value={item.description}
-                  onChange={(e) => handleItemChange(idx, "description", e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none resize-none"
-                />
-              </div>
-            ))}
+          <div className="border border-orange-100 rounded-xl p-4 bg-orange-50/20">
+            <p className="text-xs font-bold text-orange-700 mb-4 uppercase tracking-wider">Wilayah Domestik (Indonesia)</p>
+            {renderList("domestic", "Daftar Kota/Provinsi")}
+          </div>
+
+          <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/20">
+            <p className="text-xs font-bold text-blue-700 mb-4 uppercase tracking-wider">Wilayah Internasional</p>
+            {renderList("international", "Daftar Negara")}
           </div>
 
           <button
@@ -222,13 +217,9 @@ export default function CoverageCMS() {
             className="w-full px-6 py-3 bg-[#D97706] hover:bg-amber-600 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? (
-              <>
-                <RefreshCw size={16} className="animate-spin" /> Menyimpan...
-              </>
+              <><RefreshCw size={16} className="animate-spin" /> Menyimpan...</>
             ) : (
-              <>
-                <Save size={16} /> Simpan Coverage Section
-              </>
+              <><Save size={16} /> Simpan Coverage Section</>
             )}
           </button>
         </div>

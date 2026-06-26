@@ -35,7 +35,6 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
     { name: "Tentang Kami", href: "/#about" },
     { name: "Layanan", href: "/#services" },
     { name: "Karir", href: "/career" },
-    { name: "E-Procurement", href: "/e-procurement" },
     { name: "Kontak", href: "/#contact" },
   ];
 

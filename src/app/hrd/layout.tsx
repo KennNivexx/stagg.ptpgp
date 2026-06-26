@@ -195,9 +195,7 @@ const MENU_GROUPS = [
     icon: Shield,
     items: [
       { href: "/hrd/admin/users", label: "Manajemen User" },
-      { href: "/hrd/admin/roles", label: "Role & Permission" },
       { href: "/hrd/admin/approvals", label: "Alur Persetujuan" },
-      { href: "/hrd/admin/audit", label: "Audit Log" },
       { href: "/hrd/admin/notifications", label: "Notifikasi" },
       { href: "/hrd/admin/settings", label: "Pengaturan Perusahaan" },
     ],
@@ -298,9 +296,7 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/hrd/reports/performance": "Rekap performa karyawan",
   "/hrd/reports/turnover": "Analisis keluar-masuk karyawan",
   "/hrd/admin/users": "Kelola akun pengguna sistem",
-  "/hrd/admin/roles": "Atur hak akses pengguna",
   "/hrd/admin/approvals": "Konfigurasi alur approval",
-  "/hrd/admin/audit": "Catatan aktivitas pengguna",
   "/hrd/admin/notifications": "Pengaturan notifikasi sistem",
   "/hrd/admin/settings": "Informasi dan konfigurasi perusahaan",
 };

@@ -15,6 +15,7 @@ export default function AboutCMS() {
     title: "",
     description: "",
     image_url: "",
+    years_experience: "",
     mission_text: "",
     vision_text: "",
   });
@@ -28,6 +29,7 @@ export default function AboutCMS() {
           title: (s.title as string) || "Tentang Kami",
           description: (s.description as string) || "",
           image_url: (s.image_url as string) || "",
+          years_experience: (s.years_experience as string) || "28+",
           mission_text: (s.mission_text as string) || "",
           vision_text: (s.vision_text as string) || "",
         });
@@ -145,6 +147,19 @@ export default function AboutCMS() {
               className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none resize-none"
               placeholder="Deskripsi tentang perusahaan..."
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2">Tahun Pengalaman</label>
+            <input
+              type="text"
+              name="years_experience"
+              value={form.years_experience}
+              onChange={handleChange}
+              className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+              placeholder="28+"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">Ditampilkan sebagai badge di atas foto (misal: 28+)</p>
           </div>
 
           <div>

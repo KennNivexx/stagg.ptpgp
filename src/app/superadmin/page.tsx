@@ -23,6 +23,11 @@ import {
   Award,
   HelpCircle,
   Megaphone,
+  Palette,
+  KeyRound,
+  ClipboardList,
+  Phone,
+  Layers,
 } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -129,6 +134,13 @@ export default async function SuperadminDashboard() {
 
   const websiteCards = [
     {
+      title: "Tema & Warna",
+      desc: "Ganti warna utama, navy, dan latar halaman publik",
+      href: "/superadmin/website/theme",
+      icon: Palette,
+      color: "bg-pink-50 text-pink-600",
+    },
+    {
       title: "Hero Section",
       desc: "Edit judul, subtitle, dan gambar latar halaman utama",
       href: "/superadmin/website/hero",
@@ -226,6 +238,20 @@ export default async function SuperadminDashboard() {
       icon: Megaphone,
       color: "bg-red-50 text-red-600",
     },
+    {
+      title: "Kontak",
+      desc: "Edit info kontak, alamat, dan jam operasional",
+      href: "/superadmin/website/contact",
+      icon: Phone,
+      color: "bg-teal-50 text-teal-600",
+    },
+    {
+      title: "Teaser (Karir & E-Pro)",
+      desc: "Edit banner karir dan e-procurement",
+      href: "/superadmin/website/teaser",
+      icon: Layers,
+      color: "bg-purple-50 text-purple-600",
+    },
   ];
 
   const monitoringCards = [
@@ -252,6 +278,20 @@ export default async function SuperadminDashboard() {
       href: "/superadmin/employees",
       icon: UserCog,
       color: "bg-amber-50 text-amber-600",
+    },
+    {
+      title: "Role & Permission",
+      desc: "Atur hak akses dan role setiap pengguna sistem",
+      href: "/hrd/admin/roles",
+      icon: KeyRound,
+      color: "bg-violet-50 text-violet-600",
+    },
+    {
+      title: "Audit Log",
+      desc: "Riwayat seluruh aktivitas pengguna di sistem",
+      href: "/hrd/admin/audit",
+      icon: ClipboardList,
+      color: "bg-slate-100 text-slate-600",
     },
   ];
 
@@ -381,7 +421,7 @@ export default async function SuperadminDashboard() {
             Manajemen User
           </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 max-w-md">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {userCards.map((card) => {
             const Icon = card.icon;
             return (

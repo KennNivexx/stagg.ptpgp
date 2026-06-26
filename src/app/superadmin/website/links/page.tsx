@@ -20,10 +20,10 @@ interface LinksForm {
 const defaultLinks: LinksForm = {
   navbar: [
     { label: "Home", url: "/" },
-    { label: "Tentang Kami", url: "/" },
-    { label: "Layanan", url: "/" },
+    { label: "Tentang Kami", url: "/#about" },
+    { label: "Layanan", url: "/#services" },
     { label: "Karir", url: "/career" },
-    { label: "Kontak", url: "/" },
+    { label: "Kontak", url: "/#contact" },
   ],
   footer_quick: [
     { label: "About Us", url: "/" },

@@ -20,6 +20,7 @@ export default function FAQCMS() {
   const [form, setForm] = useState({
     show: true,
     title: "",
+    subtitle: "",
     faqs: [] as FAQ[],
   });
 
@@ -30,6 +31,7 @@ export default function FAQCMS() {
         setForm({
           show: (s.show as boolean) ?? true,
           title: (s.title as string) || "FAQ",
+          subtitle: (s.subtitle as string) || "",
           faqs:
             (s.faqs as FAQ[])?.length
               ? (s.faqs as FAQ[])
@@ -155,6 +157,18 @@ export default function FAQCMS() {
               onChange={handleChange}
               className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
               placeholder="FAQ"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2">Subtitle (opsional)</label>
+            <input
+              type="text"
+              name="subtitle"
+              value={form.subtitle}
+              onChange={handleChange}
+              className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+              placeholder="Pertanyaan yang Sering Diajukan"
             />
           </div>
 

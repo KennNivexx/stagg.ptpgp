@@ -1,9 +1,12 @@
 import { supabaseAdmin } from "@/lib/supabase";
 
-export const revalidate = 60;
+// Always render fresh so superadmin edits (text/images/settings) appear immediately.
+// The settings fetch must not be served from Next's Data Cache.
+export const dynamic = "force-dynamic";
 
 import NewNavbar from "@/components/public/NewNavbar";
 import PGPFooter from "@/components/public/PGPFooter";
+import ThemeStyle from "@/components/public/ThemeStyle";
 import HeroSection from "@/components/public/HeroSection";
 import AboutSection from "@/components/public/AboutSection";
 import FeaturesSection from "@/components/public/FeaturesSection";
@@ -52,9 +55,18 @@ export default async function Home() {
   const info = settings?.info || {};
   const links = settings?.links || {};
   const footer = settings?.footer || {};
+  const theme = settings?.theme || {};
+  const contact = settings?.contact || {};
+  const teaser = settings?.teaser || {};
 
   return (
     <main className="min-h-screen font-sans bg-[#FCF9F6]">
+      <ThemeStyle
+        primary={theme.primary as string}
+        primaryHover={theme.primary_hover as string}
+        navy={theme.navy as string}
+        background={theme.background as string}
+      />
       <NewNavbar links={links} companyName={info.company_name} />
       
       <HeroSection
@@ -76,8 +88,8 @@ export default async function Home() {
       {certification.show !== false && <CertificationSection {...certification} />}
       {faq.show !== false && <FAQSection {...faq} />}
       {cta.show !== false && <CTASection {...cta} />}
-      <ContactSection />
-      <TeaserSection />
+      <ContactSection {...contact} />
+      <TeaserSection {...teaser} />
       <PGPFooter info={info} footer={footer} links={links} />
     </main>
   );

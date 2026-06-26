@@ -12,6 +12,7 @@ export default function HeroSettingsPage() {
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     hero_title: "",
+    hero_title_highlight: "",
     hero_subtitle: "",
     hero_bg_image_url: "",
     hero_badge_text: "",
@@ -25,6 +26,7 @@ export default function HeroSettingsPage() {
           hero_title:
             (hero.hero_title as string) ||
             "Solusi Transportasi & Freight Forwarding Terpercaya",
+          hero_title_highlight: (hero.hero_title_highlight as string) || "",
           hero_subtitle:
             (hero.hero_subtitle as string) ||
             "Melayani pengiriman darat, laut, dan udara dengan jaringan luas, armada modern, serta layanan yang tepat waktu dan aman untuk pengiriman domestik maupun internasional.",
@@ -137,6 +139,20 @@ export default function HeroSettingsPage() {
                 className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-colors"
                 placeholder="Solusi Transportasi & Freight Forwarding"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-2">
+                Judul Highlight (opsional)
+              </label>
+              <input
+                type="text"
+                name="hero_title_highlight"
+                value={form.hero_title_highlight}
+                onChange={handleChange}
+                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-colors"
+                placeholder="Terpercaya"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">Bagian judul yang ditampilkan dengan warna aksen berbeda.</p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-2">

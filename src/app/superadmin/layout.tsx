@@ -19,6 +19,11 @@ import {
   Building2,
   Link2,
   Footprints,
+  Palette,
+  KeyRound,
+  ClipboardList,
+  Phone,
+  Layers,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
@@ -36,9 +41,12 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
   ];
 
   const websiteItems = [
+    { href: "/superadmin/website/theme", label: "Tema & Warna", icon: Palette },
     { href: "/superadmin/website/hero", label: "Hero Section", icon: Image },
     { href: "/superadmin/website/info", label: "Info Perusahaan", icon: Building2 },
     { href: "/superadmin/website/links", label: "Link & Navigasi", icon: Link2 },
+    { href: "/superadmin/website/contact", label: "Kontak", icon: Phone },
+    { href: "/superadmin/website/teaser", label: "Teaser (Karir/E-Pro)", icon: Layers },
     { href: "/superadmin/website/footer", label: "Footer", icon: Footprints },
   ];
 
@@ -49,6 +57,8 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
 
   const userItems = [
     { href: "/superadmin/employees", label: "Manajemen User", icon: UserCog },
+    { href: "/hrd/admin/roles", label: "Role & Permission", icon: KeyRound },
+    { href: "/hrd/admin/audit", label: "Audit Log", icon: ClipboardList },
   ];
 
   return (

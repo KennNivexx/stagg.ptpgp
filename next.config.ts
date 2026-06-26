@@ -4,8 +4,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "stag.ptpgp.co.id" },
-      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "**" },
     ],
   },
 };

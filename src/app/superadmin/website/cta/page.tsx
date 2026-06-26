@@ -16,6 +16,8 @@ export default function CTACMS() {
     subtitle: "",
     button_text: "",
     button_url: "",
+    whatsapp_text: "",
+    whatsapp_number: "",
   });
 
   useEffect(() => {
@@ -28,6 +30,8 @@ export default function CTACMS() {
           subtitle: (s.subtitle as string) || "",
           button_text: (s.button_text as string) || "Hubungi Kami",
           button_url: (s.button_url as string) || "/contact",
+          whatsapp_text: (s.whatsapp_text as string) || "WhatsApp Sekarang",
+          whatsapp_number: (s.whatsapp_number as string) || "6281234567890",
         });
         setLoading(false);
       })
@@ -167,6 +171,31 @@ export default function CTACMS() {
               className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
               placeholder="/contact"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2">Teks Tombol WhatsApp</label>
+            <input
+              type="text"
+              name="whatsapp_text"
+              value={form.whatsapp_text}
+              onChange={handleChange}
+              className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+              placeholder="WhatsApp Sekarang"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2">Nomor WhatsApp</label>
+            <input
+              type="text"
+              name="whatsapp_number"
+              value={form.whatsapp_number}
+              onChange={handleChange}
+              className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+              placeholder="6281234567890"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">Format internasional tanpa + (misal: 6281234567890)</p>
           </div>
 
           <button
