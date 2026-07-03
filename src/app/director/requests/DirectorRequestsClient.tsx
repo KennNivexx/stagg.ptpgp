@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { updateRequestStatus } from "@/app/actions/requests";
 import type { DirectorRequest } from "./page";
+import EmptyState from "@/components/EmptyState";
 
 interface Props {
   requests: DirectorRequest[];
@@ -167,9 +168,8 @@ export default function DirectorRequestsClient({ requests }: Props) {
             <tbody className="divide-y divide-slate-50">
               {paged.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center">
-                    <Users size={40} className="mx-auto text-slate-300 mb-4" />
-                    <p className="text-sm text-slate-500">Tidak ada data permintaan.</p>
+                  <td colSpan={8} className="px-4 py-4">
+                    <EmptyState icon={Users} title="Tidak ada data permintaan." />
                   </td>
                 </tr>
               ) : (

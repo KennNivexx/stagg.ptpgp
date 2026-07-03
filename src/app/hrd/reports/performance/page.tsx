@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { TrendingUp, Users, Star, Award } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 function scoreColor(score: number) {
   if (score >= 80) return "bg-emerald-50 text-emerald-700";
@@ -73,7 +74,7 @@ export default async function PerformanceReportsPage() {
             <p className="text-xs text-slate-400 mt-0.5">Rata-rata skor KPI per divisi</p>
           </div>
           {deptRows.length === 0 ? (
-            <div className="p-12 text-center text-sm text-slate-400">Belum ada data evaluasi.</div>
+            <EmptyState icon={Award} title="Belum ada data evaluasi." />
           ) : (
             <div className="divide-y divide-slate-50">
               {deptRows.map((row) => (
@@ -101,11 +102,11 @@ export default async function PerformanceReportsPage() {
             <p className="text-xs text-slate-400 mt-0.5">50 evaluasi terbaru</p>
           </div>
           {evals.length === 0 ? (
-            <div className="p-12 text-center">
-              <TrendingUp size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data evaluasi KPI.</p>
-              <p className="text-xs text-slate-400 mt-1">Buat evaluasi di menu KPI &amp; Feedback untuk melihat laporan.</p>
-            </div>
+            <EmptyState
+              icon={TrendingUp}
+              title="Belum ada data evaluasi KPI."
+              description="Buat evaluasi di menu KPI & Feedback untuk melihat laporan."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

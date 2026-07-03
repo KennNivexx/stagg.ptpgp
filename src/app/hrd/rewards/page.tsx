@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { DollarSign, Download, Gift, TrendingUp, FileText, Users } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function HRDRewards() {
   const { data: payrolls, error } = await supabaseAdmin
@@ -110,11 +111,7 @@ export default async function HRDRewards() {
           {error ? (
             <div className="p-12 text-center text-red-600 text-sm">{error.message}</div>
           ) : !payrolls || payrolls.length === 0 ? (
-            <div className="p-12 text-center">
-              <DollarSign size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data payroll.</p>
-              <p className="text-xs text-slate-400 mt-1">Data payroll akan muncul setelah slip gaji dibuat.</p>
-            </div>
+            <EmptyState icon={DollarSign} title="Belum ada data payroll." description="Data payroll akan muncul setelah slip gaji dibuat." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -154,9 +151,15 @@ export default async function HRDRewards() {
                           Rp {(Number(p.net_salary) || 0).toLocaleString("id-ID")}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <span className="p-2 rounded-lg text-slate-300 cursor-not-allowed inline-flex" title="Segera tersedia">
+                          <a
+                            href={`/api/payslip/${p.id as string}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 inline-flex transition-colors"
+                            title="Lihat / Unduh slip gaji"
+                          >
                             <Download size={14} />
-                          </span>
+                          </a>
                         </td>
                       </tr>
                     );

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, Clock, CheckCircle2 } from "lucide-react";
 import PoliciesForm from "./PoliciesForm";
+import EmptyState from "@/components/EmptyState";
 
 export default async function PerubahanKebijakan() {
   const { data: managers } = await supabaseAdmin
@@ -51,11 +52,11 @@ export default async function PerubahanKebijakan() {
             <h3 className="font-extrabold text-slate-800 text-sm">Riwayat Kebijakan</h3>
           </div>
           {policies.length === 0 ? (
-            <div className="p-12 text-center">
-              <FileText size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada perubahan kebijakan.</p>
-              <p className="text-xs text-slate-400 mt-1">Gunakan formulir di samping untuk membuat draft kebijakan baru.</p>
-            </div>
+            <EmptyState
+              icon={FileText}
+              title="Belum ada perubahan kebijakan."
+              description="Gunakan formulir di samping untuk membuat draft kebijakan baru."
+            />
           ) : (
             <div className="divide-y divide-slate-50">
               {policies.map((pol) => (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Trophy, Plus, Star, Award, Medal, Clock, X } from "lucide-react";
 import { nominateAward } from "@/app/actions/rewards";
+import EmptyState from "@/components/EmptyState";
 
 const CATEGORIES = ["Employee of the Month", "Best Performance", "Long Service Award", "Innovation Award"];
 
@@ -143,10 +144,7 @@ export default function AwardsClient({
           <p className="text-xs text-slate-400 mt-0.5">Daftar karyawan yang telah menerima penghargaan</p>
         </div>
         {awards.length === 0 ? (
-          <div className="p-12 text-center">
-            <Trophy size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada penghargaan yang diberikan.</p>
-          </div>
+          <EmptyState icon={Trophy} title="Belum ada penghargaan yang diberikan." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

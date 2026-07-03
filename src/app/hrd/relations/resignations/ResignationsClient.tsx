@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UserX, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { submitResignation, updateResignationStatus } from "@/app/actions/relations";
+import EmptyState from "@/components/EmptyState";
 
 interface Employee { id: string; full_name: string; department: string; position: string; }
 interface Resignation { id: string; employee_id: string; employee_name: string; reason: string; last_day: string; notes?: string; status: string; reviewed_by?: string; created_at: string; }
@@ -110,10 +111,11 @@ export default function ResignationsClient({
             <p className="text-xs text-slate-400 mt-0.5">Semua pengajuan resign yang masuk</p>
           </div>
           {resignations.length === 0 ? (
-            <div className="p-12 text-center">
-              <UserX size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada pengajuan pengunduran diri.</p>
-            </div>
+            <EmptyState
+              icon={UserX}
+              title="Belum ada pengajuan pengunduran diri."
+              className="border-none"
+            />
           ) : (
             <div className="divide-y divide-slate-50">
               {resignations.map(r => {

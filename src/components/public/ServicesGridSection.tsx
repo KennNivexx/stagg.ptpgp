@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { PackageCheck, Truck, Ship, Plane, Warehouse, HardHat, LucideIcon } from "lucide-react";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -68,7 +71,14 @@ export default function ServicesGridSection({
   const hasImages = items.some(s => s.image_url);
 
   return (
-    <section id="services" className="py-24 bg-white border-t border-gray-100 scroll-mt-[72px]">
+    <motion.section
+      id="services"
+      className="py-24 bg-white border-t border-gray-100 scroll-mt-[72px]"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-end mb-16">
           <div className="max-w-2xl">
@@ -123,6 +133,6 @@ export default function ServicesGridSection({
           </div>
         )}
       </div>
-    </section>
+    </motion.section>
   );
 }

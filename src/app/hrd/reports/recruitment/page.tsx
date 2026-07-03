@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, Briefcase, Users, Clock, TrendingUp, Calendar } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function LaporanRekrutmen() {
   const { data: jobs, error: jobsError } = await supabaseAdmin
@@ -97,11 +98,11 @@ export default async function LaporanRekrutmen() {
           {jobsError ? (
             <div className="p-12 text-center text-red-600 text-sm">{jobsError.message}</div>
           ) : !jobs || jobs.length === 0 ? (
-            <div className="p-12 text-center">
-              <FileText size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data lowongan.</p>
-              <p className="text-xs text-slate-400 mt-1">Buat lowongan pekerjaan untuk melihat laporan rekrutmen.</p>
-            </div>
+            <EmptyState
+              icon={FileText}
+              title="Belum ada data lowongan."
+              description="Buat lowongan pekerjaan untuk melihat laporan rekrutmen."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

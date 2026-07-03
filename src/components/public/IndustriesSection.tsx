@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { ShoppingCart, Store, Factory, Car, Pickaxe, HardHat, Droplets, Laptop, LucideIcon } from "lucide-react";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -46,7 +49,13 @@ export default function IndustriesSection({
   const items = industries?.length ? industries : defaultIndustries;
 
   return (
-    <section className="py-24 bg-white">
+    <motion.section
+      className="py-24 bg-white"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
@@ -76,6 +85,6 @@ export default function IndustriesSection({
           })}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

@@ -21,6 +21,7 @@ import FAQSection from "@/components/public/FAQSection";
 import CTASection from "@/components/public/CTASection";
 import ContactSection from "@/components/public/ContactSection";
 import TeaserSection from "@/components/public/TeaserSection";
+import FloatingWhatsApp from "@/components/public/FloatingWhatsApp";
 
 async function getSettings() {
   try {
@@ -91,6 +92,7 @@ export default async function Home() {
       <ContactSection {...contact} />
       <TeaserSection {...teaser} />
       <PGPFooter info={info} footer={footer} links={links} />
+      <FloatingWhatsApp phoneNumber={(cta.whatsapp_number as string) || (info.company_phone as string)} />
     </main>
   );
 }

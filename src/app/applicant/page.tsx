@@ -5,9 +5,8 @@ import Link from "next/link";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
   "Menunggu Review": { label: "Menunggu Review", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", icon: Clock },
-  "Direview": { label: "Sedang Direview", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200", icon: AlertCircle },
-  "Wawancara": { label: "Jadwal Wawancara", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200", icon: AlertCircle },
-  "Tes": { label: "Tahap Tes", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-200", icon: AlertCircle },
+  "Tes Tulis & Psikotes": { label: "Tahap Tes", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-200", icon: AlertCircle },
+  "Interview": { label: "Jadwal Wawancara", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200", icon: AlertCircle },
   "Diterima": { label: "Diterima 🎉", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", icon: CheckCircle2 },
   "Ditolak": { label: "Tidak Lolos", color: "text-red-700", bg: "bg-red-50", border: "border-red-200", icon: XCircle },
 };

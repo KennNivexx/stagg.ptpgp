@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 
 interface FAQItem {
@@ -51,7 +52,14 @@ export default function FAQSection({
   const items = faqs?.length ? faqs : defaultFaqs;
 
   return (
-    <section id="faq" className="py-24 bg-[#FCF9F6] scroll-mt-[72px]">
+    <motion.section
+      id="faq"
+      className="py-24 bg-[#FCFAF6] scroll-mt-[72px]"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
@@ -86,6 +94,6 @@ export default function FAQSection({
           ))}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

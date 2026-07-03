@@ -33,26 +33,17 @@ export default function LoginPage() {
       
       {/* Left Side: Brand Showcase */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-center p-12 overflow-hidden border-r border-zinc-100">
-        <div className="absolute inset-0 z-0">
-          <Image 
-            src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop" 
-            alt="" 
-            fill
-            className="object-cover" 
-            priority
-          />
-          <div className="absolute inset-0 bg-black/10"></div>
-        </div>
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
 
         <div className="relative z-10 bg-[#FCFBF9]/95 backdrop-blur-md p-8 md:p-10 rounded-[32px] border border-orange-100/50 shadow-2xl max-w-lg mx-auto flex flex-col justify-between h-[80%] w-full">
           <div>
             <div className="flex items-center gap-3 mb-10 w-fit">
-              <Image 
-                src="https://stag.ptpgp.co.id/web/image/website/1/logo/PRATAMA%20GALUH%20PERKASA?unique=af2b0b3" 
-                alt="PT Pratama Galuh Perkasa Logo" 
-                width={56} height={56} 
-                className="h-14 w-auto" 
-                priority 
+              <Image
+                src="/images/logo.png"
+                alt="PT Pratama Galuh Perkasa Logo"
+                width={56} height={56}
+                className="h-14 w-auto"
+                priority
               />
             </div>
             

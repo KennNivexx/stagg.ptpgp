@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { Truck, MapPin, Clock, ShieldCheck, Globe, Headset, LucideIcon, ChartBar, Award, Users, Zap, Cog, Leaf } from "lucide-react";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -72,7 +75,13 @@ export default function FeaturesSection({
   const items = features?.length ? features : defaultFeatures;
 
   return (
-    <section className="py-24 bg-[#FCF9F6]">
+    <motion.section
+      className="py-24 bg-[#FCF9F6]"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
@@ -100,6 +109,6 @@ export default function FeaturesSection({
           })}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

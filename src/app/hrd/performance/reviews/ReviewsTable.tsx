@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Clipboard } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 type Evaluation = Record<string, unknown>;
 
@@ -27,11 +28,7 @@ export default function ReviewsTable({ evaluations }: Props) {
 
   if (!evaluations || evaluations.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-        <Clipboard size={40} className="mx-auto text-slate-300 mb-4" />
-        <p className="text-sm text-slate-500">Belum ada data review kinerja.</p>
-        <p className="text-xs text-slate-400 mt-1">Lakukan evaluasi KPI untuk melihat review di sini.</p>
-      </div>
+      <EmptyState icon={Clipboard} title="Belum ada data review kinerja." description="Lakukan evaluasi KPI untuk melihat review di sini." />
     );
   }
 

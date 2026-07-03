@@ -8,7 +8,7 @@ export default function PayslipActions({ slipId }: { slipId: string }) {
   };
 
   const handleDownload = () => {
-    window.open(`/api/payslip/${slipId}`, "_blank");
+    window.open(`/api/payslip/${slipId}?autoprint=1`, "_blank");
   };
 
   return (

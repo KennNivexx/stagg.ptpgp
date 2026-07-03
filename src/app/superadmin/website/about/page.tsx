@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { getWebsiteSettings, saveWebsiteSettings } from "@/app/actions/settings";
+import { ImageUploadField } from "../_lib/ImageUploadField";
 
 export default function AboutCMS() {
   const [loading, setLoading] = useState(true);
@@ -26,12 +27,12 @@ export default function AboutCMS() {
         const s = settings.about || {};
         setForm({
           show: (s.show as boolean) ?? true,
-          title: (s.title as string) || "Tentang Kami",
-          description: (s.description as string) || "",
+          title: (s.title as string) || "Mitra Logistik Terpercaya Sejak 1996",
+          description: (s.description as string) || "Berawal dari CV Putra Galuh yang didirikan oleh Bapak Maman Rohman pada tahun 1996, PT Pratama Galuh Perkasa (PGP) telah berkembang menjadi salah satu perusahaan jasa transportasi dan logistik terkemuka yang berpusat di Cilegon, Banten.\n\nSelama lebih dari dua dekade, kami telah melayani kebutuhan pengiriman barang industri dan komersial dengan cakupan layanan seluruh Indonesia hingga jangkauan internasional.\n\nSebagai perusahaan yang memiliki legalitas penuh dan mematuhi standar keselamatan industri, visi kami adalah menjadi perusahaan logistik terintegrasi dengan kapabilitas layanan global yang andal, aman, dan efisien.",
           image_url: (s.image_url as string) || "",
           years_experience: (s.years_experience as string) || "28+",
-          mission_text: (s.mission_text as string) || "",
-          vision_text: (s.vision_text as string) || "",
+          mission_text: (s.mission_text as string) || "Memberikan solusi pengiriman tepat waktu, aman, dan transparan.",
+          vision_text: (s.vision_text as string) || "Menjadi penyedia layanan logistik global terpadu yang profesional.",
         });
         setLoading(false);
       })
@@ -162,25 +163,13 @@ export default function AboutCMS() {
             <p className="text-[10px] text-gray-400 mt-1">Ditampilkan sebagai badge di atas foto (misal: 28+)</p>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-2">URL Gambar (opsional)</label>
-            <input
-              type="text"
-              name="image_url"
-              value={form.image_url}
-              onChange={handleChange}
-              className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
-              placeholder="https://example.com/about.jpg"
-            />
-            {form.image_url && (
-              <img
-                src={form.image_url}
-                alt="Preview"
-                className="mt-3 rounded-xl max-h-40 object-cover border"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-            )}
-          </div>
+          <ImageUploadField
+            label="Gambar (opsional)"
+            value={form.image_url}
+            onChange={(url) => setForm({ ...form, image_url: url })}
+            folder="about"
+            placeholder="https://example.com/about.jpg"
+          />
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-2">Teks Misi</label>

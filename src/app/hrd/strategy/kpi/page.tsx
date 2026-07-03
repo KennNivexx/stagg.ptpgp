@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { TrendingUp, Target, Users, Building2, Award, CheckCircle2, Star, AlertCircle } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function KPIStrategis() {
   const { data: evaluations } = await supabaseAdmin
@@ -86,11 +87,7 @@ export default async function KPIStrategis() {
           </div>
           <div className="p-6 space-y-5">
             {deptKPIs.length === 0 ? (
-              <div className="text-center py-8">
-                <Building2 size={40} className="mx-auto text-slate-300 mb-3" />
-                <p className="text-sm text-slate-500">Belum ada data KPI departemen.</p>
-                <p className="text-xs text-slate-400 mt-1">Lakukan evaluasi KPI untuk melihat ringkasan di sini.</p>
-              </div>
+              <EmptyState icon={Building2} title="Belum ada data KPI departemen." description="Lakukan evaluasi KPI untuk melihat ringkasan di sini." />
             ) : (
               deptKPIs.map((dkpi) => {
                 const pct = dkpi.target > 0 ? Math.min(Math.round((dkpi.avgScore / dkpi.target) * 100), 100) : 0;
@@ -134,10 +131,7 @@ export default async function KPIStrategis() {
 
           <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto">
             {evals.length === 0 ? (
-              <div className="p-8 text-center">
-                <Star size={32} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-xs text-slate-400">Belum ada evaluasi KPI.</p>
-              </div>
+              <EmptyState icon={Star} title="Belum ada evaluasi KPI." />
             ) : (
               evals
                 .filter((e) => e.score != null)

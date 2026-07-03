@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { Users, UserCheck, Shield, AlertTriangle, Crown, Plus } from "lucide-react";
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 
 export default async function HRDSuccession() {
   const { data: employees } = await supabaseAdmin
@@ -106,11 +107,12 @@ export default async function HRDSuccession() {
         </div>
 
         {positions.length === 0 ? (
-          <div className="p-12 text-center">
-            <Users size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada data karyawan.</p>
-            <p className="text-xs text-slate-400 mt-1">Tambahkan karyawan di menu Data Karyawan untuk melihat succession planning.</p>
-          </div>
+          <EmptyState
+            icon={Users}
+            title="Belum ada data karyawan."
+            description="Tambahkan karyawan di menu Data Karyawan untuk melihat succession planning."
+            action={{ label: "Tambah Karyawan", href: "/hrd/employees/new" }}
+          />
         ) : (
           <div className="divide-y divide-slate-50">
             {positions.map((pos) => {

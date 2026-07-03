@@ -87,10 +87,25 @@ export default function ContractsClient({ employees: initialEmployees, contracts
     const r = getRemainingDays(date);
     return r > 0 && r <= 30;
   }).length;
+  const upcomingCount = employees.filter((e) => {
+    const { date } = getContractEndDate(e);
+    const r = getRemainingDays(date);
+    return r > 30 && r <= 60;
+  }).length;
   const expiredCount = employees.filter((e) => {
     const { date } = getContractEndDate(e);
     return getRemainingDays(date) <= 0;
   }).length;
+
+  // Kontrak yang akan berakhir dalam 60 hari ke depan (termasuk yang sudah lewat),
+  // diurutkan dari yang paling mendesak — dipakai untuk banner peringatan HRD.
+  const expiringSoon = employees
+    .map((e) => {
+      const { date, source } = getContractEndDate(e);
+      return { emp: e, date, source, remaining: getRemainingDays(date) };
+    })
+    .filter((x) => x.date && x.remaining <= 60)
+    .sort((a, b) => a.remaining - b.remaining);
 
   return (
     <div className="p-6 lg:p-8">
@@ -112,9 +127,10 @@ export default function ContractsClient({ employees: initialEmployees, contracts
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Karyawan Aktif", value: employees.length, icon: Users, color: "bg-blue-50 text-blue-600" },
+          { label: "Mendekati Berakhir (31-60 hari)", value: upcomingCount, icon: AlertTriangle, color: "bg-amber-50 text-amber-600" },
           { label: "Segera Berakhir (<30 hari)", value: warningCount, icon: AlertTriangle, color: "bg-orange-50 text-orange-600" },
           { label: "Sudah Berakhir", value: expiredCount, icon: Clock, color: "bg-red-50 text-red-600" },
         ].map((s) => (
@@ -129,6 +145,39 @@ export default function ContractsClient({ employees: initialEmployees, contracts
           </div>
         ))}
       </div>
+
+      {expiringSoon.length > 0 && (
+        <div className="bg-white rounded-2xl border border-orange-200 shadow-sm mb-6 overflow-hidden">
+          <div className="p-4 border-b border-orange-100 bg-orange-50/60 flex items-center gap-2.5">
+            <div className="p-2 bg-orange-100 text-orange-700 rounded-lg shrink-0">
+              <AlertTriangle size={16} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-orange-800 text-sm">Akan Berakhir &mdash; Perlu Tindakan</h3>
+              <p className="text-[11px] text-orange-700/80">Kontrak yang berakhir dalam 60 hari ke depan atau sudah lewat tenggat.</p>
+            </div>
+          </div>
+          <div className="divide-y divide-slate-50 max-h-72 overflow-y-auto">
+            {expiringSoon.map(({ emp, date, source, remaining }) => (
+              <div key={emp.id} className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50/40 transition-colors">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                  {emp.full_name?.charAt(0)?.toUpperCase() || "?"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-slate-800 truncate">{emp.full_name}</p>
+                  <p className="text-[10px] text-slate-400">
+                    {emp.department} &middot; Tenggat {new Date(date).toLocaleDateString("id-ID")}
+                    {source === "estimated" && <span className="italic"> (estimasi)</span>}
+                  </p>
+                </div>
+                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shrink-0 ${statusBadgeColor(remaining)}`}>
+                  {remaining <= 0 ? "Berakhir" : `${remaining} hari lagi`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">

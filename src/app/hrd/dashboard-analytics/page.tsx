@@ -3,6 +3,7 @@ import {
   BarChart3, Users, TrendingUp, Briefcase, CalendarCheck,
   DollarSign, Target, Activity, ArrowUp, FileText, Building2
 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function DashboardAnalytics() {
   const [
@@ -242,7 +243,7 @@ export default async function DashboardAnalytics() {
           </div>
           <div className="p-6 space-y-3">
             {Object.entries(statusDistribution).length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">Belum ada data.</p>
+              <EmptyState icon={Building2} title="Belum ada data." className="py-4" />
             ) : (
               Object.entries(statusDistribution).map(([status, count]) => {
                 const pct = activeEmployees && activeEmployees > 0 ? Math.round((count / activeEmployees) * 100) : 0;
@@ -276,7 +277,7 @@ export default async function DashboardAnalytics() {
           </div>
           <div className="p-6 space-y-3 max-h-[320px] overflow-y-auto">
             {Object.entries(deptDistribution).length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">Belum ada data.</p>
+              <EmptyState icon={Users} title="Belum ada data." className="py-4" />
             ) : (
               Object.entries(deptDistribution).sort(([, a], [, b]) => b - a).map(([dept, count]) => {
                 const pct = activeEmployees && activeEmployees > 0 ? Math.round((count / activeEmployees) * 100) : 0;
@@ -308,7 +309,7 @@ export default async function DashboardAnalytics() {
           </div>
           <div className="p-6 space-y-3">
             {(recentHires || []).length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">Belum ada data.</p>
+              <EmptyState icon={TrendingUp} title="Belum ada data." className="py-4" />
             ) : (
               (recentHires as Record<string, unknown>[]).map((emp, i) => (
                 <div key={(emp.id as string) || i} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50">

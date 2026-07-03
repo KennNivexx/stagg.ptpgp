@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUp, Plus, CheckCircle, XCircle, Clock } from "lucide-react";
 import { submitPromotion, updatePromotionStatus } from "@/app/actions/career-hrd";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
 type Promotion = Record<string, unknown>;
@@ -81,11 +82,11 @@ export default function PromotionsClient({ employees, initialPromotions }: Props
             <h3 className="font-extrabold text-slate-800 text-sm">Daftar Pengajuan Promosi</h3>
           </div>
           {promotions.length === 0 ? (
-            <div className="p-12 text-center">
-              <ArrowUp size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data promosi.</p>
-              <p className="text-xs text-slate-400 mt-1">Gunakan formulir di samping untuk mengajukan promosi.</p>
-            </div>
+            <EmptyState
+              icon={ArrowUp}
+              title="Belum ada data promosi."
+              description="Gunakan formulir di samping untuk mengajukan promosi."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

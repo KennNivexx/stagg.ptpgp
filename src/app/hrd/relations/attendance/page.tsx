@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Calendar, Clock, CheckCircle2, AlertCircle, UserCheck, UserX } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default function AttendancePage() {
   const [todayAttendance, setTodayAttendance] = useState<Record<string, unknown>[] | null>(null);
@@ -76,11 +77,11 @@ export default function AttendancePage() {
         </div>
 
         {!todayAttendance || todayAttendance.length === 0 ? (
-          <div className="p-12 text-center">
-            <Clock size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada data kehadiran untuk hari ini.</p>
-            <p className="text-xs text-slate-400 mt-1">Data akan muncul setelah karyawan melakukan check-in.</p>
-          </div>
+          <EmptyState
+            icon={Clock}
+            title="Belum ada data kehadiran untuk hari ini."
+            description="Data akan muncul setelah karyawan melakukan check-in."
+          />
         ) : (
           <div className="divide-y divide-slate-50">
             {todayAttendance.map((att: Record<string, unknown>) => {

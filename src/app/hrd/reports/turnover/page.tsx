@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, UserX, TrendingUp, AlertTriangle, Users } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function LaporanTurnover() {
   const { count: totalEmployees } = await supabaseAdmin
@@ -80,11 +81,11 @@ export default async function LaporanTurnover() {
           </div>
 
           {!resignedEmployees || resignedEmployees.length === 0 ? (
-            <div className="p-12 text-center">
-              <UserX size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada karyawan yang resign.</p>
-              <p className="text-xs text-slate-400 mt-1">Data akan muncul saat ada karyawan dengan status resign.</p>
-            </div>
+            <EmptyState
+              icon={UserX}
+              title="Belum ada karyawan yang resign."
+              description="Data akan muncul saat ada karyawan dengan status resign."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

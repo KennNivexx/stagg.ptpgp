@@ -12,6 +12,7 @@ export type AuditAction =
   | "applicant.convert"
   | "leave.status_change"
   | "org.add_unit"
+  | "org.add_department"
   | "org.update_unit"
   | "org.delete_unit"
   | "org.move_unit"

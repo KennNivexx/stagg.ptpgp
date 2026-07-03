@@ -1,11 +1,10 @@
 import { getMyApplicationData, getAllMyApplications } from "@/app/actions/applicant";
-import { CheckCircle2, Circle, Clock, XCircle, FileText, MessageSquare, Award, UserCheck } from "lucide-react";
+import { CheckCircle2, Circle, XCircle, FileText, MessageSquare, Award, UserCheck } from "lucide-react";
 
 const STAGES = [
   { key: "Menunggu Review", label: "Lamaran Diterima", desc: "Lamaran Anda berhasil dikirim dan menunggu ditinjau oleh tim HRD.", icon: FileText },
-  { key: "Direview", label: "Sedang Ditinjau", desc: "Tim HRD sedang meninjau CV dan dokumen lamaran Anda.", icon: Clock },
-  { key: "Tes", label: "Tahap Tes", desc: "Anda dipanggil untuk mengikuti tes tertulis atau psikotes.", icon: MessageSquare },
-  { key: "Wawancara", label: "Wawancara", desc: "Anda dijadwalkan untuk wawancara dengan tim HRD dan user.", icon: UserCheck },
+  { key: "Tes Tulis & Psikotes", label: "Tahap Tes", desc: "Anda dipanggil untuk mengikuti tes tertulis dan/atau psikotes. Silakan cek menu Tes Seleksi Online.", icon: MessageSquare },
+  { key: "Interview", label: "Wawancara", desc: "Anda dijadwalkan untuk wawancara dengan tim HRD dan user.", icon: UserCheck },
   { key: "Diterima", label: "Diterima", desc: "Selamat! Anda berhasil lolos seleksi dan akan bergabung bersama kami.", icon: Award },
 ];
 

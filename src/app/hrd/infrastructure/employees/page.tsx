@@ -1,8 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { Users, Download, Search } from "lucide-react";
+import { Users, Search } from "lucide-react";
 import Link from "next/link";
 import EmployeeFilter from "./EmployeeFilter";
 import EmployeeTable from "./EmployeeTable";
+import EmptyState from "@/components/EmptyState";
 
 export default async function DataIndukKaryawan({
   searchParams,
@@ -39,13 +40,9 @@ export default async function DataIndukKaryawan({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2530]">Data Induk Karyawan</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola data master seluruh karyawan perusahaan.</p>
+          <p className="text-sm text-gray-500 mt-1">Lihat data master seluruh karyawan perusahaan.</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-400 bg-slate-50 cursor-not-allowed inline-flex items-center gap-2" title="Segera tersedia">
-            <Download size={14} />
-            Ekspor
-          </span>
           <Link
             href="/hrd/employees/new"
             className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
@@ -68,21 +65,19 @@ export default async function DataIndukKaryawan({
       />
 
       {!employees || employees.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <Users size={48} className="mx-auto text-slate-300 mb-4" />
-          <h3 className="text-lg font-bold text-slate-800 mb-2">Belum ada data karyawan</h3>
-          <p className="text-sm text-slate-500 mb-6">Tambahkan karyawan pertama untuk memulai pengelolaan data HR.</p>
-          <Link href="/hrd/employees/new" className="bg-[#CC0000] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2">
-            + Tambah Karyawan
-          </Link>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="Belum ada data karyawan"
+          description="Tambahkan karyawan pertama untuk memulai pengelolaan data HR."
+          action={{ label: "+ Tambah Karyawan", href: "/hrd/employees/new" }}
+        />
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <Search size={48} className="mx-auto text-slate-300 mb-4" />
-          <h3 className="text-lg font-bold text-slate-800 mb-2">Tidak ada hasil</h3>
-          <p className="text-sm text-slate-500 mb-6">Tidak ada karyawan yang sesuai dengan filter yang dipilih.</p>
-          <a href="?" className="text-sm font-bold text-[#CC0000] hover:underline">Hapus semua filter</a>
-        </div>
+        <EmptyState
+          icon={Search}
+          title="Tidak ada hasil"
+          description="Tidak ada karyawan yang sesuai dengan filter yang dipilih."
+          action={{ label: "Hapus semua filter", href: "?" }}
+        />
       ) : (
         <EmployeeTable employees={filtered} />
       )}

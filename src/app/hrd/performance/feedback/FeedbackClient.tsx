@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MessageCircle, Star, Send, User, Clock } from "lucide-react";
 import { saveFeedback } from "@/app/actions/performance-hrd";
+import EmptyState from "@/components/EmptyState";
 
 interface Employee { id: string; full_name: string; department: string; }
 interface FeedbackEntry { id: string; employee_id: string; reviewer_name: string; category: string; rating: number; comment: string; created_at: string; employees?: { full_name: string; department: string; }; }
@@ -152,10 +153,7 @@ export default function FeedbackClient({
             <p className="text-xs text-slate-400 mt-0.5">Semua umpan balik yang telah diberikan</p>
           </div>
           {history.length === 0 ? (
-            <div className="p-12 text-center">
-              <MessageCircle size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada riwayat umpan balik.</p>
-            </div>
+            <EmptyState icon={MessageCircle} title="Belum ada riwayat umpan balik." />
           ) : (
             <div className="divide-y divide-slate-50">
               {history.map(fb => {

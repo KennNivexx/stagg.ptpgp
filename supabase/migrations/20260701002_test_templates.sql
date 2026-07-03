@@ -1,0 +1,1 @@
+-- Digabung ke 20260701001_recruitment_tests.sql

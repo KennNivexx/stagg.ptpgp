@@ -4,6 +4,7 @@ import {
   Briefcase, Award, Star, Activity, BarChart3,
   ArrowUp, ArrowDown, CheckCircle2, Clock, AlertCircle
 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function HRDDashboardKPI() {
   const [
@@ -20,9 +21,9 @@ export default async function HRDDashboardKPI() {
   ] = await Promise.all([
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("employees").select("id, full_name, department, position, status"),
-    supabaseAdmin.from("jobs").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("jobs").select("*", { count: "exact", head: true }).eq("status", "Open"),
-    supabaseAdmin.from("kpi_evaluations").select("score, status"),
+    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
+    supabaseAdmin.from("kpi_evaluations").select("score, status, employee_id"),
     supabaseAdmin.from("attendance").select("status, date"),
     supabaseAdmin.from("payroll").select("net_salary, allowances, deductions, status"),
     supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
@@ -274,7 +275,7 @@ export default async function HRDDashboardKPI() {
           </div>
           <div className="p-6 space-y-3">
             {(recentEvals || []).length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">Belum ada evaluasi.</p>
+              <EmptyState icon={Target} title="Belum ada evaluasi." className="py-4" />
             ) : (
               (recentEvals as Record<string, unknown>[]).map((ev, i) => {
                 const emp = ev.employees as Record<string, string> | undefined;

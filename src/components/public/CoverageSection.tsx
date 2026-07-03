@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { MapPin } from "lucide-react";
 
 interface CoverageItem {
@@ -44,7 +47,14 @@ export default function CoverageSection({
   const internasional = international?.length ? international : defaultInternational;
 
   return (
-    <section id="coverage" className="py-24 bg-zinc-50 text-pgp-navy overflow-hidden relative border-y border-zinc-200/40 scroll-mt-[72px]">
+    <motion.section
+      id="coverage"
+      className="py-24 bg-gradient-to-b from-white to-slate-50 text-pgp-navy overflow-hidden relative border-y border-zinc-200/40 scroll-mt-[72px]"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -87,7 +97,7 @@ export default function CoverageSection({
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }
 

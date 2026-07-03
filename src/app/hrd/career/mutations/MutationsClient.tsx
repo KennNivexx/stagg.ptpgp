@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftRight, Plus, CheckCircle, XCircle, Clock } from "lucide-react";
 import { submitMutation, updateMutationStatus } from "@/app/actions/career-hrd";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
 type Department = { name: string };
@@ -93,11 +94,11 @@ export default function MutationsClient({ employees, departments, initialMutatio
             <p className="text-xs text-slate-400 mt-0.5">Riwayat dan status pengajuan mutasi karyawan</p>
           </div>
           {mutations.length === 0 ? (
-            <div className="p-12 text-center">
-              <ArrowLeftRight size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data mutasi karyawan.</p>
-              <p className="text-xs text-slate-400 mt-1">Gunakan formulir di samping untuk mengajukan mutasi.</p>
-            </div>
+            <EmptyState
+              icon={ArrowLeftRight}
+              title="Belum ada data mutasi karyawan."
+              description="Gunakan formulir di samping untuk mengajukan mutasi."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { GraduationCap, BookOpen, Users, Calendar, Clock, CheckCircle2, Play, BarChart3 } from "lucide-react";
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 
 export default async function HRDLearning() {
   const [{ data: trainings }, { data: enrollments }] = await Promise.all([
@@ -94,15 +95,12 @@ export default async function HRDLearning() {
         </div>
 
         {trainingList.length === 0 ? (
-          <div className="p-12 text-center">
-            <GraduationCap size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada program pelatihan.</p>
-            <p className="text-xs text-slate-400 mt-1">Tambahkan program pertama di menu Program Pelatihan.</p>
-            <Link href="/hrd/learning/programs"
-              className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors">
-              <GraduationCap size={12} /> Tambah Program
-            </Link>
-          </div>
+          <EmptyState
+            icon={GraduationCap}
+            title="Belum ada program pelatihan."
+            description="Tambahkan program pertama di menu Program Pelatihan."
+            action={{ label: "Tambah Program", href: "/hrd/learning/programs" }}
+          />
         ) : (
           <div className="divide-y divide-slate-50">
             {recent.map((t) => (

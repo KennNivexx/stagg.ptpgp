@@ -144,25 +144,152 @@ export default function ThemeSettingsPage() {
             <h2 className="text-lg font-bold text-[#1A2530]">Pratinjau</h2>
           </div>
           <div className="p-6">
-            <div className="rounded-xl overflow-hidden border border-slate-100" style={{ backgroundColor: form.background }}>
+            <div
+              className="rounded-xl overflow-hidden border border-slate-100"
+              style={{ backgroundColor: form.background }}
+            >
+              {/* Mock header bar */}
+              <div
+                className="px-5 py-3 flex items-center justify-between"
+                style={{ backgroundColor: form.navy }}
+              >
+                <span className="text-white font-black text-sm tracking-wide">
+                  PGP
+                </span>
+                <div className="flex items-center gap-4">
+                  <span className="text-slate-300 text-[11px] font-semibold">
+                    Beranda
+                  </span>
+                  <span className="text-slate-300 text-[11px] font-semibold">
+                    Layanan
+                  </span>
+                  <button
+                    className="px-3 py-1.5 rounded-lg text-white text-[11px] font-bold"
+                    style={{ backgroundColor: form.primary }}
+                  >
+                    Hubungi Kami
+                  </button>
+                </div>
+              </div>
+
+              {/* Hero-ish dark block */}
               <div className="p-6" style={{ backgroundColor: form.navy }}>
                 <p className="text-white font-black text-lg">Judul Section</p>
-                <p className="text-slate-300 text-xs mt-1">Contoh teks di area gelap (navy).</p>
+                <p className="text-slate-300 text-xs mt-1">
+                  Contoh teks di area gelap (navy).
+                </p>
               </div>
-              <div className="p-6 space-y-4">
-                <p className="text-sm font-bold" style={{ color: form.navy }}>Contoh judul terang</p>
-                <p className="text-xs text-slate-500">Latar halaman memakai warna background yang dipilih.</p>
-                <div className="flex gap-2">
-                  <button className="px-4 py-2 rounded-lg text-white text-xs font-bold" style={{ backgroundColor: form.primary }}>
+
+              {/* Stats bar */}
+              <div
+                className="grid grid-cols-3 divide-x"
+                style={{ borderColor: "rgba(0,0,0,0.06)" }}
+              >
+                {[
+                  { label: "Klien", value: "150+" },
+                  { label: "Armada", value: "80+" },
+                  { label: "Tahun", value: "28+" },
+                ].map((s) => (
+                  <div key={s.label} className="p-4 text-center">
+                    <p
+                      className="text-lg font-extrabold"
+                      style={{ color: form.primary }}
+                    >
+                      {s.value}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">
+                      {s.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-6 space-y-5">
+                <p className="text-sm font-bold" style={{ color: form.navy }}>
+                  Contoh judul terang
+                </p>
+                <p className="text-xs text-slate-500">
+                  Latar halaman memakai warna background yang dipilih.
+                </p>
+
+                {/* Card component */}
+                <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
+                    style={{ backgroundColor: `${form.primary}1A`, color: form.primary }}
+                  >
+                    <Palette size={16} />
+                  </div>
+                  <p className="text-sm font-bold" style={{ color: form.navy }}>
+                    Contoh Kartu Layanan
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Deskripsi singkat layanan yang menampilkan aksen warna primer pada ikon.
+                  </p>
+                </div>
+
+                {/* Form input */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Contoh Input Form
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="Nama lengkap..."
+                    className="w-full border rounded-xl p-2.5 text-sm outline-none transition-colors"
+                    style={{ borderColor: `${form.primary}66` }}
+                  />
+                </div>
+
+                {/* Button variants */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="px-4 py-2 rounded-lg text-white text-xs font-bold"
+                    style={{ backgroundColor: form.primary }}
+                  >
                     Tombol Utama
                   </button>
-                  <span className="px-4 py-2 rounded-lg text-xs font-bold border" style={{ color: form.primary, borderColor: form.primary }}>
+                  <button
+                    className="px-4 py-2 rounded-lg text-xs font-bold border-2 bg-transparent"
+                    style={{ color: form.primary, borderColor: form.primary }}
+                  >
+                    Tombol Outline
+                  </button>
+                  <button
+                    className="px-4 py-2 rounded-lg text-xs font-bold bg-transparent"
+                    style={{ color: form.primary }}
+                  >
+                    Tombol Teks
+                  </button>
+                  <span
+                    className="px-4 py-2 rounded-lg text-xs font-bold border"
+                    style={{ color: form.primary, borderColor: form.primary }}
+                  >
                     Aksen
                   </span>
                 </div>
               </div>
+
+              {/* Footer strip */}
+              <div
+                className="px-6 py-4 flex items-center justify-between border-t"
+                style={{ backgroundColor: form.navy, borderColor: "rgba(255,255,255,0.08)" }}
+              >
+                <span className="text-slate-300 text-[10px]">
+                  © 2026 PT Pratama Galuh Perkasa
+                </span>
+                <span
+                  className="text-[10px] font-bold"
+                  style={{ color: form.primary }}
+                >
+                  Hubungi Kami
+                </span>
+              </div>
             </div>
-            <p className="text-[10px] text-gray-400 mt-3 text-center">Pratinjau kasar — buka halaman publik untuk hasil sebenarnya.</p>
+            <p className="text-[10px] text-gray-400 mt-3 text-center">
+              Pratinjau kasar — buka halaman publik untuk hasil sebenarnya.
+            </p>
           </div>
         </div>
       </div>

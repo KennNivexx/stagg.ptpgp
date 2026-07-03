@@ -3,6 +3,7 @@ import { FileText, DollarSign } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-guard";
 import PayslipActions from "./PayslipActions";
+import EmptyState from "@/components/EmptyState";
 
 export default async function EmployeePayslip() {
   let userEmail: string;
@@ -46,11 +47,11 @@ export default async function EmployeePayslip() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           {!payslips || payslips.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-              <FileText size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada slip gaji tersedia.</p>
-              <p className="text-xs text-slate-400 mt-1">Slip gaji akan muncul setelah diproses oleh HRD.</p>
-            </div>
+            <EmptyState
+              icon={FileText}
+              title="Belum ada slip gaji tersedia."
+              description="Slip gaji akan muncul setelah diproses oleh HRD."
+            />
           ) : (
             <div className="space-y-4">
               {payslips.map((slip: Record<string, unknown>) => (

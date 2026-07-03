@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { BookOpen, FileText, Download, Shield, File, Clipboard } from "lucide-react";
 import { requireAuth } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
+import EmptyState from "@/components/EmptyState";
 
 export default async function EmployeeDocuments() {
   let userEmail: string;
@@ -24,6 +25,7 @@ export default async function EmployeeDocuments() {
     const { data, error } = await supabaseAdmin
       .from("documents")
       .select("*")
+      .eq("visible_to_employee", true)
       .order("created_at", { ascending: false })
       .limit(100);
     if (error && !error.message.includes("Could not find the table")) {
@@ -111,13 +113,11 @@ export default async function EmployeeDocuments() {
           })}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
-          <BookOpen size={48} className="mx-auto text-slate-200 mb-4" />
-          <h3 className="text-lg font-bold text-slate-700 mb-2">Belum ada dokumen</h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto">
-            Dokumen perusahaan, SOP, kontrak kerja, dan kebijakan akan muncul di sini setelah diunggah oleh HRD.
-          </p>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title="Belum ada dokumen"
+          description="Dokumen perusahaan, SOP, kontrak kerja, dan kebijakan akan muncul di sini setelah diunggah oleh HRD."
+        />
       )}
     </div>
   );

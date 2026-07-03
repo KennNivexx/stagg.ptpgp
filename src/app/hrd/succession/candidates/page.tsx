@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Users, TrendingUp, Award, Star } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function KandidatSuksesor() {
   const { data: managers } = await supabaseAdmin
@@ -105,11 +106,11 @@ export default async function KandidatSuksesor() {
           </div>
 
           {candidates.length === 0 ? (
-            <div className="p-12 text-center">
-              <Star size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada kandidat suksesor teridentifikasi.</p>
-              <p className="text-xs text-slate-400 mt-1">Lakukan evaluasi KPI untuk mengidentifikasi kandidat potensial.</p>
-            </div>
+            <EmptyState
+              icon={Star}
+              title="Belum ada kandidat suksesor teridentifikasi."
+              description="Lakukan evaluasi KPI untuk mengidentifikasi kandidat potensial."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

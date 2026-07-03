@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Eye, Star } from "lucide-react";
 import { saveKpiEvaluation } from "@/app/actions/performance-hrd";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
 type KpiEval = Record<string, unknown>;
@@ -124,7 +125,7 @@ export default function KpiForm({ employees, evaluations }: Props) {
           </thead>
           <tbody className="divide-y divide-slate-50">
             {evaluations.length === 0 ? (
-              <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">Belum ada evaluasi KPI. Klik &quot;Buat Evaluasi Baru&quot; untuk mulai.</td></tr>
+              <tr><td colSpan={6}><EmptyState icon={Star} title={'Belum ada evaluasi KPI. Klik "Buat Evaluasi Baru" untuk mulai.'} /></td></tr>
             ) : evaluations.map((ev) => {
               const emp = ev.employees as Record<string, string> | undefined;
               const score = Number(ev.score) || 0;

@@ -19,6 +19,8 @@ import {
   BookOpen,
   TrendingUp,
   MessageCircle,
+  HelpCircle,
+  Briefcase,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
@@ -40,10 +42,12 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
     { href: "/employee/training", label: "Pelatihan", icon: GraduationCap },
     { href: "/employee/documents", label: "Dokumen & SOP", icon: BookOpen },
     { href: "/employee/kpi", label: "KPI & Performa", icon: TrendingUp },
+    { href: "/employee/jobdesc", label: "Deskripsi Pekerjaan", icon: Briefcase },
     { href: "/employee/career", label: "Pengembangan Karir", icon: TrendingUp },
     { href: "/employee/complaints", label: "Keluhan & Saran", icon: MessageCircle },
     { href: "/employee/warnings", label: "Surat Peringatan", icon: ShieldCheck },
     { href: "/employee/resignation", label: "Pengunduran Diri", icon: LogOut },
+    { href: "/employee/guides", label: "Bantuan & Panduan", icon: HelpCircle },
   ];
 
   return (
@@ -72,44 +76,45 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
 
       {/* Sidebar */}
       <aside className={`
-        w-72 bg-white border-r border-slate-200 flex flex-col fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out
+        w-72 lg:w-20 xl:w-72 bg-white border-r border-slate-200 flex flex-col fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out
         lg:translate-x-0 lg:static lg:h-screen
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
         {/* Brand Header */}
-        <div className="p-6 border-b border-slate-100 flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-red-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-red-600/10">
+        <div className="p-6 lg:px-3 xl:px-6 border-b border-slate-100 flex items-center gap-2.5 lg:justify-center xl:justify-start">
+          <div className="h-8 w-8 rounded-lg bg-red-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-red-600/10 shrink-0">
             P
           </div>
-          <div>
+          <div className="lg:hidden xl:block">
             <h1 className="text-base font-bold tracking-tight text-slate-900 leading-tight">PGP Portal</h1>
             <p className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Employee Workspace</p>
           </div>
         </div>
-        
+
         {/* Nav Items */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 lg:px-2 xl:px-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/employee" && pathname.startsWith(item.href));
             const Icon = item.icon;
 
             return (
-              <Link 
-                key={item.href} 
+              <Link
+                key={item.href}
                 href={item.href}
                 onClick={() => setIsSidebarOpen(false)}
+                title={item.label}
                 className={`
-                  flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-xs font-semibold group
-                  ${isActive 
-                    ? "bg-[#0F172A] text-white shadow-lg shadow-slate-900/15" 
+                  flex items-center gap-3 px-4 lg:px-0 xl:px-4 lg:justify-center xl:justify-start py-2.5 rounded-xl transition-all duration-200 text-xs font-semibold group
+                  ${isActive
+                    ? "bg-[#0F172A] text-white shadow-lg shadow-slate-900/15"
                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
                   }
                 `}
               >
-                <Icon size={16} className={`transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-900"}`} />
-                <span>{item.label}</span>
+                <Icon size={16} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-900"}`} />
+                <span className="lg:hidden xl:inline">{item.label}</span>
                 {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
                 )}
               </Link>
             );
@@ -117,20 +122,20 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
         </nav>
 
         {/* User Card & Logout */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-3 p-2 mb-3 rounded-xl bg-white border border-slate-100">
-            <div className="h-9 w-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+        <div className="p-4 lg:px-2 xl:px-4 border-t border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3 p-2 mb-3 rounded-xl bg-white border border-slate-100 lg:justify-center xl:justify-start">
+            <div className="h-9 w-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
               {clientUserName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 lg:hidden xl:block">
               <p className="text-xs font-bold text-slate-900 truncate">{clientUserName}</p>
               <p className="text-[10px] text-slate-400 truncate">{userRoleLabel}</p>
             </div>
           </div>
 
           <form action={logoutAction}>
-            <button className="flex items-center justify-center gap-2 px-3 py-2.5 w-full rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 transition-all text-xs font-bold border border-red-200/50 bg-white shadow-sm">
-              <LogOut size={14} /> Keluar Akun
+            <button title="Keluar Akun" className="flex items-center justify-center gap-2 px-3 py-2.5 w-full rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 transition-all text-xs font-bold border border-red-200/50 bg-white shadow-sm">
+              <LogOut size={14} className="shrink-0" /> <span className="lg:hidden xl:inline">Keluar Akun</span>
             </button>
           </form>
         </div>
@@ -141,9 +146,9 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
         {/* Header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 lg:px-8 z-30 shrink-0">
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 w-64 lg:w-80">
-              <Search size={16} className="text-slate-400" />
-              <span className="text-xs text-slate-400">Portal Karyawan</span>
+            <div className="hidden md:flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 w-64 lg:w-56 xl:w-80">
+              <Search size={16} className="text-slate-400 shrink-0" />
+              <span className="text-xs text-slate-400 truncate">Portal Karyawan</span>
             </div>
           </div>
 
@@ -152,15 +157,15 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
 
             <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-              <ShieldCheck size={14} className="text-emerald-500" />
-              <span>Sesi Karyawan Aktif</span>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 shrink-0">
+              <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
+              <span className="hidden sm:inline whitespace-nowrap">Sesi Karyawan Aktif</span>
             </div>
           </div>
         </header>
 
         {/* Page Content Container */}
-        <main id="main-content" className="flex-1 overflow-y-auto bg-[#F8FAFC]">
+        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden bg-[#F8FAFC]">
           {children}
         </main>
       </div>

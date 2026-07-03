@@ -183,9 +183,12 @@ export async function updateApplicationStatus(applicationId: string, status: str
     .eq("id", applicationId)
     .maybeSingle();
 
+  const updates: Record<string, unknown> = { status };
+  if (status === "Interview") updates.reached_interview = true;
+
   const { error } = await supabaseAdmin
     .from("applications")
-    .update({ status })
+    .update(updates)
     .eq("id", applicationId);
 
   if (error) {
@@ -258,6 +261,35 @@ export async function convertApplicantToEmployee(applicationId: string, formData
     }
   }
 
+  // Generate sequential org kode: try position → department name in org_units
+  let kode = "";
+  {
+    let orgUnitCode: string | null = null;
+    const { data: byPos } = await supabaseAdmin.from("org_units").select("code").eq("name", position).maybeSingle();
+    if (byPos) {
+      orgUnitCode = (byPos as { code: string }).code;
+    } else {
+      const { data: byDept } = await supabaseAdmin.from("org_units").select("code").eq("name", department).maybeSingle();
+      if (byDept) orgUnitCode = (byDept as { code: string }).code;
+    }
+    if (orgUnitCode) {
+      const segments = orgUnitCode.split(".");
+      const firstZero = segments.findIndex(s => Number(s) === 0);
+      if (firstZero >= 0) {
+        const prefix = segments.slice(0, firstZero).join(".");
+        const { data: existing } = await supabaseAdmin
+          .from("employees").select("kode").like("kode", `${prefix}.%`);
+        const maxSeq = ((existing || []) as { kode: string | null }[]).reduce((max, e) => {
+          if (!e.kode) return max;
+          const n = Number(e.kode.split(".")[firstZero] || 0);
+          return n > max ? n : max;
+        }, 0);
+        segments[firstZero] = String(maxSeq + 1);
+        kode = segments.join(".");
+      }
+    }
+  }
+
   const { error: empError } = await supabaseAdmin
     .from("employees")
     .insert([{
@@ -268,6 +300,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
       position,
       join_date,
       status,
+      ...(kode ? { kode } : {}),
     }]);
 
   if (empError) {
@@ -403,8 +436,6 @@ export async function updateEmployee(formData: FormData) {
   const id = formData.get("id") as string;
   const full_name = formData.get("full_name") as string;
   const email = formData.get("email") as string;
-  const phone = formData.get("phone") as string;
-  const address = formData.get("address") as string;
   const department = formData.get("department") as string;
   const position = formData.get("position") as string;
   const join_date = formData.get("join_date") as string;
@@ -416,7 +447,7 @@ export async function updateEmployee(formData: FormData) {
 
   const normalizedEmail = email.toLowerCase().trim();
 
-  // Get old employee data to know if email changed
+  // Get old employee data to know if email changed.
   const { data: oldEmp, error: fetchError } = await supabaseAdmin
     .from("employees")
     .select("email")
@@ -429,13 +460,15 @@ export async function updateEmployee(formData: FormData) {
 
   const oldEmail = (oldEmp.email as string).toLowerCase().trim();
 
+  // Personal/family data (phone, address, NIK, KTP details, emergency contact,
+  // etc.) is intentionally NOT accepted here — it's self-service only, filled
+  // by the employee via their own account after face registration. HRD can
+  // only view it (see infrastructure/employees), never overwrite it from here.
   const { error } = await supabaseAdmin
     .from("employees")
     .update({
       full_name,
       email: normalizedEmail,
-      phone,
-      address,
       department,
       position,
       join_date,
@@ -697,7 +730,11 @@ export async function submitApplication(formData: FormData) {
             .from("attendance-photos")
             .createSignedUrl(cvFilename, 7200);
           if (cvUrlData?.signedUrl) {
-            await supabaseAdmin.from("applications").update({ resume_url: cvUrlData.signedUrl }).eq("id", applicationId);
+            // Merge cv_url into the existing profile JSON instead of overwriting it
+            let merged: Record<string, unknown> = {};
+            try { merged = JSON.parse(profile_data) || {}; } catch { /* ignore */ }
+            merged.cv_url = cvUrlData.signedUrl;
+            await supabaseAdmin.from("applications").update({ resume_url: JSON.stringify(merged) }).eq("id", applicationId);
           }
         }
       } catch {
@@ -753,8 +790,8 @@ export async function submitApplication(formData: FormData) {
         accountCreated = true;
       }
     } else if (existingUser.role === "applicant") {
-      // Update application_id to the latest application
-      const { error: updateErr } = await supabaseAdmin.from("users").update({ application_id: applicationId }).eq("email", normalizedEmail);
+      // Update application_id and full_name to the latest application
+      const { error: updateErr } = await supabaseAdmin.from("users").update({ application_id: applicationId, full_name }).eq("email", normalizedEmail);
       if (updateErr) {
         console.error("Failed to update applicant user application_id:", updateErr);
       } else {
@@ -774,7 +811,7 @@ export async function submitApplication(formData: FormData) {
   let emailWarning: string | undefined;
   if (accountCreated && tempPassword) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://portal.ptpgp.co.id";
-    sendMail({
+    await sendMail({
       to: normalizedEmail,
       subject: "Akun Portal Pelamar Anda — PT Pratama Galuh Perkasa",
       html: emailApplicantLoginLink({
@@ -890,8 +927,19 @@ export async function getEmployeeById(id: string) {
     .select("*")
     .eq("id", id)
     .single();
-  if (error) return null;
-  return data;
+  if (error || !data) return null;
+
+  // When employees.address holds the legacy auth JSON blob, extract the real
+  // home address (if any) so the edit form shows a readable value instead of
+  // the raw JSON string.
+  const emp = data as Record<string, unknown>;
+  let displayAddress = emp.address as string || "";
+  try {
+    const parsed = JSON.parse(emp.address as string || "{}");
+    if (parsed.__auth__) displayAddress = parsed.home_address || "";
+  } catch { /* plain address, already correct */ }
+
+  return { ...emp, address: displayAddress };
 }
 
 export async function getEmployees(status?: string) {

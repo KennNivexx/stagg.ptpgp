@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, Plus, ExternalLink, Search } from "lucide-react";
 import { saveSop } from "@/app/actions/knowledge";
+import EmptyState from "@/components/EmptyState";
 
 type Sop = Record<string, unknown>;
 
@@ -118,10 +119,10 @@ export default function SopClient({ initialSops, categories }: Props) {
       )}
 
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <BookOpen size={40} className="mx-auto text-slate-300 mb-3" />
-          <p className="text-sm text-slate-500">{initialSops.length === 0 ? "Belum ada dokumen SOP." : "Tidak ada hasil yang cocok."}</p>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title={initialSops.length === 0 ? "Belum ada dokumen SOP." : "Tidak ada hasil yang cocok."}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((sop) => (

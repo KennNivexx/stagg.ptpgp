@@ -1,6 +1,7 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { BarChart3, ClipboardCheck, Star, TrendingUp, Award } from "lucide-react";
 import ReadinessForm from "./ReadinessForm";
+import EmptyState from "@/components/EmptyState";
 
 export default async function PenilaianKesiapan() {
   const { data: candidates } = await supabaseAdmin
@@ -141,10 +142,11 @@ export default async function PenilaianKesiapan() {
                 })}
               </div>
             ) : (
-              <div className="p-8 text-center">
-                <BarChart3 size={32} className="mx-auto text-slate-300 mb-3" />
-                <p className="text-xs text-slate-500">Belum ada riwayat penilaian.</p>
-              </div>
+              <EmptyState
+                icon={BarChart3}
+                title="Belum ada riwayat penilaian."
+                className="py-8"
+              />
             )}
           </div>
 

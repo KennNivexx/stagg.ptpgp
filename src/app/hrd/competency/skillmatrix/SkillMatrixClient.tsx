@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Users, Lightbulb, Search, Filter, CheckCircle, AlertTriangle } from "lucide-react";
 import PanduanLevel from "@/components/PanduanLevel";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; fullName: string; department: string; position: string };
 type Skill = { id: string; name: string; category: string };
@@ -148,10 +149,7 @@ export default function SkillMatrixClient({ employees, skills, cells }: Props) {
         </div>
 
         {filteredEmployees.length === 0 ? (
-          <div className="p-12 text-center">
-            <Users size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Tidak ada data karyawan yang cocok.</p>
-          </div>
+          <EmptyState icon={Users} title="Tidak ada data karyawan yang cocok." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

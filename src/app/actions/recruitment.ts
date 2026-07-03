@@ -73,9 +73,19 @@ export async function hireCandidate(formData: FormData) {
   const passwordHash = hashPassword(password);
   const oneTimeToken = generateOneTimeToken(normalizedEmail);
   const tokenExpires = new Date(Date.now() + 86400000).toISOString();
-  const authData = JSON.stringify({
-    __auth__: { password_hash: passwordHash, role: "employee" },
-  });
+
+  const { error: usersCheckError } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .limit(1);
+  const hasUsersTable = !usersCheckError || !usersCheckError.message.includes("Could not find the table");
+
+  // The address column stores the actual home address. Only when there's no
+  // `users` table to hold login credentials do we fall back to stashing the
+  // auth blob there (tryEmployeesAuth in auth.ts reads it in that case).
+  const addressValue = hasUsersTable
+    ? ""
+    : JSON.stringify({ __auth__: { password_hash: passwordHash, role: "employee" } });
 
   const { error: empError } = await supabaseAdmin
     .from("employees")
@@ -88,7 +98,7 @@ export async function hireCandidate(formData: FormData) {
         join_date: new Date().toISOString().split("T")[0],
         status: "Tetap",
         kode: kode || null,
-        address: authData,
+        address: addressValue,
       },
     ]);
 
@@ -96,11 +106,6 @@ export async function hireCandidate(formData: FormData) {
     return { error: empError.message };
   }
 
-  const { error: usersCheckError } = await supabaseAdmin
-    .from("users")
-    .select("id")
-    .limit(1);
-  const hasUsersTable = !usersCheckError || !usersCheckError.message.includes("Could not find the table");
   if (hasUsersTable) {
     // Upsert: if they had an applicant account, upgrade it; otherwise insert
     const { data: existingUser } = await supabaseAdmin
@@ -152,19 +157,25 @@ export async function hireCandidate(formData: FormData) {
   revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workforce/headcount");
 
-  // Send welcome email with employee credentials (non-fatal)
+  // Send welcome email with employee credentials
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://portal.ptpgp.co.id";
-  sendMail({
-    to: normalizedEmail,
-    subject: "Selamat! Anda Resmi Bergabung — PT Pratama Galuh Perkasa",
-    html: emailEmployeeLoginLink({
-      name: full_name,
-      email: normalizedEmail,
-      loginUrl: `${appUrl}/login/token?t=${oneTimeToken}`,
-    }),
-  }).catch(err => console.error("Failed to send employee credentials email:", err));
+  let emailWarning: string | undefined;
+  try {
+    await sendMail({
+      to: normalizedEmail,
+      subject: "Selamat! Anda Resmi Bergabung — PT Pratama Galuh Perkasa",
+      html: emailEmployeeLoginLink({
+        name: full_name,
+        email: normalizedEmail,
+        loginUrl: `${appUrl}/login/token?t=${oneTimeToken}`,
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to send employee credentials email:", err);
+    emailWarning = "Akun berhasil dibuat tetapi email kredensial gagal dikirim. Beritahu karyawan untuk login dengan email mereka.";
+  }
 
-  return { success: true };
+  return { success: true, password, ...(emailWarning ? { warning: emailWarning } : {}) };
 }
 
 // ── Reject applicant + set temp account expiry to 24h ──────────────────
@@ -227,5 +238,259 @@ export async function updateJobPostingStatus(id: string, status: string) {
   }
 
   revalidatePath("/hrd/recruitment");
+  return { success: true };
+}
+
+// ── Negosiasi Gaji ──────────────────────────────────────────────────────────
+
+export async function getCandidatesForNegotiation() {
+  await requireRole("hrd", "superadmin");
+  const { data, error } = await supabaseAdmin
+    .from("applications")
+    .select("id, full_name, email, position, department, offered_salary, salary_expectation, final_salary, negotiation_status, negotiation_notes, status")
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data || []).filter((a: Record<string, unknown>) =>
+    ["Wawancara", "Interview", "Lulus", "offered", "negotiating", "agreed"].includes(
+      (a.negotiation_status as string) !== "none" ? a.negotiation_status as string : a.status as string
+    )
+  );
+}
+
+export async function setOfferedSalary(applicationId: string, offeredSalary: number, notes: string) {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin
+    .from("applications")
+    .update({ offered_salary: offeredSalary, negotiation_status: "offered", negotiation_notes: notes || null })
+    .eq("id", applicationId);
+  if (error) return { error: error.message };
+  revalidatePath("/hrd/recruitment/negotiations");
+  return { success: true };
+}
+
+export async function finalizeNegotiation(applicationId: string, finalSalary: number, agreed: boolean) {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin
+    .from("applications")
+    .update({ final_salary: finalSalary || null, negotiation_status: agreed ? "agreed" : "rejected" })
+    .eq("id", applicationId);
+  if (error) return { error: error.message };
+  revalidatePath("/hrd/recruitment/negotiations");
+  return { success: true };
+}
+
+export async function getMyNegotiation() {
+  const session = await requireRole("applicant");
+  const { data: user } = await supabaseAdmin
+    .from("users").select("application_id").eq("email", session.email).maybeSingle();
+  if (!user?.application_id) return null;
+  const { data } = await supabaseAdmin
+    .from("applications")
+    .select("id, offered_salary, salary_expectation, final_salary, negotiation_status, negotiation_notes, position")
+    .eq("id", user.application_id).maybeSingle();
+  return data;
+}
+
+// ── Pipeline: get all applications with job info ────────────────────────────
+export async function getApplicationsForPipeline() {
+  await requireRole("hrd", "superadmin");
+  const { data: apps, error } = await supabaseAdmin
+    .from("applications")
+    .select("*")
+    .order("applied_at", { ascending: false })
+    .limit(500);
+  if (error) return { apps: [], jobs: {} as Record<string, { position: string; department: string }> };
+
+  const jobIds = [...new Set((apps || []).map((a: Record<string, unknown>) => a.job_id as string).filter(Boolean))];
+  const { data: jobs } = jobIds.length > 0
+    ? await supabaseAdmin.from("job_postings").select("id, position, department").in("id", jobIds)
+    : { data: [] };
+
+  const jobMap: Record<string, { position: string; department: string }> = {};
+  (jobs || []).forEach((j: Record<string, string>) => { jobMap[j.id] = { position: j.position, department: j.department }; });
+
+  return { apps: apps || [], jobs: jobMap };
+}
+
+// ── Pipeline: move application to new status ────────────────────────────────
+export async function moveApplicationStatus(applicationId: string, newStatus: string) {
+  await requireRole("hrd", "superadmin");
+  const updates: Record<string, unknown> = { status: newStatus };
+  if (newStatus === "Interview") updates.reached_interview = true;
+  const { error } = await supabaseAdmin
+    .from("applications")
+    .update(updates)
+    .eq("id", applicationId);
+  if (error) return { error: error.message };
+  revalidatePath("/hrd/recruitment/pipeline");
+  revalidatePath("/hrd/recruitment/decisions");
+  revalidatePath("/hrd/recruitment/interviews");
+  revalidatePath("/applicant/test");
+  return { success: true };
+}
+
+// ── Interview: schedule / update date, time, interviewer, location, notes ───
+export async function scheduleInterview(
+  applicationId: string,
+  payload: {
+    interview_date: string;
+    interview_time?: string;
+    interviewer?: string;
+    interview_location?: string;
+    interview_online_link?: string;
+    interview_notes?: string;
+  }
+) {
+  await requireRole("hrd", "superadmin");
+  if (!payload.interview_date) return { error: "Tanggal interview wajib diisi." };
+  const { error } = await supabaseAdmin
+    .from("applications")
+    .update({
+      interview_date: payload.interview_date,
+      interview_time: payload.interview_time || null,
+      interviewer: payload.interviewer || null,
+      interview_location: payload.interview_location || null,
+      interview_online_link: payload.interview_online_link || null,
+      interview_notes: payload.interview_notes || null,
+    })
+    .eq("id", applicationId);
+  if (error?.message?.includes("column")) {
+    return { error: "Jalankan migrasi 20260706001 terlebih dahulu." };
+  }
+  if (error) return { error: error.message };
+  revalidatePath("/hrd/recruitment/interviews");
+  return { success: true };
+}
+
+// ── Pipeline: hire candidate (creates employee record + sends email) ─────────
+export async function hireCandidateFromPipeline(applicationId: string) {
+  await requireRole("hrd", "superadmin");
+
+  const { data: app } = await supabaseAdmin
+    .from("applications").select("*").eq("id", applicationId).single();
+  if (!app) return { error: "Lamaran tidak ditemukan." };
+
+  const { data: job } = await supabaseAdmin
+    .from("job_postings").select("position, department").eq("id", app.job_id as string).single();
+
+  const fd = new FormData();
+  fd.set("job_posting_id", app.job_id as string);
+  fd.set("full_name", app.full_name as string);
+  fd.set("email", app.email as string);
+  fd.set("position", (job?.position as string) || (app.position as string) || "");
+  fd.set("department", (job?.department as string) || (app.department as string) || "");
+
+  // Mark as Diterima before creating employee
+  await supabaseAdmin.from("applications").update({ status: "Diterima" }).eq("id", applicationId);
+
+  return hireCandidate(fd);
+}
+
+// ── Talent Pool: add applicant ──────────────────────────────────────────────
+export async function addToTalentPool(applicationId: string, notes: string) {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin
+    .from("applications")
+    .update({
+      in_talent_pool: true,
+      talent_pool_notes: notes || "",
+      talent_pool_added_at: new Date().toISOString(),
+    })
+    .eq("id", applicationId);
+  if (error) return { error: error.message };
+  revalidatePath("/hrd/recruitment/talentpool");
+  revalidatePath("/hrd/recruitment/decisions");
+  return { success: true };
+}
+
+// ── Talent Pool: fetch all entries ─────────────────────────────────────────
+export async function getTalentPool() {
+  await requireRole("hrd", "superadmin");
+  const { data: apps, error } = await supabaseAdmin
+    .from("applications")
+    .select("*")
+    .eq("in_talent_pool", true)
+    .order("talent_pool_added_at", { ascending: false });
+  if (error) return [];
+
+  const jobIds = [...new Set((apps || []).map((a: Record<string, unknown>) => a.job_id as string).filter(Boolean))];
+  const { data: jobs } = jobIds.length > 0
+    ? await supabaseAdmin.from("job_postings").select("id, position, department").in("id", jobIds)
+    : { data: [] };
+
+  const jobMap: Record<string, { position: string; department: string }> = {};
+  (jobs || []).forEach((j: Record<string, string>) => { jobMap[j.id] = { position: j.position, department: j.department }; });
+
+  return (apps || []).map((a: Record<string, unknown>) => ({
+    ...a,
+    job: jobMap[a.job_id as string] || null,
+  }));
+}
+
+// ── Talent Pool: remove ─────────────────────────────────────────────────────
+export async function removeFromTalentPool(applicationId: string) {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin
+    .from("applications")
+    .update({ in_talent_pool: false, talent_pool_notes: "", talent_pool_added_at: null })
+    .eq("id", applicationId);
+  if (error) return { error: error.message };
+  revalidatePath("/hrd/recruitment/talentpool");
+  revalidatePath("/hrd/recruitment/decisions");
+  return { success: true };
+}
+
+// ── Keputusan Hiring: get all outcomes ──────────────────────────────────────
+export async function getHiringDecisions() {
+  await requireRole("hrd", "superadmin");
+  const { data: apps, error } = await supabaseAdmin
+    .from("applications")
+    .select("*")
+    .in("status", ["Diterima", "Ditolak"])
+    .order("applied_at", { ascending: false });
+  if (error) return { diterima: [], ditolak: [], talentPool: [] };
+
+  const allApps = apps || [];
+  const jobIds = [...new Set(allApps.map((a: Record<string, unknown>) => a.job_id as string).filter(Boolean))];
+  const { data: jobs } = jobIds.length > 0
+    ? await supabaseAdmin.from("job_postings").select("id, position, department").in("id", jobIds)
+    : { data: [] };
+
+  const jobMap: Record<string, { position: string; department: string }> = {};
+  (jobs || []).forEach((j: Record<string, string>) => { jobMap[j.id] = { position: j.position, department: j.department }; });
+
+  const withJob = allApps.map((a: Record<string, unknown>) => ({
+    ...a,
+    job: jobMap[a.job_id as string] || null,
+  }));
+
+  return {
+    diterima: withJob.filter((a: Record<string, unknown>) => a.status === "Diterima"),
+    ditolak: withJob.filter((a: Record<string, unknown>) => a.status === "Ditolak" && !a.in_talent_pool),
+    talentPool: withJob.filter((a: Record<string, unknown>) => a.in_talent_pool === true),
+  };
+}
+
+export async function respondToOffer(response: "accepted" | "counter", counterSalary?: number) {
+  const session = await requireRole("applicant");
+  const { data: user } = await supabaseAdmin
+    .from("users").select("application_id").eq("email", session.email).maybeSingle();
+  if (!user?.application_id) return { error: "Lamaran tidak ditemukan." };
+
+  const updates: Record<string, unknown> = {};
+  if (response === "accepted") {
+    const { data: app } = await supabaseAdmin
+      .from("applications").select("offered_salary").eq("id", user.application_id).single();
+    updates.final_salary = app?.offered_salary;
+    updates.negotiation_status = "agreed";
+  } else {
+    updates.negotiation_status = "negotiating";
+    updates.salary_expectation = counterSalary || null;
+  }
+
+  const { error } = await supabaseAdmin
+    .from("applications").update(updates).eq("id", user.application_id);
+  if (error) return { error: error.message };
+  revalidatePath("/applicant/test");
   return { success: true };
 }

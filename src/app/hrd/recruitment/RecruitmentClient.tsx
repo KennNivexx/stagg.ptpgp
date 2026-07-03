@@ -3,10 +3,11 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
-  Briefcase, Users, CheckCircle2, XCircle, UserPlus, Search,
+  Briefcase, Users, CheckCircle2, XCircle, FileText, Search,
   AlertTriangle, X,
 } from "lucide-react";
 import { getJobPostings } from "@/app/actions/recruitment";
+import EmptyState from "@/components/EmptyState";
 
 interface JobPosting {
   id: string;
@@ -141,17 +142,17 @@ export default function RecruitmentClient({ totalEmployees }: Props) {
           <p className="text-sm text-slate-400">Memuat data...</p>
         </div>
       ) : postings.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <Briefcase size={40} className="mx-auto text-slate-300 mb-4" />
-          <p className="text-sm text-slate-500 font-bold">Belum ada data lowongan.</p>
-          <p className="text-xs text-slate-400 mt-1">Lowongan akan muncul di sini setelah ditambahkan.</p>
-        </div>
+        <EmptyState
+          icon={Briefcase}
+          title="Belum ada data lowongan."
+          description="Lowongan akan muncul di sini setelah ditambahkan."
+        />
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <Search size={40} className="mx-auto text-slate-300 mb-4" />
-          <p className="text-sm text-slate-500 font-bold">Tidak ada lowongan yang sesuai filter.</p>
-          <p className="text-xs text-slate-400 mt-1">Ubah filter untuk melihat hasil lainnya.</p>
-        </div>
+        <EmptyState
+          icon={Search}
+          title="Tidak ada lowongan yang sesuai filter."
+          description="Ubah filter untuk melihat hasil lainnya."
+        />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -189,16 +190,12 @@ export default function RecruitmentClient({ totalEmployees }: Props) {
                       <span className="text-xs text-slate-500">{formatDate(p.created_at)}</span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      {p.status === "Open" ? (
-                        <Link
-                          href={`/hrd/recruitment/${p.id}/hire`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#CC0000] text-white text-xs font-bold rounded-lg hover:bg-[#aa0000] transition-colors"
-                        >
-                          <UserPlus size={12} /> Hire
-                        </Link>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
+                      <Link
+                        href={`/hrd/recruitment/pipeline?job=${p.id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors"
+                      >
+                        <FileText size={12} /> Detail
+                      </Link>
                     </td>
                   </tr>
                 ))}

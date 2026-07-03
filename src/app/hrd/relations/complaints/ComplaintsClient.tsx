@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MessageCircle, Clock, Search, CheckCircle2, AlertTriangle } from "lucide-react";
 import { submitComplaint, updateComplaintStatus } from "@/app/actions/relations";
+import EmptyState from "@/components/EmptyState";
 
 const CATEGORIES = ["Tempat Kerja", "Pelecehan", "Diskriminasi", "Keselamatan", "Lainnya"];
 const STATUSES = ["Diajukan", "Diselidiki", "Selesai"];
@@ -112,10 +113,11 @@ export default function ComplaintsClient({
             <p className="text-xs text-slate-400 mt-0.5">Semua pengaduan karyawan</p>
           </div>
           {complaints.length === 0 ? (
-            <div className="p-12 text-center">
-              <MessageCircle size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada keluhan tercatat.</p>
-            </div>
+            <EmptyState
+              icon={MessageCircle}
+              title="Belum ada keluhan tercatat."
+              className="border-none"
+            />
           ) : (
             <div className="divide-y divide-slate-50">
               {complaints.map(c => (

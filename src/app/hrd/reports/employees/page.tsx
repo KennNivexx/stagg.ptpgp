@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, Users, TrendingUp, UserPlus, UserX, Building2 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function LaporanKaryawan() {
   const { data: employees } = await supabaseAdmin
@@ -104,10 +105,7 @@ export default async function LaporanKaryawan() {
             </div>
           </div>
           {Object.keys(deptCounts).length === 0 ? (
-            <div className="p-12 text-center">
-              <Building2 size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data departemen.</p>
-            </div>
+            <EmptyState icon={Building2} title="Belum ada data departemen." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

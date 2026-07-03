@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, ExternalLink, Calendar, Building2, Plus } from "lucide-react";
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 
 export default async function WorkInstructions() {
   const { data: docs } = await supabaseAdmin
@@ -80,15 +81,12 @@ export default async function WorkInstructions() {
         </div>
 
         {allDocs.length === 0 ? (
-          <div className="p-12 text-center">
-            <FileText size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada dokumen instruksi kerja.</p>
-            <p className="text-xs text-slate-400 mt-1">Tambahkan dokumen melalui menu Kelola SOP.</p>
-            <Link href="/hrd/knowledge/sop"
-              className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors">
-              <Plus size={12} /> Tambah Dokumen
-            </Link>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="Belum ada dokumen instruksi kerja."
+            description="Tambahkan dokumen melalui menu Kelola SOP."
+            action={{ label: "Tambah Dokumen", href: "/hrd/knowledge/sop" }}
+          />
         ) : (
           <div className="divide-y divide-slate-50">
             {allDocs.map((doc) => (

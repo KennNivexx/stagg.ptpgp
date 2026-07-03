@@ -46,7 +46,7 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
         <div className="flex justify-between items-center h-full">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="https://stag.ptpgp.co.id/web/image/website/1/logo/PRATAMA%20GALUH%20PERKASA?unique=af2b0b3" alt={companyName || "PT Pratama Galuh Perkasa"} width={56} height={56} className="h-14 w-auto" priority />
+              <Image src="/images/logo.png" alt={companyName || "PT Pratama Galuh Perkasa"} width={56} height={56} className="h-14 w-auto" priority />
             </Link>
           </div>
           

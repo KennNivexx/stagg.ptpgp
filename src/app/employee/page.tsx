@@ -1,20 +1,23 @@
-import { 
-  Clock, 
-  Calendar, 
-  Download, 
-  MapPin, 
-  Coffee, 
-  FileText, 
-  CheckCircle2, 
-  Megaphone, 
-  CalendarDays, 
+import {
+  Clock,
+  Calendar,
+  Download,
+  MapPin,
+  Coffee,
+  FileText,
+  CheckCircle2,
+  CalendarDays,
   ChevronRight,
-  EyeOff,
-  UserCheck
+  UserCheck,
+  AlertTriangle,
+  Activity,
+  GraduationCap,
+  PlaneTakeoff,
 } from "lucide-react";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth-guard";
+import EmptyState from "@/components/EmptyState";
 
 export default async function EmployeeDashboard() {
   const user = await requireAuth();
@@ -59,6 +62,87 @@ export default async function EmployeeDashboard() {
       .order("created_at", { ascending: false })
       .limit(1);
     lastPayroll = data?.[0] || null;
+  }
+
+  // ── C1: today's check-in status ──────────────────────────────────────────
+  const todayStr = new Date().toISOString().split("T")[0];
+  let todayAttendance: Record<string, unknown> | null = null;
+  if (employeeId) {
+    const { data } = await supabaseAdmin
+      .from("attendance")
+      .select("check_in, check_out, status")
+      .eq("employee_id", employeeId)
+      .eq("date", todayStr)
+      .maybeSingle();
+    todayAttendance = data || null;
+  }
+  const checkInTime = todayAttendance?.check_in
+    ? new Date(todayAttendance.check_in as string).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+    : null;
+  const isLate = todayAttendance?.status === "Late" || todayAttendance?.status === "Terlambat";
+
+  // ── C2 & C3: recent activity + upcoming events (7 days ahead) ────────────
+  type ActivityItem = { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; date: string; color: string };
+  type EventItem = { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; date: string; color: string };
+
+  const recentActivity: ActivityItem[] = [];
+  const upcomingEvents: EventItem[] = [];
+
+  if (employeeId) {
+    const in7Days = new Date();
+    in7Days.setDate(in7Days.getDate() + 7);
+    const in7DaysStr = in7Days.toISOString().split("T")[0];
+
+    const [{ data: recentAttendance }, { data: recentLeaves }, { data: myEnrollments }] = await Promise.all([
+      supabaseAdmin.from("attendance").select("date, check_in, status").eq("employee_id", employeeId).order("date", { ascending: false }).limit(5),
+      supabaseAdmin.from("leave_requests").select("type, start_date, end_date, status, created_at").eq("employee_id", employeeId).order("created_at", { ascending: false }).limit(5),
+      supabaseAdmin.from("training_enrollments").select("training_id, status, trainings(title, date_start, date_end)").eq("employee_id", employeeId),
+    ]);
+
+    (recentAttendance || []).forEach((a) => {
+      if (!a.check_in) return;
+      recentActivity.push({
+        icon: Clock,
+        label: `Check-in pukul ${new Date(a.check_in as string).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`,
+        date: a.date as string,
+        color: "text-emerald-600",
+      });
+    });
+
+    (recentLeaves || []).forEach((l) => {
+      recentActivity.push({
+        icon: Coffee,
+        label: `Pengajuan ${l.type} — ${l.status}`,
+        date: (l.created_at as string).split("T")[0],
+        color: l.status === "Disetujui" ? "text-emerald-600" : l.status === "Ditolak" ? "text-red-600" : "text-amber-600",
+      });
+
+      // Approved leave starting within the next 7 days
+      if (l.status === "Disetujui" && l.start_date && (l.start_date as string) >= todayStr && (l.start_date as string) <= in7DaysStr) {
+        upcomingEvents.push({
+          icon: PlaneTakeoff,
+          label: `Cuti ${l.type} dimulai`,
+          date: l.start_date as string,
+          color: "text-blue-600",
+        });
+      }
+    });
+
+    (myEnrollments || []).forEach((e) => {
+      const training = e.trainings as unknown as { title: string; date_start: string; date_end: string } | null;
+      if (!training?.date_start) return;
+      if (training.date_start >= todayStr && training.date_start <= in7DaysStr) {
+        upcomingEvents.push({
+          icon: GraduationCap,
+          label: `Training: ${training.title}`,
+          date: training.date_start,
+          color: "text-purple-600",
+        });
+      }
+    });
+
+    recentActivity.sort((a, b) => (a.date < b.date ? 1 : -1));
+    upcomingEvents.sort((a, b) => (a.date > b.date ? 1 : -1));
   }
 
   const annualLeaveRemaining = annualLeaveTotal - annualLeaveUsed;
@@ -108,15 +192,24 @@ export default async function EmployeeDashboard() {
               <div>
                 <h3 className="font-extrabold text-slate-800 text-base">Presensi Harian Anda</h3>
                 <p className="text-xs text-slate-400 mt-0.5">Jadwal Masuk: 08:00 WIB</p>
-                <div className="flex items-center gap-1.5 mt-2 text-red-600 bg-red-50 px-2.5 py-1 rounded-lg w-fit text-[11px] font-bold">
-                  <MapPin size={12} />
-                  <span>Belum Check-in</span>
-                </div>
+                {checkInTime ? (
+                  <div className={`flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg w-fit text-[11px] font-bold ${
+                    isLate ? "text-amber-600 bg-amber-50" : "text-emerald-600 bg-emerald-50"
+                  }`}>
+                    {isLate ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} />}
+                    <span>{isLate ? `Terlambat — ${checkInTime}` : `Sudah Check-in — ${checkInTime}`}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 mt-2 text-red-600 bg-red-50 px-2.5 py-1 rounded-lg w-fit text-[11px] font-bold">
+                    <MapPin size={12} />
+                    <span>Belum Check-in</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <Link href="/employee/attendance" className="w-full md:w-auto bg-[#0F172A] hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold text-xs transition-all shadow-md shadow-slate-900/10 active:scale-95">
-                Check-in Sekarang
+                {checkInTime ? "Lihat Absensi" : "Check-in Sekarang"}
               </Link>
             </div>
           </div>
@@ -187,19 +280,65 @@ export default async function EmployeeDashboard() {
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <Megaphone size={18} className="text-red-500" />
-                <h3 className="font-extrabold text-slate-800">Pengumuman Internal</h3>
+                <Activity size={18} className="text-red-500" />
+                <h3 className="font-extrabold text-slate-800">Aktivitas Terbaru</h3>
               </div>
             </div>
-            <div className="text-center py-10">
-              <Megaphone size={36} className="mx-auto text-slate-200 mb-3" />
-              <p className="text-sm text-slate-400">Belum ada pengumuman terbaru.</p>
-              <p className="text-xs text-slate-300 mt-1">HRD akan mengirimkan pengumuman penting di sini.</p>
-            </div>
+            {recentActivity.length === 0 ? (
+              <EmptyState icon={Activity} title="Belum ada aktivitas terbaru." description="Riwayat absensi dan cuti Anda akan muncul di sini." className="border-none py-8" />
+            ) : (
+              <div className="space-y-1">
+                {recentActivity.slice(0, 6).map((act, i) => {
+                  const Icon = act.icon;
+                  return (
+                    <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0">
+                      <span className={`p-1.5 rounded-lg bg-slate-50 shrink-0 ${act.color}`}>
+                        <Icon size={13} />
+                      </span>
+                      <span className="text-xs text-slate-600 flex-1">{act.label}</span>
+                      <span className="text-[10px] text-slate-400 shrink-0">
+                        {new Date(act.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="space-y-8">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <CalendarDays size={18} className="text-red-500" />
+                <h3 className="font-extrabold text-slate-800">Agenda 7 Hari ke Depan</h3>
+              </div>
+            </div>
+            {upcomingEvents.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">Tidak ada agenda dalam 7 hari ke depan.</p>
+            ) : (
+              <div className="space-y-2">
+                {upcomingEvents.map((ev, i) => {
+                  const Icon = ev.icon;
+                  return (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                      <span className={`p-1.5 rounded-lg bg-white shrink-0 ${ev.color}`}>
+                        <Icon size={14} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-slate-700 truncate">{ev.label}</p>
+                        <p className="text-[10px] text-slate-400">
+                          {new Date(ev.date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">

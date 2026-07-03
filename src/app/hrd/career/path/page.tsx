@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { TrendingUp, ArrowUp, Briefcase, Building } from "lucide-react";
 import CareerPathForm from "./CareerPathForm";
+import EmptyState from "@/components/EmptyState";
 
 export default async function CareerPathPage() {
   const { data: departments } = await supabaseAdmin
@@ -92,11 +93,12 @@ export default async function CareerPathPage() {
 
       <div className="space-y-6">
         {careerPaths.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-            <Building size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada jalur karir yang terdefinisi.</p>
-            <p className="text-xs text-slate-400 mt-1">Tambahkan posisi di bagian Edit Jalur Karir di bawah.</p>
-          </div>
+          <EmptyState
+            icon={Building}
+            title="Belum ada jalur karir yang terdefinisi."
+            description="Tambahkan posisi di bagian Edit Jalur Karir di bawah."
+            action={{ label: "Edit Jalur Karir", href: "#career-path-form" }}
+          />
         ) : careerPaths.map((cp) => (
           <div key={cp.department} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">

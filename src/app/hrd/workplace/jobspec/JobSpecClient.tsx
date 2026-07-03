@@ -1,15 +1,47 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Plus, Award, Briefcase, Trash2, Edit3, X, GraduationCap, Wrench, ShieldCheck, AlertTriangle } from "lucide-react";
-import { getJobSpecs, saveJobSpec, deleteJobSpec } from "@/app/actions/jobspec";
-
-interface JobSpec {
-  id: string; position: string; department: string;
-  education: string; experience: string; skills: string[]; certifications: string[];
-}
+import { FileText, Plus, Briefcase, Trash2, Edit3, X, GraduationCap, Wrench, ShieldCheck, AlertTriangle, Building2 } from "lucide-react";
+import { getJobSpecs, saveJobSpec, deleteJobSpec, type JobSpec } from "@/app/actions/jobspec";
+import EmptyState from "@/components/EmptyState";
 
 interface Props { departments: string[]; positions: string[]; }
+
+/** Growable list input: add/remove/edit items one at a time. */
+function ListEditor({ label, items, setItems, placeholder }: {
+  label: string; items: string[]; setItems: (v: string[]) => void; placeholder: string;
+}) {
+  const update = (i: number, v: string) => setItems(items.map((it, idx) => idx === i ? v : it));
+  const remove = (i: number) => setItems(items.filter((_, idx) => idx !== i));
+  const add = () => setItems([...items, ""]);
+
+  return (
+    <div>
+      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">{label}</label>
+      <div className="space-y-2">
+        {items.length === 0 && (
+          <p className="text-xs text-slate-400 italic mb-1">Belum ada butir. Klik &ldquo;Tambah&rdquo; untuk menambahkan.</p>
+        )}
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-300 font-mono w-4 shrink-0">{i + 1}.</span>
+            <input
+              type="text" value={item} onChange={e => update(i, e.target.value)}
+              placeholder={placeholder}
+              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
+            <button type="button" onClick={() => remove(i)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors shrink-0">
+              <Trash2 size={13} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={add}
+        className="mt-2 flex items-center gap-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg transition-colors">
+        <Plus size={12} /> Tambah {label.toLowerCase()}
+      </button>
+    </div>
+  );
+}
 
 export default function JobSpecClient({ departments, positions }: Props) {
   const [data, setData] = useState<JobSpec[]>([]);
@@ -19,12 +51,13 @@ export default function JobSpecClient({ departments, positions }: Props) {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
 
+  const [fTitle, setFTitle] = useState("");
   const [fPos, setFPos] = useState("");
   const [fDept, setFDept] = useState("");
   const [fEdu, setFEdu] = useState("");
   const [fExp, setFExp] = useState("");
-  const [fSkills, setFSkills] = useState("");
-  const [fCert, setFCert] = useState("");
+  const [fSkills, setFSkills] = useState<string[]>([]);
+  const [fCert, setFCert] = useState<string[]>([]);
   const [fErr, setFErr] = useState("");
   const [fLoading, setFLoading] = useState(false);
 
@@ -32,21 +65,22 @@ export default function JobSpecClient({ departments, positions }: Props) {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
-  const openAdd = () => { setFPos(""); setFDept(""); setFEdu(""); setFExp(""); setFSkills(""); setFCert(""); setFErr(""); setModal("add"); setSelected(null); };
-  const openEdit = (d: JobSpec) => { setSelected(d); setFPos(d.position); setFDept(d.department); setFEdu(d.education); setFExp(d.experience); setFSkills(d.skills.join("\n")); setFCert(d.certifications.join("\n")); setFErr(""); setModal("edit"); };
+  const openAdd = () => { setFTitle(""); setFPos(""); setFDept(""); setFEdu(""); setFExp(""); setFSkills([]); setFCert([]); setFErr(""); setModal("add"); setSelected(null); };
+  const openEdit = (d: JobSpec) => { setSelected(d); setFTitle(d.title || ""); setFPos(d.position); setFDept(d.department); setFEdu(d.education); setFExp(d.experience); setFSkills([...d.skills]); setFCert([...d.certifications]); setFErr(""); setModal("edit"); };
   const closeM = () => setModal(null);
 
   const doSave = async () => {
-    if (!fPos.trim()) { setFErr("Posisi wajib diisi."); return; }
+    if (!fDept.trim()) { setFErr("Departemen wajib dipilih."); return; }
     setFLoading(true); setFErr("");
     const fd = new FormData();
     if (selected) fd.append("id", selected.id);
+    fd.append("title", fTitle.trim());
     fd.append("position", fPos.trim());
     fd.append("department", fDept);
     fd.append("education", fEdu);
     fd.append("experience", fExp);
-    fd.append("skills", fSkills);
-    fd.append("certifications", fCert);
+    fd.append("skills", JSON.stringify(fSkills.map(s => s.trim()).filter(Boolean)));
+    fd.append("certifications", JSON.stringify(fCert.map(s => s.trim()).filter(Boolean)));
     const r = await saveJobSpec(fd);
     setFLoading(false);
     if (r.error) { showToast(r.error); setFErr(r.error); return; }
@@ -65,7 +99,7 @@ export default function JobSpecClient({ departments, positions }: Props) {
   const filtered = data.filter(d => {
     if (!search.trim()) return true;
     const s = search.toLowerCase();
-    return d.position.toLowerCase().includes(s) || d.department.toLowerCase().includes(s);
+    return d.department.toLowerCase().includes(s) || (d.position || "").toLowerCase().includes(s) || (d.title || "").toLowerCase().includes(s);
   });
 
   return (
@@ -75,7 +109,7 @@ export default function JobSpecClient({ departments, positions }: Props) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Spesifikasi Pekerjaan</h1>
-          <p className="text-sm text-gray-500">Kelola spesifikasi, kualifikasi, pendidikan, dan keterampilan yang dibutuhkan per posisi.</p>
+          <p className="text-sm text-gray-500">Kelola spesifikasi, kualifikasi, pendidikan, dan keterampilan yang dibutuhkan per departemen. Satu departemen dapat memiliki beberapa spesifikasi.</p>
         </div>
         <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors">
           <Plus size={14} /> Tambah Spesifikasi
@@ -84,9 +118,9 @@ export default function JobSpecClient({ departments, positions }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: "Total Jabatan", value: positions.length, icon: <Award size={18} />, color: "bg-blue-50 text-blue-600" },
+          { label: "Total Departemen", value: departments.length, icon: <Building2 size={18} />, color: "bg-blue-50 text-blue-600" },
           { label: "Spesifikasi Tersimpan", value: data.length, icon: <FileText size={18} />, color: "bg-emerald-50 text-emerald-600" },
-          { label: "Belum Terspesifikasi", value: Math.max(positions.length - data.length, 0), icon: <AlertTriangle size={18} />, color: "bg-amber-50 text-amber-600" },
+          { label: "Belum Terspesifikasi", value: Math.max(departments.length - new Set(data.map(d => d.department)).size, 0), icon: <AlertTriangle size={18} />, color: "bg-amber-50 text-amber-600" },
         ].map(s => (
           <div key={s.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3">
@@ -98,36 +132,69 @@ export default function JobSpecClient({ departments, positions }: Props) {
       </div>
 
       <div className="relative max-w-sm">
-        <input type="text" placeholder="Cari posisi..." value={search} onChange={e => setSearch(e.target.value)}
+        <input type="text" placeholder="Cari departemen atau judul..." value={search} onChange={e => setSearch(e.target.value)}
           className="w-full pl-4 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-400/20" />
       </div>
 
       {loading ? (
         <div className="p-12 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000] mx-auto mb-4" /><p className="text-sm text-slate-400">Memuat...</p></div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center"><FileText size={40} className="mx-auto text-slate-300 mb-4" /><p className="text-sm text-slate-500">Belum ada spesifikasi pekerjaan.</p></div>
+        <EmptyState icon={FileText} title="Belum ada spesifikasi pekerjaan." />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filtered.map(d => (
-            <div key={d.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 group">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Award size={14} className="text-amber-500" />
-                    <h3 className="font-extrabold text-slate-800">{d.position}</h3>
+            <div key={d.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group flex flex-col">
+              <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Building2 size={14} className="text-blue-500 shrink-0" />
+                      <h3 className="font-extrabold text-slate-800 truncate">{d.department}</h3>
+                    </div>
+                    {d.title && <p className="text-xs font-semibold text-sky-700 mt-1">{d.title}</p>}
+                    {d.position && <span className="text-[10px] text-slate-400 block mt-0.5">Terkait posisi: {d.position}</span>}
                   </div>
-                  {d.department && <span className="text-[10px] text-slate-400">{d.department}</span>}
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEdit(d)} className="p-1 rounded hover:bg-sky-100 text-sky-600"><Edit3 size={14} /></button>
-                  <button onClick={() => doDelete(d.id)} className="p-1 rounded hover:bg-red-100 text-red-500"><Trash2 size={14} /></button>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button onClick={() => openEdit(d)} className="p-1.5 rounded-lg hover:bg-sky-100 text-sky-600"><Edit3 size={14} /></button>
+                    <button onClick={() => doDelete(d.id)} className="p-1.5 rounded-lg hover:bg-red-100 text-red-500"><Trash2 size={14} /></button>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-2 text-xs">
-                {d.education && <div className="flex items-center gap-2"><GraduationCap size={12} className="text-indigo-500 shrink-0" /><span className="text-slate-600">{d.education}</span></div>}
-                {d.experience && <div className="flex items-center gap-2"><Briefcase size={12} className="text-amber-500 shrink-0" /><span className="text-slate-600">{d.experience}</span></div>}
-                {d.skills.length > 0 && <div className="flex items-start gap-2"><Wrench size={12} className="text-blue-500 shrink-0 mt-0.5" /><span className="text-slate-600">{d.skills.slice(0, 4).join(", ")}{d.skills.length > 4 ? " ..." : ""}</span></div>}
-                {d.certifications.length > 0 && <div className="flex items-start gap-2"><ShieldCheck size={12} className="text-emerald-500 shrink-0 mt-0.5" /><span className="text-slate-600">{d.certifications.slice(0, 3).join(", ")}{d.certifications.length > 3 ? " ..." : ""}</span></div>}
+              <div className="p-5 space-y-3 flex-1">
+                <div className="grid grid-cols-2 gap-2">
+                  {d.education && (
+                    <div className="flex items-center gap-2 bg-indigo-50 rounded-lg px-3 py-2">
+                      <GraduationCap size={13} className="text-indigo-500 shrink-0" />
+                      <span className="text-xs font-semibold text-indigo-700 truncate">{d.education}</span>
+                    </div>
+                  )}
+                  {d.experience && (
+                    <div className="flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2">
+                      <Briefcase size={13} className="text-amber-500 shrink-0" />
+                      <span className="text-xs font-semibold text-amber-700 truncate">{d.experience}</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1.5"><Wrench size={12} /> Keterampilan</p>
+                  {d.skills.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {d.skills.map((s, i) => (
+                        <span key={i} className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-1">{s}</span>
+                      ))}
+                    </div>
+                  ) : <p className="text-xs text-slate-300 italic">Belum ada.</p>}
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1.5"><ShieldCheck size={12} /> Sertifikasi</p>
+                  {d.certifications.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {d.certifications.map((c, i) => (
+                        <span key={i} className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1">{c}</span>
+                      ))}
+                    </div>
+                  ) : <p className="text-xs text-slate-300 italic">Belum ada.</p>}
+                </div>
               </div>
             </div>
           ))}
@@ -135,31 +202,38 @@ export default function JobSpecClient({ departments, positions }: Props) {
       )}
 
       {modal && (
-        <div className="fixed inset-0 z-[9999] flex items-start justify-center p-6 pt-[8vh]" onClick={closeM}>
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center p-6 pt-[6vh]" onClick={closeM}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-slate-900 px-5 py-4 flex items-center justify-between">
+          <div className="relative z-10 w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[88vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-slate-900 px-5 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 {modal === "add" ? <Plus size={18} className="text-emerald-400" /> : <Edit3 size={18} className="text-sky-400" />}
-                <h3 className="text-white font-bold text-sm">{modal === "add" ? "Tambah Spesifikasi" : `Edit: ${selected?.position}`}</h3>
+                <h3 className="text-white font-bold text-sm">{modal === "add" ? "Tambah Spesifikasi Pekerjaan" : `Edit: ${selected?.department}`}</h3>
               </div>
               <button onClick={closeM} className="w-7 h-7 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center"><X size={14} className="text-white" /></button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Posisi *</label>
-                <select value={fPos} onChange={e => setFPos(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30">
-                  <option value="">Pilih Posisi</option>
-                  {positions.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Judul Spesifikasi (opsional)</label>
+                <input type="text" value={fTitle} onChange={e => setFTitle(e.target.value)}
+                  placeholder="Cth: Kualifikasi Umum / Kualifikasi Senior"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
+                <p className="text-[10px] text-slate-400 mt-1">Gunakan untuk membedakan beberapa spesifikasi pada departemen yang sama.</p>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Departemen</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Departemen *</label>
                 <select value={fDept} onChange={e => setFDept(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30">
                   <option value="">Pilih Departemen</option>
                   {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Posisi Terkait (opsional)</label>
+                <select value={fPos} onChange={e => setFPos(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30">
+                  <option value="">Tidak spesifik ke posisi tertentu</option>
+                  {positions.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               <div>
@@ -175,20 +249,10 @@ export default function JobSpecClient({ departments, positions }: Props) {
                 <input value={fExp} onChange={e => setFExp(e.target.value)} placeholder="Min. 2 tahun"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Keterampilan (1 per baris)</label>
-                <textarea value={fSkills} onChange={e => setFSkills(e.target.value)} rows={3}
-                  placeholder="Microsoft Excel&#10;Software Akuntansi&#10;Analisis Keuangan"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Sertifikasi (1 per baris)</label>
-                <textarea value={fCert} onChange={e => setFCert(e.target.value)} rows={3}
-                  placeholder="Brevet A & B&#10;Sertifikasi ISO"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
-              </div>
+              <ListEditor label="Keterampilan" items={fSkills} setItems={setFSkills} placeholder="Cth: Microsoft Excel" />
+              <ListEditor label="Sertifikasi" items={fCert} setItems={setFCert} placeholder="Cth: Brevet A & B" />
               {fErr && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5"><AlertTriangle size={14} className="text-red-500" /><p className="text-red-600 text-sm">{fErr}</p></div>}
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-1">
                 <button onClick={closeM} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold">Batal</button>
                 <button onClick={doSave} disabled={fLoading} className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold">{fLoading ? "Menyimpan..." : "Simpan"}</button>
               </div>

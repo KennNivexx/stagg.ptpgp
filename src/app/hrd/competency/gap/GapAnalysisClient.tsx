@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import PanduanLevel from "@/components/PanduanLevel";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = {
   id: string;
@@ -195,15 +196,10 @@ export default function GapAnalysisClient({
         </div>
 
         {filtered.length === 0 ? (
-          <div className="p-12 text-center">
-            <AlertTriangle
-              size={48}
-              className="mx-auto text-slate-300 mb-4"
-            />
-            <p className="text-sm text-slate-500">
-              Tidak ada data kesenjangan yang ditemukan.
-            </p>
-          </div>
+          <EmptyState
+            icon={AlertTriangle}
+            title="Tidak ada data kesenjangan yang ditemukan."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

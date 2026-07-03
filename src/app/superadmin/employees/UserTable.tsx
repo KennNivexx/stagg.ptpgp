@@ -1,8 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Key, Clock, AlertTriangle, CheckCircle2, Copy, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Mail,
+  Key,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  Copy,
+  X,
+  Search,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { resetUserPasswordByEmail } from "@/app/actions/hrd";
+
+const PAGE_SIZE = 20;
+
+type SortKey = "full_name" | "email" | "role" | "created_at";
+type SortDir = "asc" | "desc";
 
 function getRoleBadge(role: string) {
   const base = "px-2 py-1 rounded text-[11px] font-bold";
@@ -48,6 +67,97 @@ export function UserTable({ users }: { users: Record<string, unknown>[] }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
+
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = users;
+    if (q) {
+      list = users.filter((u) => {
+        const name = ((u.full_name as string) || "").toLowerCase();
+        const email = ((u.email as string) || "").toLowerCase();
+        return name.includes(q) || email.includes(q);
+      });
+    }
+
+    const sorted = [...list].sort((a, b) => {
+      let av: string | number = "";
+      let bv: string | number = "";
+      if (sortKey === "created_at") {
+        av = a.created_at ? new Date(a.created_at as string).getTime() : 0;
+        bv = b.created_at ? new Date(b.created_at as string).getTime() : 0;
+      } else {
+        av = ((a[sortKey] as string) || "").toLowerCase();
+        bv = ((b[sortKey] as string) || "").toLowerCase();
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [users, search, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedUsers = filteredUsers.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const pagedEmails = pagedUsers.map((u) => (u.email as string) || "");
+  const allPageSelected =
+    pagedEmails.length > 0 && pagedEmails.every((e) => selected.has(e));
+
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        pagedEmails.forEach((e) => next.delete(e));
+      } else {
+        pagedEmails.forEach((e) => next.add(e));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectOne = (email: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(email)) next.delete(email);
+      else next.add(email);
+      return next;
+    });
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const renderSortIcon = (col: SortKey) => {
+    if (sortKey !== col) return <ChevronsUpDown size={12} className="text-slate-300" />;
+    return sortDir === "asc" ? (
+      <ChevronUp size={12} className="text-amber-600" />
+    ) : (
+      <ChevronDown size={12} className="text-amber-600" />
+    );
+  };
 
   const handleReset = async (email: string, name: string) => {
     if (!confirm(`Reset password untuk "${name}" (${email})?\nPassword baru akan ditampilkan sekali.`)) return;
@@ -110,22 +220,65 @@ export function UserTable({ users }: { users: Record<string, unknown>[] }) {
         </div>
       )}
 
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div className="relative w-full sm:w-72">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Cari nama atau email..."
+            className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-colors"
+          />
+        </div>
+        {selected.size > 0 && (
+          <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            {selected.size} akun dipilih
+          </p>
+        )}
+      </div>
+
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
-                <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                <th className="text-left px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={toggleSelectAll}
+                    className="rounded border-slate-300 cursor-pointer"
+                    aria-label="Pilih semua"
+                  />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <button onClick={() => handleSort("full_name")} className="inline-flex items-center gap-1 cursor-pointer hover:text-slate-700">
+                    Nama {renderSortIcon("full_name")}
+                  </button>
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <button onClick={() => handleSort("email")} className="inline-flex items-center gap-1 cursor-pointer hover:text-slate-700">
+                    Email {renderSortIcon("email")}
+                  </button>
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <button onClick={() => handleSort("role")} className="inline-flex items-center gap-1 cursor-pointer hover:text-slate-700">
+                    Role {renderSortIcon("role")}
+                  </button>
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Akun</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Kedaluwarsa</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Dibuat</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <button onClick={() => handleSort("created_at")} className="inline-flex items-center gap-1 cursor-pointer hover:text-slate-700">
+                    Dibuat {renderSortIcon("created_at")}
+                  </button>
+                </th>
                 <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {users.map((u) => {
+              {pagedUsers.map((u) => {
                 const role = (u.role as string) || "employee";
                 const isTemp = (u.is_temporary as boolean) || false;
                 const expiresAt = (u.expires_at as string) || null;
@@ -135,6 +288,15 @@ export function UserTable({ users }: { users: Record<string, unknown>[] }) {
 
                 return (
                   <tr key={u.id as string} className="hover:bg-slate-50/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(email)}
+                        onChange={() => toggleSelectOne(email)}
+                        className="rounded border-slate-300 cursor-pointer"
+                        aria-label={`Pilih ${name}`}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-bold text-slate-800 text-sm">{name}</p>
                     </td>
@@ -185,18 +347,52 @@ export function UserTable({ users }: { users: Record<string, unknown>[] }) {
                   </tr>
                 );
               })}
+              {pagedUsers.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
+                    Tidak ada user yang cocok dengan pencarian.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
+        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/30 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-slate-500">
-            Total: <span className="font-bold text-slate-800">{users.length}</span> akun
+            Menampilkan{" "}
+            <span className="font-bold text-slate-800">
+              {filteredUsers.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}
+              –{Math.min(currentPage * PAGE_SIZE, filteredUsers.length)}
+            </span>{" "}
+            dari <span className="font-bold text-slate-800">{filteredUsers.length}</span>{" "}
+            {search ? `hasil (total ${users.length} akun)` : "akun"}
           </p>
-          <p className="text-[10px] text-slate-400">
-            Reset password menghasilkan password numerik 8 digit.
-          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              aria-label="Halaman sebelumnya"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-xs font-semibold text-slate-600">
+              Halaman {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              aria-label="Halaman berikutnya"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
         </div>
       </div>
+      <p className="text-[10px] text-slate-400 mt-2">
+        Reset password menghasilkan password numerik 8 digit.
+      </p>
     </>
   );
 }

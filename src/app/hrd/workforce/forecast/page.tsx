@@ -1,29 +1,46 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
-import { TrendingUp, Plus, Calendar, Users, Save } from "lucide-react";
+import { TrendingUp, Users } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
+import ForecastFormClient from "./ForecastFormClient";
 
-async function saveForecast(formData: FormData) {
-  "use server";
-  // Fitur akan segera tersedia
-}
+export const dynamic = "force-dynamic";
 
 const CURRENT_YEAR = 2026;
 const quarters = ["Q1", "Q2", "Q3", "Q4"];
-
-const SEED_FORECAST = [
-  { department: "Produksi", q1: 45, q2: 50, q3: 55, q4: 58 },
-  { department: "Finance", q1: 12, q2: 14, q3: 14, q4: 16 },
-  { department: "IT", q1: 20, q2: 25, q3: 28, q4: 30 },
-  { department: "Sales", q1: 18, q2: 22, q3: 25, q4: 28 },
-  { department: "HRD", q1: 8, q2: 9, q3: 10, q4: 10 },
-  { department: "Logistik", q1: 15, q2: 16, q3: 18, q4: 20 },
-  { department: "Marketing", q1: 10, q2: 12, q3: 14, q4: 15 },
-];
 
 export default async function ProyeksiKebutuhanSDM() {
   const { data: employees } = await supabaseAdmin
     .from("employees")
     .select("department")
     .neq("status", "Inactive");
+
+  const { data: departmentRows } = await supabaseAdmin
+    .from("departments")
+    .select("name")
+    .order("name");
+
+  const { data: forecastRows } = await supabaseAdmin
+    .from("department_forecasts")
+    .select("department, q1, q2, q3, q4")
+    .eq("year", CURRENT_YEAR);
+
+  const deptNames = (departmentRows || []).map((d: Record<string, unknown>) => d.name as string).filter(Boolean);
+  const forecastByDept = new Map(
+    (forecastRows || []).map((f: Record<string, unknown>) => [f.department as string, f])
+  );
+
+  // Every department appears in the table, even ones without a saved
+  // forecast yet — those simply show 0 instead of being hidden.
+  const forecastData = deptNames.map((department) => {
+    const f = forecastByDept.get(department) as Record<string, unknown> | undefined;
+    return {
+      department,
+      q1: Number(f?.q1) || 0,
+      q2: Number(f?.q2) || 0,
+      q3: Number(f?.q3) || 0,
+      q4: Number(f?.q4) || 0,
+    };
+  });
 
   const deptList = [...new Set((employees || []).map((e: Record<string, unknown>) => e.department as string).filter(Boolean))];
 
@@ -32,10 +49,10 @@ export default async function ProyeksiKebutuhanSDM() {
     current: (employees || []).filter((e: Record<string, unknown>) => e.department === name).length,
   }));
 
-  const totalQ1 = SEED_FORECAST.reduce((s, f) => s + f.q1, 0);
-  const totalQ2 = SEED_FORECAST.reduce((s, f) => s + f.q2, 0);
-  const totalQ3 = SEED_FORECAST.reduce((s, f) => s + f.q3, 0);
-  const totalQ4 = SEED_FORECAST.reduce((s, f) => s + f.q4, 0);
+  const totalQ1 = forecastData.reduce((s, f) => s + f.q1, 0);
+  const totalQ2 = forecastData.reduce((s, f) => s + f.q2, 0);
+  const totalQ3 = forecastData.reduce((s, f) => s + f.q3, 0);
+  const totalQ4 = forecastData.reduce((s, f) => s + f.q4, 0);
 
   const totalCurrent = currentHeadcount.reduce((s, d) => s + d.current, 0);
 
@@ -67,39 +84,7 @@ export default async function ProyeksiKebutuhanSDM() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <Plus size={16} className="text-[#CC0000]" />
-              <div>
-                <h3 className="font-extrabold text-slate-800 text-sm">Input Proyeksi</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Isi proyeksi per kuartal</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-6">
-            <form action={saveForecast} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Departemen</label>
-                <select name="departemen" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30">
-                  <option value="">Pilih Departemen</option>
-                  {SEED_FORECAST.map((f) => (
-                    <option key={f.department} value={f.department}>{f.department}</option>
-                  ))}
-                </select>
-              </div>
-              {quarters.map((q) => (
-                <div key={q}>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">{q} - {CURRENT_YEAR}</label>
-                  <input type="number" name={`proyeksi_${q.toLowerCase()}`} min="0" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/30" placeholder="Jumlah karyawan" />
-                </div>
-              ))}
-              <button type="submit" className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center justify-center gap-2">
-                <Save size={14} /> Simpan Proyeksi
-              </button>
-            </form>
-          </div>
-        </div>
+        <ForecastFormClient departments={deptNames} quarters={quarters} year={CURRENT_YEAR} />
 
         <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
           <div className="p-6 border-b border-slate-100">
@@ -125,16 +110,14 @@ export default async function ProyeksiKebutuhanSDM() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {SEED_FORECAST.length === 0 ? (
+                {forecastData.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-12 text-center">
-                      <TrendingUp size={40} className="mx-auto text-slate-300 mb-3" />
-                      <p className="text-sm text-slate-500">Belum ada data proyeksi.</p>
-                      <p className="text-xs text-slate-400 mt-1">Tambahkan proyeksi untuk setiap departemen.</p>
+                    <td colSpan={7} className="p-0">
+                      <EmptyState icon={TrendingUp} title="Belum ada data proyeksi." description="Tambahkan proyeksi untuk setiap departemen." />
                     </td>
                   </tr>
                 ) : (
-                  SEED_FORECAST.map((row) => {
+                  forecastData.map((row) => {
                     const vals = [row.q1, row.q2, row.q3, row.q4];
                     const total = vals.reduce((s, v) => s + v, 0);
                     const growth = row.q1 > 0 ? Math.round(((row.q4 - row.q1) / row.q1) * 100) : 0;

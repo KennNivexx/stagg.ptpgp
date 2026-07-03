@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { Building2, MapPin, Users, Clock, Briefcase, Settings } from "lucide-react";
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 
 export default async function HRDWorkplace() {
   const [{ data: locations }, { data: employees }, { data: shifts }] = await Promise.all([
@@ -80,7 +81,7 @@ export default async function HRDWorkplace() {
             </div>
           </div>
           {topDepts.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-400">Belum ada data karyawan.</div>
+            <EmptyState icon={Users} title="Belum ada data karyawan." className="border-none" />
           ) : (
             <div className="divide-y divide-slate-50">
               {topDepts.map(([dept, count]) => (
@@ -108,14 +109,12 @@ export default async function HRDWorkplace() {
             </div>
           </div>
           {shiftList.length === 0 ? (
-            <div className="p-8 text-center">
-              <Clock size={32} className="mx-auto text-slate-300 mb-3" />
-              <p className="text-sm text-slate-400">Belum ada shift terdaftar.</p>
-              <Link href="/hrd/infrastructure/shifts"
-                className="text-xs font-bold text-[#CC0000] hover:underline mt-2 inline-block">
-                Tambah shift →
-              </Link>
-            </div>
+            <EmptyState
+              icon={Clock}
+              title="Belum ada shift terdaftar."
+              action={{ label: "Tambah shift", href: "/hrd/infrastructure/shifts" }}
+              className="border-none"
+            />
           ) : (
             <div className="divide-y divide-slate-50">
               {shiftList.slice(0, 5).map((shift) => (

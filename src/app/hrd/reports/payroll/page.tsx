@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, DollarSign, TrendingUp, Users, Building2 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function LaporanPayroll() {
   const { data: payrolls } = await supabaseAdmin
@@ -90,11 +91,11 @@ export default async function LaporanPayroll() {
           </div>
 
           {!payrolls || payrolls.length === 0 ? (
-            <div className="p-12 text-center">
-              <DollarSign size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data payroll.</p>
-              <p className="text-xs text-slate-400 mt-1">Generate slip gaji untuk melihat laporan payroll.</p>
-            </div>
+            <EmptyState
+              icon={DollarSign}
+              title="Belum ada data payroll."
+              description="Generate slip gaji untuk melihat laporan payroll."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

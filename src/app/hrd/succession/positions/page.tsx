@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Shield, AlertTriangle, TrendingUp, Users } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function PosisiKritis() {
   const { data: managers } = await supabaseAdmin
@@ -90,11 +91,11 @@ export default async function PosisiKritis() {
           </div>
 
           {positions.length === 0 ? (
-            <div className="p-12 text-center">
-              <Shield size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada posisi kritis teridentifikasi.</p>
-              <p className="text-xs text-slate-400 mt-1">Posisi manajerial akan otomatis terdeteksi dari data karyawan.</p>
-            </div>
+            <EmptyState
+              icon={Shield}
+              title="Belum ada posisi kritis teridentifikasi."
+              description="Posisi manajerial akan otomatis terdeteksi dari data karyawan."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

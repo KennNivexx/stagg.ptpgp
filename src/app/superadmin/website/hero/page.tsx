@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Eye, Save, RefreshCw } from "lucide-react";
 import { getWebsiteSettings, saveWebsiteSettings } from "@/app/actions/settings";
+import { ImageUploadField } from "../_lib/ImageUploadField";
 
 export default function HeroSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -167,22 +168,14 @@ export default function HeroSettingsPage() {
                 placeholder="Deskripsi singkat layanan..."
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-2">
-                URL Gambar Latar (opsional)
-              </label>
-              <input
-                type="text"
-                name="hero_bg_image_url"
-                value={form.hero_bg_image_url}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-colors"
-                placeholder="https://example.com/bg.jpg"
-              />
-              <p className="text-[10px] text-gray-400 mt-1">
-                Biarkan kosong untuk menggunakan video YouTube default.
-              </p>
-            </div>
+            <ImageUploadField
+              label="Gambar Latar (opsional)"
+              value={form.hero_bg_image_url}
+              onChange={(url) => setForm({ ...form, hero_bg_image_url: url })}
+              folder="hero"
+              placeholder="https://example.com/bg.jpg"
+              hint="Biarkan kosong untuk menggunakan video YouTube default. Bisa isi URL atau unggah dari perangkat."
+            />
 
             <button
               onClick={handleSave}

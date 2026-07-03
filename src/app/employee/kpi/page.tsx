@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { Target, TrendingUp, Award, Star } from "lucide-react";
 import { requireAuth } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
+import EmptyState from "@/components/EmptyState";
 
 export default async function EmployeeKPI() {
   let userEmail: string;
@@ -78,11 +79,11 @@ export default async function EmployeeKPI() {
         </div>
 
         {!evaluations || evaluations.length === 0 ? (
-          <div className="p-12 text-center">
-            <Target size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada evaluasi KPI.</p>
-            <p className="text-xs text-slate-400 mt-1">Evaluasi akan muncul setelah dilakukan penilaian oleh HRD.</p>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="Belum ada evaluasi KPI."
+            description="Evaluasi akan muncul setelah dilakukan penilaian oleh HRD."
+          />
         ) : (
           <div className="divide-y divide-slate-50">
             {evaluations.map((ev: Record<string, unknown>) => {

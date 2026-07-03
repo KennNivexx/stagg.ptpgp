@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Plus, Star, Eye, X, Target, Users } from "lucide-react";
-import Link from "next/link";
 import { saveKpiEvaluation } from "@/app/actions/performance-hrd";
+import EmptyState from "@/components/EmptyState";
 
 interface Employee { id: string; full_name: string; department: string; position: string; }
 interface Evaluation { id: string; employee_id: string; period: string; score: number; status: string; employees?: { full_name: string; department: string; position: string; }; }
@@ -103,11 +103,7 @@ export default function KPIClient({ evaluations, employees, avgScore }: Props) {
             <p className="text-xs text-slate-400 mt-0.5">Penilaian KPI karyawan</p>
           </div>
           {evaluations.length === 0 ? (
-            <div className="p-12 text-center">
-              <Target size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data evaluasi KPI.</p>
-              <p className="text-xs text-slate-400 mt-1">Buat evaluasi baru untuk memulai penilaian kinerja.</p>
-            </div>
+            <EmptyState icon={Target} title="Belum ada data evaluasi KPI." description="Buat evaluasi baru untuk memulai penilaian kinerja." />
           ) : (
             <div className="divide-y divide-slate-50">
               {evaluations.map((ev) => {
@@ -153,13 +149,7 @@ export default function KPIClient({ evaluations, employees, avgScore }: Props) {
             <p className="text-xs text-slate-400 mt-0.5">Pilih karyawan untuk dinilai</p>
           </div>
           {employees.length === 0 ? (
-            <div className="p-12 text-center">
-              <Users size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada karyawan.</p>
-              <Link href="/hrd/employees/new" className="text-xs text-[#CC0000] font-bold hover:underline mt-2 inline-block">
-                + Tambah Karyawan
-              </Link>
-            </div>
+            <EmptyState icon={Users} title="Belum ada karyawan." action={{ label: "+ Tambah Karyawan", href: "/hrd/employees/new" }} />
           ) : (
             <div className="divide-y divide-slate-50 max-h-[500px] overflow-y-auto">
               {employees.map((emp) => (

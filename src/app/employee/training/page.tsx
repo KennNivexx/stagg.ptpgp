@@ -3,6 +3,7 @@ import { GraduationCap, Calendar, Award, BookOpen, Clock, CheckCircle } from "lu
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-guard";
 import TrainingRequestButton from "./TrainingRequestButton";
+import EmptyState from "@/components/EmptyState";
 
 export default async function EmployeeTraining() {
   let userEmail: string;
@@ -107,10 +108,12 @@ export default async function EmployeeTraining() {
             </div>
 
             {trainings.length === 0 ? (
-              <div className="p-10 text-center">
-                <GraduationCap size={40} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-sm text-slate-500">Belum ada pelatihan yang ditugaskan.</p>
-                <p className="text-xs text-slate-400 mt-1">HRD akan menugaskan pelatihan sesuai kebutuhan pengembangan Anda.</p>
+              <div className="p-10">
+                <EmptyState
+                  icon={GraduationCap}
+                  title="Belum ada pelatihan yang ditugaskan."
+                  description="HRD akan menugaskan pelatihan sesuai kebutuhan pengembangan Anda."
+                />
               </div>
             ) : (
               <div className="divide-y divide-slate-50">

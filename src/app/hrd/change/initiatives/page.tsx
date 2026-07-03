@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { RefreshCw, TrendingUp, Clock, CheckCircle2, Target } from "lucide-react";
 import InitiativesForm from "./InitiativesForm";
+import EmptyState from "@/components/EmptyState";
 
 export default async function InisiatifPerubahan() {
   const { data: managers } = await supabaseAdmin
@@ -77,11 +78,11 @@ export default async function InisiatifPerubahan() {
             <p className="text-xs text-slate-400 mt-0.5">Proyek perubahan organisasi</p>
           </div>
           {initiatives.length === 0 ? (
-            <div className="p-12 text-center">
-              <RefreshCw size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada inisiatif perubahan.</p>
-              <p className="text-xs text-slate-400 mt-1">Gunakan formulir di samping untuk menambahkan inisiatif baru.</p>
-            </div>
+            <EmptyState
+              icon={RefreshCw}
+              title="Belum ada inisiatif perubahan."
+              description="Gunakan formulir di samping untuk menambahkan inisiatif baru."
+            />
           ) : (
             <div className="divide-y divide-slate-50">
               {initiatives.map((ini) => (

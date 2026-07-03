@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, Search, Clock, User, Filter } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 function getModuleFromAction(action: string): string {
   if (action.startsWith("employee.")) return "Karyawan";
@@ -140,11 +141,11 @@ export default async function AuditLog() {
         </div>
 
         {auditEntries.length === 0 ? (
-          <div className="p-12 text-center">
-            <Search size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada aktivitas tercatat.</p>
-            <p className="text-xs text-slate-400 mt-1">Aktivitas akan muncul saat data dibuat atau diubah di sistem.</p>
-          </div>
+          <EmptyState
+            icon={Search}
+            title="Belum ada aktivitas tercatat."
+            description="Aktivitas akan muncul saat data dibuat atau diubah di sistem."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

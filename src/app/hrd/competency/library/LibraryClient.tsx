@@ -8,6 +8,7 @@ import {
   getDeptSkillList, saveDeptSkillList, getSkills, getPositionSkills,
 } from "@/app/actions/skills";
 import PanduanLevelForm from "./PanduanLevelForm";
+import EmptyState from "@/components/EmptyState";
 
 type Skill = { id: string; name: string; category: string; department?: string | null };
 type Position = { id: string; name: string; department: string; level?: string };
@@ -362,11 +363,11 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
           </div>
 
           {skills.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-              <Lightbulb size={48} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500 font-bold">Belum ada skill.</p>
-              <p className="text-xs text-slate-400 mt-1">Tambahkan skill untuk memulai katalog kompetensi.</p>
-            </div>
+            <EmptyState
+              icon={Lightbulb}
+              title="Belum ada skill."
+              description="Tambahkan skill untuk memulai katalog kompetensi."
+            />
           ) : (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               <table className="w-full">
@@ -483,11 +484,11 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                 </div>
 
                 {currentPosSkills.length === 0 ? (
-                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-                    <Layers size={48} className="mx-auto text-slate-300 mb-4" />
-                    <p className="text-sm text-slate-500 font-bold">Belum ada standar kompetensi untuk jabatan ini.</p>
-                    <p className="text-xs text-slate-400 mt-1">Klik &ldquo;Tambah Kompetensi&rdquo; untuk memulai.</p>
-                  </div>
+                  <EmptyState
+                    icon={Layers}
+                    title="Belum ada standar kompetensi untuk jabatan ini."
+                    description={"Klik “Tambah Kompetensi” untuk memulai."}
+                  />
                 ) : (
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                     <table className="w-full">
@@ -842,11 +843,11 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                 </div>
                 <div className="overflow-y-auto flex-1 p-2">
                   {modalFilteredSkills.length === 0 ? (
-                    <div className="p-8 text-center">
-                      <Layers size={40} className="mx-auto text-slate-300 mb-3" />
-                      <p className="text-sm font-bold text-slate-500">Tidak ada kompetensi tersedia.</p>
-                      <p className="text-xs text-slate-400 mt-1">Semua sudah ditambahkan atau tidak ada yang cocok dengan filter.</p>
-                    </div>
+                    <EmptyState
+                      icon={Layers}
+                      title="Tidak ada kompetensi tersedia."
+                      description="Semua sudah ditambahkan atau tidak ada yang cocok dengan filter."
+                    />
                   ) : (
                     <div className="space-y-1">
                       {modalFilteredSkills.map((s) => {

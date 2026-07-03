@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, ChevronDown, Edit3, PlusCircle, Trash2, User } from "lucide-react";
+import { ChevronRight, ChevronDown, Edit3, PlusCircle, Trash2, User, UserCheck } from "lucide-react";
 import type { OrgUnit } from "@/types/org";
 
 const LEVEL_COLORS: Record<number, string> = {
@@ -46,9 +46,37 @@ interface TreeNodeProps {
 
 function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(true);
-  const hasChildren = node.children && node.children.length > 0;
+  // Employee leaf nodes don't count toward sub-unit display
+  const unitChildren = node.children?.filter(c => !c.isEmployee) || [];
+  const empChildren = node.children?.filter(c => c.isEmployee) || [];
+  const hasChildren = unitChildren.length > 0;
   const members = countMembers(node);
 
+  // ── Employee leaf node ──────────────────────────────────────────────────────
+  if (node.isEmployee) {
+    return (
+      <div
+        className="flex items-center gap-2 py-1.5 rounded-lg transition-colors"
+        style={{ paddingLeft: `${depth * 24 + 12}px` }}
+      >
+        <div className="w-5 shrink-0 flex items-center justify-center">
+          <div className="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center">
+            <div className="w-1 h-1 rounded-full bg-emerald-500" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <UserCheck size={12} className="text-emerald-500 shrink-0" />
+          <span className="text-xs font-semibold text-slate-700 truncate">{node.name}</span>
+          {node.position && (
+            <span className="text-[10px] text-slate-400 truncate">{node.position}</span>
+          )}
+          <code className="text-[9px] text-slate-300 font-mono ml-auto shrink-0">{node.code}</code>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Org unit node ───────────────────────────────────────────────────────────
   return (
     <div>
       <div
@@ -73,19 +101,27 @@ function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodePro
             <p className="text-[10px] text-slate-400 font-mono">{node.code}</p>
           </div>
           {node.leader_name && (
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
-              <User size={12} className="text-slate-400" />
-              <span className="truncate max-w-[160px]">{node.leader_name}</span>
+            <div className="flex items-center gap-1.5 text-[11px] shrink-0 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200" title="Kepala unit / pimpinan">
+              <User size={12} className="text-slate-500" />
+              <span className="truncate max-w-[160px] font-bold text-slate-700">{node.leader_name}</span>
             </div>
           )}
           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${LEVEL_COLORS[node.level] || "bg-gray-100 text-gray-600"}`}>
             {getLevelLabel(node.level)}
           </span>
-          {hasChildren && (
-            <span className="text-[10px] text-slate-400 shrink-0 ml-auto">
-              {members} sub-unit
-            </span>
-          )}
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            {unitChildren.length > 0 && (
+              <span className="text-[10px] text-slate-400">
+                {members - empChildren.length} sub-unit
+              </span>
+            )}
+            {empChildren.length > 0 && (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                <UserCheck size={10} />
+                {empChildren.length} karyawan
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
@@ -113,9 +149,27 @@ function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodePro
         </div>
       </div>
 
+      {empChildren.length > 0 && (
+        <div
+          className="pb-1.5"
+          style={{ paddingLeft: `${depth * 24 + 12 + 20}px` }}
+        >
+          <div className="bg-emerald-50/40 border border-emerald-100 rounded-xl divide-y divide-emerald-100/70 overflow-hidden">
+            {[...empChildren].sort((a, b) => a.name.localeCompare(b.name)).map((emp) => (
+              <div key={emp.id} className="flex items-center gap-2 px-3 py-1.5">
+                <UserCheck size={11} className="text-emerald-500 shrink-0" />
+                <span className="text-xs font-semibold text-slate-700 truncate">{emp.name}</span>
+                {emp.position && <span className="text-[10px] text-slate-400 truncate">{emp.position}</span>}
+                <code className="text-[9px] text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded font-mono ml-auto shrink-0">{emp.code}</code>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {hasChildren && expanded && (
         <div>
-          {[...node.children].sort((a, b) => {
+          {[...unitChildren].sort((a, b) => {
             const sa = a.code.split(".").map(Number);
             const sb = b.code.split(".").map(Number);
             for (let i = 0; i < Math.max(sa.length, sb.length); i++) {

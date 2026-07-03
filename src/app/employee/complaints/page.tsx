@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth-guard";
 import { MessageCircle, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import ComplaintForm from "@/components/ComplaintForm";
+import EmptyState from "@/components/EmptyState";
 
 export default async function EmployeeComplaints() {
   const user = await requireAuth();
@@ -61,9 +62,8 @@ export default async function EmployeeComplaints() {
             </div>
 
             {complaints.length === 0 ? (
-              <div className="p-10 text-center">
-                <MessageCircle size={40} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-sm text-slate-500">Belum ada laporan.</p>
+              <div className="p-10">
+                <EmptyState icon={MessageCircle} title="Belum ada laporan." />
               </div>
             ) : (
               <div className="divide-y divide-slate-50">

@@ -6,6 +6,8 @@ export interface OrgUnit {
   leader_name: string;
   leader_email: string;
   children: OrgUnit[];
+  isEmployee?: boolean;
+  position?: string;
 }
 
 export interface FlatUnit {

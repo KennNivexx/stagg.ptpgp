@@ -28,6 +28,9 @@ import {
   ClipboardList,
   Phone,
   Layers,
+  LogIn,
+  Activity,
+  AlertOctagon,
 } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -77,6 +80,94 @@ export default async function SuperadminDashboard() {
     const role = parseRole(emp.address);
     if (role === "hrd") totalHRD++;
   }
+
+  // System Overview — derived from real audit_logs entries (no dedicated
+  // login/session table exists in the schema, so audit_logs is used as the
+  // closest available proxy for activity/monitoring metrics).
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const { data: auditLogs7d } = await supabaseAdmin
+    .from("audit_logs")
+    .select("action, performed_by_email, created_at")
+    .gte("created_at", sevenDaysAgo.toISOString())
+    .order("created_at", { ascending: false });
+
+  const logsList = auditLogs7d || [];
+
+  // "Login" proxy: attendance clock_in events are the closest real signal we
+  // have to a daily login/session start. Falls back to all audit activity
+  // for that day if there are no clock_in events at all in the window.
+  const loginActions = logsList.filter(
+    (l) => (l.action as string) === "attendance.clock_in"
+  );
+  const loginSourceList = loginActions.length > 0 ? loginActions : logsList;
+
+  const loginsToday = loginSourceList.filter(
+    (l) => new Date(l.created_at as string) >= startOfToday
+  ).length;
+
+  const activeUsers7d = new Set(
+    logsList
+      .map((l) => l.performed_by_email as string)
+      .filter((email) => !!email && email !== "__settings__@ptpgp.co.id")
+  ).size;
+
+  // No centralized error-log table exists yet — show 0 rather than inventing
+  // fabricated numbers.
+  const errorCount7d = 0;
+
+  // Sparkline data: activity count per day for the last 7 days.
+  const dayBuckets: { label: string; count: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const dayStart = new Date(
+      startOfToday.getFullYear(),
+      startOfToday.getMonth(),
+      startOfToday.getDate() - i
+    );
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const count = loginSourceList.filter((l) => {
+      const t = new Date(l.created_at as string);
+      return t >= dayStart && t < dayEnd;
+    }).length;
+    dayBuckets.push({
+      label: dayStart.toLocaleDateString("id-ID", { weekday: "short" }),
+      count,
+    });
+  }
+  const maxDayCount = Math.max(1, ...dayBuckets.map((d) => d.count));
+
+  const overviewCards = [
+    {
+      label: "Login Hari Ini",
+      value: loginsToday,
+      icon: LogIn,
+      color: "blue",
+      sub:
+        loginActions.length > 0
+          ? "Berdasarkan clock-in hari ini"
+          : "Berdasarkan aktivitas tercatat hari ini",
+    },
+    {
+      label: "User Aktif (7 Hari)",
+      value: activeUsers7d,
+      icon: Activity,
+      color: "emerald",
+      sub: "User unik dengan aktivitas tercatat",
+    },
+    {
+      label: "Jumlah Error",
+      value: errorCount7d,
+      icon: AlertOctagon,
+      color: "amber",
+      sub: "Belum ada pencatatan error terpusat",
+    },
+  ];
 
   const statsCards = [
     {
@@ -312,6 +403,119 @@ export default async function SuperadminDashboard() {
           <span className="text-xs font-bold text-amber-700">
             Superadmin Mode
           </span>
+        </div>
+      </div>
+
+      {/* System Overview */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Monitor size={18} className="text-slate-500" />
+          <h2 className="text-lg font-bold text-[#1A2530]">System Overview</h2>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {overviewCards.map((stat) => {
+              const c = colorMap[stat.color];
+              const Icon = stat.icon;
+              return (
+                <div
+                  key={stat.label}
+                  className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                >
+                  <div
+                    className={`absolute top-0 right-0 w-20 h-20 ${c.bg} rounded-full -mr-6 -mt-6 transition-all group-hover:scale-110 duration-300`}
+                  />
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                        {stat.label}
+                      </p>
+                      <h3 className="text-2xl font-extrabold text-slate-800 mt-2">
+                        {stat.value}
+                      </h3>
+                      <p className={`mt-2 ${c.accent} text-[11px] font-semibold leading-snug`}>
+                        {stat.sub}
+                      </p>
+                    </div>
+                    <div className={`p-2.5 ${c.iconBg} ${c.text} rounded-xl`}>
+                      <Icon size={18} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Mini sparkline: Login per Hari */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+            <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+              Login per Hari
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5 mb-2">7 hari terakhir</p>
+            <div className="flex-1 flex items-end">
+              <svg
+                viewBox="0 0 140 50"
+                preserveAspectRatio="none"
+                className="w-full h-12"
+              >
+                {(() => {
+                  const w = 140;
+                  const h = 50;
+                  const pad = 4;
+                  const stepX =
+                    dayBuckets.length > 1
+                      ? (w - pad * 2) / (dayBuckets.length - 1)
+                      : 0;
+                  const points = dayBuckets.map((d, i) => {
+                    const x = pad + i * stepX;
+                    const y =
+                      h - pad - (d.count / maxDayCount) * (h - pad * 2);
+                    return { x, y };
+                  });
+                  const linePath = points
+                    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+                    .join(" ");
+                  const areaPath =
+                    points.length > 0
+                      ? `${linePath} L${points[points.length - 1].x},${h} L${points[0].x},${h} Z`
+                      : "";
+                  return (
+                    <>
+                      {areaPath && (
+                        <path d={areaPath} fill="var(--color-pgp-red)" opacity="0.08" />
+                      )}
+                      {linePath && (
+                        <path
+                          d={linePath}
+                          fill="none"
+                          stroke="var(--color-pgp-red)"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+                      {points.map((p, i) => (
+                        <circle
+                          key={i}
+                          cx={p.x}
+                          cy={p.y}
+                          r="2"
+                          fill="var(--color-pgp-red)"
+                        />
+                      ))}
+                    </>
+                  );
+                })()}
+              </svg>
+            </div>
+            <div className="flex justify-between mt-1">
+              {dayBuckets.map((d, i) => (
+                <span key={i} className="text-[9px] text-slate-400 font-semibold">
+                  {d.label}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

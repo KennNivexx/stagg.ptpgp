@@ -3,6 +3,18 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 
+export async function getSalaryStructureByEmployee(employeeId: string) {
+  await requireRole("hrd", "superadmin");
+  if (!employeeId) return null;
+  const { data, error } = await supabaseAdmin
+    .from("salary_structures")
+    .select("*")
+    .eq("employee_id", employeeId)
+    .maybeSingle();
+  if (error) return null;
+  return data;
+}
+
 export async function saveSalaryStructure(formData: FormData) {
   await requireRole("hrd", "superadmin");
   const employeeId = (formData.get("employee_id") as string || "").trim();
@@ -10,14 +22,25 @@ export async function saveSalaryStructure(formData: FormData) {
   const transportAllowance = parseInt(formData.get("transport_allowance") as string || "0", 10) || 0;
   const mealAllowance = parseInt(formData.get("meal_allowance") as string || "0", 10) || 0;
   const housingAllowance = parseInt(formData.get("housing_allowance") as string || "0", 10) || 0;
+  const positionAllowance = parseInt(formData.get("position_allowance") as string || "0", 10) || 0;
+  const ptkpStatus = (formData.get("ptkp_status") as string || "TK/0").trim();
   if (!employeeId) return { error: "Pilih karyawan terlebih dahulu." };
+
+  const { data: existing } = await supabaseAdmin
+    .from("salary_structures")
+    .select("id")
+    .eq("employee_id", employeeId)
+    .maybeSingle();
+
   const { error } = await supabaseAdmin.from("salary_structures").upsert({
-    id: "sal-" + crypto.randomUUID(),
+    id: (existing as { id: string } | null)?.id || ("sal-" + crypto.randomUUID()),
     employee_id: employeeId,
     basic_salary: basicSalary,
     transport_allowance: transportAllowance,
     meal_allowance: mealAllowance,
     housing_allowance: housingAllowance,
+    position_allowance: positionAllowance,
+    ptkp_status: ptkpStatus,
     updated_at: new Date().toISOString(),
   }, { onConflict: "employee_id" });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };

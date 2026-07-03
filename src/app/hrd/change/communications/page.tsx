@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { MessageCircle } from "lucide-react";
 import CommunicationsForm from "./CommunicationsForm";
+import EmptyState from "@/components/EmptyState";
 
 export default async function RencanaKomunikasi() {
   const { data: employees } = await supabaseAdmin
@@ -55,11 +56,11 @@ export default async function RencanaKomunikasi() {
             <h3 className="font-extrabold text-slate-800 text-sm">Daftar Rencana Komunikasi</h3>
           </div>
           {comms.length === 0 ? (
-            <div className="p-12 text-center">
-              <MessageCircle size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada rencana komunikasi.</p>
-              <p className="text-xs text-slate-400 mt-1">Gunakan formulir di samping untuk menambahkan rencana komunikasi.</p>
-            </div>
+            <EmptyState
+              icon={MessageCircle}
+              title="Belum ada rencana komunikasi."
+              description="Gunakan formulir di samping untuk menambahkan rencana komunikasi."
+            />
           ) : (
             <div className="divide-y divide-slate-50">
               {comms.map((c) => (

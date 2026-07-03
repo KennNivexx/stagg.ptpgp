@@ -36,7 +36,7 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
   const quickLinks = links?.footer_quick?.length ? links.footer_quick : [
     { name: "Tentang Kami", href: "/#about" },
     { name: "Karir", href: "/career" },
-    { name: "E-Procurement", href: "/e-procurement" },
+    { name: "Kontak", href: "/#contact" },
   ];
 
   const supportLinks = links?.footer_support?.length ? links.footer_support : [
@@ -52,11 +52,11 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
           
           <div className="lg:col-span-1">
             <Link href="/" className="inline-block mb-4">
-              <Image 
-                src="https://stag.ptpgp.co.id/web/image/website/1/logo/PRATAMA%20GALUH%20PERKASA?unique=af2b0b3" 
-                alt={companyName} 
-                width={64} height={64} 
-                className="h-16 w-auto" 
+              <Image
+                src="/images/logo.png"
+                alt={companyName}
+                width={64} height={64}
+                className="h-16 w-auto"
               />
             </Link>
             <p className="text-zinc-600 text-xs leading-relaxed mb-6 font-light">

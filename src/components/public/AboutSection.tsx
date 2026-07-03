@@ -1,4 +1,7 @@
-// Trigger rebuild for AboutSection
+"use client";
+
+import { motion } from "framer-motion";
+
 interface AboutProps {
   show?: boolean;
   title?: string;
@@ -23,7 +26,14 @@ export default function AboutSection({
   const paragraphs = description.split("\n\n").filter(Boolean);
 
   return (
-    <section id="about" className="py-24 bg-white scroll-mt-[72px]">
+    <motion.section
+      id="about"
+      className="py-24 bg-white scroll-mt-[72px]"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row items-center gap-16">
           {image_url ? (
@@ -75,6 +85,6 @@ export default function AboutSection({
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

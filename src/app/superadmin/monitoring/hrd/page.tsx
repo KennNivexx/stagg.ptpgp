@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, UserCog, Mail } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
+import EmptyState from "@/components/EmptyState";
 
 function parseAuth(address: unknown): Record<string, unknown> {
   if (!address || typeof address !== "string") return {};
@@ -86,17 +87,11 @@ export default async function MonitoringHRD() {
       </div>
 
       {hrdStaff.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-          <div className="text-5xl mb-4 opacity-30">
-            <UserCog size={48} className="mx-auto text-slate-300" />
-          </div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">
-            Belum ada staff HRD
-          </h3>
-          <p className="text-sm text-slate-500">
-            Tidak ada karyawan dengan role HRD dalam sistem.
-          </p>
-        </div>
+        <EmptyState
+          icon={UserCog}
+          title="Belum ada staff HRD"
+          description="Tidak ada karyawan dengan role HRD dalam sistem."
+        />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">

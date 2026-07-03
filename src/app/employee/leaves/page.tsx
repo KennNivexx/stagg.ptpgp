@@ -3,6 +3,7 @@ import { FileText, Calendar, Coffee, Heart, Star } from "lucide-react";
 import LeaveRequestButton from "@/components/LeaveRequestButton";
 import { requireAuth } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
+import EmptyState from "@/components/EmptyState";
 
 export default async function EmployeeLeaves() {
   let userEmail: string;
@@ -147,11 +148,11 @@ export default async function EmployeeLeaves() {
         </div>
 
         {!leaves || leaves.length === 0 ? (
-          <div className="p-12 text-center">
-            <FileText size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada pengajuan cuti.</p>
-            <p className="text-xs text-slate-400 mt-1">Klik tombol &quot;Ajukan Cuti&quot; untuk membuat pengajuan baru.</p>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="Belum ada pengajuan cuti."
+            description={'Klik tombol "Ajukan Cuti" untuk membuat pengajuan baru.'}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

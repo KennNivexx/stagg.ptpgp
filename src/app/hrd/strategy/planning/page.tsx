@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Target, Plus, Calendar, User, Flag, Trash2 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 async function saveInitiative(formData: FormData) {
   "use server";
@@ -127,11 +128,7 @@ export default async function PerencanaanStrategis() {
           </div>
           <div className="divide-y divide-slate-50">
             {initiatives.length === 0 ? (
-              <div className="p-12 text-center">
-                <Target size={40} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-sm text-slate-500">Belum ada inisiatif strategis.</p>
-                <p className="text-xs text-slate-400 mt-1">Tambahkan inisiatif baru untuk memulai perencanaan strategis.</p>
-              </div>
+              <EmptyState icon={Target} title="Belum ada inisiatif strategis." description="Tambahkan inisiatif baru untuk memulai perencanaan strategis." />
             ) : (
               initiatives.map((init) => (
                 <div key={init.id} className="p-5 hover:bg-slate-50/30 transition-colors">

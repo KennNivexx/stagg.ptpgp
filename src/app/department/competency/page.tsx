@@ -5,6 +5,7 @@ import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp
 import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, getDeptSkillList, saveDeptSkillList, assessEmployee } from "@/app/actions/skills";
 import { addDeptSkill, getAllSkillGuidesMap, type LevelGuide } from "@/app/actions/competency-guides";
 import { getMyDept } from "@/app/actions/department";
+import EmptyState from "@/components/EmptyState";
 
 interface Employee { id: string; full_name: string; department: string; position: string }
 interface Skill { id: string; name: string; category: string; department?: string | null }
@@ -640,10 +641,7 @@ export default function DeptCompetencyPage() {
       </div>
 
       {employees.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <Users size={48} className="mx-auto text-slate-300 mb-4" />
-          <p className="text-sm text-slate-500">Belum ada data karyawan di departemen ini.</p>
-        </div>
+        <EmptyState icon={Users} title="Belum ada data karyawan di departemen ini." />
       ) : (
         <div className="space-y-4">
           {employees.map((emp) => {

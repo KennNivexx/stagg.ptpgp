@@ -3,6 +3,11 @@ import { getOrgStructure } from "@/app/actions/org";
 import OrgStructureClient from "./OrgStructureClient";
 import type { OrgUnit } from "@/types/org";
 
+// Struktur organisasi harus selalu mencerminkan data karyawan/unit terbaru
+// (karyawan baru otomatis muncul di bawah node departemen/jabatannya) —
+// jangan cache halaman ini secara statis.
+export const dynamic = "force-dynamic";
+
 export default async function OrgStructurePage() {
   const org = await getOrgStructure();
 

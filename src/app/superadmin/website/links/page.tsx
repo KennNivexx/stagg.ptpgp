@@ -26,9 +26,9 @@ const defaultLinks: LinksForm = {
     { label: "Kontak", url: "/#contact" },
   ],
   footer_quick: [
-    { label: "About Us", url: "/" },
-    { label: "Safety & Compliance", url: "/" },
-    { label: "Sustainability", url: "/" },
+    { label: "Tentang Kami", url: "/#about" },
+    { label: "Karir", url: "/career" },
+    { label: "Kontak", url: "/#contact" },
   ],
   footer_support: [
     { label: "Network", url: "/#services" },

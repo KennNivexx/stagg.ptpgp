@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Gift, Plus, DollarSign, TrendingUp, Star, X, CheckCircle } from "lucide-react";
 import { addBonus, updateBonusStatus } from "@/app/actions/rewards";
+import EmptyState from "@/components/EmptyState";
 
 const BONUS_TYPES = ["Kinerja", "Proyek", "Tahunan", "Khusus", "Lebaran", "THR"];
 const STATUSES = ["Pending", "Disetujui", "Dibayarkan"];
@@ -185,10 +186,7 @@ export default function BonusesClient({
           <span className="text-xs text-slate-400">{bonuses.length} entri</span>
         </div>
         {bonuses.length === 0 ? (
-          <div className="p-12 text-center">
-            <Gift size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada bonus yang dicatat.</p>
-          </div>
+          <EmptyState icon={Gift} title="Belum ada bonus yang dicatat." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

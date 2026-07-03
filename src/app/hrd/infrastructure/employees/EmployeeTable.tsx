@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X, IdCard, Heart, Users2, MapPin, GraduationCap, Siren } from "lucide-react";
+import { useRef, useState } from "react";
+import { FileSpreadsheet, FileDown, Eye } from "lucide-react";
 
 type Emp = Record<string, unknown>;
 
@@ -49,124 +49,178 @@ const maritalOptions: Record<string, string> = {
   "Cerai Mati": "Cerai Mati",
 };
 
+// Mirrors the hasRealAddress/profile-completeness pattern in src/app/hrd/page.tsx:
+// checks whether the employee has filled in their own KTP/KK data via
+// /employee/profile. HRD cannot edit these fields here, only observe them.
+const isPersonalDataComplete = (e: Emp) =>
+  !!e.nik && !!e.emergency_phone && !!e.marital_status && !!e.ktp_address;
+
+const fmtDate = (v: unknown) => v ? new Date(v as string).toLocaleDateString("id-ID") : "-";
+
 export default function EmployeeTable({ employees }: { employees: Emp[] }) {
-  const [selected, setSelected] = useState<Emp | null>(null);
+  const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const rowData = (emp: Emp) => ({
+    "NIK": (emp.nik as string) || "-",
+    "Nama": (emp.full_name as string) || "-",
+    "Email": (emp.email as string) || "-",
+    "Departemen": (emp.department as string) || "-",
+    "Jabatan": (emp.position as string) || "-",
+    "Status": (emp.status as string) || "-",
+    "Tgl Masuk": fmtDate(emp.join_date),
+    "Agama": religionOptions[emp.religion as string] || (emp.religion as string) || "-",
+    "Status Pernikahan": maritalOptions[emp.marital_status as string] || (emp.marital_status as string) || "-",
+    "Nama Pasangan": (emp.spouse_name as string) || "-",
+    "Jumlah Anak": emp.children_count != null ? String(emp.children_count) : "-",
+    "Pendidikan Terakhir": educationOptions[emp.last_education as string] || (emp.last_education as string) || "-",
+    "Kontak Darurat Nama": (emp.emergency_name as string) || "-",
+    "Kontak Darurat Telepon": (emp.emergency_phone as string) || "-",
+    "Alamat KTP": (emp.ktp_address as string) || "-",
+  });
+
+  const handleExportExcel = async () => {
+    if (exporting) return;
+    setExporting("excel");
+    try {
+      const rows = employees.map(rowData);
+      const XLSX = await import("xlsx");
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = Object.keys(rows[0] || {}).map(() => ({ wch: 20 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Data Karyawan");
+      const stamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Data-Karyawan-${stamp}.xlsx`);
+    } catch (e) {
+      console.error("[employees] export excel error:", e);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!tableRef.current || exporting) return;
+    setExporting("pdf");
+    try {
+      const { toPng } = await import("html-to-image");
+      const jsPDF = (await import("jspdf")).default;
+      const dataUrl = await toPng(tableRef.current, { backgroundColor: "#ffffff", pixelRatio: 2 });
+      const img = new window.Image();
+      img.src = dataUrl;
+      await new Promise<void>((r) => { img.onload = () => r(); });
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [img.width, img.height],
+      });
+      pdf.addImage(img, "PNG", 0, 0, img.width, img.height);
+      const stamp = new Date().toISOString().slice(0, 10);
+      pdf.save(`Data-Karyawan-${stamp}.pdf`);
+    } catch (e) {
+      console.error("[employees] export pdf error:", e);
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
-    <>
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50">
-                <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">NIK</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Departemen</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Jabatan</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tgl Masuk</th>
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-[11px] font-semibold">
+          <Eye size={13} className="shrink-0" />
+          Data pribadi &amp; keluarga bersifat lihat-saja &mdash; diisi mandiri oleh karyawan lewat akunnya.
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleExportExcel}
+            disabled={!!exporting}
+            className="flex items-center gap-2 px-3 py-2 bg-green-700 hover:bg-green-800 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
+          >
+            <FileSpreadsheet size={14} /> {exporting === "excel" ? "Mengekspor..." : "Export Excel"}
+          </button>
+          <button
+            onClick={handleExportPDF}
+            disabled={!!exporting}
+            className="flex items-center gap-2 px-3 py-2 bg-[#CC0000] hover:bg-[#aa0000] text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
+          >
+            <FileDown size={14} /> {exporting === "pdf" ? "Mengekspor..." : "Export PDF"}
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto" ref={tableRef}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 bg-slate-50/50">
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">NIK</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Nama</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Email</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Departemen</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Jabatan</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tgl Masuk</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Data Pribadi</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Agama</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status Pernikahan</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Nama Pasangan</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Jumlah Anak</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Pendidikan Terakhir</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kontak Darurat Nama</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kontak Darurat Telepon</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Alamat KTP</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {employees.map((emp) => (
+              <tr key={emp.id as string} className="hover:bg-slate-50/30 transition-colors">
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <span className="text-xs font-mono font-bold text-slate-600">{(emp.nik as string) || "-"}</span>
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                      {(emp.full_name as string)?.charAt(0)?.toUpperCase() || "?"}
+                    </div>
+                    <p className="font-bold text-slate-800">{emp.full_name as string}</p>
+                  </div>
+                </td>
+                <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{emp.email as string || "-"}</td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <span className={getDeptBadge(emp.department as string || "")}>
+                    {emp.department as string || "-"}
+                  </span>
+                </td>
+                <td className="px-4 py-4 text-xs text-slate-700 font-medium whitespace-nowrap">{emp.position as string || "-"}</td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <span className={getStatusBadge(emp.status as string)}>
+                    {emp.status as string || "-"}
+                  </span>
+                </td>
+                <td className="px-4 py-4 text-xs text-slate-500 whitespace-nowrap">{fmtDate(emp.join_date)}</td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  {isPersonalDataComplete(emp) ? (
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700">Lengkap</span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-700">Belum Lengkap</span>
+                  )}
+                </td>
+                <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{religionOptions[emp.religion as string] || (emp.religion as string) || "-"}</td>
+                <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{maritalOptions[emp.marital_status as string] || (emp.marital_status as string) || "-"}</td>
+                <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{(emp.spouse_name as string) || "-"}</td>
+                <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{emp.children_count != null ? String(emp.children_count) : "-"}</td>
+                <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{educationOptions[emp.last_education as string] || (emp.last_education as string) || "-"}</td>
+                <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{(emp.emergency_name as string) || "-"}</td>
+                <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{(emp.emergency_phone as string) || "-"}</td>
+                <td className="px-4 py-4 text-xs text-slate-600 max-w-[240px] truncate" title={(emp.ktp_address as string) || "-"}>{(emp.ktp_address as string) || "-"}</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {employees.map((emp) => (
-                <tr key={emp.id as string} className="hover:bg-slate-50/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <span className="text-xs font-mono font-bold text-slate-600">
-                      NIK-{String(emp.id).substring(0, 8).toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => setSelected(emp)}
-                      className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left group"
-                    >
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                        {(emp.full_name as string)?.charAt(0)?.toUpperCase() || "?"}
-                      </div>
-                      <p className="font-bold text-slate-800 group-hover:text-[#CC0000] transition-colors">
-                        {emp.full_name as string}
-                      </p>
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-slate-600">{emp.email as string || "-"}</td>
-                  <td className="px-6 py-4">
-                    <span className={getDeptBadge(emp.department as string || "")}>
-                      {emp.department as string || "-"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-slate-700 font-medium">{emp.position as string || "-"}</td>
-                  <td className="px-6 py-4">
-                    <span className={getStatusBadge(emp.status as string)}>
-                      {emp.status as string || "-"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-slate-500">
-                    {emp.join_date ? new Date(emp.join_date as string).toLocaleDateString("id-ID") : "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
-          <p className="text-xs text-slate-500">
-            Total: <span className="font-bold text-slate-800">{employees.length}</span> karyawan
-          </p>
-          <p className="text-xs text-slate-400">Klik nama untuk detail</p>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                  {(selected.full_name as string)?.charAt(0)?.toUpperCase() || "?"}
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-800 text-sm">{selected.full_name as string}</h3>
-                  <p className="text-xs text-slate-500">{selected.position as string || "-"}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={16} className="text-slate-400" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <DetailRow icon={IdCard} label="NIK" value={(selected.nik as string) || "-"} />
-                <DetailRow icon={Heart} label="Agama" value={religionOptions[selected.religion as string] || (selected.religion as string) || "-"} />
-                <DetailRow icon={Users2} label="Status Pernikahan" value={maritalOptions[selected.marital_status as string] || (selected.marital_status as string) || "-"} />
-                <DetailRow icon={Users2} label="Nama Pasangan" value={(selected.spouse_name as string) || "-"} />
-                <DetailRow icon={Users2} label="Jumlah Anak" value={selected.children_count != null ? String(selected.children_count) : "-"} />
-                <DetailRow icon={GraduationCap} label="Pendidikan Terakhir" value={educationOptions[selected.last_education as string] || (selected.last_education as string) || "-"} />
-                <DetailRow icon={Siren} label="Kontak Darurat Nama" value={(selected.emergency_name as string) || "-"} />
-                <DetailRow icon={Siren} label="Kontak Darurat Telepon" value={(selected.emergency_phone as string) || "-"} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alamat KTP</label>
-                <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 leading-relaxed">{(selected.ktp_address as string) || "-"}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-function DetailRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-2.5">
-      <div className="p-1.5 bg-slate-50 text-slate-500 rounded-lg shrink-0">
-        <Icon size={14} />
-      </div>
-      <div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-        <p className="text-sm font-semibold text-slate-800">{value}</p>
+      <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30">
+        <p className="text-xs text-slate-500">
+          Total: <span className="font-bold text-slate-800">{employees.length}</span> karyawan
+        </p>
       </div>
     </div>
   );

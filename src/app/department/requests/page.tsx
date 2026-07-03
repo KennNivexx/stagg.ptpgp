@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Clock, CheckCircle2, XCircle, Users, Filter } from "lucide-react";
 import { getDeptData, getMyDept } from "@/app/actions/department";
+import EmptyState from "@/components/EmptyState";
 
 interface Request {
   id: string; department: string; position: string;
@@ -111,7 +112,7 @@ export default function DeptRequests() {
         </div>
         <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
           {filtered.length === 0 ? (
-            <div className="p-12 text-center"><Users size={40} className="mx-auto text-slate-300 mb-4" /><p className="text-sm text-slate-500">Belum ada permintaan.</p></div>
+            <div className="p-12"><EmptyState icon={Users} title="Belum ada permintaan." /></div>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-slate-50 sticky top-0">

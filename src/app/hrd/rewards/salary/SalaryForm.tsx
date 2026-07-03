@@ -1,8 +1,9 @@
 "use client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Pencil } from "lucide-react";
+import { Save, Pencil, Wallet } from "lucide-react";
 import { saveSalaryStructure } from "@/app/actions/rewards";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
 type SalaryRecord = Record<string, unknown>;
@@ -105,7 +106,9 @@ export default function SalaryForm({ employees, salaryRecords }: Props) {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {salaryRecords.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">Belum ada struktur gaji. Klik &quot;Edit Komponen Gaji&quot; untuk mulai.</td></tr>
+                <tr><td colSpan={5} className="p-0">
+                  <EmptyState icon={Wallet} title={'Belum ada struktur gaji. Klik "Edit Komponen Gaji" untuk mulai.'} />
+                </td></tr>
               ) : salaryRecords.map((rec) => {
                 const emp = rec.employees as Record<string, string> | undefined;
                 const base = Number(rec.basic_salary) || 0;

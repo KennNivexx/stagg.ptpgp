@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Users, Target, TrendingUp, Award, Building2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function DashboardOKR() {
   const [
@@ -133,11 +134,7 @@ export default async function DashboardOKR() {
           </div>
           <div className="p-6 space-y-6">
             {deptOKR.length === 0 ? (
-              <div className="text-center py-8">
-                <Target size={40} className="mx-auto text-slate-300 mb-3" />
-                <p className="text-sm text-slate-500">Belum ada data OKR per departemen.</p>
-                <p className="text-xs text-slate-400 mt-1">Lakukan evaluasi KPI untuk melihat progress di sini.</p>
-              </div>
+              <EmptyState icon={Target} title="Belum ada data OKR per departemen." description="Lakukan evaluasi KPI untuk melihat progress di sini." />
             ) : (
               deptOKR.map((dept) => {
                 const pct = dept.target > 0 ? Math.min(Math.round((dept.avgScore / dept.target) * 100), 100) : 0;
@@ -182,10 +179,7 @@ export default async function DashboardOKR() {
           </div>
           <div className="p-6 space-y-3">
             {periodGroups.length === 0 ? (
-              <div className="text-center py-6">
-                <Clock size={32} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-xs text-slate-400">Belum ada periode evaluasi.</p>
-              </div>
+              <EmptyState icon={Clock} title="Belum ada periode evaluasi." className="py-6" />
             ) : (
               periodGroups.map((pg) => (
                 <div key={pg.period} className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50">
@@ -228,11 +222,7 @@ export default async function DashboardOKR() {
         </div>
         <div className="p-6">
           {evals.length === 0 ? (
-            <div className="text-center py-8">
-              <Award size={40} className="mx-auto text-slate-300 mb-3" />
-              <p className="text-sm text-slate-500">Belum ada data evaluasi OKR.</p>
-              <p className="text-xs text-slate-400 mt-1">Buat evaluasi KPI untuk melihat distribusi skor.</p>
-            </div>
+            <EmptyState icon={Award} title="Belum ada data evaluasi OKR." description="Buat evaluasi KPI untuk melihat distribusi skor." />
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[

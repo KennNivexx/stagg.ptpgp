@@ -6,33 +6,67 @@ import { requireRole } from "@/lib/auth-guard";
 export async function getMyApplicationData() {
   const user = await requireRole("applicant");
 
-  // Run independent queries in parallel
-  const [
-    { data: userRecord },
-    { data: application },
-  ] = await Promise.all([
-    supabaseAdmin
-      .from("users")
-      .select("is_temporary, expires_at")
-      .eq("email", user.email)
-      .maybeSingle(),
-    supabaseAdmin
+  // Ambil data user (untuk account info + application_id)
+  const { data: userRecord } = await supabaseAdmin
+    .from("users")
+    .select("is_temporary, expires_at, application_id")
+    .eq("email", user.email)
+    .maybeSingle();
+
+  const ur = userRecord as Record<string, unknown> | null;
+
+  // Cari application: lewat application_id dulu (paling akurat), fallback lewat email
+  let application: Record<string, unknown> | null = null;
+
+  if (ur?.application_id) {
+    const { data } = await supabaseAdmin
+      .from("applications")
+      .select("*")
+      .eq("id", ur.application_id as string)
+      .maybeSingle();
+    application = data as Record<string, unknown> | null;
+  }
+
+  // Fallback: cari lewat email (normalized)
+  if (!application) {
+    const { data } = await supabaseAdmin
       .from("applications")
       .select("*")
       .eq("email", user.email)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle(),
-  ]);
+      .maybeSingle();
+    application = data as Record<string, unknown> | null;
+
+    // Kalau ketemu, simpan application_id ke users agar berikutnya langsung
+    if (application && ur) {
+      await supabaseAdmin
+        .from("users")
+        .update({ application_id: application.id })
+        .eq("email", user.email);
+    }
+  }
+
+  // Last-resort: cari via email case-insensitive (ilike) jika belum ketemu
+  if (!application) {
+    const { data } = await supabaseAdmin
+      .from("applications")
+      .select("*")
+      .ilike("email", user.email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    application = data as Record<string, unknown> | null;
+  }
 
   if (!application) return null;
 
   const app = application as Record<string, unknown>;
 
-  // Get job details (depends on application.job_id)
+  // Get job details — gunakan select("*") agar aman meski ada kolom yang belum ada
   const { data: job } = await supabaseAdmin
     .from("job_postings")
-    .select("position, department, location, requirements, education, experience, description")
+    .select("id, position, department, location, requirements, education, experience, description, title")
     .eq("id", app.job_id as string)
     .maybeSingle();
 
@@ -64,8 +98,8 @@ export async function getMyApplicationData() {
     } : null,
     profileData,
     account: {
-      is_temporary: (userRecord as Record<string, unknown> | null)?.is_temporary as boolean ?? false,
-      expires_at: (userRecord as Record<string, unknown> | null)?.expires_at as string || null,
+      is_temporary: ur?.is_temporary as boolean ?? false,
+      expires_at: ur?.expires_at as string || null,
     },
   };
 }
@@ -73,11 +107,29 @@ export async function getMyApplicationData() {
 export async function getAllMyApplications() {
   const user = await requireRole("applicant");
 
-  const { data: applications } = await supabaseAdmin
+  // Coba email dulu, fallback ke application_id
+  let { data: applications } = await supabaseAdmin
     .from("applications")
     .select("id, job_id, status, applied_at, created_at")
     .eq("email", user.email)
     .order("created_at", { ascending: false });
+
+  if (!applications || applications.length === 0) {
+    const { data: userRecord } = await supabaseAdmin
+      .from("users")
+      .select("application_id")
+      .eq("email", user.email)
+      .maybeSingle();
+    const ur = userRecord as Record<string, unknown> | null;
+    if (ur?.application_id) {
+      const { data } = await supabaseAdmin
+        .from("applications")
+        .select("id, job_id, status, applied_at, created_at")
+        .eq("id", ur.application_id as string)
+        .limit(1);
+      applications = data;
+    }
+  }
 
   if (!applications || applications.length === 0) return [];
 

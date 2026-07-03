@@ -45,9 +45,26 @@ function saveReadIds(role: string, ids: string[]) {
 
 export default function NotificationBell({ role }: { role: "hrd" | "employee" }) {
   const [open, setOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const PANEL_HEIGHT_ESTIMATE = 480; // ~header + max-h-[400px] list + footer
+
+  const toggleOpen = () => {
+    setOpen((prev) => {
+      const next = !prev;
+      if (next && buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        setOpenUpward(spaceBelow < PANEL_HEIGHT_ESTIMATE && spaceAbove > spaceBelow);
+      }
+      return next;
+    });
+  };
 
   const fetchNotifications = useCallback(() => {
     fetch("/api/notifications?role=" + role)
@@ -89,8 +106,9 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
   return (
     <div ref={ref} className="relative">
       <button
+        ref={buttonRef}
         aria-label={`Notifikasi${unread > 0 ? ` (${unread} belum dibaca)` : ""}`}
-        onClick={() => setOpen(!open)}
+        onClick={toggleOpen}
         className="p-2 hover:bg-slate-100 rounded-xl relative transition-colors text-slate-500"
       >
         <Bell size={18} />
@@ -102,7 +120,7 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden">
+        <div className={`absolute right-0 w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden ${openUpward ? "bottom-12" : "top-12"}`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <div>
               <h3 className="font-extrabold text-slate-800 text-sm">Notifikasi</h3>

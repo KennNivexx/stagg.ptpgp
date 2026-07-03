@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { motion } from "framer-motion";
 import { MapPin, Phone, Mail, Send, CheckCircle, AlertCircle } from "lucide-react";
 import { submitContact } from "@/app/actions/contact";
 
@@ -57,7 +58,14 @@ export default function ContactSection({
   };
 
   return (
-    <section id="contact" className="w-full font-sans scroll-mt-[72px]">
+    <motion.section
+      id="contact"
+      className="w-full font-sans scroll-mt-[72px]"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="bg-[#FFFDFB] py-20 border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row gap-8">
@@ -232,13 +240,19 @@ export default function ContactSection({
         </div>
       </div>
 
-      <div className="relative h-[400px] w-full bg-pgp-navy overflow-hidden flex items-center justify-center">
-        <div className="text-center">
-          <MapPin size={32} className="text-pgp-red mx-auto mb-4" />
-          <h3 className="text-white font-bold text-lg mb-2">{map_city}</h3>
-          <p className="text-gray-400 text-sm">{map_address}</p>
-        </div>
+      <div className="relative h-[400px] w-full overflow-hidden rounded-none">
+        <iframe
+          title={`Peta lokasi ${map_city}`}
+          src={`https://www.google.com/maps?q=${encodeURIComponent(`${map_address}, ${map_city}`)}&output=embed`}
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          className="w-full h-full"
+        />
       </div>
-    </section>
+    </motion.section>
   );
 }

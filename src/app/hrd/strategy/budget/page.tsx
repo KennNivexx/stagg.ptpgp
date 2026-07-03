@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { DollarSign, Plus, TrendingUp, AlertCircle, CheckCircle2, Wallet, Briefcase, Users, GraduationCap, Building2 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 async function saveBudget(formData: FormData) {
   "use server";
@@ -125,11 +126,7 @@ export default async function AnggaranSDM() {
 
           <div className="divide-y divide-slate-50">
             {SEED_BUDGET.length === 0 ? (
-              <div className="p-12 text-center">
-                <Wallet size={40} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-sm text-slate-500">Belum ada data anggaran.</p>
-                <p className="text-xs text-slate-400 mt-1">Tambahkan alokasi anggaran untuk setiap kategori.</p>
-              </div>
+              <EmptyState icon={Wallet} title="Belum ada data anggaran." description="Tambahkan alokasi anggaran untuk setiap kategori." />
             ) : (
               SEED_BUDGET.map((item) => {
                 const remaining = item.allocated - item.used;

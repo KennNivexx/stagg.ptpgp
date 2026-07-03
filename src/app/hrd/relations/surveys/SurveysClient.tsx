@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Heart, BarChart3, ClipboardList, TrendingUp, Send, X } from "lucide-react";
 import { createSurvey } from "@/app/actions/relations";
+import EmptyState from "@/components/EmptyState";
 
 const SURVEY_TYPES = [
   { id: "engagement", label: "Engagement", icon: Heart, desc: "Survei keterikatan karyawan" },
@@ -150,7 +151,11 @@ export default function SurveysClient({ initialSurveys }: { initialSurveys: Surv
             </div>
             <div className="divide-y divide-slate-50">
               {surveys.slice(0, 5).length === 0 ? (
-                <p className="p-6 text-xs text-slate-400 text-center">Belum ada survei.</p>
+                <EmptyState
+                  icon={ClipboardList}
+                  title="Belum ada survei."
+                  className="border-none py-6"
+                />
               ) : surveys.slice(0, 5).map(s => (
                 <div key={s.id} className="p-4">
                   <p className="text-xs font-bold text-slate-800 truncate">{s.title}</p>

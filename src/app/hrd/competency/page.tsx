@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { Users, Award, Star, Search, Target } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function HRDCompetency() {
   const [skillsRes, posSkillsRes, empSkillsRes, employeesRes] = await Promise.all([
@@ -169,11 +170,11 @@ export default async function HRDCompetency() {
             {employeesRes.error ? (
               <div className="p-12 text-center text-red-600 text-sm">{employeesRes.error.message}</div>
             ) : employees.length === 0 ? (
-              <div className="p-12 text-center">
-                <Award size={40} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-sm text-slate-500">Belum ada data karyawan.</p>
-                <p className="text-xs text-slate-400 mt-1">Tambahkan karyawan untuk memulai pemetaan kompetensi.</p>
-              </div>
+              <EmptyState
+                icon={Award}
+                title="Belum ada data karyawan."
+                description="Tambahkan karyawan untuk memulai pemetaan kompetensi."
+              />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

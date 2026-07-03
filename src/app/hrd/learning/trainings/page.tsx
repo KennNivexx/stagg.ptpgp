@@ -10,6 +10,7 @@ import {
   getTrainings, saveTraining, deleteTraining, getTrainingEnrollments, removeEnrollment,
 } from "@/app/actions/trainings";
 import { getSkills } from "@/app/actions/skills";
+import EmptyState from "@/components/EmptyState";
 
 type Skill = {
   id: string;
@@ -268,11 +269,11 @@ export default function TrainingsPage() {
           <p className="text-sm text-slate-400">Memuat data...</p>
         </div>
       ) : trainings.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <GraduationCap size={48} className="mx-auto text-slate-300 mb-4" />
-          <p className="text-sm text-slate-500 font-bold">Belum ada training.</p>
-          <p className="text-xs text-slate-400 mt-1">Tambahkan training untuk mulai mengelola pelatihan karyawan.</p>
-        </div>
+        <EmptyState
+          icon={GraduationCap}
+          title="Belum ada training."
+          description="Tambahkan training untuk mulai mengelola pelatihan karyawan."
+        />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">

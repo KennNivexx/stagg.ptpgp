@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Target } from "lucide-react";
 import { saveOkr } from "@/app/actions/performance-hrd";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string };
 type OkrItem = Record<string, unknown>;
@@ -90,10 +91,7 @@ export default function OkrForm({ employees, okrData }: Props) {
 
       <div className="space-y-4">
         {okrData.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-            <Target size={40} className="mx-auto text-slate-300 mb-3" />
-            <p className="text-sm text-slate-500">Belum ada OKR. Klik &quot;Tambah OKR Baru&quot; untuk mulai.</p>
-          </div>
+          <EmptyState icon={Target} title={'Belum ada OKR. Klik "Tambah OKR Baru" untuk mulai.'} />
         ) : okrData.map((okr) => {
           const progress = Number(okr.progress) || 0;
           const emp = okr.employees as Record<string, string> | undefined;

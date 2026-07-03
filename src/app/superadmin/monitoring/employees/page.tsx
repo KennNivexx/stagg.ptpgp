@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Users, Mail, Search } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
+import EmptyState from "@/components/EmptyState";
 
 function parseRole(address: unknown): string {
   if (!address || typeof address !== "string") return "employee";
@@ -159,17 +160,15 @@ export default async function MonitoringEmployees({
       </form>
 
       {employees.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-          <Users size={48} className="mx-auto text-slate-300 mb-4" />
-          <h3 className="text-lg font-bold text-slate-800 mb-2">
-            {q ? "Tidak ada hasil" : "Belum ada data karyawan"}
-          </h3>
-          <p className="text-sm text-slate-500">
-            {q
+        <EmptyState
+          icon={Users}
+          title={q ? "Tidak ada hasil" : "Belum ada data karyawan"}
+          description={
+            q
               ? `Tidak ditemukan karyawan dengan kata kunci "${q}".`
-              : "Tidak ada karyawan yang terdaftar dalam sistem."}
-          </p>
-        </div>
+              : "Tidak ada karyawan yang terdaftar dalam sistem."
+          }
+        />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">

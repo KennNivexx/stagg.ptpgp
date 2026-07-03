@@ -71,7 +71,7 @@ export default function CameraCapture({
   const isRegistrationMode = mode === "registration";
   const needsDescriptors = isRecognitionMode || isRegistrationMode;
 
-  const faceapiRef = useRef<any>(null);
+  const faceapiRef = useRef<typeof import("face-api.js") | null>(null);
 
   // ── Load face-api.js + Models ─────────────────────────────────────
   useEffect(() => {

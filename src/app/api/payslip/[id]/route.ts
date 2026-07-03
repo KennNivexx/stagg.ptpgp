@@ -8,6 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const autoprint = request.nextUrl.searchParams.get("autoprint") === "1";
 
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
@@ -135,6 +136,7 @@ export async function GET(
     Cetak / Simpan PDF
   </button>
 </div>
+${autoprint ? `<script>window.addEventListener("load", () => window.print());</script>` : ""}
 </body>
 </html>`;
 

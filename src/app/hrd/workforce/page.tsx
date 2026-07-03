@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { Users, Briefcase, TrendingUp, BarChart3, PieChart } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function HRDWorkforce() {
   const [{ data: employees }] = await Promise.all([
@@ -78,11 +79,7 @@ export default async function HRDWorkforce() {
           </div>
 
           {sortedDepts.length === 0 ? (
-            <div className="p-12 text-center">
-              <Users size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data karyawan.</p>
-              <p className="text-xs text-slate-400 mt-1">Data akan muncul setelah karyawan ditambahkan.</p>
-            </div>
+            <EmptyState icon={Users} title="Belum ada data karyawan." description="Data akan muncul setelah karyawan ditambahkan." />
           ) : (
             <div className="p-6 space-y-5">
               {sortedDepts.map(([dept, count], idx) => {
@@ -134,10 +131,7 @@ export default async function HRDWorkforce() {
             ))}
 
             {sortedDepts.length === 0 && (
-              <div className="text-center py-8">
-                <TrendingUp size={32} className="mx-auto text-slate-300 mb-3" />
-                <p className="text-xs text-slate-400">Belum ada data untuk dianalisis.</p>
-              </div>
+              <EmptyState icon={TrendingUp} title="Belum ada data untuk dianalisis." />
             )}
           </div>
         </div>

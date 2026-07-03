@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clipboard, Plus, Target, Calendar, BookOpen, User, CheckCircle } from "lucide-react";
 import { createDevelopmentPlan, updatePlanProgress } from "@/app/actions/career-hrd";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
 type Plan = Record<string, unknown>;
@@ -81,10 +82,7 @@ export default function PlansClient({ employees, initialPlans }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           {plans.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-              <Clipboard size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada rencana pengembangan.</p>
-            </div>
+            <EmptyState icon={Clipboard} title="Belum ada rencana pengembangan." />
           ) : plans.map((plan) => {
             const emp = plan.employees as Record<string, string> | undefined;
             const progress = Number(plan.progress) || 0;

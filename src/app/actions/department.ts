@@ -15,6 +15,7 @@ interface RequestRow {
   id: string; department: string; position: string;
   quantity: number; reason: string; urgency: string; status: string;
   requested_by: string; created_at: string;
+  grade_code?: string; job_desc?: string;
 }
 
 interface DeptRow {
@@ -63,21 +64,44 @@ export async function getDeptData(deptName: string) {
     { data: employees },
     { data: requests },
     { data: departments },
-    { data: orgUnits },
+    { data: mainUnit },
   ] = await Promise.all([
     supabaseAdmin.from("employees").select("*").eq("department", deptName).order("full_name"),
     supabaseAdmin.from("workforce_requests").select("*").eq("department", deptName).order("created_at", { ascending: false }),
     supabaseAdmin.from("departments").select("*").eq("name", deptName).maybeSingle(),
-    supabaseAdmin.from("org_units").select("*").ilike("name", `${deptName}%`).order("level").order("name"),
+    supabaseAdmin.from("org_units").select("id, code, name, level, leader_name").eq("name", deptName).maybeSingle(),
   ]);
 
   const headcount = (departments as DeptRow | null)?.headcount ?? 0;
+
+  // Ambil seluruh sub-unit divisi berdasarkan prefix kode divisi utama
+  // Contoh: divisi HR & GA punya kode "1.1.2.1.0.0", prefix = "1.1.2.1"
+  // Semua sub-unitnya punya kode "1.1.2.1.x.x"
+  let orgUnits: OrgUnitRow[] = [];
+  const mu = mainUnit as OrgUnitRow | null;
+  if (mu?.code) {
+    const parts = mu.code.split(".");
+    const nonZeroParts = parts.filter((p, i) => {
+      // Ambil semua segmen hingga segmen terakhir yang bukan 0
+      return parts.slice(i).some(v => v !== "0");
+    });
+    const prefix = nonZeroParts.join(".");
+    const { data: units } = await supabaseAdmin
+      .from("org_units")
+      .select("id, code, name, level, leader_name")
+      .like("code", `${prefix}%`)
+      .order("level")
+      .order("name");
+    orgUnits = (units as OrgUnitRow[]) || [];
+  } else if (mu) {
+    orgUnits = [mu];
+  }
 
   return {
     employees: (employees as EmployeeRow[]) || [],
     requests: (requests as RequestRow[]) || [],
     headcount,
-    orgUnits: (orgUnits as OrgUnitRow[]) || [],
+    orgUnits,
   };
 }
 
@@ -102,6 +126,8 @@ export async function submitRequest(formData: FormData) {
   const quantity = parseInt(formData.get("quantity") as string || "1");
   const urgency = (formData.get("urgency") as string || "Sedang").trim();
   const reason = (formData.get("reason") as string || "").trim();
+  const grade_code = (formData.get("grade_code") as string || "").trim() || null;
+  const job_desc = (formData.get("job_desc") as string || "").trim() || null;
   const requested_by = user.name || user.email;
 
   if (!department || !position) return { error: "Departemen dan posisi wajib diisi." };
@@ -109,7 +135,8 @@ export async function submitRequest(formData: FormData) {
   const id = uid();
   const now = new Date().toISOString();
   const { error } = await supabaseAdmin.from("workforce_requests").insert({
-    id, department, position, quantity, reason, urgency, status: "Pending", requested_by, created_at: now,
+    id, department, position, quantity, reason, urgency, status: "Pending",
+    requested_by, grade_code, job_desc, created_at: now,
   });
   if (error) {
     console.error("submitRequest error:", error);

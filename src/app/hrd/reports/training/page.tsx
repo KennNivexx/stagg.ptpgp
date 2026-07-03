@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, GraduationCap, Clock, TrendingUp, Users } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function LaporanPelatihan() {
   const trainingStats = [
@@ -56,10 +57,12 @@ export default async function LaporanPelatihan() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
-                    <GraduationCap size={40} className="mx-auto text-slate-300 mb-4" />
-                    <p className="text-sm text-slate-500">Belum ada data pelatihan.</p>
-                    <p className="text-xs text-slate-400 mt-1">Tambahkan program pelatihan untuk melihat laporan.</p>
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={GraduationCap}
+                      title="Belum ada data pelatihan."
+                      description="Tambahkan program pelatihan untuk melihat laporan."
+                    />
                   </td>
                 </tr>
               </tbody>

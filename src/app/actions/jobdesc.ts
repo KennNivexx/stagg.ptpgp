@@ -6,31 +6,46 @@ import { requireRole } from "@/lib/auth-guard";
 
 const uid = () => "jd-" + crypto.randomUUID();
 
-interface JobDesc {
-  id: string; position: string; department: string;
+export interface JobDesc {
+  id: string; title: string; position: string; department: string;
   responsibilities: string[]; requirements: string[];
 }
 
 export async function getJobDescs(): Promise<JobDesc[]> {
   await requireRole("hrd", "superadmin");
   const { data } = await supabaseAdmin.from("job_descriptions").select("*").order("department", { ascending: true }).order("position", { ascending: true });
-  return (data as JobDesc[]) || [];
+  return ((data || []) as JobDesc[]).map(d => ({ ...d, title: d.title || "" }));
+}
+
+// Read-only accessor for the employee/department-head portals — a position
+// can have multiple job-description entries, so this always returns a list.
+export async function getJobDescsForPosition(position: string): Promise<JobDesc[]> {
+  if (!position) return [];
+  const { data } = await supabaseAdmin.from("job_descriptions").select("*").eq("position", position);
+  return ((data || []) as JobDesc[]).map(d => ({ ...d, title: d.title || "" }));
+}
+
+export async function getJobDescsForDepartment(department: string): Promise<JobDesc[]> {
+  if (!department) return [];
+  const { data } = await supabaseAdmin.from("job_descriptions").select("*").eq("department", department).order("position", { ascending: true });
+  return ((data || []) as JobDesc[]).map(d => ({ ...d, title: d.title || "" }));
 }
 
 export async function saveJobDesc(formData: FormData) {
   await requireRole("hrd", "superadmin");
   const id = (formData.get("id") as string || "").trim();
+  const title = (formData.get("title") as string || "").trim();
   const position = (formData.get("position") as string || "").trim();
   const department = (formData.get("department") as string || "").trim();
-  const responsibilities = (formData.get("responsibilities") as string || "").split("\n").filter(Boolean);
-  const requirements = (formData.get("requirements") as string || "").split("\n").filter(Boolean);
+  const responsibilities = (JSON.parse((formData.get("responsibilities") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
+  const requirements = (JSON.parse((formData.get("requirements") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
 
   if (!position) return { error: "Posisi wajib diisi." };
 
   const now = new Date().toISOString();
   if (id) {
     const { error } = await supabaseAdmin.from("job_descriptions").update({
-      position, department, responsibilities, requirements, updated_at: now,
+      title, position, department, responsibilities, requirements, updated_at: now,
     }).eq("id", id);
     if (error) {
       console.error("[jobdesc] saveJobDesc error:", error.message);
@@ -39,7 +54,7 @@ export async function saveJobDesc(formData: FormData) {
   } else {
     const newId = uid();
     const { error } = await supabaseAdmin.from("job_descriptions").insert({
-      id: newId, position, department, responsibilities, requirements, created_at: now, updated_at: now,
+      id: newId, title, position, department, responsibilities, requirements, created_at: now, updated_at: now,
     });
     if (error) {
       console.error("[jobdesc] addJobDesc error:", error.message);
@@ -48,6 +63,8 @@ export async function saveJobDesc(formData: FormData) {
   }
 
   revalidatePath("/hrd/workplace/jobdesc");
+  revalidatePath("/employee/jobdesc");
+  revalidatePath("/department/jobdesc");
   return { success: true };
 }
 
@@ -56,5 +73,7 @@ export async function deleteJobDesc(id: string) {
   const { error } = await supabaseAdmin.from("job_descriptions").delete().eq("id", id);
   if (error) { console.error("[jobdesc] deleteJobDesc error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/workplace/jobdesc");
+  revalidatePath("/employee/jobdesc");
+  revalidatePath("/department/jobdesc");
   return { success: true };
 }

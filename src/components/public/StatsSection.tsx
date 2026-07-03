@@ -1,3 +1,7 @@
+"use client";
+
+import { motion } from "framer-motion";
+
 interface StatItem {
   label: string;
   value: string;
@@ -17,6 +21,16 @@ const defaultStats: StatItem[] = [
   { value: "98%", label: "On-Time Delivery" }
 ];
 
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12 } },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
+
 export default function StatsSection({
   show = true,
   title = "",
@@ -27,26 +41,38 @@ export default function StatsSection({
   const items = stats?.length ? stats : defaultStats;
 
   return (
-    <section className="bg-pgp-red py-16">
+    <motion.section
+      className="bg-pgp-red py-16"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {title && (
           <h2 className="text-2xl md:text-3xl font-extrabold text-white text-center mb-10 tracking-tight">
             {title}
           </h2>
         )}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-white/20">
+        <motion.div
+          className="grid grid-cols-2 md:grid-cols-4 gap-8 md:divide-x md:divide-white/20"
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-80px" }}
+        >
           {items.map((stat, index) => (
-            <div key={index} className="text-center">
+            <motion.div key={index} className="text-center" variants={item}>
               <div className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
                 {stat.value}
               </div>
               <div className="text-xs font-bold text-red-200 uppercase tracking-widest">
                 {stat.label}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 }

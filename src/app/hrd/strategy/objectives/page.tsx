@@ -1,5 +1,6 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Crosshair, Plus, Target, Calendar, TrendingUp, Clock } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 async function saveObjective(formData: FormData) {
   "use server";
@@ -105,11 +106,7 @@ export default async function TujuanSasaran() {
           </div>
           <div className="divide-y divide-slate-50">
             {SEED_OBJECTIVES.length === 0 ? (
-              <div className="p-12 text-center">
-                <Target size={40} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-sm text-slate-500">Belum ada tujuan strategis.</p>
-                <p className="text-xs text-slate-400 mt-1">Tambahkan tujuan baru untuk memulai.</p>
-              </div>
+              <EmptyState icon={Target} title="Belum ada tujuan strategis." description="Tambahkan tujuan baru untuk memulai." />
             ) : (
               SEED_OBJECTIVES.map((obj) => (
                 <div key={obj.id} className="p-5 hover:bg-slate-50/30 transition-colors">

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Users, Award, Clock, Search, CheckCircle, AlertTriangle } from "lucide-react";
 import PanduanLevel from "@/components/PanduanLevel";
+import EmptyState from "@/components/EmptyState";
 
 interface EmpSkill {
   id: string;
@@ -124,11 +125,11 @@ export default function AssessmentClient({ data, totalEmployees }: Props) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <Award size={40} className="mx-auto text-slate-300 mb-4" />
-          <p className="text-sm text-slate-500 font-bold">Belum ada data asesmen</p>
-          <p className="text-xs text-slate-400 mt-1">Department Manager dapat melakukan penilaian melalui halaman Kompetensi.</p>
-        </div>
+        <EmptyState
+          icon={Award}
+          title="Belum ada data asesmen"
+          description="Department Manager dapat melakukan penilaian melalui halaman Kompetensi."
+        />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">

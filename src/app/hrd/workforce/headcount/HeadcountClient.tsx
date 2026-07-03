@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BarChart3, Users, Building2, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
-import { syncAllHeadcounts } from "@/app/actions/headcount";
+import { syncAllHeadcounts, getHeadcountData } from "@/app/actions/headcount";
+import EmptyState from "@/components/EmptyState";
 
 interface DeptHC {
   id: string; name: string; current: number; approved: number;
@@ -15,20 +16,25 @@ export default function HeadcountClient({
   initialData: DeptHC[];
 }) {
   const router = useRouter();
-  const [data] = useState(initialData);
+  const [data, setData] = useState(initialData);
   const [syncing, setSyncing] = useState(false);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const syncFromEmployees = async () => {
     setSyncing(true);
     try {
       await syncAllHeadcounts();
+      const fresh = await getHeadcountData();
+      setData(fresh);
       router.refresh();
-      showToast("Headcount disinkronkan dari data karyawan + permintaan disetujui.");
+      showToast("Headcount disinkronkan dari data karyawan + permintaan disetujui.", "success");
     } catch (_e) {
-      showToast("Sinkronisasi gagal.");
+      showToast("Sinkronisasi gagal.", "error");
     }
     setSyncing(false);
   };
@@ -40,8 +46,10 @@ export default function HeadcountClient({
   return (
     <div className="p-6 lg:p-8 space-y-8">
       {toast && (
-        <div className="fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg bg-red-50 text-red-700 border border-red-200 text-sm font-bold">
-          {toast}
+        <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg border text-sm font-bold ${
+          toast.type === "success" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"
+        }`}>
+          {toast.msg}
         </div>
       )}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -87,7 +95,7 @@ export default function HeadcountClient({
             <Building2 size={16} className="text-blue-600" />
             <div>
               <h3 className="font-extrabold text-slate-800 text-sm">Headcount per Departemen</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Klik angka di kolom Disetujui untuk mengubah jatah headcount</p>
+              <p className="text-xs text-slate-400 mt-0.5">Headcount dihitung otomatis dari karyawan existing + permintaan disetujui</p>
             </div>
           </div>
         </div>
@@ -101,11 +109,13 @@ export default function HeadcountClient({
         </div>
 
         <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
-          {data.length === 0 ? (
+          {syncing ? (
             <div className="p-12 text-center">
-              <Users size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada data.</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000] mx-auto mb-3" />
+              <p className="text-sm text-slate-500">Menyinkronkan data headcount...</p>
             </div>
+          ) : data.length === 0 ? (
+            <EmptyState icon={Users} title="Belum ada data." />
           ) : (
             data.map((dept) => {
               const pct = dept.approved > 0 ? Math.round((dept.current / dept.approved) * 100) : 0;

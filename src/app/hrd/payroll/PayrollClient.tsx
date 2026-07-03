@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { DollarSign, Download, FileText, Clock, Users, X, Plus } from "lucide-react";
 import { generatePayslip } from "@/app/actions/admin";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
 type Payroll = Record<string, unknown>;
@@ -17,9 +18,11 @@ interface Props {
   payrolls: Payroll[];
   employees: Employee[];
   totalEmployees: number;
+  title?: string;
+  subtitle?: string;
 }
 
-export default function PayrollClient({ payrolls, employees, totalEmployees }: Props) {
+export default function PayrollClient({ payrolls, employees, totalEmployees, title = "Payroll", subtitle = "Kelola penggajian dan slip gaji seluruh karyawan." }: Props) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [empId, setEmpId] = useState("");
@@ -47,8 +50,8 @@ export default function PayrollClient({ payrolls, employees, totalEmployees }: P
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Payroll</h1>
-        <p className="text-sm text-gray-500">Kelola penggajian dan slip gaji seluruh karyawan.</p>
+        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">{title}</h1>
+        <p className="text-sm text-gray-500">{subtitle}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -98,11 +101,7 @@ export default function PayrollClient({ payrolls, employees, totalEmployees }: P
         </div>
 
         {payrolls.length === 0 ? (
-          <div className="p-12 text-center">
-            <DollarSign size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada data payroll.</p>
-            <p className="text-xs text-slate-400 mt-1">Klik &quot;Generate Slip Baru&quot; untuk membuat slip gaji karyawan.</p>
-          </div>
+          <EmptyState icon={DollarSign} title="Belum ada data payroll." description={'Klik "Generate Slip Baru" untuk membuat slip gaji karyawan.'} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -138,9 +137,13 @@ export default function PayrollClient({ payrolls, employees, totalEmployees }: P
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className="p-2 rounded-lg text-slate-300 cursor-not-allowed inline-flex" title="Segera tersedia">
+                        <button
+                          onClick={() => window.open(`/api/payslip/${p.id as string}`, "_blank")}
+                          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 inline-flex transition-colors"
+                          title="Lihat / Unduh slip gaji"
+                        >
                           <Download size={14} />
-                        </span>
+                        </button>
                       </td>
                     </tr>
                   );

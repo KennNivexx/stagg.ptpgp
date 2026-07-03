@@ -1,6 +1,7 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Briefcase, MapPin, Clock, Users, CheckCircle2 } from "lucide-react";
 import VacancyFormClient from "./VacancyFormClient";
+import EmptyState from "@/components/EmptyState";
 
 export default async function PerencanaanLowongan() {
   const { data: jobs } = await supabaseAdmin
@@ -13,6 +14,10 @@ export default async function PerencanaanLowongan() {
     .select("department")
     .neq("status", "Inactive");
 
+  const { data: departmentRows } = await supabaseAdmin
+    .from("departments")
+    .select("name, headcount");
+
   const jobList = (jobs || []) as Record<string, unknown>[];
   const openJobs = jobList.filter((j) => j.status === "Open");
   const closedJobs = jobList.filter((j) => j.status === "Closed");
@@ -24,8 +29,12 @@ export default async function PerencanaanLowongan() {
     if (dept) deptCounts[dept] = (deptCounts[dept] || 0) + 1;
   });
 
+  // Planned vacancy = approved headcount quota (departments.headcount, set via
+  // Headcount Planning) minus current employees — not an arbitrary percentage.
   const vacancySummary = Object.entries(deptCounts).map(([dept, count]) => {
-    const planned = Math.max(Math.ceil(count * 0.15), 1);
+    const deptRow = (departmentRows || []).find((d: Record<string, unknown>) => d.name === dept);
+    const headcount = Number((deptRow as Record<string, unknown>)?.headcount) || 0;
+    const planned = Math.max(headcount - count, 0);
     const active = jobList.filter((j) => j.department === dept && j.status === "Open").length;
     return { department: dept, totalEmployees: count, planned, active, remaining: planned - active };
   }).sort((a, b) => b.active - a.active);
@@ -72,11 +81,7 @@ export default async function PerencanaanLowongan() {
             </div>
             <div className="divide-y divide-slate-50">
               {openJobs.length === 0 ? (
-                <div className="p-12 text-center">
-                  <Briefcase size={40} className="mx-auto text-slate-300 mb-4" />
-                  <p className="text-sm text-slate-500">Belum ada lowongan aktif.</p>
-                  <p className="text-xs text-slate-400 mt-1">Buat lowongan baru untuk memulai rekrutmen.</p>
-                </div>
+                <EmptyState icon={Briefcase} title="Belum ada lowongan aktif." description="Buat lowongan baru untuk memulai rekrutmen." />
               ) : (
                 openJobs.map((job: Record<string, unknown>) => (
                   <div key={job.id as string} className="p-5 hover:bg-slate-50/30 transition-colors">
@@ -109,9 +114,7 @@ export default async function PerencanaanLowongan() {
             </div>
             <div className="divide-y divide-slate-50">
               {vacancySummary.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-xs text-slate-400">Belum ada data departemen.</p>
-                </div>
+                <EmptyState icon={Users} title="Belum ada data departemen." />
               ) : (
                 vacancySummary.map((vs) => (
                   <div key={vs.department} className="p-4 hover:bg-slate-50/30 transition-colors flex items-center justify-between">

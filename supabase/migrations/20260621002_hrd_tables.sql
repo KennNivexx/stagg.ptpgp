@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS salary_structures (
   meal_allowance BIGINT DEFAULT 0,
   housing_allowance BIGINT DEFAULT 0,
   position_allowance BIGINT DEFAULT 0,
+  ptkp_status TEXT DEFAULT 'TK/0',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

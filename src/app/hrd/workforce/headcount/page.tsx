@@ -1,6 +1,8 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import HeadcountClient from "./HeadcountClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function HeadcountPlanning() {
   const { data: employees } = await supabaseAdmin
     .from("employees")
@@ -30,8 +32,10 @@ export default async function HeadcountPlanning() {
       id: dept.id,
       name: dept.name,
       current,
-      // auto-fill headcount = current if not manually set
-      approved: dept.planned > 0 ? dept.planned : current,
+      // No fallback to `current` — a department that hasn't been synced yet
+      // (headcount still 0) shows as 0 / "belum diatur" instead of a
+      // misleadingly-full quota.
+      approved: dept.planned > 0 ? dept.planned : 0,
     };
   }).sort((a, b) => b.current - a.current || a.name.localeCompare(b.name));
 

@@ -9,6 +9,7 @@ import {
   MapPin,
   AlertTriangle,
 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function DirectorDashboard() {
   const user = await requireRole("director", "superadmin");
@@ -110,9 +111,8 @@ export default async function DirectorDashboard() {
           </div>
           <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
             {pendingList.length === 0 ? (
-              <div className="p-12 text-center">
-                <CheckCircle2 size={40} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-sm text-slate-500">Tidak ada request yang menunggu approval.</p>
+              <div className="p-12">
+                <EmptyState icon={CheckCircle2} title="Tidak ada request yang menunggu approval." />
               </div>
             ) : (
               pendingList.map((req) => (
@@ -153,9 +153,8 @@ export default async function DirectorDashboard() {
           </div>
           <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
             {approvedList.length === 0 ? (
-              <div className="p-12 text-center">
-                <AlertTriangle size={40} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-sm text-slate-500">Belum ada request yang disetujui.</p>
+              <div className="p-12">
+                <EmptyState icon={AlertTriangle} title="Belum ada request yang disetujui." />
               </div>
             ) : (
               approvedList.map((req) => (

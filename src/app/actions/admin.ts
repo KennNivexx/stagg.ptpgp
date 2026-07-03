@@ -136,21 +136,62 @@ export async function generatePayslip(formData: FormData) {
     .select("id").eq("employee_id", employeeId).eq("month", month).eq("year", year).maybeSingle();
   if (existing) return { error: "Slip gaji untuk periode ini sudah dibuat." };
   const { data: salaryData } = await supabaseAdmin.from("salary_structures")
-    .select("basic_salary, transport_allowance, meal_allowance, housing_allowance")
+    .select("basic_salary, transport_allowance, meal_allowance, housing_allowance, ptkp_status")
     .eq("employee_id", employeeId).maybeSingle();
   const basic = Number(salaryData?.basic_salary) || 0;
   const allowances = (Number(salaryData?.transport_allowance) || 0) +
     (Number(salaryData?.meal_allowance) || 0) +
     (Number(salaryData?.housing_allowance) || 0);
   if (basic === 0) return { error: "Belum ada struktur gaji untuk karyawan ini. Isi di menu Komponen Gaji terlebih dahulu." };
+
+  // ── Hitung PPh 21 otomatis ──────────────────────────────────────────────
+  let monthlyTax = 0;
+  try {
+    const { data: taxRow } = await supabaseAdmin
+      .from("system_settings").select("value").eq("key", "pph21_config").maybeSingle();
+    const cfg = taxRow?.value ? JSON.parse(taxRow.value as string) : null;
+    const ptkpStatus = (salaryData?.ptkp_status as string) || "TK/0";
+    const ptkpMap: Record<string, number> = {
+      "TK/0": cfg?.ptkp_tk0 ?? 54_000_000,
+      "TK/1": cfg?.ptkp_tk1 ?? 58_500_000,
+      "TK/2": cfg?.ptkp_tk2 ?? 63_000_000,
+      "TK/3": cfg?.ptkp_tk3 ?? 67_500_000,
+      "K/0":  cfg?.ptkp_k0  ?? 58_500_000,
+      "K/1":  cfg?.ptkp_k1  ?? 63_000_000,
+      "K/2":  cfg?.ptkp_k2  ?? 67_500_000,
+      "K/3":  cfg?.ptkp_k3  ?? 72_000_000,
+    };
+    const ptkp = ptkpMap[ptkpStatus] ?? 54_000_000;
+    const brackets: Array<{ min: number; max: number | null; rate: number }> = cfg?.brackets ?? [
+      { min: 0,              max: 60_000_000,    rate: 5  },
+      { min: 60_000_000,     max: 250_000_000,   rate: 15 },
+      { min: 250_000_000,    max: 500_000_000,   rate: 25 },
+      { min: 500_000_000,    max: 5_000_000_000, rate: 30 },
+      { min: 5_000_000_000,  max: null,          rate: 35 },
+    ];
+    const annualGross = (basic + allowances) * 12;
+    const pkp = Math.max(0, annualGross - ptkp);
+    let annualTax = 0;
+    let remaining = pkp;
+    for (const br of brackets) {
+      if (remaining <= 0) break;
+      const bracketSize = br.max !== null ? br.max - br.min : remaining;
+      const taxable = Math.min(remaining, bracketSize);
+      annualTax += taxable * (br.rate / 100);
+      remaining -= taxable;
+    }
+    monthlyTax = Math.round(annualTax / 12);
+  } catch { monthlyTax = 0; }
+
   const { error } = await supabaseAdmin.from("payroll").insert({
     id: "pay-" + crypto.randomUUID(),
     employee_id: employeeId,
     month, year,
     basic_salary: basic,
     allowances,
-    deductions: 0,
-    net_salary: basic + allowances,
+    deductions: monthlyTax,
+    tax: monthlyTax,
+    net_salary: basic + allowances - monthlyTax,
     status: "Draft",
     created_at: new Date().toISOString(),
   });
@@ -158,4 +199,22 @@ export async function generatePayslip(formData: FormData) {
   if (error) { console.error("[admin] generatePayslip error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/payroll");
   return { success: true };
+}
+
+export async function saveTaxConfig(config: Record<string, unknown>) {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin.from("system_settings").upsert(
+    { key: "pph21_config", value: JSON.stringify(config), updated_at: new Date().toISOString() },
+    { onConflict: "key" }
+  );
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function getTaxConfig(): Promise<Record<string, unknown> | null> {
+  await requireRole("hrd", "superadmin");
+  const { data } = await supabaseAdmin
+    .from("system_settings").select("value").eq("key", "pph21_config").maybeSingle();
+  if (!data?.value) return null;
+  try { return JSON.parse(data.value as string) as Record<string, unknown>; } catch { return null; }
 }

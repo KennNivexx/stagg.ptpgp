@@ -6,6 +6,7 @@ import { ArrowLeft, KeyRound, Camera } from "lucide-react";
 import { getEmployeeById, updateEmployee, resetEmployeePassword } from "@/app/actions/hrd";
 import { getDepartments } from "@/app/actions/org";
 import { getEmployeeFaceStatus } from "@/app/actions/attendance";
+import { getSalaryStructureByEmployee, saveSalaryStructure } from "@/app/actions/rewards";
 import { generateWhatsAppUrl, formatPasswordMessage } from "@/lib/wa";
 import FaceRegistration from "@/components/FaceRegistration";
 
@@ -28,6 +29,27 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
     position: "",
     join_date: "",
     status: "Tetap",
+    // Data diri & keluarga
+    nik: "",
+    birth_place: "",
+    birth_date: "",
+    religion: "",
+    blood_type: "",
+    marital_status: "",
+    spouse_name: "",
+    children_count: "",
+    ktp_address: "",
+    last_education: "",
+    emergency_name: "",
+    emergency_phone: "",
+  });
+  const [salaryData, setSalaryData] = useState({
+    basic_salary: "",
+    transport_allowance: "",
+    meal_allowance: "",
+    housing_allowance: "",
+    position_allowance: "",
+    ptkp_status: "TK/0",
   });
 
   useEffect(() => {
@@ -42,15 +64,28 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
           setLoading(false);
           return;
         }
+        const d = data as Record<string, unknown>;
         setFormData({
-          full_name: (data as Record<string, unknown>).full_name as string || "",
-          email: (data as Record<string, unknown>).email as string || "",
-          phone: (data as Record<string, unknown>).phone as string || "",
-          address: (data as Record<string, unknown>).address as string || "",
-          department: (data as Record<string, unknown>).department as string || "Operasional",
-          position: (data as Record<string, unknown>).position as string || "",
-          join_date: (data as Record<string, unknown>).join_date as string || "",
-          status: (data as Record<string, unknown>).status as string || "Tetap",
+          full_name: d.full_name as string || "",
+          email: d.email as string || "",
+          phone: d.phone as string || "",
+          address: d.address as string || "",
+          department: d.department as string || "Operasional",
+          position: d.position as string || "",
+          join_date: d.join_date as string || "",
+          status: d.status as string || "Tetap",
+          nik: d.nik as string || "",
+          birth_place: d.birth_place as string || "",
+          birth_date: d.birth_date as string || "",
+          religion: d.religion as string || "",
+          blood_type: d.blood_type as string || "",
+          marital_status: d.marital_status as string || "",
+          spouse_name: d.spouse_name as string || "",
+          children_count: d.children_count != null ? String(d.children_count) : "",
+          ktp_address: d.ktp_address as string || "",
+          last_education: d.last_education as string || "",
+          emergency_name: d.emergency_name as string || "",
+          emergency_phone: d.emergency_phone as string || "",
         });
         setLoading(false);
       }).catch(() => {
@@ -60,12 +95,35 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
       getEmployeeFaceStatus(id).then((status) => {
         setFaceStatus(status as Record<string, unknown> | null);
       });
+      getSalaryStructureByEmployee(id).then((data) => {
+        if (!data) return;
+        const s = data as Record<string, unknown>;
+        setSalaryData({
+          basic_salary: s.basic_salary != null ? String(s.basic_salary) : "",
+          transport_allowance: s.transport_allowance != null ? String(s.transport_allowance) : "",
+          meal_allowance: s.meal_allowance != null ? String(s.meal_allowance) : "",
+          housing_allowance: s.housing_allowance != null ? String(s.housing_allowance) : "",
+          position_allowance: s.position_allowance != null ? String(s.position_allowance) : "",
+          ptkp_status: s.ptkp_status as string || "TK/0",
+        });
+      });
     });
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setSalaryData({ ...salaryData, [e.target.name]: e.target.value });
+  };
+
+  const totalSalary =
+    (parseInt(salaryData.basic_salary || "0", 10) || 0) +
+    (parseInt(salaryData.transport_allowance || "0", 10) || 0) +
+    (parseInt(salaryData.meal_allowance || "0", 10) || 0) +
+    (parseInt(salaryData.housing_allowance || "0", 10) || 0) +
+    (parseInt(salaryData.position_allowance || "0", 10) || 0);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -74,19 +132,21 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
     const fd = new FormData();
     fd.append("id", id);
-    fd.append("full_name", formData.full_name);
-    fd.append("email", formData.email);
-    fd.append("phone", formData.phone);
-    fd.append("address", formData.address);
-    fd.append("department", formData.department);
-    fd.append("position", formData.position);
-    fd.append("join_date", formData.join_date);
-    fd.append("status", formData.status);
+    Object.entries(formData).forEach(([key, value]) => fd.append(key, value));
+
+    const salaryFd = new FormData();
+    salaryFd.append("employee_id", id);
+    Object.entries(salaryData).forEach(([key, value]) => salaryFd.append(key, value));
 
     try {
-      const res = await updateEmployee(fd);
+      const [res, salaryRes] = await Promise.all([
+        updateEmployee(fd),
+        saveSalaryStructure(salaryFd),
+      ]);
       if (res.error) {
         setError(res.error);
+      } else if (salaryRes.error) {
+        setError("Data karyawan tersimpan, tetapi gagal menyimpan data gaji: " + salaryRes.error);
       } else {
         window.location.href = "/hrd/employees";
       }
@@ -175,17 +235,43 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                 <input type="email" name="email" required value={formData.email} onChange={handleChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Nomor Telepon</label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors" />
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Nomor Telepon <span className="font-normal text-gray-400">(lihat saja)</span></label>
+                <p className="w-full border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600 rounded-sm">{formData.phone || "—"}</p>
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Alamat Lengkap</label>
-                <input type="text" name="address" value={formData.address} onChange={handleChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors" />
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Alamat Domisili <span className="font-normal text-gray-400">(lihat saja)</span></label>
+                <p className="w-full border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600 rounded-sm">{formData.address || "—"}</p>
               </div>
             </div>
           </div>
 
           <div className="p-8 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-lg font-bold text-[#1A2530] mb-1">Data Diri & Keluarga</h2>
+            <p className="text-xs text-gray-500 mb-6">Lihat saja — diisi mandiri oleh karyawan lewat akunnya sendiri (Profil Saya) setelah registrasi wajah absensi, karena berpengaruh pada perhitungan Payroll.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                ["NIK (KTP)", formData.nik],
+                ["Alamat Sesuai KTP", formData.ktp_address],
+                ["Tempat Lahir", formData.birth_place],
+                ["Tanggal Lahir", formData.birth_date],
+                ["Agama", formData.religion],
+                ["Golongan Darah", formData.blood_type],
+                ["Status Pernikahan", formData.marital_status],
+                ["Pendidikan Terakhir", formData.last_education],
+                ["Nama Pasangan", formData.spouse_name],
+                ["Jumlah Anak", formData.children_count],
+                ["Nama Kontak Darurat", formData.emergency_name],
+                ["Telepon Kontak Darurat", formData.emergency_phone],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">{label}</label>
+                  <p className="w-full border border-gray-100 bg-white p-3 text-sm text-gray-600 rounded-sm">{value || "—"}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-8 border-b border-gray-100">
             <h2 className="text-lg font-bold text-[#1A2530] mb-6">Informasi Pekerjaan</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -212,6 +298,50 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                   <option>Magang</option>
                 </select>
               </div>
+            </div>
+          </div>
+
+          <div className="p-8 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-lg font-bold text-[#1A2530] mb-1">Penentuan Gaji</h2>
+            <p className="text-xs text-gray-500 mb-6">Komponen gaji ini dipakai sebagai dasar perhitungan payroll bulanan.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Gaji Pokok</label>
+                <input type="number" name="basic_salary" min={0} value={salaryData.basic_salary} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white" placeholder="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Status PTKP</label>
+                <select name="ptkp_status" value={salaryData.ptkp_status} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white">
+                  <option value="TK/0">TK/0 - Tidak Kawin, 0 Tanggungan</option>
+                  <option value="TK/1">TK/1 - Tidak Kawin, 1 Tanggungan</option>
+                  <option value="TK/2">TK/2 - Tidak Kawin, 2 Tanggungan</option>
+                  <option value="TK/3">TK/3 - Tidak Kawin, 3 Tanggungan</option>
+                  <option value="K/0">K/0 - Kawin, 0 Tanggungan</option>
+                  <option value="K/1">K/1 - Kawin, 1 Tanggungan</option>
+                  <option value="K/2">K/2 - Kawin, 2 Tanggungan</option>
+                  <option value="K/3">K/3 - Kawin, 3 Tanggungan</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Tunjangan Transport</label>
+                <input type="number" name="transport_allowance" min={0} value={salaryData.transport_allowance} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white" placeholder="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Tunjangan Makan</label>
+                <input type="number" name="meal_allowance" min={0} value={salaryData.meal_allowance} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white" placeholder="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Tunjangan Perumahan</label>
+                <input type="number" name="housing_allowance" min={0} value={salaryData.housing_allowance} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white" placeholder="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Tunjangan Jabatan</label>
+                <input type="number" name="position_allowance" min={0} value={salaryData.position_allowance} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white" placeholder="0" />
+              </div>
+            </div>
+            <div className="mt-6 p-4 bg-white border border-gray-200 rounded-lg flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-600">Total Gaji Bruto</span>
+              <span className="text-lg font-bold text-[#CC0000]">Rp {totalSalary.toLocaleString("id-ID")}</span>
             </div>
           </div>
 

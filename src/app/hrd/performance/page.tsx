@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { Target, TrendingUp, Star, Award, Users, Eye } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function HRDPerformance() {
   const { data: evaluations, error } = await supabaseAdmin
@@ -88,11 +89,7 @@ export default async function HRDPerformance() {
         {error ? (
           <div className="p-12 text-center text-red-600 text-sm">{error.message}</div>
         ) : !evaluations || evaluations.length === 0 ? (
-          <div className="p-12 text-center">
-            <Star size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada data evaluasi kinerja.</p>
-            <p className="text-xs text-slate-400 mt-1">Buat evaluasi baru untuk memulai penilaian kinerja karyawan.</p>
-          </div>
+          <EmptyState icon={Star} title="Belum ada data evaluasi kinerja." description="Buat evaluasi baru untuk memulai penilaian kinerja karyawan." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

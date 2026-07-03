@@ -1,4 +1,5 @@
 ﻿import { TrendingUp, Target, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default async function MonitoringPerubahan() {
   const statusCards = [
@@ -35,11 +36,11 @@ export default async function MonitoringPerubahan() {
             <h3 className="font-extrabold text-slate-800 text-sm">Status Inisiatif</h3>
             <p className="text-xs text-slate-400 mt-0.5">Kartu status setiap inisiatif perubahan</p>
           </div>
-          <div className="p-12 text-center">
-            <Target size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada inisiatif untuk dimonitor.</p>
-            <p className="text-xs text-slate-400 mt-1">Tambahkan inisiatif perubahan terlebih dahulu.</p>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="Belum ada inisiatif untuk dimonitor."
+            description="Tambahkan inisiatif perubahan terlebih dahulu."
+          />
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">

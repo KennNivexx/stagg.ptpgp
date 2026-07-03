@@ -1,5 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { UserTable } from "./UserTable";
+import { Users } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 function getRoleBadge(role: string) {
   const base = "px-2 py-1 rounded text-[11px] font-bold";
@@ -69,11 +71,11 @@ export default async function SuperadminEmployees() {
       </div>
 
       {userList.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-          <div className="text-5xl mb-4 opacity-30">👥</div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">Belum ada data user</h3>
-          <p className="text-sm text-slate-500">Belum ada akun yang terdaftar.</p>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="Belum ada data user"
+          description="Belum ada akun yang terdaftar."
+        />
       ) : (
         <UserTable users={userList} />
       )}

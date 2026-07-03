@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { Quote } from "lucide-react";
 
 interface TestimonialItem {
@@ -38,7 +41,13 @@ export default function TestimonialSection({
   const items = testimonials?.length ? testimonials : defaultTestimonials;
 
   return (
-    <section className="py-24 bg-white text-pgp-navy">
+    <motion.section
+      className="py-24 bg-[#FCF9F6] text-pgp-navy"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
@@ -71,6 +80,6 @@ export default function TestimonialSection({
           })}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

@@ -10,6 +10,7 @@ interface WorkforceRequest {
   id: string; department: string; position: string;
   quantity: number; reason: string; urgency: string; status: string;
   requested_by: string; created_at: string;
+  grade_code?: string; job_desc?: string;
 }
 
 export async function getRequests(params?: { status?: string; department?: string }): Promise<WorkforceRequest[]> {
@@ -37,13 +38,16 @@ export async function addRequest(formData: FormData) {
   const urgency = (formData.get("urgency") as string || "Sedang").trim();
   const reason = (formData.get("reason") as string || "").trim();
   const requested_by = (formData.get("requested_by") as string || "").trim();
+  const grade_code = (formData.get("grade_code") as string || "").trim() || null;
+  const job_desc = (formData.get("job_desc") as string || "").trim() || null;
 
   if (!department || !position) return { error: "Departemen dan posisi wajib diisi." };
 
   const id = uid();
   const now = new Date().toISOString();
   const { error } = await supabaseAdmin.from("workforce_requests").insert({
-    id, department, position, quantity, reason, urgency, status: "Pending", requested_by, created_at: now,
+    id, department, position, quantity, reason, urgency, status: "Pending",
+    requested_by, grade_code, job_desc, created_at: now,
   });
   if (error) {
     console.error("[requests] addRequest error:", error.message);

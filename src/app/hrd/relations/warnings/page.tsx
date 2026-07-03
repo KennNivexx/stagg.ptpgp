@@ -1,6 +1,7 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { AlertTriangle, FileText, Clock, CheckCircle2 } from "lucide-react";
 import IssueWarningButton from "@/components/IssueWarningButton";
+import EmptyState from "@/components/EmptyState";
 
 export default async function SuratPeringatan() {
   const { data: employees } = await supabaseAdmin
@@ -101,11 +102,11 @@ export default async function SuratPeringatan() {
         </div>
 
         {warnings.length === 0 ? (
-          <div className="p-12 text-center">
-            <FileText size={40} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-sm text-slate-500">Belum ada surat peringatan yang dikeluarkan.</p>
-            <p className="text-xs text-slate-400 mt-1">Klik tombol &quot;Keluarkan SP&quot; untuk membuat surat peringatan baru.</p>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="Belum ada surat peringatan yang dikeluarkan."
+            description='Klik tombol "Keluarkan SP" untuk membuat surat peringatan baru.'
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

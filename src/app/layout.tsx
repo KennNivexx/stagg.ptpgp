@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -32,6 +33,7 @@ export default function RootLayout({
     <html lang="id" className={cn("h-full", "antialiased", "scroll-smooth", inter.variable, "font-sans", geist.variable)}>
       <body className="min-h-full flex flex-col font-sans">
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );

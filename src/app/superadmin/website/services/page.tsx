@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, Plus, Trash2, RefreshCw } from "lucide-react";
 import { getWebsiteSettings, saveWebsiteSettings } from "@/app/actions/settings";
+import { ImageUploadField } from "../_lib/ImageUploadField";
 
 interface Service {
   icon: string;
@@ -221,21 +222,13 @@ export default function ServicesCMS() {
                   onChange={(e) => handleServiceChange(idx, "description", e.target.value)}
                   className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none resize-none"
                 />
-                <input
-                  type="text"
-                  placeholder="URL Gambar (opsional)"
+                <ImageUploadField
+                  label="Gambar (opsional)"
                   value={svc.image_url}
-                  onChange={(e) => handleServiceChange(idx, "image_url", e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+                  onChange={(url) => handleServiceChange(idx, "image_url", url)}
+                  folder="services"
+                  placeholder="URL Gambar (opsional)"
                 />
-                {svc.image_url && (
-                  <img
-                    src={svc.image_url}
-                    alt="Preview"
-                    className="rounded-lg max-h-32 object-cover border"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                )}
               </div>
             ))}
           </div>

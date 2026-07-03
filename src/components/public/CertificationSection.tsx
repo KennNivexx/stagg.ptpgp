@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { Shield, Award, FileText, CheckCircle, LucideIcon } from "lucide-react";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -19,6 +22,8 @@ interface CertificationProps {
   title?: string;
   subtitle?: string;
   certifications?: CertItem[];
+  legal_title?: string;
+  legal_items?: CertItem[];
 }
 
 const defaultCertifications: CertItem[] = [
@@ -28,7 +33,7 @@ const defaultCertifications: CertItem[] = [
   { name: "Sertifikasi Logistik", icon: "award" },
 ];
 
-const legalItems: CertItem[] = [
+const defaultLegalItems: CertItem[] = [
   { name: "NIB", icon: "fileText" },
   { name: "NPWP", icon: "fileText" },
 ];
@@ -38,13 +43,22 @@ export default function CertificationSection({
   title = "Sertifikasi & Legalitas",
   subtitle = "Kepercayaan Anda Prioritas Kami",
   certifications = defaultCertifications,
+  legal_title = "Legalitas Perusahaan",
+  legal_items = defaultLegalItems,
 }: CertificationProps) {
   if (!show) return null;
 
   const items = certifications?.length ? certifications : defaultCertifications;
+  const legalItems = legal_items?.length ? legal_items : defaultLegalItems;
 
   return (
-    <section className="py-24 bg-white border-t border-gray-100">
+    <motion.section
+      className="py-24 bg-white border-t border-gray-100"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
@@ -85,18 +99,27 @@ export default function CertificationSection({
 
         <div className="border-t border-gray-100 pt-10">
           <div className="text-center max-w-3xl mx-auto mb-8">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Legalitas Perusahaan</h3>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{legal_title}</h3>
           </div>
           <div className="flex flex-wrap justify-center gap-6 md:gap-12">
             {legalItems.map((cert, index) => {
               const IconComponent = cert.icon ? iconMap[cert.icon] : null;
               return (
                 <div key={index} className="flex flex-col items-center gap-4 group cursor-default">
-                  <div className="w-20 h-20 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center border border-gray-100 group-hover:bg-pgp-navy group-hover:text-white group-hover:border-pgp-navy group-hover:shadow-lg transition-all duration-300">
-                    {IconComponent ? <IconComponent size={32} /> : <Award size={32} />}
-                  </div>
+                  {cert.logo ? (
+                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100 group-hover:shadow-lg transition-all duration-300 overflow-hidden">
+                      <img src={cert.logo} alt={cert.name} className="w-12 h-12 object-contain" />
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center border border-gray-100 group-hover:bg-pgp-navy group-hover:text-white group-hover:border-pgp-navy group-hover:shadow-lg transition-all duration-300">
+                      {IconComponent ? <IconComponent size={32} /> : <Award size={32} />}
+                    </div>
+                  )}
                   <div className="text-sm font-bold text-gray-500 group-hover:text-pgp-navy transition-colors text-center">
                     {cert.name}
+                    {cert.issuer && (
+                      <span className="block text-xs font-normal text-gray-400 mt-1">{cert.issuer}</span>
+                    )}
                   </div>
                 </div>
               );
@@ -104,6 +127,6 @@ export default function CertificationSection({
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

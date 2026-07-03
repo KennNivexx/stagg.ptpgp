@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
@@ -7,12 +6,18 @@ import {
   CalendarCheck,
   Wallet,
   TrendingUp,
+  TrendingDown,
   FileText,
-  Settings,
   GraduationCap,
   Building2,
   Clock,
+  UserCog,
 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
+
+// Force dynamic rendering — every request re-fetches fresh data from Supabase
+// instead of Next.js serving a statically cached copy of this dashboard.
+export const dynamic = "force-dynamic";
 
 const iconColorMap: Record<string, { bg: string; text: string }> = {
   blue: { bg: "bg-blue-50", text: "text-blue-600" },
@@ -51,71 +56,95 @@ function QuickCard({
 }
 
 function StatMiniCard({
-  icon: Icon, label, value, color, tooltip,
+  icon: Icon, label, value, color, tooltip, trend, suffix,
 }: {
   icon: React.ComponentType<{ size?: number }>;
-  label: string; value: number; color: string; tooltip?: string;
+  label: string; value: number; color: string; tooltip?: string; suffix?: string;
+  trend?: { direction: "up" | "down"; percentage: number };
 }) {
   const c = iconColorMap[color] || iconColorMap.blue;
   return (
-    <div title={tooltip} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
-      <div className={`p-2.5 ${c.bg} ${c.text} rounded-xl`}>
-        <Icon size={20} />
+    <div title={tooltip} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className={`p-2 ${c.bg} ${c.text} rounded-xl shrink-0`}>
+          <Icon size={18} />
+        </div>
+        {trend && (
+          <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold shrink-0 ${trend.direction === "up" ? "text-emerald-600" : "text-red-600"}`}>
+            {trend.direction === "up" ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+            {trend.percentage}%
+          </span>
+        )}
       </div>
-      <div>
-        <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">{label}</p>
-        <p className="text-xl font-extrabold text-slate-800">{value}</p>
-      </div>
+      <p className="text-xl font-extrabold text-slate-800 leading-tight">{value}{suffix}</p>
+      <p className="text-[10px] font-bold text-slate-400 uppercase leading-snug mt-1">{label}</p>
     </div>
   );
 }
 
+const BAR_CHART_MAX_BARS = 12;
+
 function BarChart({ data }: { data: { label: string; sublabel?: string; value: number }[] }) {
-  const max = Math.max(...data.map((d) => d.value), 1);
+  const displayData = data.length > BAR_CHART_MAX_BARS ? data.slice(-BAR_CHART_MAX_BARS) : data;
+
+  // Ceil to the nearest whole unit so a small max (e.g. 3) still gets clean,
+  // non-repeating gridline labels instead of duplicate rounded fractions.
+  const yMax = Math.max(Math.ceil(Math.max(...displayData.map((d) => d.value), 0)), 1);
   const BAR_H = 120;
   const BAR_W = 32;
   const GAP = 14;
   const PADDING_LEFT = 28;
-  const totalW = PADDING_LEFT + data.length * (BAR_W + GAP) - GAP + 10;
+  const totalW = PADDING_LEFT + displayData.length * (BAR_W + GAP) - GAP + 10;
 
   return (
-    <svg viewBox={`0 0 ${totalW} ${BAR_H + 52}`} className="w-full" aria-hidden>
-      {/* y-axis gridlines */}
-      {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
-        const y = BAR_H - frac * BAR_H;
-        const val = Math.round(frac * max);
-        return (
-          <g key={frac}>
-            <line x1={PADDING_LEFT - 4} y1={y} x2={totalW - 6} y2={y} stroke="#f1f5f9" strokeWidth={1} />
-            <text x={PADDING_LEFT - 6} y={y + 4} textAnchor="end" fontSize={8} fill="#cbd5e1">{val}</text>
-          </g>
-        );
-      })}
-      {data.map((d, i) => {
-        const barH = max === 0 ? 2 : Math.max((d.value / max) * BAR_H, d.value > 0 ? 4 : 2);
-        const x = PADDING_LEFT + i * (BAR_W + GAP);
-        const y = BAR_H - barH;
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={BAR_W} height={barH} fill="#CC0000" rx={4}
-              opacity={d.value === 0 ? 0.15 : 0.85} />
-            {d.value > 0 && (
-              <text x={x + BAR_W / 2} y={y - 4} textAnchor="middle" fontSize={9} fill="#CC0000" fontWeight="700">
-                {d.value}
+    <div className="max-h-[180px] w-full text-[#CC0000]">
+      <svg
+        viewBox={`0 0 ${totalW} ${BAR_H + 52}`}
+        className="w-full h-full"
+        preserveAspectRatio="xMidYMax meet"
+        aria-hidden
+      >
+        {/* y-axis gridlines — skip a label when rounding would repeat the previous one */}
+        {[0, 0.25, 0.5, 0.75, 1].map((frac, i, arr) => {
+          const y = BAR_H - frac * BAR_H;
+          const val = Math.round(frac * yMax);
+          const prevVal = i > 0 ? Math.round(arr[i - 1] * yMax) : null;
+          const showLabel = val !== prevVal;
+          return (
+            <g key={frac}>
+              <line x1={PADDING_LEFT - 4} y1={y} x2={totalW - 6} y2={y} stroke="#f1f5f9" strokeWidth={1} />
+              {showLabel && (
+                <text x={PADDING_LEFT - 6} y={y + 4} textAnchor="end" fontSize={8} fill="#cbd5e1">{val}</text>
+              )}
+            </g>
+          );
+        })}
+        {displayData.map((d, i) => {
+          const barH = Math.max((d.value / yMax) * BAR_H, d.value > 0 ? 4 : 2);
+          const x = PADDING_LEFT + i * (BAR_W + GAP);
+          const y = BAR_H - barH;
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={BAR_W} height={barH} fill="currentColor" rx={4}
+                opacity={d.value === 0 ? 0.15 : 0.85} />
+              {d.value > 0 && (
+                <text x={x + BAR_W / 2} y={y - 4} textAnchor="middle" fontSize={9} fill="currentColor" fontWeight="700">
+                  {d.value}
+                </text>
+              )}
+              <text x={x + BAR_W / 2} y={BAR_H + 14} textAnchor="middle" fontSize={9} fill="#64748b" fontWeight="600">
+                {d.label}
               </text>
-            )}
-            <text x={x + BAR_W / 2} y={BAR_H + 14} textAnchor="middle" fontSize={9} fill="#64748b" fontWeight="600">
-              {d.label}
-            </text>
-            {d.sublabel && (
-              <text x={x + BAR_W / 2} y={BAR_H + 26} textAnchor="middle" fontSize={8} fill="#94a3b8">
-                {d.sublabel}
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+              {d.sublabel && (
+                <text x={x + BAR_W / 2} y={BAR_H + 26} textAnchor="middle" fontSize={8} fill="#94a3b8">
+                  {d.sublabel}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
@@ -187,27 +216,86 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
   );
 }
 
-function getLast7Days() {
+const PERIOD_OPTIONS = [
+  { key: "7d", label: "7 Hari" },
+  { key: "30d", label: "30 Hari" },
+  { key: "month", label: "Bulan Ini" },
+  { key: "quarter", label: "Kuartal Ini" },
+] as const;
+type PeriodKey = typeof PERIOD_OPTIONS[number]["key"];
+
+function getPeriodRange(period: PeriodKey, now: Date) {
+  const end = new Date(now);
+  let start: Date;
+
+  if (period === "30d") {
+    start = new Date(now); start.setDate(start.getDate() - 29);
+  } else if (period === "month") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else if (period === "quarter") {
+    const qStartMonth = Math.floor(now.getMonth() / 3) * 3;
+    start = new Date(now.getFullYear(), qStartMonth, 1);
+  } else {
+    start = new Date(now); start.setDate(start.getDate() - 6);
+  }
+
+  // Auto-switch to weekly buckets once the range spans more than two weeks —
+  // otherwise a day-by-day chart over 30+ days renders dozens of illegibly
+  // thin, overlapping bars.
+  const spanDays = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  const bucket: "day" | "week" = spanDays > 14 ? "week" : "day";
+
+  return { start, end, bucket };
+}
+
+function getDayBuckets(start: Date, end: Date) {
   const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+  const cursor = new Date(start);
+  while (cursor <= end) {
     days.push({
-      date: d.toISOString().split("T")[0],
-      label: d.toLocaleDateString("id-ID", { weekday: "short" }),
-      sublabel: `${d.getDate()}/${d.getMonth() + 1}`,
+      date: cursor.toISOString().split("T")[0],
+      label: cursor.toLocaleDateString("id-ID", { weekday: "short" }),
+      sublabel: `${cursor.getDate()}/${cursor.getMonth() + 1}`,
     });
+    cursor.setDate(cursor.getDate() + 1);
   }
   return days;
+}
+
+function getWeekBuckets(start: Date, end: Date) {
+  const weeks: { startDate: string; endDate: string; label: string; sublabel?: string }[] = [];
+  const cursor = new Date(start);
+  let weekNum = 1;
+  while (cursor <= end) {
+    const weekStart = new Date(cursor);
+    const weekEnd = new Date(cursor);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    if (weekEnd > end) weekEnd.setTime(end.getTime());
+    weeks.push({
+      startDate: weekStart.toISOString().split("T")[0],
+      endDate: weekEnd.toISOString().split("T")[0],
+      label: `M${weekNum}`,
+    });
+    cursor.setDate(cursor.getDate() + 7);
+    weekNum++;
+  }
+  return weeks;
 }
 
 const DEPT_COLORS = ["#CC0000", "#2563eb", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
 
 import { requireRole } from "@/lib/auth-guard";
 
-export default async function HRDDashboard() {
+export default async function HRDDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
   const user = await requireRole("hrd", "superadmin");
   const userName = user.name || "Administrator HRD";
+
+  const { range } = await searchParams;
+  const period: PeriodKey = PERIOD_OPTIONS.some((p) => p.key === range) ? (range as PeriodKey) : "7d";
 
   const now = new Date();
   const today = now.toISOString().split("T")[0];
@@ -215,12 +303,20 @@ export default async function HRDDashboard() {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
+  const { start: periodStart, end: periodEnd, bucket } = getPeriodRange(period, now);
+  const periodStartStr = periodStart.toISOString().split("T")[0];
+  const periodEndStr = periodEnd.toISOString().split("T")[0];
 
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
+  // Fixed 7-day window for the "Hadir Hari Ini" trend, independent of the
+  // period tab selected on the attendance chart below — otherwise switching
+  // chart tabs would silently change this stat card's trend badge too.
+  const trendWindowStart = new Date(now); trendWindowStart.setDate(trendWindowStart.getDate() - 6);
+  const trendWindowStartStr = trendWindowStart.toISOString().split("T")[0];
+
+  // Each query falls back to an empty/null result instead of rejecting, so one
+  // bad table or network hiccup can't take down the whole dashboard render.
   const [
     { count: totalEmployees },
     { count: totalDepartments },
@@ -229,33 +325,69 @@ export default async function HRDDashboard() {
     { count: pendingLeaves },
     { count: activeJobs },
     { data: attendanceRaw },
+    { data: trendAttendanceRaw },
     { data: employeesRaw },
     { data: leavesRaw },
     { data: applicantsRaw },
+    { data: profileFieldsRaw },
   ] = await Promise.all([
-    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).neq("status", "Inactive"),
-    supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("attendance").select("*", { count: "exact", head: true }).eq("date", today).not("check_in", "is", null),
-    supabaseAdmin.from("workforce_requests").select("*", { count: "exact", head: true }).eq("status", "Pending"),
-    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Pending"),
-    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
-    supabaseAdmin.from("attendance").select("date").gte("date", sevenDaysAgoStr).lte("date", today).not("check_in", "is", null),
-    supabaseAdmin.from("employees").select("department").neq("status", "Inactive"),
-    supabaseAdmin.from("leave_requests").select("status").gte("created_at", monthStart),
-    supabaseAdmin.from("job_applications").select("status"),
+    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).neq("status", "Inactive").then((r) => r, () => ({ count: null })),
+    supabaseAdmin.from("departments").select("*", { count: "exact", head: true }).eq("level", 3).then((r) => r, () => ({ count: null })),
+    supabaseAdmin.from("attendance").select("*", { count: "exact", head: true }).eq("date", today).not("check_in", "is", null).then((r) => r, () => ({ count: null })),
+    supabaseAdmin.from("workforce_requests").select("*", { count: "exact", head: true }).eq("status", "Pending").then((r) => r, () => ({ count: null })),
+    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Pending").then((r) => r, () => ({ count: null })),
+    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open").then((r) => r, () => ({ count: null })),
+    supabaseAdmin.from("attendance").select("date").gte("date", periodStartStr).lte("date", periodEndStr).not("check_in", "is", null).then((r) => r, () => ({ data: null })),
+    supabaseAdmin.from("attendance").select("date").gte("date", trendWindowStartStr).lte("date", today).not("check_in", "is", null).then((r) => r, () => ({ data: null })),
+    supabaseAdmin.from("employees").select("department").neq("status", "Inactive").then((r) => r, () => ({ data: null })),
+    supabaseAdmin.from("leave_requests").select("status").gte("created_at", monthStart).then((r) => r, () => ({ data: null })),
+    supabaseAdmin.from("applications").select("status").then((r) => r, () => ({ data: null })),
+    supabaseAdmin.from("employees").select("phone, address, nik, emergency_phone").neq("status", "Inactive").then((r) => r, () => ({ data: null })),
   ]);
 
-  // Process attendance per day
-  const last7Days = getLast7Days();
+  // Process attendance per bucket (day or week depending on selected period)
   const attendanceByDate: Record<string, number> = {};
   (attendanceRaw || []).forEach((r) => {
     if (r.date) attendanceByDate[r.date] = (attendanceByDate[r.date] || 0) + 1;
   });
-  const attendanceChartData = last7Days.map((d) => ({
-    label: d.label,
-    sublabel: d.sublabel,
-    value: attendanceByDate[d.date] || 0,
-  }));
+
+  let attendanceChartData: { label: string; sublabel?: string; value: number }[];
+  if (bucket === "week") {
+    const weeks = getWeekBuckets(periodStart, periodEnd);
+    attendanceChartData = weeks.map((w) => {
+      let total = 0;
+      Object.entries(attendanceByDate).forEach(([date, count]) => {
+        if (date >= w.startDate && date <= w.endDate) total += count;
+      });
+      return { label: w.label, value: total };
+    });
+  } else {
+    const days = getDayBuckets(periodStart, periodEnd);
+    attendanceChartData = days.map((d) => ({
+      label: d.label,
+      sublabel: d.sublabel,
+      value: attendanceByDate[d.date] || 0,
+    }));
+  }
+  const attendanceChartTotalCount = attendanceChartData.length;
+  const attendanceChartTruncated = attendanceChartTotalCount > BAR_CHART_MAX_BARS;
+
+  // Trend for "Hadir Hari Ini": today's count vs the average of the last 7 days.
+  // Uses its own fixed-window query (trendAttendanceRaw) rather than the
+  // period-filtered attendanceByDate, so switching the chart's period tab
+  // below doesn't silently change this stat card's trend.
+  const trendByDate: Record<string, number> = {};
+  (trendAttendanceRaw || []).forEach((r) => {
+    if (r.date) trendByDate[r.date] = (trendByDate[r.date] || 0) + 1;
+  });
+  const todayCount = trendByDate[today] || 0;
+  const otherDayCounts = Object.entries(trendByDate)
+    .filter(([date]) => date !== today)
+    .map(([, count]) => count);
+  const otherAvg = otherDayCounts.length > 0 ? otherDayCounts.reduce((a, b) => a + b, 0) / otherDayCounts.length : 0;
+  const attendanceTrend = otherAvg > 0
+    ? { direction: (todayCount >= otherAvg ? "up" : "down") as "up" | "down", percentage: Math.round(Math.abs((todayCount - otherAvg) / otherAvg) * 100) }
+    : undefined;
 
   // Process employees by department (top 6)
   const deptCount: Record<string, number> = {};
@@ -289,24 +421,43 @@ export default async function HRDDashboard() {
     .slice(0, 5)
     .map(([label, value], i) => ({ label, value, color: DEPT_COLORS[i % DEPT_COLORS.length] }));
 
+  // Self-service profile completeness: how many employees have filled in the
+  // fields that only they can enter via /employee/profile (not HRD-entered).
+  // `address` can still legitimately hold the legacy __auth__ JSON blob for
+  // employees created before a users-table row existed — that's not a real
+  // address, so it doesn't count as "filled in".
+  const hasRealAddress = (raw: unknown) => {
+    if (!raw || typeof raw !== "string") return false;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && parsed.__auth__) return !!parsed.home_address;
+    } catch { /* plain text address */ }
+    return true;
+  };
+  const profileFields = (profileFieldsRaw || []) as { phone?: string; address?: string; nik?: string; emergency_phone?: string }[];
+  const completeProfiles = profileFields.filter((e) =>
+    !!e.phone && hasRealAddress(e.address) && !!e.nik && !!e.emergency_phone
+  ).length;
+  const profileCompletionPct = profileFields.length > 0 ? Math.round((completeProfiles / profileFields.length) * 100) : 0;
+
   const quickAccess = [
-    { icon: Users, title: "Data Karyawan", desc: "Kelola data, kontrak, dan struktur organisasi", href: "/hrd/employees", color: "blue" },
+    { icon: UserCog, title: "Profil Karyawan", desc: "Lihat data diri dan profil yang diisi oleh karyawan", href: "/hrd/employees", color: "blue" },
     { icon: Briefcase, title: "Rekrutmen", desc: "Lowongan, pelamar, dan hiring", href: "/hrd/recruitment", color: "emerald" },
     { icon: CalendarCheck, title: "Absensi & Cuti", desc: "Pantau kehadiran dan setujui cuti", href: "/hrd/attendance", color: "amber" },
     { icon: Wallet, title: "Payroll", desc: "Gaji, slip, dan komponen salary", href: "/hrd/payroll", color: "purple" },
     { icon: TrendingUp, title: "KPI & Performa", desc: "Penilaian kinerja karyawan", href: "/hrd/kpi", color: "red" },
     { icon: FileText, title: "Laporan", desc: "Rekap dan analisis data HR", href: "/hrd/reports", color: "indigo" },
-    { icon: Settings, title: "Pengaturan", desc: "User, role, dan konfigurasi sistem", href: "/hrd/admin", color: "slate" },
     { icon: GraduationCap, title: "Pelatihan", desc: "Program training dan sertifikasi", href: "/hrd/learning", color: "teal" },
   ];
 
   const stats = [
     { label: "Total Karyawan", value: totalEmployees || 0, icon: Users, color: "blue", tooltip: "Jumlah seluruh karyawan aktif" },
     { label: "Total Departemen", value: totalDepartments || 0, icon: Building2, color: "indigo", tooltip: "Jumlah departemen terdaftar" },
-    { label: "Hadir Hari Ini", value: presentToday || 0, icon: CalendarCheck, color: "emerald", tooltip: "Karyawan hadir hari ini" },
+    { label: "Hadir Hari Ini", value: presentToday || 0, icon: CalendarCheck, color: "emerald", tooltip: "Karyawan hadir hari ini", trend: attendanceTrend },
     { label: "Permintaan Pending", value: pendingRequests || 0, icon: Clock, color: "amber", tooltip: "Permintaan tenaga kerja menunggu" },
     { label: "Cuti Pending", value: pendingLeaves || 0, icon: FileText, color: "red", tooltip: "Pengajuan cuti menunggu HRD" },
     { label: "Lowongan Aktif", value: activeJobs || 0, icon: Briefcase, color: "purple", tooltip: "Lowongan kerja yang dibuka" },
+    { label: "Profil Lengkap", value: profileCompletionPct, suffix: "%", icon: UserCog, color: "teal", tooltip: `${completeProfiles} dari ${profileFields.length} karyawan sudah melengkapi profil sendiri` },
   ];
 
   return (
@@ -333,7 +484,7 @@ export default async function HRDDashboard() {
       {/* Stats */}
       <div>
         <h2 className="text-lg font-extrabold text-slate-800 mb-4">Ringkasan Hari Ini</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
             <StatMiniCard key={stat.label} {...stat} />
           ))}
@@ -345,13 +496,33 @@ export default async function HRDDashboard() {
         <h2 className="text-lg font-extrabold text-slate-800 mb-4">Grafik & Analitik</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* Attendance 7 Days */}
+          {/* Attendance chart with period filter */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <div className="mb-4">
-              <h3 className="font-extrabold text-slate-800 text-sm">Kehadiran 7 Hari Terakhir</h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Jumlah karyawan yang check-in per hari</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm">Kehadiran Karyawan</h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Jumlah karyawan yang check-in per {bucket === "week" ? "minggu" : "hari"}</p>
+              </div>
+              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+                {PERIOD_OPTIONS.map((opt) => (
+                  <Link
+                    key={opt.key}
+                    href={opt.key === "7d" ? "/hrd" : `/hrd?range=${opt.key}`}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-colors ${
+                      period === opt.key ? "bg-white shadow-sm text-[#CC0000]" : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {opt.label}
+                  </Link>
+                ))}
+              </div>
             </div>
             <BarChart data={attendanceChartData} />
+            {attendanceChartTruncated && (
+              <p className="text-[10px] text-slate-400 mt-2 text-center">
+                Menampilkan {BAR_CHART_MAX_BARS} dari {attendanceChartTotalCount} {bucket === "week" ? "minggu" : "hari"} terbaru
+              </p>
+            )}
           </div>
 
           {/* Dept Distribution */}
@@ -361,7 +532,7 @@ export default async function HRDDashboard() {
               <p className="text-[10px] text-slate-400 mt-0.5">Top departemen berdasarkan jumlah karyawan aktif</p>
             </div>
             {deptChartData.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">Belum ada data departemen.</p>
+              <EmptyState icon={Building2} title="Belum ada data departemen." className="border-none py-8" />
             ) : (
               <HorizontalBarChart data={deptChartData} />
             )}
@@ -374,7 +545,7 @@ export default async function HRDDashboard() {
               <p className="text-[10px] text-slate-400 mt-0.5">Distribusi status pengajuan cuti bulan berjalan</p>
             </div>
             {leaveTotal === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">Belum ada pengajuan cuti bulan ini.</p>
+              <EmptyState icon={FileText} title="Belum ada pengajuan cuti bulan ini." className="border-none py-8" />
             ) : (
               <DonutChart segments={leaveSegments} total={leaveTotal} />
             )}
@@ -387,7 +558,7 @@ export default async function HRDDashboard() {
               <p className="text-[10px] text-slate-400 mt-0.5">Jumlah pelamar berdasarkan status seleksi</p>
             </div>
             {appChartData.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">Belum ada data pelamar.</p>
+              <EmptyState icon={Briefcase} title="Belum ada data pelamar." className="border-none py-8" />
             ) : (
               <HorizontalBarChart data={appChartData} />
             )}

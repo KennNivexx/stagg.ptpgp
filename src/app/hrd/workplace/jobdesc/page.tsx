@@ -1,6 +1,8 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import JobDescClient from "./JobDescClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function DeskripsiPekerjaan() {
   const { data: departments } = await supabaseAdmin.from("departments").select("name").order("name");
   const deptList = (departments || []).map((d: Record<string, unknown>) => d.name as string);

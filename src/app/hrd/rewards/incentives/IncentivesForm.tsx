@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Gift, Plus } from "lucide-react";
 import { saveIncentivePayment } from "@/app/actions/rewards";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
 type IncentivePayment = Record<string, unknown>;
@@ -128,7 +129,9 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
             </thead>
             <tbody className="divide-y divide-slate-50">
               {payments.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">Belum ada riwayat pembayaran insentif.</td></tr>
+                <tr><td colSpan={5} className="p-0">
+                  <EmptyState icon={Gift} title="Belum ada riwayat pembayaran insentif." />
+                </td></tr>
               ) : payments.map((p) => {
                 const emp = p.employees as Record<string, string> | undefined;
                 return (

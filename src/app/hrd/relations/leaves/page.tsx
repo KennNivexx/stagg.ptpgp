@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Calendar, CheckCircle2 } from "lucide-react";
 import { getLeaves, updateLeaveStatus } from "@/app/actions/leaves";
+import EmptyState from "@/components/EmptyState";
 
 export default function LeavesPage() {
   const [pendingLeaves, setPendingLeaves] = useState<Record<string, unknown>[]>([]);
@@ -87,11 +88,12 @@ export default function LeavesPage() {
             <p className="text-xs text-slate-400 mt-0.5">Menunggu persetujuan</p>
           </div>
           {pendingLeaves.length === 0 ? (
-            <div className="p-12 text-center">
-              <CheckCircle2 size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Tidak ada pengajuan cuti.</p>
-              <p className="text-xs text-slate-400 mt-1">Semua cuti sudah diproses.</p>
-            </div>
+            <EmptyState
+              icon={CheckCircle2}
+              title="Tidak ada pengajuan cuti."
+              description="Semua cuti sudah diproses."
+              className="border-none"
+            />
           ) : (
             <div className="divide-y divide-slate-50">
               {pendingLeaves.map((leave) => (
@@ -128,10 +130,11 @@ export default function LeavesPage() {
             <p className="text-xs text-slate-400 mt-0.5">Riwayat cuti terbaru</p>
           </div>
           {approvedLeaves.length === 0 ? (
-            <div className="p-12 text-center">
-              <Calendar size={40} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-sm text-slate-500">Belum ada cuti disetujui.</p>
-            </div>
+            <EmptyState
+              icon={Calendar}
+              title="Belum ada cuti disetujui."
+              className="border-none"
+            />
           ) : (
             <div className="divide-y divide-slate-50">
               {approvedLeaves.map((leave) => (

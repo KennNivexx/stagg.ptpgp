@@ -1,290 +1,206 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import { CheckCircle, XCircle, Users, Calendar, Clock, UserCheck, UserX, FileText } from "lucide-react";
+import { getHiringDecisions } from "@/app/actions/recruitment";
+import { UserCheck, UserX, Star, Users, Mail, Phone } from "lucide-react";
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 
-type Decision = {
-  id: string;
-  full_name: string;
-  email: string;
-  job_title: string;
-  job_id: string;
-  status: string;
-  applied_at: string;
-  interview_date?: string;
-  decision_date?: string;
-  notes?: string;
-};
+type AppEntry = Record<string, unknown> & { job: { position: string; department: string } | null };
+
+function formatDate(d: unknown) {
+  if (!d) return "-";
+  return new Date(d as string).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function formatCurrency(v: unknown) {
+  if (v === null || v === undefined || v === "") return "-";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "-";
+  return "Rp " + n.toLocaleString("id-ID");
+}
+
+function TestSummary({ app }: { app: AppEntry }) {
+  const tulis = app.test_tulis_result as Record<string, unknown> | null;
+  const psikotes = app.test_psikotes_result as Record<string, unknown> | null;
+  if (!tulis && !psikotes) return <span className="text-slate-300">-</span>;
+  return (
+    <div className="flex flex-col gap-1">
+      {tulis && (
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold w-fit ${(tulis.passed as boolean) ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+          Tulis: {tulis.score as number}% {(tulis.passed as boolean) ? "(Lulus)" : "(Tidak Lulus)"}
+        </span>
+      )}
+      {psikotes && (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold w-fit bg-purple-50 text-purple-700">
+          Psikotes: {psikotes.overall as number}%
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function KeputusanHiring() {
-  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [data, setData] = useState<{ diterima: AppEntry[]; ditolak: AppEntry[]; talentPool: AppEntry[] }>({
+    diterima: [], ditolak: [], talentPool: [],
+  });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"diterima" | "ditolak">("diterima");
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"diterima" | "ditolak" | "talentpool">("diterima");
 
   useEffect(() => {
-    supabase
-      .from("applications")
-      .select("*, jobs!inner(title, department)")
-      .in("status", ["Diterima", "Ditolak"])
-      .order("applied_at", { ascending: false })
-      .then(({ data }) => {
-        const mapped = ((data || []) as Record<string, unknown>[]).map((app) => ({
-          id: app.id as string,
-          full_name: app.full_name as string,
-          email: app.email as string,
-          job_title: (app.jobs as Record<string, string>)?.title || "-",
-          job_id: app.job_id as string,
-          status: app.status as string,
-          applied_at: app.applied_at as string,
-          interview_date: (app.interview_date as string) || "",
-          decision_date: (app.decision_date as string) || "",
-          notes: (app.notes as string) || "",
-        }));
-        setDecisions(mapped);
-        setLoading(false);
-      });
+    getHiringDecisions().then(res => {
+      setData(res as { diterima: AppEntry[]; ditolak: AppEntry[]; talentPool: AppEntry[] });
+      setLoading(false);
+    });
   }, []);
 
-  const diterima = decisions.filter((d) => d.status === "Diterima");
-  const ditolak = decisions.filter((d) => d.status === "Ditolak");
+  const tabs = [
+    { key: "diterima" as const, label: "Diterima", count: data.diterima.length, icon: UserCheck, color: "text-emerald-700", badge: "bg-emerald-50 text-emerald-700" },
+    { key: "ditolak" as const, label: "Ditolak", count: data.ditolak.length, icon: UserX, color: "text-red-700", badge: "bg-red-50 text-red-700" },
+    { key: "talentpool" as const, label: "Talent Pool", count: data.talentPool.length, icon: Star, color: "text-amber-700", badge: "bg-amber-50 text-amber-700" },
+  ];
 
-  const handleAccept = async (id: string) => {
-    setActionError(null);
-    const { error } = await supabase.from("applications").update({ status: "Diterima", decision_date: new Date().toISOString() }).eq("id", id);
-    if (error) { setActionError("Gagal menerima kandidat: " + error.message); return; }
-    setDecisions((prev) => prev.map((d) => (d.id === id ? { ...d, status: "Diterima", decision_date: new Date().toISOString() } : d)));
-    setPending((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const handleReject = async (id: string) => {
-    setActionError(null);
-    const { error } = await supabase.from("applications").update({ status: "Ditolak", decision_date: new Date().toISOString() }).eq("id", id);
-    if (error) { setActionError("Gagal menolak kandidat: " + error.message); return; }
-    setDecisions((prev) => prev.map((d) => (d.id === id ? { ...d, status: "Ditolak", decision_date: new Date().toISOString() } : d)));
-    setPending((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  // Also fetch pending applicants that need decisions
-  const [pending, setPending] = useState<Decision[]>([]);
-  useEffect(() => {
-    supabase
-      .from("applications")
-      .select("*, jobs!inner(title, department)")
-      .eq("status", "Interview")
-      .order("applied_at", { ascending: false })
-      .then(({ data }) => {
-        const mapped = ((data || []) as Record<string, unknown>[]).map((app) => ({
-          id: app.id as string,
-          full_name: app.full_name as string,
-          email: app.email as string,
-          job_title: (app.jobs as Record<string, string>)?.title || "-",
-          job_id: app.job_id as string,
-          status: app.status as string,
-          applied_at: app.applied_at as string,
-          interview_date: (app.interview_date as string) || "",
-          decision_date: "",
-          notes: (app.notes as string) || "",
-        }));
-        setPending(mapped);
-      });
-  }, []);
+  const activeList = activeTab === "diterima" ? data.diterima : activeTab === "ditolak" ? data.ditolak : data.talentPool;
 
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#1A2530]">Keputusan Hiring</h1>
-        <p className="text-sm text-gray-500 mt-1">Kelola keputusan akhir rekrutmen: terima atau tolak kandidat.</p>
+        <p className="text-sm text-gray-500 mt-1">Rekap hasil akhir rekrutmen — kandidat diterima, ditolak, dan disimpan ke Talent Pool.</p>
       </div>
 
-      {actionError && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 font-semibold flex items-center gap-2">
-          <XCircle size={14} className="shrink-0" /> {actionError}
-          <button onClick={() => setActionError(null)} className="ml-auto text-red-400 hover:text-red-600"><XCircle size={13} /></button>
-        </div>
-      )}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Users size={18} /></div>
+        {[
+          { label: "Diterima", value: data.diterima.length, icon: UserCheck, color: "bg-emerald-50 text-emerald-600" },
+          { label: "Ditolak", value: data.ditolak.length, icon: UserX, color: "bg-red-50 text-red-600" },
+          { label: "Talent Pool", value: data.talentPool.length, icon: Star, color: "bg-amber-50 text-amber-600" },
+        ].map(s => (
+          <div key={s.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl ${s.color}`}><s.icon size={18} /></div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Menunggu Keputusan</p>
-              <p className="text-xl font-extrabold text-slate-800">{pending.length}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">{s.label}</p>
+              <p className="text-xl font-extrabold text-slate-800">{s.value}</p>
             </div>
           </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><UserCheck size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Diterima</p>
-              <p className="text-xl font-extrabold text-emerald-700">{diterima.length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-red-50 text-red-600 rounded-xl"><UserX size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Ditolak</p>
-              <p className="text-xl font-extrabold text-red-700">{ditolak.length}</p>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {pending.length > 0 && (
-        <div className="mb-8">
-          <h3 className="font-extrabold text-slate-800 text-sm mb-3 flex items-center gap-2">
-            <Clock size={14} className="text-amber-500" /> Menunggu Keputusan ({pending.length})
-          </h3>
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/50">
-                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Nama</th>
-                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Posisi</th>
-                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Email</th>
-                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Tgl Interview</th>
-                    <th className="text-right px-6 py-4 text-xs font-bold text-slate-500 uppercase">Keputusan</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {pending.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50/30">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 text-white flex items-center justify-center font-bold text-[9px] shrink-0">
-                            {p.full_name?.charAt(0)?.toUpperCase() || "?"}
-                          </div>
-                          <p className="font-bold text-xs text-slate-800">{p.full_name}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-600">{p.job_title}</td>
-                      <td className="px-6 py-4 text-[11px] text-slate-500">{p.email}</td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        {p.interview_date ? new Date(p.interview_date).toLocaleDateString("id-ID") : "-"}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleAccept(p.id)}
-                            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-lg transition-colors inline-flex items-center gap-1"
-                          >
-                            <CheckCircle size={10} /> Terima
-                          </button>
-                          <button
-                            onClick={() => handleReject(p.id)}
-                            className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold rounded-lg transition-colors inline-flex items-center gap-1"
-                          >
-                            <XCircle size={10} /> Tolak
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Tabs */}
       <div className="flex items-center gap-1 mb-4 bg-slate-100 rounded-xl p-1 w-fit">
-        <button
-          onClick={() => setActiveTab("diterima")}
-          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-            activeTab === "diterima" ? "bg-white shadow-sm text-emerald-700" : "text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          Diterima ({diterima.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("ditolak")}
-          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-            activeTab === "ditolak" ? "bg-white shadow-sm text-red-700" : "text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          Ditolak ({ditolak.length})
-        </button>
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeTab === tab.key ? `bg-white shadow-sm ${tab.color}` : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <tab.icon size={12} /> {tab.label} ({tab.count})
+          </button>
+        ))}
       </div>
 
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000] mx-auto mb-4" />
-          <p className="text-sm text-gray-500">Memuat data...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000] mx-auto" />
         </div>
+      ) : activeList.length === 0 ? (
+        <EmptyState
+          icon={activeTab === "diterima" ? UserCheck : activeTab === "ditolak" ? UserX : Star}
+          title={
+            activeTab === "diterima" ? "Belum ada kandidat yang diterima."
+              : activeTab === "ditolak" ? "Belum ada kandidat yang ditolak (di luar Talent Pool)."
+              : "Talent Pool masih kosong. Tambahkan dari halaman Pipeline setelah menolak kandidat yang sudah interview."
+          }
+        />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Nama</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Posisi</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Tgl Interview</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Tgl Keputusan</th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Catatan</th>
-                  <th className="text-right px-6 py-4 text-xs font-bold text-slate-500 uppercase">Detail</th>
+                  <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Nama &amp; Kontak</th>
+                  <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Posisi</th>
+                  <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Tanggal Lamar</th>
+                  <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Hasil Tes</th>
+                  <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Ekspektasi Gaji</th>
+                  <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Gaji Ditawarkan</th>
+                  <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Gaji Final</th>
+                  {activeTab === "talentpool" && <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Catatan Talent Pool</th>}
+                  <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Status Akhir</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {(activeTab === "diterima" ? diterima : ditolak).length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
-                      <div className="text-center">
-                        {activeTab === "diterima" ? (
-                          <UserCheck size={40} className="mx-auto text-slate-300 mb-2" />
-                        ) : (
-                          <UserX size={40} className="mx-auto text-slate-300 mb-2" />
-                        )}
-                        <p className="text-sm text-slate-500">Belum ada kandidat yang {activeTab === "diterima" ? "diterima" : "ditolak"}.</p>
+                {activeList.map(app => (
+                  <tr key={app.id as string} className="hover:bg-slate-50/30 align-top">
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0 ${
+                          activeTab === "diterima" ? "bg-gradient-to-br from-emerald-500 to-emerald-700"
+                            : activeTab === "talentpool" ? "bg-gradient-to-br from-amber-400 to-amber-600"
+                            : "bg-gradient-to-br from-red-400 to-red-600"
+                        }`}>
+                          {(app.full_name as string)?.charAt(0)?.toUpperCase() || "?"}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 text-xs whitespace-nowrap">{app.full_name as string}</p>
+                          <p className="text-[10px] text-slate-400 flex items-center gap-0.5"><Mail size={9} /> {app.email as string}</p>
+                          {!!app.phone && <p className="text-[10px] text-slate-400 flex items-center gap-0.5"><Phone size={9} /> {app.phone as string}</p>}
+                        </div>
                       </div>
                     </td>
+                    <td className="px-4 py-4">
+                      <p className="text-xs font-bold text-slate-700 whitespace-nowrap">{app.job?.position || "-"}</p>
+                      {app.job?.department && <p className="text-[10px] text-slate-400">{app.job.department}</p>}
+                    </td>
+                    <td className="px-4 py-4 text-xs text-slate-500 whitespace-nowrap">
+                      {formatDate(app.applied_at)}
+                    </td>
+                    <td className="px-4 py-4">
+                      <TestSummary app={app} />
+                    </td>
+                    <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{formatCurrency(app.salary_expectation)}</td>
+                    <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{formatCurrency(app.offered_salary)}</td>
+                    <td className="px-4 py-4 text-xs font-bold text-slate-800 whitespace-nowrap">{formatCurrency(app.final_salary)}</td>
+                    {activeTab === "talentpool" && (
+                      <td className="px-4 py-4 text-xs text-slate-500 max-w-[220px]">
+                        {(app.talent_pool_notes as string) || "-"}
+                      </td>
+                    )}
+                    <td className="px-4 py-4">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap ${
+                        activeTab === "diterima" ? "bg-emerald-50 text-emerald-700"
+                          : activeTab === "talentpool" ? "bg-amber-50 text-amber-700"
+                          : "bg-red-50 text-red-700"
+                      }`}>
+                        {activeTab === "diterima" ? "Diterima" : activeTab === "talentpool" ? "Talent Pool" : "Ditolak"}
+                      </span>
+                      {activeTab === "talentpool" && (
+                        <Link href="/hrd/recruitment/talentpool" className="block mt-1.5 text-[10px] font-bold text-amber-600 hover:underline">
+                          Kelola di Talent Pool →
+                        </Link>
+                      )}
+                    </td>
                   </tr>
-                ) : (
-                  (activeTab === "diterima" ? diterima : ditolak).map((d) => (
-                    <tr key={d.id} className="hover:bg-slate-50/30">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 text-white ${
-                            d.status === "Diterima" ? "bg-gradient-to-br from-emerald-500 to-emerald-700" : "bg-gradient-to-br from-red-400 to-red-600"
-                          }`}>
-                            {d.full_name?.charAt(0)?.toUpperCase() || "?"}
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-800 text-xs">{d.full_name}</p>
-                            <p className="text-[10px] text-slate-400">{d.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-700 font-medium">{d.job_title}</td>
-                      <td className="px-6 py-4 text-xs text-slate-500">{d.interview_date ? new Date(d.interview_date).toLocaleDateString("id-ID") : "-"}</td>
-                      <td className="px-6 py-4 text-xs text-slate-500">{d.decision_date ? new Date(d.decision_date).toLocaleDateString("id-ID") : "-"}</td>
-                      <td className="px-6 py-4 text-xs text-slate-500 max-w-[200px] truncate">{d.notes || "-"}</td>
-                      <td className="px-6 py-4 text-right">
-                        {!!d.job_id && (
-                          <Link href={`/hrd/recruitment/${d.job_id}/applicants/${d.id}`} className="text-xs font-bold text-[#CC0000] hover:underline inline-flex items-center gap-1">
-                            <FileText size={10} /> Detail
-                          </Link>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
           <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30">
             <p className="text-xs text-slate-500">
-              Total <span className="font-bold text-slate-800">{activeTab === "diterima" ? diterima.length : ditolak.length}</span> kandidat {activeTab === "diterima" ? "diterima" : "ditolak"}
+              Total: <span className="font-bold text-slate-800">{activeList.length}</span> kandidat
             </p>
           </div>
         </div>
       )}
+
+      <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+        <p className="text-xs text-blue-700 flex items-center gap-2">
+          <Users size={13} />
+          <span>Keputusan (Interview / Rekrut / Tolak) dibuat di halaman <Link href="/hrd/recruitment/pipeline" className="font-bold underline">Pipeline Kandidat</Link>. Halaman ini hanya menampilkan rekap hasil akhir.</span>
+        </p>
+      </div>
     </div>
   );
 }

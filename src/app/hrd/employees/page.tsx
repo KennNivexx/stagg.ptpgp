@@ -6,6 +6,7 @@ import { Pencil, Trash2, Mail, Phone, Filter, UserPlus, Building2, FileText, Arr
 import { getEmployees, deleteEmployee } from "@/app/actions/hrd";
 import { getAllEmployeeFaceStatuses, getFaceChangeRequests, reviewFaceChangeRequest } from "@/app/actions/attendance";
 import FaceRegistration from "@/components/FaceRegistration";
+import EmptyState from "@/components/EmptyState";
 
 type Employee = Record<string, unknown>;
 
@@ -188,18 +189,12 @@ export default function HRDEmployees() {
           </div>
         </div>
       ) : !employees || employees.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-          <div className="text-5xl mb-4 opacity-30">👥</div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">
-            {statusFilter ? "Tidak ada karyawan dengan filter ini" : "Belum ada data karyawan"}
-          </h3>
-          <p className="text-sm text-slate-500 mb-6">
-            {statusFilter ? "Ubah filter status atau tambahkan karyawan baru." : "Klik Tambah Karyawan untuk menambahkan data pertama"}
-          </p>
-          <Link href="/hrd/employees/new" className="bg-[#CC0000] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2">
-            <UserPlus size={16} /> Tambah Karyawan
-          </Link>
-        </div>
+        <EmptyState
+          icon={UserPlus}
+          title={statusFilter ? "Tidak ada karyawan dengan filter ini" : "Belum ada data karyawan"}
+          description={statusFilter ? "Ubah filter status atau tambahkan karyawan baru." : "Klik Tambah Karyawan untuk menambahkan data pertama"}
+          action={{ label: "Tambah Karyawan", href: "/hrd/employees/new" }}
+        />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
