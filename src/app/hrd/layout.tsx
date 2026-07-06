@@ -178,7 +178,6 @@ const MENU_GROUPS = [
     icon: Settings,
     items: [
       { href: "/hrd/admin/settings", label: "Pengaturan Perusahaan" },
-      { href: "/hrd/admin/notifications", label: "Notifikasi" },
       { href: "/hrd/admin/audit", label: "Audit Log" },
     ],
   },
