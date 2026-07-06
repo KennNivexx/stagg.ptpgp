@@ -5,7 +5,7 @@ import { MessageCircle, Star, Send, User, Clock } from "lucide-react";
 import { saveFeedback } from "@/app/actions/performance-hrd";
 import EmptyState from "@/components/EmptyState";
 
-interface Employee { id: string; full_name: string; department: string; }
+interface Employee { id: string; full_name: string; kode?: string; department: string; }
 interface FeedbackEntry { id: string; employee_id: string; reviewer_name: string; category: string; rating: number; comment: string; created_at: string; employees?: { full_name: string; department: string; }; }
 
 const CATEGORIES = ["Kinerja", "Kerjasama Tim", "Kepemimpinan", "Komunikasi", "Kehadiran", "Inisiatif", "Teknis"];
@@ -83,7 +83,7 @@ export default function FeedbackClient({
                 className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
                 <option value="">Pilih Karyawan</option>
                 {employees.map(e => (
-                  <option key={e.id} value={e.id}>{e.full_name} - {e.department}</option>
+                  <option key={e.id} value={e.id}>{e.full_name}{e.kode ? ` (${e.kode})` : ""} - {e.department}</option>
                 ))}
               </select>
             </div>
@@ -93,7 +93,7 @@ export default function FeedbackClient({
                 className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
                 <option value="">Pilih Reviewer (opsional)</option>
                 {employees.slice(0, 50).map(e => (
-                  <option key={e.id} value={e.id}>{e.full_name}</option>
+                  <option key={e.id} value={e.id}>{e.full_name}{e.kode ? ` (${e.kode})` : ""}</option>
                 ))}
               </select>
             </div>

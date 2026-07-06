@@ -292,7 +292,7 @@ export default async function HRDDashboard({
   searchParams: Promise<{ range?: string }>;
 }) {
   const user = await requireRole("hrd", "superadmin");
-  const userName = user.name || "Administrator HRD";
+  const userName = user.name || "HRD";
 
   const { range } = await searchParams;
   const period: PeriodKey = PERIOD_OPTIONS.some((p) => p.key === range) ? (range as PeriodKey) : "7d";

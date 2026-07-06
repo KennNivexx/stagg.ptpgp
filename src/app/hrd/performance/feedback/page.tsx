@@ -4,7 +4,7 @@ import FeedbackClient from "./FeedbackClient";
 
 export default async function FeedbackPage() {
   const [{ data: employees }, history] = await Promise.all([
-    supabaseAdmin.from("employees").select("id, full_name, department, position").neq("id", "__settings__").order("full_name").limit(100),
+    supabaseAdmin.from("employees").select("id, full_name, kode, department, position").neq("id", "__settings__").neq("email", "superadmin@ptpgp.co.id").order("full_name").limit(100),
     getFeedbackHistory().catch(() => []),
   ]);
 

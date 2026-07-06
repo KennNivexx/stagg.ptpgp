@@ -12,6 +12,7 @@ export default async function KPIPage() {
     supabaseAdmin
       .from("employees")
       .select("id, full_name, kode, department, position")
+      .neq("email", "superadmin@ptpgp.co.id")
       .limit(100),
   ]);
 

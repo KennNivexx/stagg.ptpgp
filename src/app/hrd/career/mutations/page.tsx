@@ -5,6 +5,7 @@ export default async function MutationsPage() {
   const { data: employees } = await supabaseAdmin
     .from("employees")
     .select("id, full_name, kode, department, position")
+    .neq("email", "superadmin@ptpgp.co.id")
     .limit(100);
 
   const { data: departments } = await supabaseAdmin

@@ -177,9 +177,7 @@ const MENU_GROUPS = [
     label: "Admin & Pengaturan",
     icon: Settings,
     items: [
-      { href: "/hrd/admin", label: "Dashboard Admin" },
       { href: "/hrd/admin/settings", label: "Pengaturan Perusahaan" },
-      { href: "/hrd/admin/roles", label: "Role & Permission" },
       { href: "/hrd/admin/notifications", label: "Notifikasi" },
       { href: "/hrd/admin/audit", label: "Audit Log" },
     ],
@@ -286,7 +284,6 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/hrd/guides/director": "Panduan penggunaan sistem untuk direktur",
   "/hrd/admin": "Dashboard admin & status sistem",
   "/hrd/admin/settings": "Pengaturan perusahaan, email, WA bot",
-  "/hrd/admin/roles": "Atur role dan permission akses",
   "/hrd/admin/notifications": "Template dan pengaturan notifikasi",
   "/hrd/admin/audit": "Log aktivitas dan perubahan sistem",
 };
@@ -311,7 +308,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["Dashboard"]));
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useSession();
-  const clientUserName = user?.name || "Administrator HRD";
+  const clientUserName = user?.name || "HRD";
   const clientUserEmail = user?.email || "hrd@ptpgp.co.id";
   const { hasUnreadForHref } = useNotifications("hrd");
 
