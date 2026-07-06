@@ -32,12 +32,13 @@ interface BaileysState {
   qrDataUrl: string | null;
   connectedNumber: string | null;
   starting: Promise<void> | null;
+  lastError: string | null;
 }
 
 function getGlobalState(): BaileysState {
   const g = globalThis as unknown as { __waBaileysState?: BaileysState };
   if (!g.__waBaileysState) {
-    g.__waBaileysState = { sock: null, status: "disconnected", qrDataUrl: null, connectedNumber: null, starting: null };
+    g.__waBaileysState = { sock: null, status: "disconnected", qrDataUrl: null, connectedNumber: null, starting: null, lastError: null };
   }
   return g.__waBaileysState;
 }
@@ -134,7 +135,7 @@ async function connect(): Promise<void> {
 
     connectingTimeout = setTimeout(() => {
       if (state.status === "connecting") {
-        console.error("[wa baileys] connection timed out after 45s — resetting");
+        state.lastError = "Koneksi timeout (45 detik). Periksa apakah server bisa akses web.whatsapp.com";
         state.status = "disconnected";
         state.sock = null;
       }
@@ -195,21 +196,23 @@ async function connect(): Promise<void> {
     state.status = "disconnected";
     state.sock = null;
     state.qrDataUrl = null;
-    console.error("[wa baileys] connect error:", (e as Error).message, (e as Error).stack);
+    state.lastError = (e as Error).message || "Gagal menghubungkan";
+    console.error("[wa baileys] connect error:", (e as Error).message);
   }
 }
 
-export async function getBaileysStatus(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null }> {
+export async function getBaileysStatus(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null; lastError: string | null }> {
   const state = getGlobalState();
-  return { status: state.status, qrDataUrl: state.qrDataUrl, number: state.connectedNumber };
+  return { status: state.status, qrDataUrl: state.qrDataUrl, number: state.connectedNumber, lastError: state.lastError };
 }
 
 /** Idempotent — if a connection attempt is already in flight or connected, just returns current status. */
-export async function startBaileysConnection(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null }> {
+export async function startBaileysConnection(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null; lastError: string | null }> {
   const state = getGlobalState();
   if (state.status === "connected" || state.status === "connecting" || state.status === "qr") {
     return getBaileysStatus();
   }
+  state.lastError = null;
   if (!state.starting) {
     state.starting = connect().finally(() => { state.starting = null; });
   }

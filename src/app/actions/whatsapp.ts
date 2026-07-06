@@ -117,13 +117,13 @@ export async function setWaProviderSetting(provider: WaProvider): Promise<{ erro
   return { success: true };
 }
 
-export async function getBaileysConnectionStatus(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null }> {
+export async function getBaileysConnectionStatus(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null; lastError: string | null }> {
   await requireRole("hrd", "superadmin");
   const { getBaileysStatus } = await import("@/lib/whatsapp-baileys");
   return getBaileysStatus();
 }
 
-export async function startBaileysConnectionAction(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null }> {
+export async function startBaileysConnectionAction(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null; lastError: string | null }> {
   await requireRole("hrd", "superadmin");
   const { startBaileysConnection } = await import("@/lib/whatsapp-baileys");
   return startBaileysConnection();

@@ -49,7 +49,7 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
   const [showWaSecret, setShowWaSecret] = useState(false);
   const [waProvider, setWaProviderState] = useState<WaProvider>(s.wa_provider === "meta" ? "meta" : "baileys");
   const [waProviderSaving, setWaProviderSaving] = useState(false);
-  const [baileysStatus, setBaileysStatus] = useState<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null }>({ status: "disconnected", qrDataUrl: null, number: null });
+  const [baileysStatus, setBaileysStatus] = useState<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null; lastError: string | null }>({ status: "disconnected", qrDataUrl: null, number: null, lastError: null });
   const [baileysBusy, setBaileysBusy] = useState(false);
 
   const refreshBaileysStatus = useCallback(() => {
@@ -315,6 +315,10 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
 
                 {baileysStatus.status === "connected" && (
                   <p className="text-xs text-slate-600">Nomor aktif: <span className="font-mono font-bold">{baileysStatus.number}</span></p>
+                )}
+
+                {baileysStatus.lastError && (
+                  <p className="text-xs text-red-600 bg-red-50 rounded-lg p-2 border border-red-100">{baileysStatus.lastError}</p>
                 )}
 
                 {baileysStatus.status === "qr" && baileysStatus.qrDataUrl && (
