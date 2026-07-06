@@ -106,6 +106,7 @@ async function handleIncomingMessages(messages: unknown[]): Promise<void> {
 
 async function connect(): Promise<void> {
   const state = getGlobalState();
+  let connectingTimeout: NodeJS.Timeout | undefined;
   try {
     const {
       default: makeWASocket,
@@ -114,9 +115,12 @@ async function connect(): Promise<void> {
       DisconnectReason,
     } = await import("@whiskeysockets/baileys");
 
+    console.log("[wa baileys] creating auth dir:", AUTH_DIR);
     await fs.mkdir(AUTH_DIR, { recursive: true });
     const { state: authState, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+    console.log("[wa baileys] fetching latest version...");
     const { version } = await fetchLatestBaileysVersion();
+    console.log("[wa baileys] version:", version.join("."));
 
     state.status = "connecting";
     const sock = makeWASocket({
@@ -126,32 +130,48 @@ async function connect(): Promise<void> {
       syncFullHistory: false,
     });
     state.sock = sock;
+    console.log("[wa baileys] socket created, waiting for connection...");
+
+    connectingTimeout = setTimeout(() => {
+      if (state.status === "connecting") {
+        console.error("[wa baileys] connection timed out after 45s — resetting");
+        state.status = "disconnected";
+        state.sock = null;
+      }
+    }, 45_000);
 
     sock.ev.on("creds.update", saveCreds);
 
     sock.ev.on("connection.update", async (update: Record<string, unknown>) => {
       const { connection, lastDisconnect, qr } = update;
+      console.log("[wa baileys] connection.update:", JSON.stringify({ connection, hasQr: !!qr }));
 
       if (qr) {
+        clearTimeout(connectingTimeout);
         state.status = "qr";
         state.qrDataUrl = await QRCode.toDataURL(qr as string);
+        console.log("[wa baileys] QR code generated");
       }
 
       if (connection === "open") {
+        clearTimeout(connectingTimeout);
         state.status = "connected";
         state.qrDataUrl = null;
         const rawId = sock.user?.id as string | undefined;
         if (rawId) {
           const number = jidToDigits(rawId);
           state.connectedNumber = number;
+          console.log("[wa baileys] connected as:", number);
           await saveBotNumber(number);
         }
       }
 
       if (connection === "close") {
+        clearTimeout(connectingTimeout);
         const statusCode = (lastDisconnect as { error?: unknown } | undefined)?.error
           ? ((lastDisconnect as { error: { output?: { statusCode?: number } } }).error?.output?.statusCode)
           : undefined;
+        console.log("[wa baileys] connection closed, statusCode:", statusCode);
         const loggedOut = statusCode === (DisconnectReason?.loggedOut ?? 401);
         state.sock = null;
         state.qrDataUrl = null;
@@ -171,9 +191,11 @@ async function connect(): Promise<void> {
       handleIncomingMessages(upsert.messages).catch((e) => console.error("[wa baileys] message handling error:", (e as Error).message));
     });
   } catch (e) {
+    clearTimeout(connectingTimeout);
     state.status = "disconnected";
     state.sock = null;
-    console.error("[wa baileys] connect error:", (e as Error).message);
+    state.qrDataUrl = null;
+    console.error("[wa baileys] connect error:", (e as Error).message, (e as Error).stack);
   }
 }
 
