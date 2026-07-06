@@ -81,7 +81,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside className={`
         w-72 lg:w-20 xl:w-72 bg-white border-r border-slate-200 flex flex-col fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
-        lg:translate-x-0 lg:static lg:h-screen
+        lg:translate-x-0 lg:static lg:h-screen lg:pointer-events-auto
         ${isSidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"}
       `}>
         {/* Brand Header */}

@@ -116,7 +116,7 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
       <aside
         className={`
         w-72 lg:w-20 xl:w-72 bg-[#0F172A] text-white flex flex-col fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out border-r border-slate-800
-        lg:translate-x-0 lg:static lg:h-screen
+        lg:translate-x-0 lg:static lg:h-screen lg:pointer-events-auto
         ${isSidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"}
       `}
       >

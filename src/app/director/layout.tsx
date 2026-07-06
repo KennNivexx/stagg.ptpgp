@@ -64,7 +64,7 @@ export default function DirectorLayout({ children }: { children: ReactNode }) {
         />
       )}
 
-      <aside className={`w-64 lg:w-20 xl:w-64 bg-slate-900 text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300 border-r border-slate-800 lg:translate-x-0 lg:static lg:h-screen ${isSidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"}`}>
+      <aside className={`w-64 lg:w-20 xl:w-64 bg-slate-900 text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300 border-r border-slate-800 lg:translate-x-0 lg:static lg:h-screen lg:pointer-events-auto ${isSidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"}`}>
         <div className="p-5 lg:px-3 xl:px-5 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2 lg:justify-center xl:justify-start">
             <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse shrink-0"></span>
