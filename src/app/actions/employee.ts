@@ -140,7 +140,7 @@ export async function getEmployeeResignation(employeeId: string) {
 }
 
 export async function getEmployeeWarnings(employeeId: string) {
-  const user = await requireRole("employee", "hrd", "superadmin");
+  const user = await requireRole("employee", "hrd", "superadmin", "department_manager");
   const targetId = user.role === "employee" ? user.id : employeeId;
 
   const { data, error } = await supabaseAdmin
@@ -154,7 +154,7 @@ export async function getEmployeeWarnings(employeeId: string) {
 }
 
 export async function issueWarning(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
 
   const employeeId = formData.get("employee_id") as string;
   const employeeName = formData.get("employee_name") as string;
@@ -211,7 +211,7 @@ export async function expireOldWarnings() {
 }
 
 export async function markWarningExpired(id: string) {
-  await requireRole("hrd", "superadmin");
+  await requireRole("hrd", "superadmin", "department_manager");
   const { error } = await supabaseAdmin
     .from("warnings")
     .update({ status: "Kadaluarsa" })

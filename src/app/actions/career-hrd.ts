@@ -94,7 +94,7 @@ export async function updateMutationStatus(id: string, status: "Disetujui" | "Di
 // ── PROMOTIONS ─────────────────────────────────────────────────────────────
 
 export async function getPromotions() {
-  await requireRole("hrd", "superadmin");
+  await requireRole("hrd", "superadmin", "department_manager");
   const { data } = await supabaseAdmin
     .from("career_promotions")
     .select("*, employees!inner(full_name, department, position)")
@@ -104,17 +104,18 @@ export async function getPromotions() {
 }
 
 export async function submitPromotion(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
   const employeeId = (formData.get("employee_id") as string || "").trim();
   const fromPosition = (formData.get("from_position") as string || "").trim();
   const toPosition = (formData.get("to_position") as string || "").trim();
   const effectiveDate = (formData.get("effective_date") as string) || null;
   const reason = (formData.get("reason") as string || "").trim() || null;
+  const criteria = (formData.get("criteria") as string || "").trim() || null;
   if (!employeeId || !toPosition) return { error: "Karyawan dan posisi tujuan wajib diisi." };
   const { error } = await supabaseAdmin.from("career_promotions").insert({
     id: "prm-" + crypto.randomUUID(),
     employee_id: employeeId, from_position: fromPosition, to_position: toPosition,
-    effective_date: effectiveDate || null, reason, status: "Menunggu",
+    effective_date: effectiveDate || null, reason, criteria, status: "Menunggu",
     requested_by: user.email, created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
@@ -124,7 +125,7 @@ export async function submitPromotion(formData: FormData) {
 }
 
 export async function updatePromotionStatus(id: string, status: "Disetujui" | "Ditolak") {
-  await requireRole("hrd", "superadmin");
+  await requireRole("hrd", "superadmin", "department_manager");
 
   if (status === "Disetujui") {
     const { data: promotion, error: fetchError } = await supabaseAdmin
@@ -195,18 +196,15 @@ export async function updatePlanProgress(id: string, progress: number) {
 // ── CAREER PATH ────────────────────────────────────────────────────────────
 
 export async function addCareerPathPosition(formData: FormData) {
-  await requireRole("hrd", "superadmin");
+  await requireRole("hrd", "superadmin", "department_manager");
   const name = (formData.get("name") as string || "").trim();
   const department = (formData.get("department") as string || "").trim();
   const level = (formData.get("level") as string || "").trim();
-  if (!name || !department || !level) return { error: "Nama posisi, departemen, dan level wajib diisi." };
-  const arr = new Uint16Array(2);
-  crypto.getRandomValues(arr);
-  const major = (arr[0] % 9) + 1;
-  const minor = (arr[1] % 9000) + 1000;
-  const code = `${major}.${minor}`;
+  const code = (formData.get("code") as string || "").trim() || null;
+  if (!name || !department || !level) return { error: "Nama posisi, departemen, level, dan kode wajib diisi." };
+  const positionCode = code || `${department.substring(0, 3).toUpperCase()}-${Date.now().toString(36)}`;
   const { error } = await supabaseAdmin.from("positions").insert({
-    id: "pos-" + crypto.randomUUID(), code, name, department, level,
+    id: "pos-" + crypto.randomUUID(), code: positionCode, name, department, level,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   });
   if (error?.code === "23505") return { error: `Posisi "${name}" atau kode sudah ada. Coba lagi.` };

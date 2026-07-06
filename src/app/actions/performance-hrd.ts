@@ -31,7 +31,7 @@ function parseKpiMetrics(raw: string): KpiMetric[] | null {
 }
 
 export async function saveKpiEvaluation(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
   const employeeId = (formData.get("employee_id") as string || "").trim();
   const period = (formData.get("period") as string || "").trim();
   const scoreRaw = formData.get("score") as string || "0";
@@ -88,7 +88,7 @@ const KPI_STATUSES = ["Draft", "Reviewed", "Approved"] as const;
 type KpiStatus = (typeof KPI_STATUSES)[number];
 
 export async function updateKpiStatus(id: string, status: KpiStatus) {
-  await requireRole("hrd", "superadmin");
+  await requireRole("hrd", "superadmin", "department_manager");
   if (!KPI_STATUSES.includes(status)) return { error: "Status tidak valid." };
   const { error } = await supabaseAdmin
     .from("kpi_evaluations")
@@ -142,7 +142,7 @@ export async function updateOkrProgress(id: string, progress: number, status?: s
 }
 
 export async function getKpiDetail(id: string) {
-  await requireRole("hrd", "superadmin");
+  await requireRole("hrd", "superadmin", "department_manager");
   const { data } = await supabaseAdmin
     .from("kpi_evaluations")
     .select("*, employees!inner(full_name, department, position)")

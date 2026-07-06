@@ -24,6 +24,8 @@ const MENU_GROUPS = [
     items: [
       { href: "/department/requests", label: "Riwayat Permintaan" },
       { href: "/department/competency", label: "Kompetensi" },
+      { href: "/department/kpi", label: "KPI Karyawan" },
+      { href: "/department/warnings", label: "Surat Peringatan" },
       { href: "/department/documents", label: "Dokumen Perusahaan" },
       { href: "/department/jobdesc", label: "Deskripsi & Spesifikasi Kerja" },
     ],

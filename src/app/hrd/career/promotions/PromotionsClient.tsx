@@ -163,6 +163,18 @@ export default function PromotionsClient({ employees, initialPromotions }: Props
               <input name="effective_date" type="date" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]" />
             </div>
             <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Penentuan Promosi</label>
+              <select name="criteria" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
+                <option value="">Pilih Kriteria</option>
+                <option value="Kinerja Unggul">Kinerja Unggul</option>
+                <option value="Senioritas">Senioritas (Masa Kerja)</option>
+                <option value="Kualifikasi">Kualifikasi & Sertifikasi</option>
+                <option value="Kebutuhan Organisasi">Kebutuhan Organisasi</option>
+                <option value="Rekomendasi Atasan">Rekomendasi Atasan</option>
+                <option value="Suksesi">Suksesi (Menggantikan Posisi Kosong)</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Alasan Promosi</label>
               <textarea name="reason" rows={3} placeholder="Jelaskan alasan promosi..." className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] resize-none" />
             </div>
