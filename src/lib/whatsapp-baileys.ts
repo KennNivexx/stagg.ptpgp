@@ -213,11 +213,6 @@ export async function getBaileysStatus(): Promise<{ status: BaileysStatus; qrDat
 /** Idempotent — if a connection attempt is already in flight or connected, just returns current status. */
 export async function startBaileysConnection(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null; lastError: string | null }> {
   const state = getGlobalState();
-
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    return { status: "disconnected", qrDataUrl: null, number: null, lastError: "Mode Demo (Baileys) tidak bisa jalan di Vercel/serverless. Pakai mode Resmi (Meta Cloud API), atau deploy ke VPS." };
-  }
-
   if (state.status === "connected" || state.status === "connecting" || state.status === "qr") {
     return getBaileysStatus();
   }
