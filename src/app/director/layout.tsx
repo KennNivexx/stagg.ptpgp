@@ -47,7 +47,7 @@ export default function DirectorLayout({ children }: { children: ReactNode }) {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-slate-900 focus:text-white focus:rounded-lg focus:text-sm focus:font-bold">
         Lewati ke konten utama
       </a>
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-4 left-4 z-[51]">
         <button
           aria-label={isSidebarOpen ? "Tutup sidebar" : "Buka sidebar"}
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -60,11 +60,11 @@ export default function DirectorLayout({ children }: { children: ReactNode }) {
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="lg:hidden fixed inset-0 bg-black/40 z-40"
+          className="lg:hidden fixed inset-0 bg-black/40"
         />
       )}
 
-      <aside className={`w-64 lg:w-20 xl:w-64 bg-slate-900 text-white flex flex-col fixed inset-y-0 left-0 z-40 transition-transform duration-300 border-r border-slate-800 lg:translate-x-0 lg:static lg:h-screen ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`w-64 lg:w-20 xl:w-64 bg-slate-900 text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300 border-r border-slate-800 lg:translate-x-0 lg:static lg:h-screen ${isSidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"}`}>
         <div className="p-5 lg:px-3 xl:px-5 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2 lg:justify-center xl:justify-start">
             <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse shrink-0"></span>

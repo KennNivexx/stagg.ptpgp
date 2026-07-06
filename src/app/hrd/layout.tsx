@@ -366,7 +366,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-slate-900 focus:text-white focus:rounded-lg focus:text-sm focus:font-bold">
         Lewati ke konten utama
       </a>
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-4 left-4 z-[51]">
         <button
           aria-label={isSidebarOpen ? "Tutup sidebar" : "Buka sidebar"}
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -379,7 +379,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="lg:hidden fixed inset-0 bg-black/40 z-40"
+          className="lg:hidden fixed inset-0 bg-black/40"
         />
       )}
 

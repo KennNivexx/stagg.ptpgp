@@ -94,7 +94,7 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
         Lewati ke konten utama
       </a>
       {/* Sidebar Mobile Toggle */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-4 left-4 z-[51]">
         <button
           aria-label={isSidebarOpen ? "Tutup sidebar" : "Buka sidebar"}
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -108,16 +108,16 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
+          className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
         />
       )}
 
       {/* Sidebar */}
       <aside
         className={`
-        w-72 lg:w-20 xl:w-72 bg-[#0F172A] text-white flex flex-col fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out border-r border-slate-800
+        w-72 lg:w-20 xl:w-72 bg-[#0F172A] text-white flex flex-col fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out border-r border-slate-800
         lg:translate-x-0 lg:static lg:h-screen
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        ${isSidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"}
       `}
       >
         {/* Brand/Header */}
