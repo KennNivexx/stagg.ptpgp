@@ -8,6 +8,7 @@ interface Employee {
   id: string;
   full_name: string;
   email: string;
+  kode?: string;
   department?: string;
   position?: string;
 }
@@ -112,10 +113,11 @@ export default function IssueWarningButton({ employees }: { employees: Employee[
                           <button
                             key={emp.id}
                             type="button"
-                            onClick={() => { setSelectedEmp(emp); setEmpSearch(emp.full_name); setShowResults(false); }}
+                            onClick={() => { setSelectedEmp(emp); setEmpSearch(`${emp.full_name}${emp.kode ? ` (${emp.kode})` : ""}`); setShowResults(false); }}
                             className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 border-b border-slate-50 last:border-0"
                           >
                             <span className="font-semibold text-slate-800">{emp.full_name}</span>
+                            {emp.kode && <span className="text-xs text-slate-400 font-mono"> ({emp.kode})</span>}
                             <span className="text-xs text-slate-400 ml-2">{emp.department || "-"}</span>
                           </button>
                         ))}
@@ -125,6 +127,7 @@ export default function IssueWarningButton({ employees }: { employees: Employee[
                   {selectedEmp && (
                     <div className="mt-2 p-3 bg-slate-50 rounded-lg text-xs">
                       <span className="font-bold text-slate-700">{selectedEmp.full_name}</span>
+                      {selectedEmp.kode && <span className="text-slate-400 font-mono ml-1">({selectedEmp.kode})</span>}
                       <span className="text-slate-400 ml-2">{selectedEmp.department} · {selectedEmp.position}</span>
                     </div>
                   )}

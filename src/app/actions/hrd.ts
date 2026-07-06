@@ -455,6 +455,7 @@ export async function updateEmployee(formData: FormData) {
   const position = formData.get("position") as string;
   const join_date = formData.get("join_date") as string;
   const status = formData.get("status") as string;
+  const kode = (formData.get("kode") as string || "").trim() || null;
 
   if (!id || !full_name || !email) {
     return { error: "ID, nama, dan email wajib diisi." };
@@ -488,6 +489,7 @@ export async function updateEmployee(formData: FormData) {
       position,
       join_date,
       status,
+      ...(kode ? { kode } : {}),
     })
     .eq("id", id);
 

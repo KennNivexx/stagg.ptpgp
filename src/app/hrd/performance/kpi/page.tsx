@@ -11,7 +11,7 @@ export default async function KPIPage() {
       .limit(50),
     supabaseAdmin
       .from("employees")
-      .select("id, full_name, department, position")
+      .select("id, full_name, kode, department, position")
       .limit(100),
   ]);
 

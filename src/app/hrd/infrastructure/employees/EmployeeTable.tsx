@@ -120,6 +120,7 @@ export default function EmployeeTable({ employees }: { employees: Emp[] }) {
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/50">
               <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">NIK</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kode</th>
               <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Nama</th>
               <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Email</th>
               <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Departemen</th>
@@ -142,6 +143,9 @@ export default function EmployeeTable({ employees }: { employees: Emp[] }) {
               <tr key={emp.id as string} className="hover:bg-slate-50/30 transition-colors">
                 <td className="px-4 py-4 whitespace-nowrap">
                   <span className="text-xs font-mono font-bold text-slate-600">{(emp.nik as string) || "-"}</span>
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <span className="text-xs font-mono font-bold text-slate-500">{(emp.kode as string) || "-"}</span>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-3">

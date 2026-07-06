@@ -4,7 +4,7 @@ import MutationsClient from "./MutationsClient";
 export default async function MutationsPage() {
   const { data: employees } = await supabaseAdmin
     .from("employees")
-    .select("id, full_name, department, position")
+    .select("id, full_name, kode, department, position")
     .limit(100);
 
   const { data: departments } = await supabaseAdmin

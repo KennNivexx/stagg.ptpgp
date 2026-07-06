@@ -5,7 +5,7 @@ import { Plus, Eye, Star, Trash2 } from "lucide-react";
 import { saveKpiEvaluation } from "@/app/actions/performance-hrd";
 import EmptyState from "@/components/EmptyState";
 
-type Employee = { id: string; full_name: string; department: string; position: string };
+type Employee = { id: string; full_name: string; kode?: string; department: string; position: string };
 type KpiEval = Record<string, unknown>;
 type MetricRow = { metric: string; weight: string; value: string };
 
@@ -114,7 +114,7 @@ export default function KpiForm({ employees, evaluations }: Props) {
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Karyawan</label>
               <select name="employee_id" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
                 <option value="">Pilih karyawan...</option>
-                {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name} - {e.department}</option>)}
+                {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}{e.kode ? ` (${e.kode})` : ""} - {e.department}</option>)}
               </select>
             </div>
             <div>

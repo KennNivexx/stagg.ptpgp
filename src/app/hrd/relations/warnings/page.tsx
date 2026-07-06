@@ -11,7 +11,7 @@ export default async function SuratPeringatan() {
 
   const { data: employees } = await supabaseAdmin
     .from("employees")
-    .select("id, full_name, email, department, position")
+    .select("id, full_name, email, kode, department, position")
     .neq("status", "Resigned")
     .order("full_name");
 

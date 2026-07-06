@@ -5,7 +5,7 @@ import { Clipboard, Plus, Target, Calendar, BookOpen, User, CheckCircle } from "
 import { createDevelopmentPlan, updatePlanProgress } from "@/app/actions/career-hrd";
 import EmptyState from "@/components/EmptyState";
 
-type Employee = { id: string; full_name: string; department: string; position: string };
+type Employee = { id: string; full_name: string; kode?: string; department: string; position: string };
 type Plan = Record<string, unknown>;
 
 interface Props {
@@ -174,7 +174,7 @@ export default function PlansClient({ employees, initialPlans }: Props) {
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Karyawan</label>
                 <select name="employee_id" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
                   <option value="">Pilih Karyawan</option>
-                  {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+                  {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}{e.kode ? ` (${e.kode})` : ""}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">

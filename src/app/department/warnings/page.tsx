@@ -7,7 +7,7 @@ import { issueWarning, getEmployeeWarnings } from "@/app/actions/employee";
 
 interface Employee {
   id: string; full_name: string; email: string;
-  position: string;
+  kode?: string; position: string;
 }
 
 export default function DepartmentWarningsPage() {
@@ -76,7 +76,7 @@ export default function DepartmentWarningsPage() {
           <select value={selectedEmployee} onChange={(e) => { setSelectedEmployee(e.target.value); setMsg(null); }}
             className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
             <option value="">Pilih Karyawan</option>
-            {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name} — {e.position}</option>)}
+            {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}{e.kode ? ` (${e.kode})` : ""} — {e.position}</option>)}
           </select>
         </div>
 

@@ -25,6 +25,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
     email: "",
     phone: "",
     address: "",
+    kode: "",
     department: "Operasional",
     position: "",
     join_date: "",
@@ -70,6 +71,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
           email: d.email as string || "",
           phone: d.phone as string || "",
           address: d.address as string || "",
+          kode: d.kode as string || "",
           department: d.department as string || "Operasional",
           position: d.position as string || "",
           join_date: d.join_date as string || "",
@@ -274,6 +276,10 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
           <div className="p-8 border-b border-gray-100">
             <h2 className="text-lg font-bold text-[#1A2530] mb-6">Informasi Pekerjaan</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Kode Karyawan <span className="text-red-500">*</span></label>
+                <input type="text" name="kode" required value={formData.kode} onChange={handleChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors font-mono" placeholder="cth: 1.2.3" />
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Departemen</label>
                 <select name="department" value={formData.department} onChange={handleChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white">

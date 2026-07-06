@@ -6,7 +6,7 @@ import { getDeptData, getMyDept } from "@/app/actions/department";
 import { saveKpiEvaluation } from "@/app/actions/performance-hrd";
 
 interface Employee {
-  id: string; full_name: string; position: string;
+  id: string; full_name: string; position: string; kode?: string;
 }
 
 export default function DepartmentKpiPage() {
@@ -59,7 +59,7 @@ export default function DepartmentKpiPage() {
           <select value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)}
             className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
             <option value="">Pilih Karyawan</option>
-            {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name} — {e.position}</option>)}
+            {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}{e.kode ? ` (${e.kode})` : ""} — {e.position}</option>)}
           </select>
         </div>
         <div className="space-y-1.5">
