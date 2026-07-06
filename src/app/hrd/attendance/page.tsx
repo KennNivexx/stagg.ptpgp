@@ -82,7 +82,7 @@ export default function AttendancePage() {
     const fd = new FormData();
     const r = await clockIn(fd);
     setClocking(false);
-    if (r.error) { showToast(r.error); return; }
+    if ("error" in r) { showToast(r.error); return; }
     showToast("Clock-in berhasil!");
     getTodayAttendance().then(setToday);
     getAllAttendance({ date: dateFilter }).then(setData);
@@ -92,7 +92,7 @@ export default function AttendancePage() {
     setClocking(true);
     const r = await clockOut();
     setClocking(false);
-    if (r.error) { showToast(r.error); return; }
+    if ("error" in r) { showToast(r.error); return; }
     showToast("Clock-out berhasil!");
     getTodayAttendance().then(setToday);
     getAllAttendance({ date: dateFilter }).then(setData);

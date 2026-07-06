@@ -1,34 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Clock, Search, CheckCircle2, AlertTriangle } from "lucide-react";
-import { submitComplaint, updateComplaintStatus } from "@/app/actions/relations";
+import { useRouter } from "next/navigation";
+import { MessageCircle, Clock, Search, CheckCircle2, AlertTriangle, Reply, X } from "lucide-react";
+import { updateComplaintStatus } from "@/app/actions/relations";
 import EmptyState from "@/components/EmptyState";
 
-const CATEGORIES = ["Tempat Kerja", "Pelecehan", "Diskriminasi", "Keselamatan", "Lainnya"];
-const STATUSES = ["Diajukan", "Diselidiki", "Selesai"];
+const STATUSES = ["Diselidiki", "Selesai"];
 
-interface Employee { id: string; full_name: string; department: string; }
 interface Complaint { id: string; employee_id: string; employee_name: string; subject: string; category: string; description: string; status: string; notes?: string; resolved_by?: string; created_at: string; }
 
 export default function ComplaintsClient({
-  employees,
   initialComplaints,
 }: {
-  employees: Employee[];
   initialComplaints: Complaint[];
 }) {
-  const [complaints, setComplaints] = useState<Complaint[]>(initialComplaints);
-  const [empId, setEmpId] = useState("");
-  const [subject, setSubject] = useState("");
-  const [category, setCategory] = useState("Tempat Kerja");
-  const [description, setDescription] = useState("");
-  const [saving, setSaving] = useState(false);
+  const router = useRouter();
+  const complaints = initialComplaints;
   const [toast, setToast] = useState("");
-  const [resolveId, setResolveId] = useState("");
-  const [resolveStatus, setResolveStatus] = useState("Selesai");
-  const [resolveNotes, setResolveNotes] = useState("");
-  const [resolving, setResolving] = useState(false);
+  const [replyId, setReplyId] = useState("");
+  const [replyStatus, setReplyStatus] = useState("Diselidiki");
+  const [replyNotes, setReplyNotes] = useState("");
+  const [replying, setReplying] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
@@ -38,39 +31,21 @@ export default function ComplaintsClient({
     selesai: complaints.filter(c => c.status === "Selesai").length,
   };
 
-  const handleSubmit = async () => {
-    if (!empId || !subject || !description) { showToast("Pelapor, subjek, dan deskripsi wajib diisi."); return; }
-    setSaving(true);
-    const fd = new FormData();
-    fd.append("employee_id", empId);
-    fd.append("subject", subject);
-    fd.append("category", category);
-    fd.append("description", description);
-    const result = await submitComplaint(fd);
-    setSaving(false);
-    if (result?.error) { showToast(result.error); return; }
-    showToast("Keluhan berhasil dicatat.");
-    const emp = employees.find(e => e.id === empId);
-    const newC: Complaint = {
-      id: "local-" + Date.now(),
-      employee_id: empId,
-      employee_name: emp?.full_name || "Karyawan",
-      subject, category, description, status: "Diajukan",
-      created_at: new Date().toISOString(),
-    };
-    setComplaints(prev => [newC, ...prev]);
-    setEmpId(""); setSubject(""); setCategory("Tempat Kerja"); setDescription("");
+  const openReply = (c: Complaint) => {
+    setReplyId(c.id);
+    setReplyStatus(c.status === "Diajukan" ? "Diselidiki" : c.status);
+    setReplyNotes(c.notes || "");
   };
 
-  const handleResolve = async () => {
-    if (!resolveId) { showToast("Pilih keluhan yang akan diselesaikan."); return; }
-    setResolving(true);
-    const result = await updateComplaintStatus(resolveId, resolveStatus, resolveNotes);
-    setResolving(false);
+  const handleReply = async () => {
+    if (!replyId) return;
+    setReplying(true);
+    const result = await updateComplaintStatus(replyId, replyStatus, replyNotes);
+    setReplying(false);
     if (result?.error) { showToast(result.error); return; }
-    showToast("Status keluhan diperbarui.");
-    setComplaints(prev => prev.map(c => c.id === resolveId ? { ...c, status: resolveStatus, notes: resolveNotes } : c));
-    setResolveId(""); setResolveNotes("");
+    showToast("Balasan terkirim ke karyawan.");
+    setReplyId(""); setReplyNotes("");
+    router.refresh();
   };
 
   const statusBadge = (status: string) => {
@@ -106,119 +81,76 @@ export default function ComplaintsClient({
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Daftar Keluhan</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Semua pengaduan karyawan</p>
-          </div>
-          {complaints.length === 0 ? (
-            <EmptyState
-              icon={MessageCircle}
-              title="Belum ada keluhan tercatat."
-              className="border-none"
-            />
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {complaints.map(c => (
-                <div key={c.id} className="p-5 hover:bg-slate-50/30 transition-colors">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-sm font-bold text-slate-800">{c.employee_name}</span>
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold">{c.category}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge(c.status)}`}>{c.status}</span>
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100">
+          <h3 className="font-extrabold text-slate-800 text-sm">Daftar Keluhan</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Keluhan hanya dapat diajukan oleh karyawan. HRD meninjau dan membalas satu per satu di sini.</p>
+        </div>
+        {complaints.length === 0 ? (
+          <EmptyState
+            icon={MessageCircle}
+            title="Belum ada keluhan tercatat."
+            className="border-none"
+          />
+        ) : (
+          <div className="divide-y divide-slate-50">
+            {complaints.map(c => (
+              <div key={c.id} className="p-5 hover:bg-slate-50/30 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-sm font-bold text-slate-800">{c.employee_name}</span>
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold">{c.category}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge(c.status)}`}>{c.status}</span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-700">{c.subject}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{c.description}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{new Date(c.created_at).toLocaleDateString("id-ID")}</p>
+                    {c.notes && (
+                      <div className="mt-3 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Balasan HRD{c.resolved_by ? ` — ${c.resolved_by}` : ""}</p>
+                        <p className="text-xs text-slate-600">{c.notes}</p>
                       </div>
-                      <p className="text-xs font-semibold text-slate-700">{c.subject}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{c.description}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">{new Date(c.created_at).toLocaleDateString("id-ID")}</p>
+                    )}
+                  </div>
+                  <button onClick={() => openReply(c)}
+                    className="shrink-0 px-3 py-1.5 bg-[#CC0000] text-white text-[10px] font-bold rounded-lg hover:bg-[#aa0000] transition-colors flex items-center gap-1.5">
+                    <Reply size={12} /> Balas
+                  </button>
+                </div>
+
+                {replyId === c.id && (
+                  <div className="mt-4 bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-slate-700">Balas keluhan {c.employee_name}</p>
+                      <button onClick={() => setReplyId("")} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><X size={14} /></button>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Status</label>
+                      <select value={replyStatus} onChange={e => setReplyStatus(e.target.value)}
+                        className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none">
+                        {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Balasan / Tindakan</label>
+                      <textarea rows={3} value={replyNotes} onChange={e => setReplyNotes(e.target.value)}
+                        className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none resize-none"
+                        placeholder="Tuliskan balasan atau tindakan yang diambil..." />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setReplyId("")} className="px-4 py-2 text-xs font-bold bg-slate-100 text-slate-600 rounded-xl">Batal</button>
+                      <button onClick={handleReply} disabled={replying}
+                        className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50">
+                        {replying ? "Mengirim..." : "Kirim Balasan"}
+                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Catat Keluhan Baru</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Formulir pencatatan keluhan</p>
+                )}
+              </div>
+            ))}
           </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pelapor</label>
-              <select value={empId} onChange={e => setEmpId(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none">
-                <option value="">Pilih karyawan...</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Subjek</label>
-              <input value={subject} onChange={e => setSubject(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none"
-                placeholder="Ringkasan keluhan..." />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Kategori</label>
-              <select value={category} onChange={e => setCategory(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none">
-                {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Deskripsi Keluhan</label>
-              <textarea rows={4} value={description} onChange={e => setDescription(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none resize-none"
-                placeholder="Jelaskan detail keluhan..." />
-            </div>
-            <button onClick={handleSubmit} disabled={saving}
-              className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors disabled:opacity-50">
-              {saving ? "Menyimpan..." : "Simpan Keluhan"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-        <div className="p-6 border-b border-slate-100">
-          <h3 className="font-extrabold text-slate-800 text-sm">Resolusi Keluhan</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Catat tindakan dan hasil investigasi</p>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pilih Keluhan</label>
-              <select value={resolveId} onChange={e => setResolveId(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none">
-                <option value="">Pilih keluhan...</option>
-                {complaints.filter(c => c.status !== "Selesai").map(c => (
-                  <option key={c.id} value={c.id}>{c.employee_name} — {c.subject}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Status Akhir</label>
-              <select value={resolveStatus} onChange={e => setResolveStatus(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none">
-                {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Catatan Tindakan</label>
-              <textarea rows={2} value={resolveNotes} onChange={e => setResolveNotes(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none resize-none"
-                placeholder="Tindakan yang telah diambil..." />
-            </div>
-            <div>
-              <button onClick={handleResolve} disabled={resolving}
-                className="px-6 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50">
-                {resolving ? "Menyimpan..." : "Perbarui Status"}
-              </button>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -67,6 +67,16 @@ export async function updateRequestStatus(id: string, status: string) {
     await requireRole("hrd", "superadmin", "director");
   }
 
+  // Guard against double-approval (double-click, network retry, etc.) — without
+  // this check, re-approving an already-"Disetujui" request would increment
+  // headcount a second time for the same request.
+  if (status === "Disetujui") {
+    const { data: existing } = await supabaseAdmin.from("workforce_requests").select("status").eq("id", id).maybeSingle();
+    if ((existing as { status?: string } | null)?.status === "Disetujui") {
+      return { error: "Permintaan ini sudah disetujui sebelumnya." };
+    }
+  }
+
   await supabaseAdmin.from("workforce_requests").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
 
   if (status === "Disetujui") {
@@ -79,12 +89,23 @@ export async function updateRequestStatus(id: string, status: string) {
         amount: dept.quantity,
       });
       if (hcError) {
-        // Fallback: update directly if RPC not available
-        const { data: deptRow } = await supabaseAdmin.from("departments").select("id, headcount, name").eq("name", dept.department).maybeSingle();
-        if (deptRow) {
+        // Fallback: update directly if RPC not available. Read-then-write isn't
+        // atomic, so guard against a lost update under concurrent approvals by
+        // only writing if headcount still matches what we just read — if another
+        // approval landed in between, retry once against the fresh value instead
+        // of silently dropping one increment.
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const { data: deptRow } = await supabaseAdmin.from("departments").select("id, headcount, name").eq("name", dept.department).maybeSingle();
+          if (!deptRow) break;
           const row = deptRow as { id: string; headcount: number };
           const newHC = (row.headcount || 0) + dept.quantity;
-          await supabaseAdmin.from("departments").update({ headcount: newHC }).eq("id", row.id);
+          const { data: updated } = await supabaseAdmin
+            .from("departments")
+            .update({ headcount: newHC })
+            .eq("id", row.id)
+            .eq("headcount", row.headcount)
+            .select("id");
+          if (updated && updated.length > 0) break;
         }
       }
     }

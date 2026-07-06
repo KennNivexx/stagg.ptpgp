@@ -1,51 +1,89 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
-import { FileText, HelpCircle, Plus, X, Save, Search, BarChart3, CheckCircle, Clock } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { FileText, HelpCircle, Plus, X, Save, Search, CheckCircle, Clock, Trash2, AlertTriangle } from "lucide-react";
+import { getTrainings, getTrainingQuizzes, saveTrainingQuiz, deleteTrainingQuiz } from "@/app/actions/trainings";
+import EmptyState from "@/components/EmptyState";
 
+type Training = { id: string; title: string };
 type Quiz = {
   id: string;
+  training_id: string;
   title: string;
-  program: string;
-  questionsCount: number;
-  passScore: number;
-  duration: string;
+  questions_count: number;
+  pass_score: number;
+  duration_minutes: number;
   status: string;
+  created_at: string;
 };
 
-const INITIAL_QUIZZES: Quiz[] = [
-  { id: "1", title: "Evaluasi Kepemimpinan Dasar", program: "Pelatihan Kepemimpinan Dasar", questionsCount: 25, passScore: 75, duration: "60 menit", status: "Aktif" },
-  { id: "2", title: "Kuis K3 - Teori", program: "Workshop Keselamatan Kerja", questionsCount: 30, passScore: 80, duration: "45 menit", status: "Aktif" },
-  { id: "3", title: "Kuis K3 - Praktik", program: "Workshop Keselamatan Kerja", questionsCount: 15, passScore: 70, duration: "30 menit", status: "Aktif" },
-  { id: "4", title: "Excel Advanced - Final Test", program: "Microsoft Excel Advanced", questionsCount: 40, passScore: 75, duration: "90 menit", status: "Aktif" },
-  { id: "5", title: "Service Excellence Quiz", program: "Service Excellence", questionsCount: 20, passScore: 70, duration: "30 menit", status: "Aktif" },
-  { id: "6", title: "Manajemen Proyek - Pre-Test", program: "Manajemen Proyek Profesional", questionsCount: 30, passScore: 70, duration: "45 menit", status: "Draft" },
-  { id: "7", title: "Manajemen Proyek - Post-Test", program: "Manajemen Proyek Profesional", questionsCount: 50, passScore: 80, duration: "90 menit", status: "Draft" },
-  { id: "8", title: "ISO 9001 Evaluasi", program: "Pelatihan ISO 9001", questionsCount: 35, passScore: 75, duration: "60 menit", status: "Completed" },
-  { id: "9", title: "Communication Evaluation", program: "Effective Communication", questionsCount: 25, passScore: 70, duration: "45 menit", status: "Completed" },
-];
-
-const PROGRAM_LIST = [...new Set(INITIAL_QUIZZES.map((q) => q.program))];
-
 export default function KuisEvaluasi() {
-  const [quizzes, setQuizzes] = useState<Quiz[]>(INITIAL_QUIZZES);
+  const [trainings, setTrainings] = useState<Training[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterProgram, setFilterProgram] = useState("");
+  const [filterTraining, setFilterTraining] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ title: "", program: "", questionsCount: 10, passScore: 70, duration: "30 menit" });
+  const [formData, setFormData] = useState({ title: "", training_id: "", questions_count: 10, pass_score: 70, duration_minutes: 30 });
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
+
+  const showToast = (type: "error" | "success", msg: string) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [t, q] = await Promise.all([getTrainings(), getTrainingQuizzes()]);
+      setTrainings((t as Record<string, unknown>[]).map((x) => ({ id: x.id as string, title: x.title as string })));
+      setQuizzes(q as Quiz[]);
+    } catch {
+      showToast("error", "Gagal memuat data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const trainingMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    trainings.forEach((t) => { map[t.id] = t.title; });
+    return map;
+  }, [trainings]);
 
   const filtered = quizzes.filter((q) => {
     if (searchQuery && !q.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (filterProgram && q.program !== filterProgram) return false;
+    if (filterTraining && q.training_id !== filterTraining) return false;
     return true;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newQuiz: Quiz = { id: Date.now().toString(), ...formData, status: "Draft" };
-    setQuizzes([newQuiz, ...quizzes]);
+    setSaving(true);
+    const fd = new FormData();
+    fd.append("training_id", formData.training_id);
+    fd.append("title", formData.title);
+    fd.append("questions_count", String(formData.questions_count));
+    fd.append("pass_score", String(formData.pass_score));
+    fd.append("duration_minutes", String(formData.duration_minutes));
+    const r = await saveTrainingQuiz(fd);
+    setSaving(false);
+    if (r?.error) { showToast("error", r.error); return; }
+    showToast("success", "Kuis berhasil ditambahkan.");
     setShowForm(false);
-    setFormData({ title: "", program: "", questionsCount: 10, passScore: 70, duration: "30 menit" });
+    setFormData({ title: "", training_id: "", questions_count: 10, pass_score: 70, duration_minutes: 30 });
+    loadData();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Hapus kuis ini?")) return;
+    const r = await deleteTrainingQuiz(id);
+    if (r?.error) { showToast("error", r.error); return; }
+    setQuizzes((prev) => prev.filter((q) => q.id !== id));
+    showToast("success", "Kuis berhasil dihapus.");
   };
 
   const getStatusColor = (s: string) => {
@@ -56,18 +94,33 @@ export default function KuisEvaluasi() {
 
   return (
     <div className="p-6 lg:p-8">
+      {toast && (
+        <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-bold ${toast.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+          {toast.type === "error" ? <AlertTriangle size={16} /> : <CheckCircle size={16} />}
+          {toast.msg}
+          <button onClick={() => setToast(null)} className="ml-2"><X size={14} /></button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2530]">Kuis & Evaluasi</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola kuis, ujian, dan evaluasi untuk setiap program pelatihan.</p>
+          <p className="text-sm text-gray-500 mt-1">Kelola kuis dan evaluasi — mengikuti program training yang sudah ada.</p>
         </div>
         <button
-          onClick={() => { setFormData({ title: "", program: "", questionsCount: 10, passScore: 70, duration: "30 menit" }); setShowForm(true); }}
-          className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
+          onClick={() => { setFormData({ title: "", training_id: "", questions_count: 10, pass_score: 70, duration_minutes: 30 }); setShowForm(true); }}
+          disabled={trainings.length === 0}
+          className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2 disabled:opacity-50"
         >
           <Plus size={14} /> Tambah Kuis
         </button>
       </div>
+
+      {!loading && trainings.length === 0 && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+          Belum ada program training. Buat program training terlebih dahulu di halaman <b>Training</b> sebelum menambahkan kuis.
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="relative">
@@ -77,11 +130,11 @@ export default function KuisEvaluasi() {
             placeholder="Cari kuis..." className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs w-56 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none"
           />
         </div>
-        <select value={filterProgram} onChange={(e) => setFilterProgram(e.target.value)} className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-white text-gray-600 outline-none">
+        <select value={filterTraining} onChange={(e) => setFilterTraining(e.target.value)} className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-white text-gray-600 outline-none">
           <option value="">Semua Program</option>
-          {PROGRAM_LIST.map((p) => <option key={p} value={p}>{p}</option>)}
+          {trainings.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
         </select>
-        {filterProgram && <button onClick={() => setFilterProgram("")} className="text-xs text-[#CC0000] hover:underline">Hapus filter</button>}
+        {filterTraining && <button onClick={() => setFilterTraining("")} className="text-xs text-[#CC0000] hover:underline">Hapus filter</button>}
       </div>
 
       {showForm && (
@@ -98,27 +151,27 @@ export default function KuisEvaluasi() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Program Pelatihan</label>
-                <select required value={formData.program} onChange={(e) => setFormData({ ...formData, program: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm">
+                <select required value={formData.training_id} onChange={(e) => setFormData({ ...formData, training_id: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm">
                   <option value="">Pilih Program</option>
-                  {PROGRAM_LIST.map((p) => <option key={p} value={p}>{p}</option>)}
+                  {trainings.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Jumlah Soal</label>
-                  <input type="number" required value={formData.questionsCount} onChange={(e) => setFormData({ ...formData, questionsCount: Number(e.target.value) })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" min={1} />
+                  <input type="number" required value={formData.questions_count} onChange={(e) => setFormData({ ...formData, questions_count: Number(e.target.value) })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" min={1} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Nilai Lulus (%)</label>
-                  <input type="number" required value={formData.passScore} onChange={(e) => setFormData({ ...formData, passScore: Number(e.target.value) })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" min={0} max={100} />
+                  <input type="number" required value={formData.pass_score} onChange={(e) => setFormData({ ...formData, pass_score: Number(e.target.value) })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" min={0} max={100} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Durasi</label>
-                  <input required value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="30 menit" />
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Durasi (menit)</label>
+                  <input type="number" required value={formData.duration_minutes} onChange={(e) => setFormData({ ...formData, duration_minutes: Number(e.target.value) })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" min={1} />
                 </div>
               </div>
-              <button type="submit" className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2">
-                <Save size={14} /> Simpan Kuis
+              <button type="submit" disabled={saving} className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50">
+                <Save size={14} /> {saving ? "Menyimpan..." : "Simpan Kuis"}
               </button>
             </form>
           </div>
@@ -149,17 +202,18 @@ export default function KuisEvaluasi() {
             <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><HelpCircle size={18} /></div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Total Soal</p>
-              <p className="text-xl font-extrabold text-slate-800">{quizzes.reduce((s, q) => s + q.questionsCount, 0)}</p>
+              <p className="text-xl font-extrabold text-slate-800">{quizzes.reduce((s, q) => s + q.questions_count, 0)}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <FileText size={48} className="mx-auto text-slate-300 mb-4" />
-          <p className="text-sm text-slate-500">Tidak ada kuis ditemukan.</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000] mx-auto" />
         </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={FileText} title="Tidak ada kuis ditemukan." description="Tambahkan kuis pertama untuk program pelatihan yang ada." />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
@@ -171,6 +225,7 @@ export default function KuisEvaluasi() {
                 <th className="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase">Nilai Lulus</th>
                 <th className="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase">Durasi</th>
                 <th className="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
+                <th className="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -184,19 +239,24 @@ export default function KuisEvaluasi() {
                       <p className="font-bold text-slate-800 text-xs">{q.title}</p>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-xs text-slate-600">{q.program}</td>
+                  <td className="px-6 py-4 text-xs text-slate-600">{trainingMap[q.training_id] || "-"}</td>
                   <td className="px-6 py-4 text-center">
-                    <span className="font-extrabold text-slate-800 text-xs">{q.questionsCount}</span>
+                    <span className="font-extrabold text-slate-800 text-xs">{q.questions_count}</span>
                     <span className="text-[10px] text-slate-400"> soal</span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`font-extrabold text-xs ${q.passScore >= 80 ? "text-red-600" : q.passScore >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{q.passScore}%</span>
+                    <span className={`font-extrabold text-xs ${q.pass_score >= 80 ? "text-red-600" : q.pass_score >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{q.pass_score}%</span>
                   </td>
-                  <td className="px-6 py-4 text-center text-xs text-slate-500 flex items-center justify-center gap-1">
-                    <Clock size={10} /> {q.duration}
+                  <td className="px-6 py-4 text-center text-xs text-slate-500">
+                    <span className="inline-flex items-center gap-1"><Clock size={10} /> {q.duration_minutes} menit</span>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${getStatusColor(q.status)}`}>{q.status}</span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <button onClick={() => handleDelete(q.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={13} />
+                    </button>
                   </td>
                 </tr>
               ))}

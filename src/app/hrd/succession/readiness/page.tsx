@@ -1,7 +1,10 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { BarChart3, ClipboardCheck, Star, TrendingUp, Award } from "lucide-react";
 import ReadinessForm from "./ReadinessForm";
+import { getReadinessAssessments } from "@/app/actions/succession";
 import EmptyState from "@/components/EmptyState";
+
+export const dynamic = "force-dynamic";
 
 export default async function PenilaianKesiapan() {
   const { data: candidates } = await supabaseAdmin
@@ -10,34 +13,13 @@ export default async function PenilaianKesiapan() {
     .neq("status", "Resigned")
     .order("full_name");
 
-  const { data: evaluations } = await supabaseAdmin
-    .from("kpi_evaluations")
-    .select("employee_id, score, created_at")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const assessments = await getReadinessAssessments();
 
-  const employeeScores: Record<string, { total: number; count: number }> = {};
-  (evaluations || []).forEach((e: Record<string, unknown>) => {
-    const eid = e.employee_id as string;
-    if (!employeeScores[eid]) employeeScores[eid] = { total: 0, count: 0 };
-    employeeScores[eid].total += Number(e.score) || 0;
-    employeeScores[eid].count += 1;
-  });
-
-  const getAvgScore = (id: string) => {
-    const s = employeeScores[id];
-    if (!s || s.count === 0) return 0;
-    return Math.round(s.total / s.count);
-  };
-
-  const highPerf = (candidates || [])
-    .map((c: Record<string, unknown>) => ({
-      ...c,
-      avgScore: getAvgScore(c.id as string),
-    }))
-    .filter((c: Record<string, unknown>) => (c.avgScore as number) >= 50)
-    .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.avgScore as number) - (a.avgScore as number))
-    .slice(0, 10);
+  const distinctAssessed = new Set(assessments.map((a) => a.employee_id as string)).size;
+  const avgReadiness = assessments.length > 0
+    ? Math.round(assessments.reduce((s, a) => s + (Number(a.total_score) || 0), 0) / assessments.length)
+    : 0;
+  const readyNow = assessments.filter((a) => (Number(a.total_score) || 0) >= 80).length;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -52,7 +34,7 @@ export default async function PenilaianKesiapan() {
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><ClipboardCheck size={18} /></div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Kandidat Dinilai</p>
-              <p className="text-xl font-extrabold text-slate-800">{highPerf.length}</p>
+              <p className="text-xl font-extrabold text-slate-800">{distinctAssessed}</p>
             </div>
           </div>
         </div>
@@ -61,11 +43,7 @@ export default async function PenilaianKesiapan() {
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><TrendingUp size={18} /></div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Rata-rata Kesiapan</p>
-              <p className="text-xl font-extrabold text-slate-800">
-                {highPerf.length > 0
-                  ? Math.round(highPerf.reduce((s: number, c: Record<string, unknown>) => s + (c.avgScore as number), 0) / highPerf.length)
-                  : 0}%
-              </p>
+              <p className="text-xl font-extrabold text-slate-800">{avgReadiness}%</p>
             </div>
           </div>
         </div>
@@ -74,9 +52,7 @@ export default async function PenilaianKesiapan() {
             <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><Star size={18} /></div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Siap Segera</p>
-              <p className="text-xl font-extrabold text-slate-800">
-                {highPerf.filter((c: Record<string, unknown>) => (c.avgScore as number) >= 80).length}
-              </p>
+              <p className="text-xl font-extrabold text-slate-800">{readyNow}</p>
             </div>
           </div>
         </div>
@@ -84,8 +60,8 @@ export default async function PenilaianKesiapan() {
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl"><Award size={18} /></div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Telah Dinilai</p>
-              <p className="text-xl font-extrabold text-slate-800">{Object.keys(employeeScores).length}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Total Penilaian</p>
+              <p className="text-xl font-extrabold text-slate-800">{assessments.length}</p>
             </div>
           </div>
         </div>
@@ -114,26 +90,27 @@ export default async function PenilaianKesiapan() {
               <h3 className="font-extrabold text-slate-800 text-sm">Riwayat Penilaian</h3>
               <p className="text-xs text-slate-400 mt-0.5">Penilaian kesiapan terbaru</p>
             </div>
-            {evaluations && evaluations.length > 0 ? (
+            {assessments.length > 0 ? (
               <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto">
-                {(evaluations || []).slice(0, 8).map((ev: Record<string, unknown>, i: number) => {
-                  const emp = (candidates || []).find((c: Record<string, unknown>) => c.id === ev.employee_id);
+                {assessments.slice(0, 8).map((a) => {
+                  const emp = a.employees as Record<string, string> | null;
+                  const score = Number(a.total_score) || 0;
                   return (
-                    <div key={(ev.id as string) || `${ev.employee_id}-${i}`} className="px-6 py-4 hover:bg-slate-50/30 transition-colors">
+                    <div key={a.id as string} className="px-6 py-4 hover:bg-slate-50/30 transition-colors">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-bold text-slate-800 truncate">
-                          {emp ? emp.full_name as string : `ID: ${ev.employee_id}`}
+                          {emp?.full_name || `ID: ${a.employee_id}`}
                         </p>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          (Number(ev.score) || 0) >= 80 ? "bg-emerald-50 text-emerald-700" :
-                          (Number(ev.score) || 0) >= 60 ? "bg-amber-50 text-amber-700" :
+                          score >= 80 ? "bg-emerald-50 text-emerald-700" :
+                          score >= 60 ? "bg-amber-50 text-amber-700" :
                           "bg-red-50 text-red-700"
                         }`}>
-                          {ev.score as number}
+                          {score}%
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-400 mt-1">
-                        {ev.created_at ? new Date(ev.created_at as string).toLocaleDateString("id-ID", {
+                        Tahun {a.year as number} · {a.updated_at ? new Date(a.updated_at as string).toLocaleDateString("id-ID", {
                           day: "numeric", month: "long", year: "numeric"
                         }) : "-"}
                       </p>

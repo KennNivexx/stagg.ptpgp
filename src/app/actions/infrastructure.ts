@@ -173,6 +173,7 @@ export async function saveDocument(formData: FormData) {
   await requireRole("hrd", "superadmin");
   const title = (formData.get("title") as string || "").trim();
   const category = (formData.get("category") as string || "Lainnya").trim();
+  const url = (formData.get("url") as string || "").trim() || null;
   const visibleToEmployee = formData.get("visible_to_employee") === "on" || formData.get("visible_to_employee") === "true";
   const visibleToDeptHead = formData.get("visible_to_department_head") === "on" || formData.get("visible_to_department_head") === "true";
   if (!title) return { error: "Judul dokumen wajib diisi." };
@@ -181,6 +182,7 @@ export async function saveDocument(formData: FormData) {
     id: "doc-" + crypto.randomUUID(),
     title,
     category,
+    url,
     status: "Aktif",
     visible_to_employee: visibleToEmployee,
     visible_to_department_head: visibleToDeptHead,

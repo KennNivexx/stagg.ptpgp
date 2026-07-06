@@ -67,7 +67,7 @@ export default function LeavesPage() {
     fd.append("type", fType); fd.append("start_date", fStart); fd.append("end_date", fEnd); fd.append("reason", fReason);
     const r = await submitLeave(fd);
     setFLoading(false);
-    if (r.error) { showToast(r.error); return; }
+    if ("error" in r) { showToast(r.error); return; }
     showToast("Cuti berhasil diajukan!");
     setShowForm(false);
     getLeaves({}).then(setData);

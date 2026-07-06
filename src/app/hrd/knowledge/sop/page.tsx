@@ -22,14 +22,14 @@ export default async function SOPPage() {
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Standard Operating Procedure</h1>
-        <p className="text-sm text-gray-500">Dokumen SOP dan prosedur kerja perusahaan.</p>
+        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">SOP dan Instruksi Kerja</h1>
+        <p className="text-sm text-gray-500">Dokumen SOP, instruksi kerja, dan prosedur teknis perusahaan. Gunakan pencarian untuk menemukan dokumen.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { icon: BookOpen, label: "Total SOP", value: sops.length, color: "bg-blue-50 text-blue-600" },
-          { icon: FileText, label: "Kategori", value: categories.length, color: "bg-emerald-50 text-emerald-600" },
+          { icon: BookOpen, label: "Total Dokumen", value: sops.length, color: "bg-blue-50 text-blue-600" },
+          { icon: FileText, label: "Aktif", value: sops.filter((s) => (s.status as string) === "Aktif" || !s.status).length, color: "bg-emerald-50 text-emerald-600" },
           { icon: Building, label: "Departemen", value: new Set(sops.map((s) => s.department)).size, color: "bg-purple-50 text-purple-600" },
         ].map((s) => (
           <div key={s.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">

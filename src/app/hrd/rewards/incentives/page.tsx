@@ -20,6 +20,7 @@ export default async function IncentivesPage() {
   const { data, error } = await supabaseAdmin
     .from("incentive_payments")
     .select("*, employees(full_name, department, position)")
+    .eq("type", "incentive")
     .order("created_at", { ascending: false });
   if (!error || (error as unknown as Record<string, unknown>)?.code !== "42P01") {
     payments = data || [];

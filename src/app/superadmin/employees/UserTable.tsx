@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Mail,
   Key,
@@ -15,6 +16,7 @@ import {
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
+  Pencil,
 } from "lucide-react";
 import { resetUserPasswordByEmail } from "@/app/actions/hrd";
 
@@ -334,15 +336,34 @@ export function UserTable({ users }: { users: Record<string, unknown>[] }) {
                         {formatDateTime(u.created_at as string)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => handleReset(email, name)}
-                        disabled={loading === email}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        <Key size={12} />
-                        {loading === email ? "..." : "Reset PW"}
-                      </button>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-2">
+                        {u.employeeId ? (
+                          <Link
+                            href={`/superadmin/employees/${u.employeeId as string}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                          >
+                            <Pencil size={12} />
+                            Edit
+                          </Link>
+                        ) : (
+                          <span
+                            title="Belum ada data karyawan terkait akun ini"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-300 rounded-lg text-xs font-bold cursor-not-allowed"
+                          >
+                            <Pencil size={12} />
+                            Edit
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleReset(email, name)}
+                          disabled={loading === email}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                        >
+                          <Key size={12} />
+                          {loading === email ? "..." : "Reset PW"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

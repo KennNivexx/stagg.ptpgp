@@ -1,12 +1,15 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { auditLog } from "@/lib/audit";
 
 /**
  * Permanently delete employee accounts whose approved resignation has passed its
  * 24-hour deletion deadline (`resignations.delete_at`).
  *
- * There is no cron in this environment, so this runs lazily — called on login
- * attempts and on the notification poll. It is safe to call frequently: when no
- * account is due it performs a single cheap SELECT and returns.
+ * Not called automatically on page/login access — only from the
+ * /api/cron/purge-resigned-accounts route, meant to be invoked by an external
+ * scheduled job. Each deletion is written to audit_logs BEFORE the row is
+ * removed, so there is a durable trail of what was deleted and when even
+ * though the underlying employee/user rows are gone afterward.
  *
  * A person may exist in BOTH `users` and `employees` with the same email but
  * different ids (see dual-table identity), so deletion is keyed on email and
@@ -43,6 +46,15 @@ export async function purgeExpiredResignedAccounts(): Promise<number> {
         if (e?.id) ids.add(e.id as string);
         if (u?.id) ids.add(u.id as string);
       }
+
+      // Audit trail BEFORE deletion — the row won't exist to reference afterward.
+      await auditLog({
+        action: "account.purge_resigned",
+        targetId: empId || email || (row.id as string),
+        targetName: email || empId,
+        performedBy: { id: "system", role: "system", name: "Scheduled Job", email: "system@ptpgp.co.id" },
+        detail: `Resignation ${row.id} disetujui, delete_at terlampaui. Menghapus permanen akun (email: ${email || "-"}, employee_id: ${empId || "-"}) beserta data wajah terkait.`,
+      });
 
       // Permanently delete the account + biometric data.
       if (ids.size > 0) {

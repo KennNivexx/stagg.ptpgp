@@ -1,11 +1,81 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Plus, X, BookOpen, Settings2 } from "lucide-react";
+import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Plus, X, BookOpen, Settings2, GraduationCap, Clock } from "lucide-react";
 import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, getDeptSkillList, saveDeptSkillList, assessEmployee } from "@/app/actions/skills";
 import { addDeptSkill, getAllSkillGuidesMap, type LevelGuide } from "@/app/actions/competency-guides";
 import { getMyDept } from "@/app/actions/department";
+import { submitTrainingRequest, getMyDeptTrainingRequests, type TrainingRequest } from "@/app/actions/trainings";
 import EmptyState from "@/components/EmptyState";
+
+// ─── Modal: ajukan training berdasarkan kesenjangan kompetensi ────────────────
+function RequestTrainingModal({ dept, skill, currentLevel, requiredLevel, onClose, onSuccess }: {
+  dept: string;
+  skill: Skill;
+  currentLevel: number;
+  requiredLevel: number;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const handleSubmit = async () => {
+    setSaving(true); setErr("");
+    const fd = new FormData();
+    fd.append("department", dept);
+    fd.append("skill_id", skill.id);
+    fd.append("skill_name", skill.name);
+    fd.append("current_level", String(currentLevel));
+    fd.append("required_level", String(requiredLevel));
+    fd.append("reason", reason.trim());
+    const result = await submitTrainingRequest(fd);
+    setSaving(false);
+    if ("error" in result && result.error) { setErr(result.error); return; }
+    onSuccess();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 bg-slate-900 flex items-center justify-between">
+          <h3 className="text-white font-bold text-sm flex items-center gap-2"><GraduationCap size={16} /> Ajukan Pelatihan</h3>
+          <button onClick={onClose} className="w-7 h-7 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center">
+            <X size={14} className="text-white" />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Kompetensi</p>
+            <p className="text-sm font-extrabold text-slate-800">{skill.name}</p>
+            <p className="text-xs text-slate-500 mt-1">Level saat ini: <b>{currentLevel}</b> &middot; Dibutuhkan: <b>{requiredLevel}</b></p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Alasan / Kebutuhan Pelatihan</label>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
+              placeholder="Jelaskan kebutuhan pelatihan untuk menutup kesenjangan ini..."
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-pgp-red/20 focus:border-pgp-red/30 transition-all" />
+          </div>
+          {err && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+              <AlertTriangle size={13} className="text-red-500 shrink-0" />
+              <p className="text-xs text-red-600">{err}</p>
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors">Batal</button>
+            <button onClick={handleSubmit} disabled={saving}
+              className="flex-1 py-2.5 bg-pgp-red hover:bg-pgp-red/80 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-colors inline-flex items-center justify-center gap-2">
+              <Save size={14} /> {saving ? "Mengirim..." : "Ajukan ke HRD"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface Employee { id: string; full_name: string; department: string; position: string }
 interface Skill { id: string; name: string; category: string; department?: string | null }
@@ -320,6 +390,11 @@ export default function DeptCompetencyPage() {
   const [kelolaSaving, setKelolaSaving] = useState(false);
   const [kelolaSearch, setKelolaSearch] = useState("");
 
+  // Ajukan pelatihan berdasarkan kesenjangan
+  const [requestModal, setRequestModal] = useState<{ skill: Skill; currentLevel: number; requiredLevel: number } | null>(null);
+  const [myRequests, setMyRequests] = useState<TrainingRequest[]>([]);
+  const [showRequests, setShowRequests] = useState(false);
+
   // Popup saat level diubah
   const [levelPopup, setLevelPopup] = useState<{ employeeId: string; skill: Skill } | null>(null);
   // Modal semua level
@@ -381,12 +456,18 @@ export default function DeptCompetencyPage() {
     }
   }, []);
 
+  const loadRequests = useCallback(async (department: string) => {
+    if (!department) return;
+    const reqs = await getMyDeptTrainingRequests(department);
+    setMyRequests(reqs);
+  }, []);
+
   useEffect(() => {
     getMyDept().then(({ dept }) => {
-      if (dept) { setDeptName(dept); loadData(dept); }
+      if (dept) { setDeptName(dept); loadData(dept); loadRequests(dept); }
       else setLoading(false);
     }).catch(() => setLoading(false));
-  }, [loadData]);
+  }, [loadData, loadRequests]);
 
   // Ubah level via tombol +/- → tampilkan popup panduan
   const handleLevelStep = (employeeId: string, skill: Skill, delta: number) => {
@@ -512,12 +593,73 @@ export default function DeptCompetencyPage() {
         />
       )}
 
+      {/* Modal ajukan training */}
+      {requestModal && (
+        <RequestTrainingModal
+          dept={deptName}
+          skill={requestModal.skill}
+          currentLevel={requestModal.currentLevel}
+          requiredLevel={requestModal.requiredLevel}
+          onClose={() => setRequestModal(null)}
+          onSuccess={() => {
+            setRequestModal(null);
+            showToast("success", "Permintaan pelatihan berhasil diajukan ke HRD.");
+            loadRequests(deptName);
+          }}
+        />
+      )}
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-pgp-navy">Kompetensi Karyawan</h1>
         <p className="text-sm text-gray-500 mt-1">
           {deptName || "Departemen tidak ditemukan"} — Nilai kompetensi setiap karyawan. Klik <strong>+</strong> atau <strong>-</strong> untuk melihat panduan tiap level.
         </p>
       </div>
+
+      {/* Riwayat Pengajuan Training */}
+      {deptName && (
+        <div className="mb-6">
+          <button onClick={() => setShowRequests((v) => !v)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition-colors">
+            <GraduationCap size={14} className="text-pgp-red" />
+            Riwayat Pengajuan Training
+            {myRequests.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-slate-100 rounded-full text-[10px]">{myRequests.length}</span>
+            )}
+            {showRequests ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+
+          {showRequests && (
+            <div className="mt-3 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              {myRequests.length === 0 ? (
+                <EmptyState icon={GraduationCap} title="Belum ada pengajuan training." description="Ajukan training dari kesenjangan kompetensi di tabel bawah." className="border-none py-8" />
+              ) : (
+                <div className="divide-y divide-slate-50">
+                  {myRequests.map((r) => (
+                    <div key={r.id} className="p-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800">{r.skill_name}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                          <Clock size={9} /> {new Date(r.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                          {r.current_level != null && r.required_level != null && ` · Level ${r.current_level} → ${r.required_level}`}
+                        </p>
+                        {r.reason && <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">{r.reason}</p>}
+                      </div>
+                      <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold ${
+                        r.status === "Disetujui" ? "bg-emerald-50 text-emerald-700"
+                        : r.status === "Ditolak" ? "bg-red-50 text-red-700"
+                        : "bg-amber-50 text-amber-700"
+                      }`}>
+                        {r.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ─── Kelola Kompetensi Departemen ─── */}
       {deptName && (
@@ -686,6 +828,7 @@ export default function DeptCompetencyPage() {
                             <th className="text-center px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase w-28">Dibutuhkan</th>
                             <th className="text-center px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase w-44">Level Saat Ini</th>
                             <th className="text-center px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase w-20">Gap</th>
+                            <th className="text-center px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase w-32">Aksi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -754,6 +897,16 @@ export default function DeptCompetencyPage() {
                                   <span className={`inline-flex items-center justify-center w-9 h-7 rounded-lg text-[10px] font-bold ${getGapBadge(gap)}`}>
                                     {gap > 0 ? `+${gap}` : gap}
                                   </span>
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  {gap < 0 && (
+                                    <button
+                                      onClick={() => setRequestModal({ skill: sk, currentLevel, requiredLevel })}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-pgp-red/10 hover:bg-pgp-red/20 text-pgp-red rounded-lg text-[10px] font-bold transition-colors"
+                                    >
+                                      <GraduationCap size={11} /> Ajukan Training
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             );

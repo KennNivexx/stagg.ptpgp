@@ -180,11 +180,47 @@ export async function issueWarning(formData: FormData) {
     },
   ]);
 
-  if (error && !error.message.includes("Could not find the table")) {
+  if (error?.code === "42P01" || error?.message?.includes("Could not find the table")) {
+    return { error: "Tabel surat peringatan belum tersedia. Jalankan migrasi terlebih dahulu." };
+  }
+  if (error) {
     console.error("[employee] issueWarning error:", error.message);
     return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
 
+  revalidatePath("/hrd/relations/warnings");
+  revalidatePath("/employee/warnings");
+  return { success: true };
+}
+
+/** Flips any "Aktif" warning whose valid_until has passed to "Kadaluarsa".
+ * Called at warnings page load — no cron in this environment, so expiry is
+ * applied lazily whenever the list is viewed. */
+export async function expireOldWarnings() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { error } = await supabaseAdmin
+    .from("warnings")
+    .update({ status: "Kadaluarsa" })
+    .eq("status", "Aktif")
+    .not("valid_until", "is", null)
+    .lt("valid_until", today);
+
+  if (error && error.code !== "42P01" && !error.message?.includes("Could not find the table")) {
+    console.error("[employee] expireOldWarnings error:", error.message);
+  }
+}
+
+export async function markWarningExpired(id: string) {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin
+    .from("warnings")
+    .update({ status: "Kadaluarsa" })
+    .eq("id", id);
+
+  if (error) {
+    console.error("[employee] markWarningExpired error:", error.message);
+    return { error: "Gagal memproses. Silakan coba lagi." };
+  }
   revalidatePath("/hrd/relations/warnings");
   revalidatePath("/employee/warnings");
   return { success: true };

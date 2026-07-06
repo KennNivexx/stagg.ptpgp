@@ -1,11 +1,17 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Shield, AlertTriangle, TrendingUp, Users } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import { getCriticalPositions } from "@/app/actions/succession";
+import MarkCriticalPositionForm from "./MarkCriticalPositionForm";
+
+export const dynamic = "force-dynamic";
 
 export default async function PosisiKritis() {
+  const markedPositions = await getCriticalPositions();
+
   const { data: managers } = await supabaseAdmin
     .from("employees")
-    .select("*, departments!inner(name)")
+    .select("*")
     .or("position.ilike.%Manager%, position.ilike.%Direktur%, position.ilike.%Kepala%, position.ilike.%Head%, position.ilike.%Lead%")
     .neq("status", "Resigned")
     .order("full_name");
@@ -15,9 +21,7 @@ export default async function PosisiKritis() {
     .select("id, full_name, position, department")
     .neq("status", "Resigned");
 
-  const riskLevels = ["Rendah", "Sedang", "Tinggi"];
   const positions = (managers || []).map((m: Record<string, unknown>, i: number) => {
-    const dept = m.departments as Record<string, string> | undefined;
     const hasBackup = (allEmployees || []).some(
       (e: Record<string, unknown>) =>
         e.id !== m.id &&
@@ -27,7 +31,7 @@ export default async function PosisiKritis() {
     const risk = !hasBackup ? "Tinggi" : i % 3 === 0 ? "Rendah" : "Sedang";
     return {
       ...m,
-      departmentName: dept?.name || (m.department as string) || "-",
+      departmentName: (m.department as string) || "-",
       risk,
       hasBackup,
     };
@@ -154,41 +158,12 @@ export default async function PosisiKritis() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Tandai Posisi Kritis</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Formulir identifikasi posisi kritis baru</p>
-          </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pilih Karyawan</label>
-              <select className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none">
-                <option value="">Pilih karyawan...</option>
-                {(allEmployees || []).map((e: Record<string, unknown>) => (
-                  <option key={e.id as string} value={e.id as string}>
-                    {e.full_name as string} - {e.position as string}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tingkat Risiko</label>
-              <select className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none">
-                <option value="">Pilih risiko...</option>
-                {riskLevels.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tanggal Risiko Kekosongan</label>
-              <input type="date" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none" />
-            </div>
-            <span className="w-full px-4 py-2.5 bg-slate-300 text-white text-xs font-bold rounded-xl cursor-not-allowed inline-flex items-center justify-center" title="Segera tersedia">
-              Tandai sebagai Posisi Kritis
-            </span>
-          </div>
-        </div>
+        <MarkCriticalPositionForm
+          employees={(allEmployees || []).map((e: Record<string, unknown>) => ({
+            id: e.id as string, full_name: e.full_name as string, position: (e.position as string) || "-",
+          }))}
+          markedPositions={markedPositions}
+        />
       </div>
     </div>
   );

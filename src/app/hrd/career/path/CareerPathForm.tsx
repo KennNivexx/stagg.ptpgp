@@ -43,7 +43,7 @@ export default function CareerPathForm({ departments }: Props) {
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Level</label>
           <select name="level" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
             <option value="">Pilih Level</option>
-            <option>Entry</option><option>Staff</option><option>Supervisor</option><option>Manager</option><option>Senior</option>
+            <option>Staff</option><option>Supervisor</option><option>Manager</option><option>Wakil Direktur</option><option>Direktur</option><option>Komisaris</option>
           </select>
         </div>
         <div className="space-y-1.5">

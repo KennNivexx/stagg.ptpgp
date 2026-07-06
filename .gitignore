@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# WhatsApp (Baileys) demo session credentials — device-paired, never commit
+/.baileys_auth
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -44,7 +44,8 @@ export async function registerVendor(formData: FormData) {
 
   if (error) {
     if (error.message.includes("Could not find the table")) {
-      return { success: true };
+      console.error("[vendor] registerVendor error: vendors table missing");
+      return { error: "Fitur pendaftaran vendor belum aktif. Hubungi admin untuk menjalankan migrasi." };
     }
     if (error.code === "23505") {
       return { error: "Perusahaan dengan email ini sudah terdaftar." };
@@ -82,7 +83,11 @@ export async function submitQuotation(formData: FormData) {
       address: description || null,
     }]);
 
-  if (error && !error.message.includes("Could not find the table")) {
+  if (error) {
+    if (error.message.includes("Could not find the table")) {
+      console.error("[vendor] submitQuotation error: vendors table missing");
+      return { error: "Fitur pengajuan penawaran belum aktif. Hubungi admin untuk menjalankan migrasi." };
+    }
     console.error("[vendor] submitQuotation error:", error.message);
     return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }

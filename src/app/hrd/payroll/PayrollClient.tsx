@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { DollarSign, Download, FileText, Clock, Users, X, Plus } from "lucide-react";
-import { generatePayslip } from "@/app/actions/admin";
+import { DollarSign, Download, FileText, Clock, Users, X, Plus, CheckCircle2 } from "lucide-react";
+import { generatePayslip, updatePayrollStatus } from "@/app/actions/admin";
 import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
@@ -30,6 +30,15 @@ export default function PayrollClient({ payrolls, employees, totalEmployees, tit
   const [year, setYear] = useState(new Date().getFullYear());
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
+
+  const handleStatusChange = async (id: string, status: "Approved" | "Paid") => {
+    setActingId(id);
+    const result = await updatePayrollStatus(id, status);
+    setActingId(null);
+    if (result?.error) { setMsg({ type: "error", text: result.error }); return; }
+    router.refresh();
+  };
 
   const handleGenerate = async () => {
     if (!empId) { setMsg({ type: "error", text: "Pilih karyawan terlebih dahulu." }); return; }
@@ -107,7 +116,7 @@ export default function PayrollClient({ payrolls, employees, totalEmployees, tit
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/50">
-                  {["Karyawan", "Periode", "Gaji Pokok", "Tunjangan", "Potongan", "Total Bersih", "Status", ""].map((h) => (
+                  {["Karyawan", "Periode", "Gaji Pokok", "Tunjangan", "Bonus", "Potongan", "Total Bersih", "Status", ""].map((h) => (
                     <th key={h} className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase ${h === "" ? "text-right" : "text-left"}`}>{h}</th>
                   ))}
                 </tr>
@@ -115,6 +124,8 @@ export default function PayrollClient({ payrolls, employees, totalEmployees, tit
               <tbody className="divide-y divide-slate-50">
                 {payrolls.map((p) => {
                   const emp = p.employees as Record<string, string> | undefined;
+                  const totalDeductions = (Number(p.tax) || 0) + (Number(p.bpjs_health) || 0) + (Number(p.bpjs_employment) || 0) + (Number(p.deductions) || 0);
+                  const busy = actingId === p.id;
                   return (
                     <tr key={p.id as string} className="hover:bg-slate-50/30 transition-colors">
                       <td className="px-6 py-4">
@@ -126,7 +137,8 @@ export default function PayrollClient({ payrolls, employees, totalEmployees, tit
                       </td>
                       <td className="px-6 py-4 text-xs text-slate-700 font-medium">Rp {fmt(Number(p.basic_salary) || 0)}</td>
                       <td className="px-6 py-4 text-xs text-emerald-600 font-medium">Rp {fmt(Number(p.allowances) || 0)}</td>
-                      <td className="px-6 py-4 text-xs text-red-600 font-medium">Rp {fmt(Number(p.deductions) || 0)}</td>
+                      <td className="px-6 py-4 text-xs text-emerald-600 font-medium">{Number(p.bonus) > 0 ? `Rp ${fmt(Number(p.bonus))}` : "-"}</td>
+                      <td className="px-6 py-4 text-xs text-red-600 font-medium" title="PPh 21 + BPJS Kesehatan + BPJS Ketenagakerjaan">Rp {fmt(totalDeductions)}</td>
                       <td className="px-6 py-4 text-xs font-bold text-slate-800">Rp {fmt(Number(p.net_salary) || 0)}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
@@ -137,13 +149,27 @@ export default function PayrollClient({ payrolls, employees, totalEmployees, tit
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => window.open(`/api/payslip/${p.id as string}`, "_blank")}
-                          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 inline-flex transition-colors"
-                          title="Lihat / Unduh slip gaji"
-                        >
-                          <Download size={14} />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {p.status === "Draft" && (
+                            <button onClick={() => handleStatusChange(p.id as string, "Approved")} disabled={busy}
+                              className="px-2.5 py-1.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-lg hover:bg-blue-100 disabled:opacity-50">
+                              Setujui
+                            </button>
+                          )}
+                          {p.status === "Approved" && (
+                            <button onClick={() => handleStatusChange(p.id as string, "Paid")} disabled={busy}
+                              className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg hover:bg-emerald-100 disabled:opacity-50 flex items-center gap-1">
+                              <CheckCircle2 size={11} /> Tandai Dibayar
+                            </button>
+                          )}
+                          <button
+                            onClick={() => window.open(`/api/payslip/${p.id as string}`, "_blank")}
+                            className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 inline-flex transition-colors"
+                            title="Lihat / Unduh slip gaji"
+                          >
+                            <Download size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

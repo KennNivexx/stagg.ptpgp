@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const MENU_GROUPS = [
   {
@@ -39,6 +40,7 @@ export default function DirectorLayout({ children }: { children: ReactNode }) {
   const { user } = useSession();
   const clientUserName = user?.name || "Direktur";
   const clientUserEmail = user?.email || "direktur@ptpgp.co.id";
+  const { hasUnreadForHref } = useNotifications("director");
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800">
@@ -83,13 +85,14 @@ export default function DirectorLayout({ children }: { children: ReactNode }) {
                 </div>
                 {group.items.map((item) => {
                   const isActive = pathname === item.href || (item.href !== "/director" && pathname.startsWith(item.href));
+                  const hasUnread = hasUnreadForHref(item.href, "/director");
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => setIsSidebarOpen(false)}
                       title={item.label}
-                      className={`flex items-center gap-2 pl-9 lg:pl-0 lg:justify-center xl:pl-9 xl:justify-start pr-4 py-2 text-[11px] font-medium transition-all duration-150 ${
+                      className={`relative flex items-center gap-2 pl-9 lg:pl-0 lg:justify-center xl:pl-9 xl:justify-start pr-4 py-2 text-[11px] font-medium transition-all duration-150 ${
                         isActive
                           ? "bg-red-600/20 text-white border-l-2 border-red-500"
                           : "text-slate-400 hover:text-white hover:bg-slate-800/40 border-l-2 border-transparent"
@@ -97,6 +100,12 @@ export default function DirectorLayout({ children }: { children: ReactNode }) {
                     >
                       {isActive && <ChevronRight size={10} className="text-red-400 shrink-0 lg:hidden xl:block" />}
                       <span className="truncate lg:hidden xl:inline">{item.label}</span>
+                      {hasUnread && (
+                        <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
+                      )}
+                      {hasUnread && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
+                      )}
                     </Link>
                   );
                 })}

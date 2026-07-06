@@ -1,6 +1,9 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, DollarSign, TrendingUp, Users, Building2 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import ExportExcelButton from "@/components/ExportExcelButton";
+
+export const dynamic = "force-dynamic";
 
 export default async function LaporanPayroll() {
   const { data: payrolls } = await supabaseAdmin
@@ -28,11 +31,27 @@ export default async function LaporanPayroll() {
 
   const monthNames = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
+  const rows = (payrolls || []).map((p: Record<string, unknown>) => {
+    const emp = p.employees as Record<string, string> | undefined;
+    return {
+      Karyawan: emp?.full_name || "-",
+      Departemen: emp?.department || "-",
+      Periode: `${monthNames[Number(p.month) || 0] || "-"} ${String(p.year || "")}`,
+      "Gaji Pokok": Number(p.basic_salary) || 0,
+      Tunjangan: Number(p.allowances) || 0,
+      Potongan: Number(p.deductions) || 0,
+      "Total Bersih": Number(p.net_salary) || 0,
+    };
+  });
+
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Payroll</h1>
-        <p className="text-sm text-gray-500">Ringkasan penggajian bulanan, total biaya, dan analisis per departemen.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Payroll</h1>
+          <p className="text-sm text-gray-500">Ringkasan penggajian bulanan, total biaya, dan analisis per departemen.</p>
+        </div>
+        <ExportExcelButton filename="Laporan_Payroll" sheetName="Payroll" rows={rows} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

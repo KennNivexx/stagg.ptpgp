@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
-interface NavLink { name: string; href: string; }
+interface NavLink { label: string; url: string; }
 interface NavbarProps {
   links?: { navbar?: NavLink[] };
   companyName?: string;
@@ -30,12 +30,12 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
     }
   };
 
-  const defaultLinks = [
-    { name: "Home", href: "/" },
-    { name: "Tentang Kami", href: "/#about" },
-    { name: "Layanan", href: "/#services" },
-    { name: "Karir", href: "/career" },
-    { name: "Kontak", href: "/#contact" },
+  const defaultLinks: NavLink[] = [
+    { label: "Home", url: "/" },
+    { label: "Tentang Kami", url: "/#about" },
+    { label: "Layanan", url: "/#services" },
+    { label: "Karir", url: "/career" },
+    { label: "Kontak", url: "/#contact" },
   ];
 
   const navLinks = linkSettings?.navbar?.length ? linkSettings.navbar : defaultLinks;
@@ -52,19 +52,19 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
           
           <div className="hidden md:flex items-center space-x-8 h-full">
             {navLinks.map((link, idx) => {
-              const isHash = link.href.includes("#");
-              const linkPath = link.href.split("#")[0];
+              const isHash = link.url.includes("#");
+              const linkPath = link.url.split("#")[0];
               const isActive = linkPath === "/" ? idx === 0 && pathname === "/" : pathname.startsWith(linkPath);
               return (
               <Link
-                key={link.href + link.name}
-                href={link.href}
-                onClick={isHash ? (e) => handleHashClick(e, link.href) : undefined}
+                key={link.url + link.label}
+                href={link.url}
+                onClick={isHash ? (e) => handleHashClick(e, link.url) : undefined}
                 className={`text-sm font-medium transition-colors ${
                   isActive ? "text-pgp-red" : "text-gray-700 hover:text-pgp-red"
                 }`}
               >
-                {link.name}
+                {link.label}
               </Link>
               );
             })}
@@ -87,15 +87,15 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
         {isOpen && (
           <div className="md:hidden absolute top-[72px] left-0 w-full bg-white border-b border-gray-100 shadow-lg px-4 py-4 space-y-2">
             {navLinks.map((link) => {
-              const isHash = link.href.includes("#");
+              const isHash = link.url.includes("#");
               return (
               <Link
-                key={link.href + link.name}
-                href={link.href}
-                onClick={(e) => { setIsOpen(false); if (isHash) handleHashClick(e, link.href); }}
+                key={link.url + link.label}
+                href={link.url}
+                onClick={(e) => { setIsOpen(false); if (isHash) handleHashClick(e, link.url); }}
                 className="block px-4 py-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-pgp-red"
               >
-                {link.name}
+                {link.label}
               </Link>
               );
             })}

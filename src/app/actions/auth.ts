@@ -8,7 +8,6 @@ import { verifyPassword } from "@/lib/auth";
 import { signSession } from "@/lib/session";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyOneTimeToken } from "@/lib/otp-token";
-import { purgeExpiredResignedAccounts } from "@/lib/account-purge";
 
 const COOKIE_OPTS = {
   path: "/",
@@ -96,7 +95,7 @@ async function tryUsersTableAuth(email: string, password: string) {
     }
   }
 
-  if (verifyPassword(password, u.password_hash)) {
+  if (u.password_hash && verifyPassword(password, u.password_hash)) {
     return {
       id: u.id,
       role: u.role,
@@ -126,10 +125,6 @@ export async function loginAction(formData: FormData) {
     return { error: "Terlalu banyak percobaan login. Silakan coba lagi dalam beberapa menit." };
   }
 
-  // Purge accounts past their 24h post-resignation deletion deadline before auth,
-  // so a deleted account cannot log back in.
-  await purgeExpiredResignedAccounts();
-
   // 1. Try database authentication first
   const dbUser = (await tryUsersTableAuth(normalizedEmail, password))
     || (await tryEmployeesAuth(normalizedEmail, password));
@@ -155,6 +150,13 @@ export async function logoutAction() {
 
 export async function loginWithToken(token: string) {
   if (!token) return { error: "Token tidak valid." };
+
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
+  const rlResult = await rateLimit(`login-token:${ip}`, 10, 15 * 60 * 1000);
+  if (rlResult.limited) {
+    return { error: "Terlalu banyak percobaan. Silakan coba lagi dalam beberapa menit." };
+  }
 
   const payload = verifyOneTimeToken(token);
   if (!payload) return { error: "Token tidak valid atau sudah kedaluwarsa." };

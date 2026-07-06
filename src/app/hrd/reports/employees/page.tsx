@@ -1,6 +1,9 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, Users, TrendingUp, UserPlus, UserX, Building2 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import ExportExcelButton from "@/components/ExportExcelButton";
+
+export const dynamic = "force-dynamic";
 
 export default async function LaporanKaryawan() {
   const { data: employees } = await supabaseAdmin
@@ -50,11 +53,23 @@ export default async function LaporanKaryawan() {
 
   const months = Object.keys(monthlyJoin).sort();
 
+  const rows = (employees || []).map((e: Record<string, unknown>) => ({
+    Nama: e.full_name as string,
+    Departemen: (e.department as string) || "-",
+    Jabatan: (e.position as string) || "-",
+    Status: (e.status as string) || "-",
+    "Tanggal Bergabung": e.join_date ? new Date(e.join_date as string).toLocaleDateString("id-ID") : "-",
+    Email: (e.email as string) || "-",
+  }));
+
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Karyawan</h1>
-        <p className="text-sm text-gray-500">Demografi karyawan, tren headcount, dan statistik tenaga kerja.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Karyawan</h1>
+          <p className="text-sm text-gray-500">Demografi karyawan, tren headcount, dan statistik tenaga kerja.</p>
+        </div>
+        <ExportExcelButton filename="Laporan_Karyawan" sheetName="Karyawan" rows={rows} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -8,7 +8,7 @@ export default async function OKRPage() {
     (async () => {
       const { data, error } = await supabaseAdmin
         .from("okr_objectives")
-        .select("*, employees(full_name, department)")
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(50);
       if (error && (error as unknown as Record<string, unknown>)?.code === "42P01") return { data: [], error: null };
@@ -25,14 +25,14 @@ export default async function OKRPage() {
     <div className="p-6 lg:p-8 space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">OKR - Objectives & Key Results</h1>
-        <p className="text-sm text-gray-500">Kelola objective dan key results untuk setiap karyawan dan departemen.</p>
+        <p className="text-sm text-gray-500">Kelola objective dan key results untuk setiap departemen.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { icon: Target, label: "Total OKR", value: okrData.length, color: "bg-blue-50 text-blue-600" },
           { icon: TrendingUp, label: "Rata-rata Progress", value: `${avgProgress}%`, color: "bg-emerald-50 text-emerald-600" },
-          { icon: Building, label: "Dept Terlibat", value: new Set(okrData.map((o) => { const e = o.employees as Record<string, string>; return e?.department; })).size, color: "bg-purple-50 text-purple-600" },
+          { icon: Building, label: "Dept Terlibat", value: new Set(okrData.map((o) => o.department as string)).size, color: "bg-purple-50 text-purple-600" },
         ].map((s) => (
           <div key={s.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3">

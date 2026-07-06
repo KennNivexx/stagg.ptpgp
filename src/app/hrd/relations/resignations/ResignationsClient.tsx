@@ -1,28 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { UserX, Clock, CheckCircle2, XCircle } from "lucide-react";
-import { submitResignation, updateResignationStatus } from "@/app/actions/relations";
+import { updateResignationStatus } from "@/app/actions/relations";
 import EmptyState from "@/components/EmptyState";
 
-interface Employee { id: string; full_name: string; department: string; position: string; }
 interface Resignation { id: string; employee_id: string; employee_name: string; reason: string; last_day: string; notes?: string; status: string; reviewed_by?: string; created_at: string; }
 
 export default function ResignationsClient({
-  activeEmployees,
   initialResignations,
   resignedCount,
 }: {
-  activeEmployees: Employee[];
   initialResignations: Resignation[];
   resignedCount: number;
 }) {
-  const [resignations, setResignations] = useState<Resignation[]>(initialResignations);
-  const [empId, setEmpId] = useState("");
-  const [lastDay, setLastDay] = useState("");
-  const [reason, setReason] = useState("");
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
+  const router = useRouter();
+  const resignations = initialResignations;
   const [toast, setToast] = useState("");
   const [actionId, setActionId] = useState("");
   const [acting, setActing] = useState(false);
@@ -33,37 +27,13 @@ export default function ResignationsClient({
   const approved = resignations.filter(r => r.status === "Disetujui");
   const rejected = resignations.filter(r => r.status === "Ditolak");
 
-  const handleSubmit = async () => {
-    if (!empId || !lastDay || !reason) { showToast("Karyawan, tanggal terakhir, dan alasan wajib diisi."); return; }
-    setSaving(true);
-    const fd = new FormData();
-    fd.append("employee_id", empId);
-    fd.append("last_day", lastDay);
-    fd.append("reason", reason);
-    fd.append("notes", notes);
-    const result = await submitResignation(fd);
-    setSaving(false);
-    if (result?.error) { showToast(result.error); return; }
-    showToast("Pengajuan resign berhasil dicatat.");
-    const emp = activeEmployees.find(e => e.id === empId);
-    const newR: Resignation = {
-      id: "local-" + Date.now(),
-      employee_id: empId,
-      employee_name: emp?.full_name || "Karyawan",
-      reason, last_day: lastDay, notes, status: "Diajukan",
-      created_at: new Date().toISOString(),
-    };
-    setResignations(prev => [newR, ...prev]);
-    setEmpId(""); setLastDay(""); setReason(""); setNotes("");
-  };
-
   const handleAction = async (id: string, status: string) => {
     setActing(true); setActionId(id);
     const result = await updateResignationStatus(id, status);
     setActing(false); setActionId("");
     if (result?.error) { showToast(result.error); return; }
     showToast(status === "Disetujui" ? "Resign disetujui. Akun karyawan akan dihapus permanen dalam 24 jam." : "Resign ditolak.");
-    setResignations(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    router.refresh();
   };
 
   const CLEARANCE = [
@@ -104,94 +74,55 @@ export default function ResignationsClient({
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Pengajuan Pengunduran Diri</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Semua pengajuan resign yang masuk</p>
-          </div>
-          {resignations.length === 0 ? (
-            <EmptyState
-              icon={UserX}
-              title="Belum ada pengajuan pengunduran diri."
-              className="border-none"
-            />
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {resignations.map(r => {
-                const isPending = r.status === "Diajukan";
-                const isApproved = r.status === "Disetujui";
-                return (
-                  <div key={r.id} className="p-5 hover:bg-slate-50/30 transition-colors">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="text-sm font-bold text-slate-800">{r.employee_name}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isApproved ? "bg-emerald-50 text-emerald-700" : r.status === "Ditolak" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>
-                            {r.status}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500">Terakhir bekerja: <span className="font-semibold text-slate-700">{new Date(r.last_day).toLocaleDateString("id-ID")}</span></p>
-                        <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{r.reason}</p>
-                        <p className="text-[10px] text-slate-400 mt-1">{new Date(r.created_at).toLocaleDateString("id-ID")}</p>
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100">
+          <h3 className="font-extrabold text-slate-800 text-sm">Pengajuan Pengunduran Diri</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Pengajuan resign hanya dapat diajukan oleh karyawan sendiri melalui portal karyawan. HRD meninjau dan menyetujui/menolak di sini.</p>
+        </div>
+        {resignations.length === 0 ? (
+          <EmptyState
+            icon={UserX}
+            title="Belum ada pengajuan pengunduran diri."
+            className="border-none"
+          />
+        ) : (
+          <div className="divide-y divide-slate-50">
+            {resignations.map(r => {
+              const isPending = r.status === "Diajukan";
+              const isApproved = r.status === "Disetujui";
+              return (
+                <div key={r.id} className="p-5 hover:bg-slate-50/30 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-sm font-bold text-slate-800">{r.employee_name}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isApproved ? "bg-emerald-50 text-emerald-700" : r.status === "Ditolak" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>
+                          {r.status}
+                        </span>
                       </div>
-                      {isPending && (
-                        <div className="flex gap-2 shrink-0">
-                          <button onClick={() => handleAction(r.id, "Disetujui")} disabled={acting && actionId === r.id}
-                            className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50">
-                            Setujui
-                          </button>
-                          <button onClick={() => handleAction(r.id, "Ditolak")} disabled={acting && actionId === r.id}
-                            className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-bold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
-                            Tolak
-                          </button>
-                        </div>
-                      )}
+                      <p className="text-xs text-slate-500">Terakhir bekerja: <span className="font-semibold text-slate-700">{new Date(r.last_day).toLocaleDateString("id-ID")}</span></p>
+                      <p className="text-xs text-slate-500 mt-0.5">{r.reason}</p>
+                      {r.notes && <p className="text-xs text-slate-400 italic mt-0.5">Catatan: {r.notes}</p>}
+                      <p className="text-[10px] text-slate-400 mt-1">{new Date(r.created_at).toLocaleDateString("id-ID")}</p>
                     </div>
+                    {isPending && (
+                      <div className="flex gap-2 shrink-0">
+                        <button onClick={() => handleAction(r.id, "Disetujui")} disabled={acting && actionId === r.id}
+                          className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50">
+                          Setujui
+                        </button>
+                        <button onClick={() => handleAction(r.id, "Ditolak")} disabled={acting && actionId === r.id}
+                          className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-bold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
+                          Tolak
+                        </button>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Proses Pengunduran Diri</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Formulir pemrosesan resign</p>
+                </div>
+              );
+            })}
           </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Karyawan</label>
-              <select value={empId} onChange={e => setEmpId(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none">
-                <option value="">Pilih karyawan...</option>
-                {activeEmployees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tanggal Terakhir Bekerja</label>
-              <input type="date" value={lastDay} onChange={e => setLastDay(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Alasan</label>
-              <textarea rows={2} value={reason} onChange={e => setReason(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none resize-none"
-                placeholder="Alasan pengunduran diri..." />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Exit Interview</label>
-              <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:border-[#CC0000] outline-none resize-none"
-                placeholder="Hasil exit interview..." />
-            </div>
-            <button onClick={handleSubmit} disabled={saving}
-              className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors disabled:opacity-50">
-              {saving ? "Menyimpan..." : "Catat Pengajuan"}
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">

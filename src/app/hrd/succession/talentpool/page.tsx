@@ -1,9 +1,15 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Star, TrendingUp, Users, Filter } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import { getTalentPoolEntries } from "@/app/actions/succession";
+import AddToTalentPoolForm from "./AddToTalentPoolForm";
 
-export default async function TalentPoolSuksesi({ searchParams }: { searchParams?: { dept?: string } }) {
-  const filterDept = searchParams?.dept || "";
+export const dynamic = "force-dynamic";
+
+export default async function TalentPoolSuksesi({ searchParams }: { searchParams: Promise<{ dept?: string }> }) {
+  const params = await searchParams;
+  const filterDept = params?.dept || "";
+  const poolEntries = await getTalentPoolEntries();
   const { data: employees } = await supabaseAdmin
     .from("employees")
     .select("*")
@@ -190,40 +196,12 @@ export default async function TalentPoolSuksesi({ searchParams }: { searchParams
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Tambah ke Talent Pool</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Masukkan karyawan ke talent pool</p>
-          </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pilih Karyawan</label>
-              <select className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none">
-                <option value="">Pilih karyawan...</option>
-                {(employees || []).map((e: Record<string, unknown>) => (
-                  <option key={e.id as string} value={e.id as string}>{e.full_name as string}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Rating Potensi</label>
-              <select className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none">
-                <option value="">Pilih rating...</option>
-                <option value="Bintang">Bintang - Potensi Tinggi</option>
-                <option value="Potensial Tinggi">Potensial Tinggi</option>
-                <option value="Solid">Solid</option>
-                <option value="Perlu Pengembangan">Perlu Pengembangan</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Catatan</label>
-              <textarea rows={3} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none" placeholder="Alasan masuk talent pool..." />
-            </div>
-            <span className="w-full px-4 py-2.5 bg-slate-300 text-white text-xs font-bold rounded-xl cursor-not-allowed inline-flex items-center justify-center" title="Segera tersedia">
-              Tambah ke Talent Pool
-            </span>
-          </div>
-        </div>
+        <AddToTalentPoolForm
+          employees={(employees || []).map((e: Record<string, unknown>) => ({
+            id: e.id as string, full_name: e.full_name as string,
+          }))}
+          poolEntries={poolEntries}
+        />
       </div>
     </div>
   );

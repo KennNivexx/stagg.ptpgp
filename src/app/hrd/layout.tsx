@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
+import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
 
 const MENU_GROUPS = [
@@ -92,14 +93,14 @@ const MENU_GROUPS = [
       { href: "/hrd/learning/materials", label: "Materi Kursus" },
       { href: "/hrd/learning/quizzes", label: "Kuis & Ujian" },
       { href: "/hrd/learning/certificates", label: "Sertifikat" },
+      { href: "/hrd/learning/roi", label: "Analisa Dampak ROTI" },
     ],
   },
   {
     label: "Manajemen Pengetahuan",
     icon: BookOpen,
     items: [
-      { href: "/hrd/knowledge/sop", label: "SOP Center" },
-      { href: "/hrd/knowledge/instructions", label: "Instruksi Kerja" },
+      { href: "/hrd/knowledge/sop", label: "SOP dan Instruksi Kerja" },
       { href: "/hrd/knowledge/policies", label: "Kebijakan Perusahaan" },
       { href: "/hrd/knowledge/base", label: "Basis Pengetahuan" },
       { href: "/hrd/knowledge/videos", label: "Video Tutorial" },
@@ -137,6 +138,7 @@ const MENU_GROUPS = [
       { href: "/hrd/career/promotions", label: "Promosi" },
       { href: "/hrd/career/mutations", label: "Mutasi" },
       { href: "/hrd/career/plans", label: "Rencana Pengembangan" },
+      { href: "/hrd/career/requests", label: "Permintaan Karir" },
     ],
   },
   {
@@ -181,7 +183,7 @@ const GROUP_TOOLTIPS: Record<string, string> = {
   "Rekrutmen": "Cari, seleksi, dan terima karyawan baru",
   "Kompetensi": "Kelola standar keahlian dan asesmen karyawan",
   "Pelatihan": "Program training, materi, dan sertifikasi",
-  "Manajemen Pengetahuan": "SOP, kebijakan, instruksi kerja, dan video panduan",
+  "Manajemen Pengetahuan": "SOP & instruksi kerja, kebijakan, basis pengetahuan, dan video panduan",
   "Penilaian Kinerja": "Evaluasi KPI, OKR, review, dan umpan balik",
   "Reward & Penggajian": "Kelola gaji, bonus, dan slip gaji karyawan",
   "Pengembangan Karir": "Jalur karir, promosi, mutasi, dan rencana pengembangan",
@@ -225,8 +227,8 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/hrd/learning/materials": "Materi dan modul pelatihan",
   "/hrd/learning/quizzes": "Soal ujian dan kuis pelatihan",
   "/hrd/learning/certificates": "Sertifikat kelulusan training",
-  "/hrd/knowledge/sop": "Standar Operasional Prosedur",
-  "/hrd/knowledge/instructions": "Panduan langkah kerja detail",
+  "/hrd/learning/roi": "Return on Training Investment — dampak & nilai balik pelatihan",
+  "/hrd/knowledge/sop": "Standar Operasional Prosedur & panduan langkah kerja detail",
   "/hrd/knowledge/policies": "Dokumen kebijakan dan aturan",
   "/hrd/knowledge/base": "Kumpulan pengetahuan perusahaan",
   "/hrd/knowledge/videos": "Video panduan dan tutorial",
@@ -245,6 +247,7 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/hrd/career/path": "Peta jalur karir setiap posisi",
   "/hrd/career/promotions": "Riwayat dan pengajuan promosi",
   "/hrd/career/mutations": "Riwayat dan pengajuan mutasi",
+  "/hrd/career/requests": "Lamaran posisi internal & konsultasi karir dari karyawan",
   "/hrd/career/plans": "Rencana pengembangan individu",
   "/hrd/succession/positions": "Daftar posisi yang perlu suksesor",
   "/hrd/succession/candidates": "Kandidat pengganti posisi kritis",
@@ -293,6 +296,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
   const { user } = useSession();
   const clientUserName = user?.name || "Administrator HRD";
   const clientUserEmail = user?.email || "hrd@ptpgp.co.id";
+  const { hasUnreadForHref } = useNotifications("hrd");
 
   const toggleGroup = (label: string) => {
     setExpandedGroups((prev) => {
@@ -378,6 +382,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
           {filteredGroups.map((group) => {
             const GroupIcon = group.icon;
             const hasActive = group.items.some(item => isItemActive(pathname, item.href));
+            const hasGroupUnread = group.items.some(item => hasUnreadForHref(item.href, "/hrd"));
             const isExpanded = isSearching || expandedGroups.has(group.label);
             return (
               <div key={group.label} className="mb-1">
@@ -389,6 +394,9 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
                 >
                   <GroupIcon size={13} className="shrink-0" />
                   <span className="text-[10px] font-bold tracking-widest uppercase">{group.label}</span>
+                  {hasGroupUnread && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
+                  )}
                   <ChevronDown
                     size={11}
                     className={`ml-auto shrink-0 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
@@ -400,6 +408,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
                 >
                   {group.items.map((item) => {
                     const isActive = isItemActive(pathname, item.href);
+                    const hasUnread = hasUnreadForHref(item.href, "/hrd");
                     return (
                       <Link
                         key={item.href}
@@ -414,6 +423,9 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
                       >
                         {isActive && <ChevronRight size={10} className="text-red-400 shrink-0" />}
                         <span className="truncate">{item.label}</span>
+                        {hasUnread && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
+                        )}
                       </Link>
                     );
                   })}
@@ -481,17 +493,21 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
       <nav className="lg:hidden fixed bottom-0 left-0 w-full h-14 bg-[#0F172A] border-t border-slate-800 z-40 flex items-stretch">
         {BOTTOM_NAV.map((item) => {
           const isActive = isItemActive(pathname, item.href);
+          const hasUnread = hasUnreadForHref(item.href, "/hrd");
           const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-semibold transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-semibold transition-colors ${
                 isActive ? "text-red-500" : "text-slate-400"
               }`}
             >
               <Icon size={17} />
               {item.label}
+              {hasUnread && (
+                <span className="absolute top-1 right-[calc(50%-14px)] h-1.5 w-1.5 rounded-full bg-yellow-400" aria-hidden="true" />
+              )}
             </Link>
           );
         })}

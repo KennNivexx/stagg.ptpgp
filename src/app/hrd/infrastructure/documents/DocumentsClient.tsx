@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, BookOpen, ClipboardList, File, Scale, Upload, Search, X, Users, Building2, Lock, Trash2 } from "lucide-react";
+import { FileText, BookOpen, ClipboardList, File, Scale, Upload, Search, X, Users, Building2, Lock, Trash2, ExternalLink } from "lucide-react";
 import { saveDocument, updateDocumentVisibility, deleteDocument } from "@/app/actions/infrastructure";
+import DocumentUploadField from "@/components/DocumentUploadField";
 
 type Document = {
   id: string;
@@ -10,6 +11,7 @@ type Document = {
   category: string;
   status: string;
   created_at: string;
+  url?: string | null;
   visible_to_employee: boolean;
   visible_to_department_head: boolean;
 };
@@ -28,7 +30,7 @@ export default function DocumentsClient({ initialDocuments }: { initialDocuments
   const [activeCategory, setActiveCategory] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showUpload, setShowUpload] = useState(false);
-  const [uploadForm, setUploadForm] = useState({ title: "", category: "Kebijakan", visible_to_employee: false, visible_to_department_head: false });
+  const [uploadForm, setUploadForm] = useState({ title: "", category: "Kebijakan", url: "", visible_to_employee: false, visible_to_department_head: false });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -48,17 +50,18 @@ export default function DocumentsClient({ initialDocuments }: { initialDocuments
     const fd = new FormData();
     fd.append("title", uploadForm.title);
     fd.append("category", uploadForm.category);
+    fd.append("url", uploadForm.url);
     if (uploadForm.visible_to_employee) fd.append("visible_to_employee", "on");
     if (uploadForm.visible_to_department_head) fd.append("visible_to_department_head", "on");
     const result = await saveDocument(fd);
     setSaving(false);
     if (result?.error) { setSaveMsg({ type: "error", text: result.error }); return; }
     setDocuments([
-      { id: "tmp-" + Date.now(), title: uploadForm.title, category: uploadForm.category, status: "Aktif", created_at: new Date().toISOString(), visible_to_employee: uploadForm.visible_to_employee, visible_to_department_head: uploadForm.visible_to_department_head },
+      { id: "tmp-" + Date.now(), title: uploadForm.title, category: uploadForm.category, status: "Aktif", created_at: new Date().toISOString(), url: uploadForm.url, visible_to_employee: uploadForm.visible_to_employee, visible_to_department_head: uploadForm.visible_to_department_head },
       ...documents,
     ]);
     setShowUpload(false);
-    setUploadForm({ title: "", category: "Kebijakan", visible_to_employee: false, visible_to_department_head: false });
+    setUploadForm({ title: "", category: "Kebijakan", url: "", visible_to_employee: false, visible_to_department_head: false });
     setSaveMsg({ type: "success", text: "Dokumen berhasil ditambahkan." });
     setTimeout(() => setSaveMsg(null), 3000);
   };
@@ -183,11 +186,13 @@ export default function DocumentsClient({ initialDocuments }: { initialDocuments
                   <p className="text-[10px] text-slate-400 flex items-center gap-1.5"><Lock size={10} /> Tidak dicentang berarti dokumen hanya terlihat oleh HRD.</p>
                 )}
               </div>
-              <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-[#CC0000] transition-colors cursor-pointer">
-                <Upload size={28} className="mx-auto text-slate-400 mb-2" />
-                <p className="text-xs text-slate-500">Klik atau seret file ke sini</p>
-                <p className="text-[10px] text-slate-400 mt-1">PDF, DOCX, XLSX (Max 10MB) &mdash; unggah file segera tersedia</p>
-              </div>
+              <DocumentUploadField
+                label="Dokumen"
+                value={uploadForm.url}
+                onChange={(url) => setUploadForm({ ...uploadForm, url })}
+                folder="company-documents"
+                hint="Tempel link dokumen, atau unggah file PDF/DOCX/XLSX langsung dari perangkat (maks. 20MB)."
+              />
               <button type="submit" disabled={saving} className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60">
                 <Upload size={14} /> {saving ? "Menyimpan..." : "Simpan Dokumen"}
               </button>
@@ -219,6 +224,12 @@ export default function DocumentsClient({ initialDocuments }: { initialDocuments
                     }`}>
                       {doc.status}
                     </span>
+                    {doc.url && (
+                      <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                        className="p-1 hover:bg-slate-100 rounded text-slate-300 hover:text-[#CC0000] transition-colors" title="Buka dokumen">
+                        <ExternalLink size={12} />
+                      </a>
+                    )}
                     <button onClick={() => handleDelete(doc.id)} className="p-1 hover:bg-red-50 rounded text-slate-300 hover:text-red-500 transition-colors">
                       <Trash2 size={12} />
                     </button>

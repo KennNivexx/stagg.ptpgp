@@ -36,7 +36,8 @@ export type AuditAction =
   | "face.register"
   | "face.remove"
   | "face.change_request"
-  | "face.verify";
+  | "face.verify"
+  | "account.purge_resigned";
 
 export async function auditLog(params: {
   action: AuditAction;

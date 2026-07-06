@@ -3,6 +3,33 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 
+// ── CAREER REQUESTS (lamaran internal & konsultasi karir dari karyawan) ─────
+
+export async function getCareerRequests() {
+  await requireRole("hrd", "superadmin");
+  const { data, error } = await supabaseAdmin
+    .from("career_requests")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) return [];
+  return (data || []) as Array<Record<string, unknown>>;
+}
+
+const CAREER_REQUEST_STATUSES = ["Pending", "Reviewed", "Completed", "Rejected"] as const;
+type CareerRequestStatus = (typeof CAREER_REQUEST_STATUSES)[number];
+
+export async function updateCareerRequestStatus(id: string, status: CareerRequestStatus, notes = "") {
+  await requireRole("hrd", "superadmin");
+  if (!CAREER_REQUEST_STATUSES.includes(status)) return { error: "Status tidak valid." };
+  const { error } = await supabaseAdmin.from("career_requests").update({
+    status, notes, updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) { console.error("[career-hrd] updateCareerRequestStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  revalidatePath("/hrd/career/requests");
+  return { success: true };
+}
+
 // ── MUTATIONS ──────────────────────────────────────────────────────────────
 
 export async function getMutations() {
@@ -38,10 +65,29 @@ export async function submitMutation(formData: FormData) {
 
 export async function updateMutationStatus(id: string, status: "Disetujui" | "Ditolak") {
   await requireRole("hrd", "superadmin");
+
+  if (status === "Disetujui") {
+    const { data: mutation, error: fetchError } = await supabaseAdmin
+      .from("career_mutations").select("employee_id, to_department").eq("id", id).maybeSingle();
+    if (fetchError || !mutation) return { error: "Data mutasi tidak ditemukan." };
+    const m = mutation as { employee_id: string; to_department: string };
+
+    // Update the employee record FIRST — only flip the request to "Disetujui"
+    // if this actually succeeds, so the request never ends up approved without
+    // the department change actually having taken effect.
+    const { error: empError } = await supabaseAdmin
+      .from("employees").update({ department: m.to_department }).eq("id", m.employee_id);
+    if (empError) {
+      console.error("[career-hrd] updateMutationStatus employee update error:", empError.message);
+      return { error: "Gagal memperbarui data departemen karyawan. Status mutasi tidak diubah." };
+    }
+  }
+
   const { error } = await supabaseAdmin.from("career_mutations").update({ status }).eq("id", id);
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL." };
   if (error) { console.error("[career-hrd] updateMutationStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/mutations");
+  revalidatePath("/hrd/employees");
   return { success: true };
 }
 
@@ -79,10 +125,29 @@ export async function submitPromotion(formData: FormData) {
 
 export async function updatePromotionStatus(id: string, status: "Disetujui" | "Ditolak") {
   await requireRole("hrd", "superadmin");
+
+  if (status === "Disetujui") {
+    const { data: promotion, error: fetchError } = await supabaseAdmin
+      .from("career_promotions").select("employee_id, to_position").eq("id", id).maybeSingle();
+    if (fetchError || !promotion) return { error: "Data promosi tidak ditemukan." };
+    const p = promotion as { employee_id: string; to_position: string };
+
+    // Update the employee record FIRST — only flip the request to "Disetujui"
+    // if this actually succeeds, so the request never ends up approved without
+    // the position change actually having taken effect.
+    const { error: empError } = await supabaseAdmin
+      .from("employees").update({ position: p.to_position }).eq("id", p.employee_id);
+    if (empError) {
+      console.error("[career-hrd] updatePromotionStatus employee update error:", empError.message);
+      return { error: "Gagal memperbarui data jabatan karyawan. Status promosi tidak diubah." };
+    }
+  }
+
   const { error } = await supabaseAdmin.from("career_promotions").update({ status }).eq("id", id);
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL." };
   if (error) { console.error("[career-hrd] updatePromotionStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/promotions");
+  revalidatePath("/hrd/employees");
   return { success: true };
 }
 

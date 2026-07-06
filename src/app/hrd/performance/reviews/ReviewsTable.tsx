@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Clipboard } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Clipboard, CheckCircle2, RotateCcw } from "lucide-react";
+import { updateKpiStatus } from "@/app/actions/performance-hrd";
 import EmptyState from "@/components/EmptyState";
 
 type Evaluation = Record<string, unknown>;
@@ -9,8 +11,14 @@ interface Props {
   evaluations: Evaluation[];
 }
 
-export default function ReviewsTable({ evaluations }: Props) {
+const WORKFLOW_STATUSES = ["Draft", "Reviewed", "Approved", ""];
+
+export default function ReviewsTable({ evaluations: initialEvaluations }: Props) {
+  const router = useRouter();
+  const [evaluations, setEvaluations] = useState(initialEvaluations);
   const [detail, setDetail] = useState<Evaluation | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [toast, setToast] = useState("");
 
   function scoreColor(score: number) {
     if (score >= 80) return "bg-emerald-50 text-emerald-700";
@@ -26,6 +34,68 @@ export default function ReviewsTable({ evaluations }: Props) {
     return "D";
   }
 
+  function statusBadgeClass(status: string) {
+    if (status === "Approved") return "bg-emerald-50 text-emerald-700";
+    if (status === "Reviewed") return "bg-blue-50 text-blue-700";
+    if (status === "Draft" || !status) return "bg-amber-50 text-amber-700";
+    return "bg-slate-100 text-slate-600";
+  }
+
+  function statusLabel(status: string) {
+    if (status === "Approved") return "Disetujui";
+    if (status === "Reviewed") return "Direview";
+    return status || "Draft";
+  }
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3500); };
+
+  async function handleStatusChange(id: string, status: "Draft" | "Reviewed" | "Approved", confirmMsg: string) {
+    if (!window.confirm(confirmMsg)) return;
+    setActingId(id);
+    const result = await updateKpiStatus(id, status);
+    setActingId(null);
+    if ("error" in result) { showToast(result.error ?? "Terjadi kesalahan"); return; }
+    setEvaluations((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)));
+    if (detail && detail.id === id) setDetail({ ...detail, status });
+    showToast("Status evaluasi berhasil diperbarui.");
+    router.refresh();
+  }
+
+  function ActionButtons({ ev }: { ev: Evaluation }) {
+    const status = (ev.status as string) || "Draft";
+    if (!WORKFLOW_STATUSES.includes(status)) return null; // e.g. "Final" from succession readiness — not part of this workflow
+    const id = ev.id as string;
+    const busy = actingId === id;
+    return (
+      <div className="flex items-center gap-1.5 justify-end flex-wrap">
+        {status === "Draft" && (
+          <button disabled={busy} onClick={() => handleStatusChange(id, "Reviewed", "Tandai evaluasi ini sebagai sudah direview?")}
+            className="px-2.5 py-1.5 text-[10px] font-bold bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1">
+            <CheckCircle2 size={11} /> Tandai Direview
+          </button>
+        )}
+        {status === "Reviewed" && (
+          <>
+            <button disabled={busy} onClick={() => handleStatusChange(id, "Approved", "Setujui evaluasi ini? Status akan menjadi final.")}
+              className="px-2.5 py-1.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 disabled:opacity-50 flex items-center gap-1">
+              <CheckCircle2 size={11} /> Setujui
+            </button>
+            <button disabled={busy} onClick={() => handleStatusChange(id, "Draft", "Kembalikan evaluasi ini ke Draft untuk direvisi?")}
+              className="px-2.5 py-1.5 text-[10px] font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 disabled:opacity-50 flex items-center gap-1">
+              <RotateCcw size={11} /> Kembalikan
+            </button>
+          </>
+        )}
+        {status === "Approved" && (
+          <button disabled={busy} onClick={() => handleStatusChange(id, "Draft", "Kembalikan evaluasi yang sudah disetujui ini ke Draft untuk direvisi?")}
+            className="px-2.5 py-1.5 text-[10px] font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 disabled:opacity-50 flex items-center gap-1">
+            <RotateCcw size={11} /> Kembalikan ke Draft
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (!evaluations || evaluations.length === 0) {
     return (
       <EmptyState icon={Clipboard} title="Belum ada data review kinerja." description="Lakukan evaluasi KPI untuk melihat review di sini." />
@@ -34,6 +104,12 @@ export default function ReviewsTable({ evaluations }: Props) {
 
   return (
     <>
+      {toast && (
+        <div className="fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg bg-slate-800 text-white border border-slate-700 text-sm font-bold">
+          {toast}
+        </div>
+      )}
+
       {detail && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
@@ -55,18 +131,30 @@ export default function ReviewsTable({ evaluations }: Props) {
                     </div>
                   </div>
                   <div className="flex justify-between"><span className="text-slate-500 text-xs">Status</span>
-                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
-                      detail.status === "Approved" ? "bg-emerald-50 text-emerald-700" :
-                      detail.status === "Reviewed" ? "bg-blue-50 text-blue-700" :
-                      "bg-amber-50 text-amber-700"
-                    }`}>{detail.status === "Approved" ? "Disetujui" : detail.status === "Reviewed" ? "Direview" : (detail.status as string) || "Draft"}</span>
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${statusBadgeClass(detail.status as string)}`}>{statusLabel(detail.status as string)}</span>
                   </div>
-                  {!!detail.notes && (
+                  {!!detail.comments && (
                     <div className="pt-3 border-t border-slate-100">
                       <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Catatan Evaluator</p>
-                      <p className="text-xs text-slate-700">{detail.notes as string}</p>
+                      <p className="text-xs text-slate-700">{detail.comments as string}</p>
                     </div>
                   )}
+                  {Array.isArray(detail.metrics) && (detail.metrics as Array<Record<string, unknown>>).length > 0 && (
+                    <div className="pt-3 border-t border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Breakdown KPI Metrics</p>
+                      <div className="space-y-1.5">
+                        {(detail.metrics as Array<{ metric: string; weight: number; value: number }>).map((m, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <span className="text-slate-600">{m.metric} <span className="text-slate-400">(bobot {m.weight})</span></span>
+                            <span className="font-bold text-slate-800">{m.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-3 border-t border-slate-100">
+                    <ActionButtons ev={detail} />
+                  </div>
                 </div>
               );
             })()}
@@ -110,19 +198,18 @@ export default function ReviewsTable({ evaluations }: Props) {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
-                        ev.status === "Approved" ? "bg-emerald-50 text-emerald-700" :
-                        ev.status === "Reviewed" ? "bg-blue-50 text-blue-700" :
-                        "bg-amber-50 text-amber-700"
-                      }`}>
-                        {ev.status === "Approved" ? "Disetujui" : ev.status === "Reviewed" ? "Direview" : (ev.status as string) || "Draft"}
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${statusBadgeClass(ev.status as string)}`}>
+                        {statusLabel(ev.status as string)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button onClick={() => setDetail(ev)}
-                        className="px-3 py-1.5 text-[10px] font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
-                        Detail
-                      </button>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 justify-end">
+                        <ActionButtons ev={ev} />
+                        <button onClick={() => setDetail(ev)}
+                          className="px-3 py-1.5 text-[10px] font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
+                          Detail
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

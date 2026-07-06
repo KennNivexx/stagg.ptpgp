@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, ClipboardList, Building2, User, LogOut, ChevronRight, PenLine, HelpCircle } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV = [
@@ -22,6 +23,7 @@ interface Props {
 
 export default function ApplicantSidebar({ userName, userEmail }: Props) {
   const pathname = usePathname();
+  const { hasUnreadForHref } = useNotifications("applicant");
 
   return (
     <aside className="w-64 lg:w-20 xl:w-64 shrink-0 bg-pgp-navy text-white flex flex-col min-h-screen sticky top-0 transition-[width] duration-300">
@@ -58,6 +60,7 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
       <nav className="flex-1 px-3 lg:px-2 xl:px-3 py-4 space-y-1">
         {NAV.map(({ href, label, icon: Icon }, i) => {
           const isActive = href === "/applicant" ? pathname === "/applicant" : pathname.startsWith(href);
+          const hasUnread = hasUnreadForHref(href, "/applicant");
           return (
             <motion.div
               key={href}
@@ -88,6 +91,12 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
                 <span className={`relative flex items-center gap-3 lg:justify-center xl:justify-start w-full transition-colors duration-150 ${isActive ? "text-white" : "text-slate-400 hover:text-white"}`}>
                   <Icon size={15} className="shrink-0" />
                   <span className="lg:hidden xl:inline">{label}</span>
+                  {hasUnread && (
+                    <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
+                  )}
+                  {hasUnread && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
+                  )}
                   <AnimatePresence>
                     {isActive && (
                       <motion.span

@@ -4,18 +4,21 @@ import EmptyState from "@/components/EmptyState";
 
 export default async function DashboardOKR() {
   const [
-    { data: evaluations },
+    { data: okrRaw, error: okrError },
     { data: employees },
     { data: departments },
     { count: totalEmployees },
     { count: totalDepartments },
   ] = await Promise.all([
-    supabaseAdmin.from("kpi_evaluations").select("*, employees!inner(full_name, department)").order("created_at", { ascending: false }),
-    supabaseAdmin.from("employees").select("id, full_name, department, status").neq("status", "Inactive"),
+    supabaseAdmin.from("okr_objectives").select("*").order("created_at", { ascending: false }),
+    supabaseAdmin.from("employees").select("id, full_name, department, status"),
     supabaseAdmin.from("departments").select("*"),
-    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).neq("status", "Inactive"),
+    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
   ]);
+
+  // okr_objectives may not exist yet in some environments (migration 20260621002) - degrade gracefully.
+  const evals = (okrError ? [] : (okrRaw || [])) as Record<string, unknown>[];
 
   const deptList = (departments || []).length > 0
     ? (departments as Record<string, unknown>[])
@@ -24,36 +27,32 @@ export default async function DashboardOKR() {
         id: name,
       }));
 
-  const evals = (evaluations || []) as Record<string, unknown>[];
   const totalOKR = evals.length;
-  const tercapai = evals.filter((e) => Number(e.score) >= 80).length;
-  const dalamProgress = evals.filter((e) => Number(e.score) > 0 && Number(e.score) < 80).length;
-  const belumMulai = evals.filter((e) => e.score == null || Number(e.score) === 0).length;
+  const tercapai = evals.filter((e) => Number(e.progress) >= 80).length;
+  const dalamProgress = evals.filter((e) => Number(e.progress) > 0 && Number(e.progress) < 80).length;
+  const belumMulai = evals.filter((e) => e.progress == null || Number(e.progress) === 0).length;
 
   const deptOKR = deptList.map((dept: Record<string, unknown>) => {
     const name = (dept.name || dept.id) as string;
     const deptEmps = (employees || []).filter((e: Record<string, unknown>) => e.department === name);
-    const deptEvals = evals.filter((e) => {
-      const emp = e.employees as Record<string, string> | undefined;
-      return emp?.department === name;
-    });
-    const avgScore = deptEvals.length > 0
-      ? deptEvals.reduce((s, e) => s + (Number(e.score) || 0), 0) / deptEvals.length
+    const deptEvals = evals.filter((e) => e.department === name);
+    const avgProgress = deptEvals.length > 0
+      ? deptEvals.reduce((s, e) => s + (Number(e.progress) || 0), 0) / deptEvals.length
       : 0;
     return {
       name,
       totalEmployees: deptEmps.length,
       totalOKR: deptEvals.length,
-      avgScore: Math.round(avgScore),
-      target: 85,
+      avgScore: Math.round(avgProgress),
+      target: 100,
     };
-  }).filter((d) => d.totalEmployees > 0);
+  }).filter((d) => d.totalOKR > 0);
 
   const periods = [...new Set(evals.map((e) => e.period as string).filter(Boolean))];
   const periodGroups = periods.map((period) => {
     const periodEvals = evals.filter((e) => e.period === period);
     const avg = periodEvals.length > 0
-      ? Math.round(periodEvals.reduce((s, e) => s + (Number(e.score) || 0), 0) / periodEvals.length)
+      ? Math.round(periodEvals.reduce((s, e) => s + (Number(e.progress) || 0), 0) / periodEvals.length)
       : 0;
     return { period, count: periodEvals.length, avgScore: avg };
   }).sort((a, b) => b.period.localeCompare(a.period));
@@ -226,11 +225,11 @@ export default async function DashboardOKR() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { range: "0-20", label: "Sangat Rendah", count: evals.filter((e) => (Number(e.score) || 0) <= 20).length, color: "bg-red-500" },
-                { range: "21-40", label: "Rendah", count: evals.filter((e) => (Number(e.score) || 0) > 20 && (Number(e.score) || 0) <= 40).length, color: "bg-orange-500" },
-                { range: "41-60", label: "Cukup", count: evals.filter((e) => (Number(e.score) || 0) > 40 && (Number(e.score) || 0) <= 60).length, color: "bg-amber-500" },
-                { range: "61-80", label: "Baik", count: evals.filter((e) => (Number(e.score) || 0) > 60 && (Number(e.score) || 0) <= 80).length, color: "bg-emerald-500" },
-                { range: "81-100", label: "Sangat Baik", count: evals.filter((e) => (Number(e.score) || 0) > 80).length, color: "bg-blue-500" },
+                { range: "0-20", label: "Sangat Rendah", count: evals.filter((e) => (Number(e.progress) || 0) <= 20).length, color: "bg-red-500" },
+                { range: "21-40", label: "Rendah", count: evals.filter((e) => (Number(e.progress) || 0) > 20 && (Number(e.progress) || 0) <= 40).length, color: "bg-orange-500" },
+                { range: "41-60", label: "Cukup", count: evals.filter((e) => (Number(e.progress) || 0) > 40 && (Number(e.progress) || 0) <= 60).length, color: "bg-amber-500" },
+                { range: "61-80", label: "Baik", count: evals.filter((e) => (Number(e.progress) || 0) > 60 && (Number(e.progress) || 0) <= 80).length, color: "bg-emerald-500" },
+                { range: "81-100", label: "Sangat Baik", count: evals.filter((e) => (Number(e.progress) || 0) > 80).length, color: "bg-blue-500" },
               ].map((bucket) => (
                 <div key={bucket.range} className="bg-white rounded-xl border border-slate-100 p-4 text-center">
                   <div className={`h-1.5 w-full rounded-full ${bucket.color} mb-3`} />

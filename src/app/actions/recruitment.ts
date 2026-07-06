@@ -252,7 +252,7 @@ export async function getCandidatesForNegotiation() {
   if (error) return [];
   return (data || []).filter((a: Record<string, unknown>) =>
     ["Wawancara", "Interview", "Lulus", "offered", "negotiating", "agreed"].includes(
-      (a.negotiation_status as string) !== "none" ? a.negotiation_status as string : a.status as string
+      (a.negotiation_status && a.negotiation_status !== "none") ? a.negotiation_status as string : a.status as string
     )
   );
 }
@@ -354,7 +354,7 @@ export async function scheduleInterview(
       interview_notes: payload.interview_notes || null,
     })
     .eq("id", applicationId);
-  if (error?.message?.includes("column")) {
+  if (error?.code === "PGRST204" || error?.code === "42703") {
     return { error: "Jalankan migrasi 20260706001 terlebih dahulu." };
   }
   if (error) return { error: error.message };
@@ -443,10 +443,14 @@ export async function removeFromTalentPool(applicationId: string) {
 // ── Keputusan Hiring: get all outcomes ──────────────────────────────────────
 export async function getHiringDecisions() {
   await requireRole("hrd", "superadmin");
+  // Talent-pool candidates can be added while still at an earlier pipeline
+  // stage (e.g. "Wawancara") — filtering strictly on status would silently
+  // drop them from the talentPool bucket below even though they're correctly
+  // shown on the dedicated /hrd/recruitment/talentpool page.
   const { data: apps, error } = await supabaseAdmin
     .from("applications")
     .select("*")
-    .in("status", ["Diterima", "Ditolak"])
+    .or("status.in.(Diterima,Ditolak),in_talent_pool.eq.true")
     .order("applied_at", { ascending: false });
   if (error) return { diterima: [], ditolak: [], talentPool: [] };
 

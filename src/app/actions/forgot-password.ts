@@ -127,16 +127,31 @@ export async function verifyPasswordResetOTP(email: string, code: string) {
     .update({ step: "otp_verified" })
     .eq("email", normalizedEmail);
 
-  // Check if this user has face data registered under ANY of their candidate ids
+  // Check if this user has USABLE face data registered under ANY of their
+  // candidate ids — a row merely existing isn't enough; an interrupted face
+  // registration can leave a row with a null/empty descriptor, which would
+  // otherwise wrongly force the user into a face-scan step that can never
+  // succeed instead of showing the "no face data" screen immediately.
   const { ids } = await resolveFaceIdentity(normalizedEmail);
 
   let hasFaceData = false;
   if (ids.length > 0) {
-    const { count } = await supabaseAdmin
+    const hasEncryption = !!process.env.FACE_ENCRYPTION_KEY;
+    const cols = hasEncryption
+      ? "encrypted_descriptor, encrypted_descriptors"
+      : "descriptor, descriptors";
+    const { data: faces } = await supabaseAdmin
       .from("employee_faces")
-      .select("*", { count: "exact", head: true })
-      .in("employee_id", ids);
-    hasFaceData = (count ?? 0) > 0;
+      .select(cols)
+      .in("employee_id", ids) as { data: Record<string, unknown>[] | null };
+    hasFaceData = (faces || []).some((face) => {
+      if (hasEncryption) {
+        return !!face.encrypted_descriptor || (Array.isArray(face.encrypted_descriptors) && face.encrypted_descriptors.length > 0);
+      }
+      const desc = face.descriptor as number[] | null;
+      const list = face.descriptors as number[][] | null;
+      return (Array.isArray(desc) && desc.length > 0) || (Array.isArray(list) && list.length > 0);
+    });
   }
 
   return { success: true, hasFaceData };
@@ -191,11 +206,15 @@ export async function verifyFaceForReset(email: string, descriptor: number[]) {
   const stored: number[][] = [];
   for (const face of faces) {
     if (hasEncryption) {
-      const encDesc = face.encrypted_descriptor as string | null;
-      if (encDesc) { const d = decryptDescriptor(encDesc); if (d?.length) stored.push(d); }
-      const encList = face.encrypted_descriptors as string[] | null;
-      if (Array.isArray(encList)) {
-        for (const enc of encList) { const d = decryptDescriptor(enc); if (d?.length) stored.push(d); }
+      try {
+        const encDesc = face.encrypted_descriptor as string | null;
+        if (encDesc) { const d = decryptDescriptor(encDesc); if (d?.length) stored.push(d); }
+        const encList = face.encrypted_descriptors as string[] | null;
+        if (Array.isArray(encList)) {
+          for (const enc of encList) { const d = decryptDescriptor(enc); if (d?.length) stored.push(d); }
+        }
+      } catch (e) {
+        console.error(`[verifyFaceForReset] Failed to decrypt descriptor for ${empId}:`, e);
       }
     } else {
       const desc = face.descriptor as number[] | null;

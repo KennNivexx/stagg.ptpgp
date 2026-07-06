@@ -2,27 +2,28 @@
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth-guard";
+import { requireRole, requireAuth } from "@/lib/auth-guard";
 
 const uid = () => "js-" + crypto.randomUUID();
 
 export interface JobSpec {
-  id: string; title: string; position: string; department: string;
+  id: string; title: string; position: string; department: string; kode: string;
   education: string; experience: string; skills: string[]; certifications: string[];
 }
 
 export async function getJobSpecs(): Promise<JobSpec[]> {
   await requireRole("hrd", "superadmin");
   const { data } = await supabaseAdmin.from("job_specifications").select("*").order("department", { ascending: true }).order("position", { ascending: true });
-  return ((data || []) as JobSpec[]).map(d => ({ ...d, title: d.title || "" }));
+  return ((data || []) as JobSpec[]).map(d => ({ ...d, title: d.title || "", kode: d.kode || "" }));
 }
 
 // Department-scoped read accessor, for bundling alongside the employee /
 // department-head Deskripsi Kerja page if desired.
 export async function getJobSpecsForDepartment(department: string): Promise<JobSpec[]> {
+  await requireAuth();
   if (!department) return [];
   const { data } = await supabaseAdmin.from("job_specifications").select("*").eq("department", department);
-  return ((data || []) as JobSpec[]).map(d => ({ ...d, title: d.title || "" }));
+  return ((data || []) as JobSpec[]).map(d => ({ ...d, title: d.title || "", kode: d.kode || "" }));
 }
 
 export async function saveJobSpec(formData: FormData) {
@@ -31,17 +32,20 @@ export async function saveJobSpec(formData: FormData) {
   const title = (formData.get("title") as string || "").trim();
   const position = (formData.get("position") as string || "").trim();
   const department = (formData.get("department") as string || "").trim();
+  const kode = (formData.get("kode") as string || "").trim();
   const education = (formData.get("education") as string || "").trim();
   const experience = (formData.get("experience") as string || "").trim();
   const skills = (JSON.parse((formData.get("skills") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
   const certifications = (JSON.parse((formData.get("certifications") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
 
   if (!department) return { error: "Departemen wajib dipilih." };
+  if (!kode) return { error: "Kode perusahaan wajib diisi." };
+  if (!/^\d+(\.\d+)+$/.test(kode)) return { error: "Format kode perusahaan tidak valid (contoh: 1.1.2.1.1.0.0)." };
 
   const now = new Date().toISOString();
   if (id) {
     const { error } = await supabaseAdmin.from("job_specifications").update({
-      title, position, department, education, experience, skills, certifications, updated_at: now,
+      title, position, department, kode, education, experience, skills, certifications, updated_at: now,
     }).eq("id", id);
     if (error) {
       console.error("[jobspec] saveJobSpec error:", error.message);
@@ -50,7 +54,7 @@ export async function saveJobSpec(formData: FormData) {
   } else {
     const newId = uid();
     const { error } = await supabaseAdmin.from("job_specifications").insert({
-      id: newId, title, position, department, education, experience, skills, certifications, created_at: now, updated_at: now,
+      id: newId, title, position, department, kode, education, experience, skills, certifications, created_at: now, updated_at: now,
     });
     if (error) {
       console.error("[jobspec] addJobSpec error:", error.message);

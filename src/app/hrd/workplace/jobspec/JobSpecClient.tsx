@@ -54,6 +54,7 @@ export default function JobSpecClient({ departments, positions }: Props) {
   const [fTitle, setFTitle] = useState("");
   const [fPos, setFPos] = useState("");
   const [fDept, setFDept] = useState("");
+  const [fKode, setFKode] = useState("");
   const [fEdu, setFEdu] = useState("");
   const [fExp, setFExp] = useState("");
   const [fSkills, setFSkills] = useState<string[]>([]);
@@ -65,18 +66,20 @@ export default function JobSpecClient({ departments, positions }: Props) {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
-  const openAdd = () => { setFTitle(""); setFPos(""); setFDept(""); setFEdu(""); setFExp(""); setFSkills([]); setFCert([]); setFErr(""); setModal("add"); setSelected(null); };
-  const openEdit = (d: JobSpec) => { setSelected(d); setFTitle(d.title || ""); setFPos(d.position); setFDept(d.department); setFEdu(d.education); setFExp(d.experience); setFSkills([...d.skills]); setFCert([...d.certifications]); setFErr(""); setModal("edit"); };
+  const openAdd = () => { setFTitle(""); setFPos(""); setFDept(""); setFKode(""); setFEdu(""); setFExp(""); setFSkills([]); setFCert([]); setFErr(""); setModal("add"); setSelected(null); };
+  const openEdit = (d: JobSpec) => { setSelected(d); setFTitle(d.title || ""); setFPos(d.position); setFDept(d.department); setFKode(d.kode || ""); setFEdu(d.education); setFExp(d.experience); setFSkills([...d.skills]); setFCert([...d.certifications]); setFErr(""); setModal("edit"); };
   const closeM = () => setModal(null);
 
   const doSave = async () => {
     if (!fDept.trim()) { setFErr("Departemen wajib dipilih."); return; }
+    if (!fKode.trim()) { setFErr("Kode perusahaan wajib diisi."); return; }
     setFLoading(true); setFErr("");
     const fd = new FormData();
     if (selected) fd.append("id", selected.id);
     fd.append("title", fTitle.trim());
     fd.append("position", fPos.trim());
     fd.append("department", fDept);
+    fd.append("kode", fKode.trim());
     fd.append("education", fEdu);
     fd.append("experience", fExp);
     fd.append("skills", JSON.stringify(fSkills.map(s => s.trim()).filter(Boolean)));
@@ -153,6 +156,7 @@ export default function JobSpecClient({ departments, positions }: Props) {
                     </div>
                     {d.title && <p className="text-xs font-semibold text-sky-700 mt-1">{d.title}</p>}
                     {d.position && <span className="text-[10px] text-slate-400 block mt-0.5">Terkait posisi: {d.position}</span>}
+                    {d.kode && <code className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-1.5 py-0.5 font-mono inline-block mt-1">{d.kode}</code>}
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button onClick={() => openEdit(d)} className="p-1.5 rounded-lg hover:bg-sky-100 text-sky-600"><Edit3 size={14} /></button>
@@ -235,6 +239,13 @@ export default function JobSpecClient({ departments, positions }: Props) {
                   <option value="">Tidak spesifik ke posisi tertentu</option>
                   {positions.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Kode Perusahaan *</label>
+                <input type="text" value={fKode} onChange={e => setFKode(e.target.value)}
+                  placeholder="Cth: 1.1.2.1.1.0.0"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
+                <p className="text-[10px] text-slate-400 mt-1">Isi manual sesuai kode struktur organisasi agar spesifikasi pekerjaan ini jelas terkait unit/posisi mana.</p>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pendidikan</label>

@@ -1,31 +1,20 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
-import { Book, FileText, Video, Presentation, Upload, Search, Plus, X, Save, FolderOpen } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Book, FileText, Video, Presentation, Upload, Search, X, Save, FolderOpen, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { getTrainings } from "@/app/actions/trainings";
+import { getTrainingMaterials, saveTrainingMaterial, deleteTrainingMaterial } from "@/app/actions/trainings";
+import EmptyState from "@/components/EmptyState";
 
+type Training = { id: string; title: string };
 type Material = {
   id: string;
+  training_id: string;
   title: string;
-  program: string;
   type: string;
-  uploadDate: string;
-  size: string;
+  file_size: string | null;
+  created_at: string;
 };
-
-const INITIAL_MATERIALS: Material[] = [
-  { id: "1", title: "Modul Kepemimpinan Dasar", program: "Pelatihan Kepemimpinan Dasar", type: "PDF", uploadDate: "2026-06-01", size: "2.4 MB" },
-  { id: "2", title: "Presentasi Kepemimpinan", program: "Pelatihan Kepemimpinan Dasar", type: "PPT", uploadDate: "2026-06-02", size: "5.1 MB" },
-  { id: "3", title: "Video Simulasi Kepemimpinan", program: "Pelatihan Kepemimpinan Dasar", type: "Video", uploadDate: "2026-06-03", size: "128 MB" },
-  { id: "4", title: "Panduan K3 Lengkap", program: "Workshop Keselamatan Kerja", type: "PDF", uploadDate: "2026-05-20", size: "3.8 MB" },
-  { id: "5", title: "Presentasi APD", program: "Workshop Keselamatan Kerja", type: "PPT", uploadDate: "2026-05-21", size: "4.2 MB" },
-  { id: "6", title: "Video Prosedur Darurat", program: "Workshop Keselamatan Kerja", type: "Video", uploadDate: "2026-05-22", size: "245 MB" },
-  { id: "7", title: "Modul Excel Advanced", program: "Microsoft Excel Advanced", type: "PDF", uploadDate: "2026-06-10", size: "1.9 MB" },
-  { id: "8", title: "Latihan Excel Dataset", program: "Microsoft Excel Advanced", type: "File", uploadDate: "2026-06-10", size: "850 KB" },
-  { id: "9", title: "Modul Service Excellence", program: "Service Excellence", type: "PDF", uploadDate: "2026-06-15", size: "2.1 MB" },
-  { id: "10", title: "Video Roleplay Customer Service", program: "Service Excellence", type: "Video", uploadDate: "2026-06-16", size: "180 MB" },
-  { id: "11", title: "Modul Manajemen Proyek", program: "Manajemen Proyek Profesional", type: "PDF", uploadDate: "2026-06-20", size: "4.5 MB" },
-  { id: "12", title: "Template Project Charter", program: "Manajemen Proyek Profesional", type: "Template", uploadDate: "2026-06-20", size: "1.2 MB" },
-];
 
 const MATERIAL_TYPES = ["PDF", "PPT", "Video", "Template", "File"];
 
@@ -46,49 +35,102 @@ const typeColors: Record<string, string> = {
 };
 
 export default function MateriPelatihan() {
-  const [materials, setMaterials] = useState<Material[]>(INITIAL_MATERIALS);
+  const [trainings, setTrainings] = useState<Training[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ title: "", program: "", type: "PDF" });
+  const [formData, setFormData] = useState({ title: "", training_id: "", type: "PDF" });
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
 
-  const programList = [...new Set(materials.map((m) => m.program))];
+  const showToast = (type: "error" | "success", msg: string) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [t, m] = await Promise.all([getTrainings(), getTrainingMaterials()]);
+      setTrainings((t as Record<string, unknown>[]).map((x) => ({ id: x.id as string, title: x.title as string })));
+      setMaterials(m as Material[]);
+    } catch {
+      showToast("error", "Gagal memuat data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const trainingMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    trainings.forEach((t) => { map[t.id] = t.title; });
+    return map;
+  }, [trainings]);
 
   const filtered = materials.filter((m) => {
-    if (searchQuery && !m.title.toLowerCase().includes(searchQuery.toLowerCase()) && !m.program.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    const programName = trainingMap[m.training_id] || "";
+    if (searchQuery && !m.title.toLowerCase().includes(searchQuery.toLowerCase()) && !programName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterType && m.type !== filterType) return false;
     return true;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newMat: Material = {
-      id: Date.now().toString(),
-      title: formData.title,
-      program: formData.program,
-      type: formData.type,
-      uploadDate: new Date().toISOString().split("T")[0],
-      size: "-",
-    };
-    setMaterials([newMat, ...materials]);
+    setSaving(true);
+    const fd = new FormData();
+    fd.append("training_id", formData.training_id);
+    fd.append("title", formData.title);
+    fd.append("type", formData.type);
+    const r = await saveTrainingMaterial(fd);
+    setSaving(false);
+    if (r?.error) { showToast("error", r.error); return; }
+    showToast("success", "Materi berhasil ditambahkan.");
     setShowForm(false);
-    setFormData({ title: "", program: "", type: "PDF" });
+    setFormData({ title: "", training_id: "", type: "PDF" });
+    loadData();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Hapus materi ini?")) return;
+    const r = await deleteTrainingMaterial(id);
+    if (r?.error) { showToast("error", r.error); return; }
+    setMaterials((prev) => prev.filter((m) => m.id !== id));
+    showToast("success", "Materi berhasil dihapus.");
   };
 
   return (
     <div className="p-6 lg:p-8">
+      {toast && (
+        <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-bold ${toast.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+          {toast.type === "error" ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+          {toast.msg}
+          <button onClick={() => setToast(null)} className="ml-2"><X size={14} /></button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2530]">Materi Pelatihan</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola materi, modul, dan bahan ajar untuk setiap program pelatihan.</p>
+          <p className="text-sm text-gray-500 mt-1">Kelola materi, modul, dan bahan ajar — mengikuti program training yang sudah ada.</p>
         </div>
         <button
-          onClick={() => { setFormData({ title: "", program: "", type: "PDF" }); setShowForm(true); }}
-          className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
+          onClick={() => { setFormData({ title: "", training_id: "", type: "PDF" }); setShowForm(true); }}
+          disabled={trainings.length === 0}
+          className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2 disabled:opacity-50"
         >
           <Upload size={14} /> Unggah Materi
         </button>
       </div>
+
+      {!loading && trainings.length === 0 && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+          Belum ada program training. Buat program training terlebih dahulu di halaman <b>Training</b> sebelum menambahkan materi.
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <button
@@ -132,9 +174,9 @@ export default function MateriPelatihan() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Program Pelatihan</label>
-                <select required value={formData.program} onChange={(e) => setFormData({ ...formData, program: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm">
+                <select required value={formData.training_id} onChange={(e) => setFormData({ ...formData, training_id: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm">
                   <option value="">Pilih Program</option>
-                  {programList.map((p) => <option key={p} value={p}>{p}</option>)}
+                  {trainings.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
                 </select>
               </div>
               <div>
@@ -143,44 +185,45 @@ export default function MateriPelatihan() {
                   {MATERIAL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
-              <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-[#CC0000] transition-colors cursor-pointer">
-                <Upload size={24} className="mx-auto text-slate-400 mb-2" />
-                <p className="text-xs text-slate-500">Klik atau seret file ke sini</p>
-                <p className="text-[10px] text-slate-400 mt-1">PDF, PPT, Video (Max 500MB)</p>
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-xs">
+                Unggah file belum tersedia — catat metadata materi di sini terlebih dahulu.
               </div>
-              <button type="submit" className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2">
-                <Save size={14} /> Unggah
+              <button type="submit" disabled={saving} className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50">
+                <Save size={14} /> {saving ? "Menyimpan..." : "Simpan"}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
-          <Book size={48} className="mx-auto text-slate-300 mb-4" />
-          <p className="text-sm text-slate-500">Tidak ada materi ditemukan.</p>
+      {loading ? (
+        <div className="p-12 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000] mx-auto" />
         </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Book} title="Tidak ada materi ditemukan." description="Unggah materi pertama untuk program pelatihan yang ada." />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((mat) => {
             const Icon = typeIcons[mat.type] || FileText;
             const color = typeColors[mat.type] || "bg-slate-100 text-slate-600";
             return (
-              <div key={mat.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md transition-all group cursor-pointer">
-                <div className={`p-3 rounded-xl inline-block mb-3 ${color}`}>
-                  <Icon size={22} />
+              <div key={mat.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md transition-all group">
+                <div className="flex items-start justify-between">
+                  <div className={`p-3 rounded-xl inline-block mb-3 ${color}`}>
+                    <Icon size={22} />
+                  </div>
+                  <button onClick={() => handleDelete(mat.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-300 hover:text-red-500 transition-colors">
+                    <Trash2 size={14} />
+                  </button>
                 </div>
                 <h3 className="font-extrabold text-sm text-slate-800 mb-1 line-clamp-2 group-hover:text-[#CC0000] transition-colors">{mat.title}</h3>
                 <p className="text-[10px] text-slate-400 mb-3 flex items-center gap-1">
-                  <FolderOpen size={10} /> {mat.program}
+                  <FolderOpen size={10} /> {trainingMap[mat.training_id] || "Program tidak ditemukan"}
                 </p>
                 <div className="flex items-center justify-between pt-3 border-t border-slate-50">
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${color}`}>{mat.type}</span>
-                  <div className="text-right">
-                    <p className="text-[9px] text-slate-500">{mat.size}</p>
-                    <p className="text-[8px] text-slate-400">{new Date(mat.uploadDate).toLocaleDateString("id-ID")}</p>
-                  </div>
+                  <p className="text-[8px] text-slate-400">{new Date(mat.created_at).toLocaleDateString("id-ID")}</p>
                 </div>
               </div>
             );

@@ -174,7 +174,7 @@ export default function HeroSettingsPage() {
               onChange={(url) => setForm({ ...form, hero_bg_image_url: url })}
               folder="hero"
               placeholder="https://example.com/bg.jpg"
-              hint="Biarkan kosong untuk menggunakan video YouTube default. Bisa isi URL atau unggah dari perangkat."
+              hint="Biarkan kosong untuk menggunakan latar gradien default. Bisa isi URL atau unggah dari perangkat."
             />
 
             <button

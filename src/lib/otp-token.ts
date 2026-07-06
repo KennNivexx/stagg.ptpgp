@@ -5,7 +5,11 @@
 import { createHmac } from "crypto";
 
 function getOtpSecret(): string {
-  return process.env.SESSION_SECRET || "pgp-fallback-secret";
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("SESSION_SECRET environment variable is required. Set it in .env.local");
+  }
+  return secret;
 }
 
 export function generateOneTimeToken(email: string): string {

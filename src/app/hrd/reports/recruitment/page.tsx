@@ -1,6 +1,9 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, Briefcase, Users, Clock, TrendingUp, Calendar } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import ExportExcelButton from "@/components/ExportExcelButton";
+
+export const dynamic = "force-dynamic";
 
 export default async function LaporanRekrutmen() {
   const { data: jobs, error: jobsError } = await supabaseAdmin
@@ -31,11 +34,23 @@ export default async function LaporanRekrutmen() {
     applicationsPerJob[jid] = (applicationsPerJob[jid] || 0) + 1;
   });
 
+  const rows = (jobs || []).map((job: Record<string, unknown>) => ({
+    Lowongan: job.title as string,
+    Departemen: (job.department as string) || "-",
+    Status: (job.status as string) || "-",
+    Pelamar: applicationsPerJob[job.id as string] || 0,
+    "Tgl Dibuat": job.created_at ? new Date(job.created_at as string).toLocaleDateString("id-ID") : "-",
+    "Tgl Deadline": job.deadline ? new Date(job.deadline as string).toLocaleDateString("id-ID") : "-",
+  }));
+
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Rekrutmen</h1>
-        <p className="text-sm text-gray-500">Analisis dan statistik rekrutmen, time-to-hire, dan konversi pelamar.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Rekrutmen</h1>
+          <p className="text-sm text-gray-500">Analisis dan statistik rekrutmen, time-to-hire, dan konversi pelamar.</p>
+        </div>
+        <ExportExcelButton filename="Laporan_Rekrutmen" sheetName="Rekrutmen" rows={rows} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

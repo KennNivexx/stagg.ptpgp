@@ -37,16 +37,21 @@ export function euclideanDistance(a: number[] | Float32Array, b: number[] | Floa
  * Used during registration when 3 photos are taken.
  */
 export function averageDescriptors(descriptors: (number[] | Float32Array)[]): number[] {
-  if (descriptors.length === 0) return [];
+  // Only average full-length descriptors — a shorter/corrupted capture would
+  // otherwise index past its own bounds (desc[i] === undefined), poisoning
+  // the whole averaged reference with NaN and making every future match
+  // against it silently fail forever (NaN < threshold is always false).
+  const valid = descriptors.filter((desc) => desc.length === FACE_DESCRIPTOR_LENGTH);
+  if (valid.length === 0) return [];
   const len = FACE_DESCRIPTOR_LENGTH;
   const result = new Array(len).fill(0);
-  for (const desc of descriptors) {
+  for (const desc of valid) {
     for (let i = 0; i < len; i++) {
       result[i] += desc[i];
     }
   }
   for (let i = 0; i < len; i++) {
-    result[i] /= descriptors.length;
+    result[i] /= valid.length;
   }
   return result;
 }

@@ -3,45 +3,41 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { submitLeaveForEmployee } from "@/lib/leaves-core";
 
 const uid = () => crypto.randomUUID();
 
 export async function submitLeave(formData: FormData) {
   const user = await requireRole("hrd", "superadmin", "employee");
-  const type = (formData.get("type") as string || "").trim();
-  const start_date = (formData.get("start_date") as string || "").trim();
-  const end_date = (formData.get("end_date") as string || "").trim();
-  const reason = (formData.get("reason") as string || "").trim();
-
-  if (!type || !start_date || !end_date) return { error: "Tipe cuti, mulai, dan selesai wajib diisi." };
-  if (new Date(end_date) < new Date(start_date)) return { error: "Tanggal selesai harus setelah tanggal mulai." };
-
-  const { data: emp } = await supabaseAdmin.from("employees").select("full_name, department").eq("email", user.email).maybeSingle();
-
-  const { error } = await supabaseAdmin.from("leave_requests").insert({
-    id: uid(), employee_id: user.id, employee_name: emp?.full_name || user.name,
-    department: emp?.department || "", type, start_date, end_date, reason, status: "Pending",
+  const result = await submitLeaveForEmployee({
+    employeeId: user.id,
+    employeeEmail: user.email,
+    employeeName: user.name,
+    type: (formData.get("type") as string || "").trim(),
+    start_date: (formData.get("start_date") as string || "").trim(),
+    end_date: (formData.get("end_date") as string || "").trim(),
+    reason: (formData.get("reason") as string || "").trim(),
   });
-  if (error) return { error: "Gagal mengajukan cuti." };
-
-  // Notify HRD
-  await supabaseAdmin.from("notifications").insert({
-    id: uid(), user_email: "hrd@ptpgp.co.id",
-    title: "Pengajuan Cuti Baru",
-    message: `${emp?.full_name || user.name} mengajukan ${type} (${start_date} - ${end_date})`,
-    link: "/hrd/leaves",
-  });
-
-  revalidatePath("/hrd/leaves");
-  revalidatePath("/employee");
-  return { success: true };
+  if ("success" in result) {
+    revalidatePath("/hrd/leaves");
+    revalidatePath("/employee");
+  }
+  return result;
 }
 
 export async function updateLeaveStatus(id: string, status: string) {
   const user = await requireRole("hrd", "superadmin");
 
-  const { data: leave } = await supabaseAdmin.from("leave_requests").select("employee_id, employee_name, type, start_date, end_date").eq("id", id).maybeSingle();
+  const { data: leave } = await supabaseAdmin.from("leave_requests").select("employee_id, employee_name, type, start_date, end_date, status").eq("id", id).maybeSingle();
   if (!leave) return { error: "Cuti tidak ditemukan." };
+
+  // Guard against re-processing an already-decided request (double-click,
+  // network retry, or re-approving/re-rejecting later) — without this, the
+  // employee gets a duplicate notification each time and status can flip-flop.
+  const currentStatus = (leave as { status?: string }).status;
+  if (currentStatus && currentStatus !== "Pending") {
+    return { error: `Cuti ini sudah diproses sebelumnya (${currentStatus}).` };
+  }
 
   await supabaseAdmin.from("leave_requests").update({ status, approved_by: user.name, updated_at: new Date().toISOString() }).eq("id", id);
 

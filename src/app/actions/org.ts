@@ -37,11 +37,17 @@ function getParentCode(code: string): string | null {
 }
 
 function isDescendantOf(code: string, ancestor: string): boolean {
+  // Codes are fixed-width and zero-padded (e.g. "1.1.2.1.0.0.0"), so `code`
+  // and `ancestor` always have the same segment count — a plain length
+  // comparison can never distinguish shallower from deeper codes and made
+  // this always return false, silently disabling the cycle guard entirely.
   const a = codeSegments(ancestor);
   const c = codeSegments(code);
-  if (c.length <= a.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] > 0 && a[i] !== c[i]) return false;
-  return true;
+  let aDepth = -1;
+  for (let i = 0; i < a.length; i++) if (a[i] > 0) aDepth = i;
+  if (aDepth < 0) return false;
+  for (let i = 0; i <= aDepth; i++) if (c[i] !== a[i]) return false;
+  return aDepth + 1 < c.length && c[aDepth + 1] > 0;
 }
 
 const uid = () => "org-" + crypto.randomUUID();
@@ -125,10 +131,84 @@ async function buildTree(): Promise<OrgUnit[]> {
       .order("full_name");
     if (empData) {
       type EmpRow = { id: string; full_name: string; kode: string | null; nik: string | null; position: string; department: string | null; email: string };
-      const resolved: { emp: EmpRow; parent: OrgUnit }[] = [];
+
+      // Generic role/hierarchy words carry no unit-identifying signal (almost
+      // every department has a "Manager" or "Staff") and are excluded so they
+      // can't trigger a match on their own.
+      const ROLE_STOPWORDS = new Set(["staff", "officer", "manager", "supervisor", "executive", "administrator", "admin", "operator", "assistant", "coordinator", "specialist", "analyst"]);
+
+      const posWordsOf = (position: string) =>
+        new Set(position.toLowerCase().split(/[\s&,./]+/).filter(w => w.length > 0 && !ROLE_STOPWORDS.has(w)));
+
+      // Significant words are either length > 3, or a short all-caps acronym
+      // in the original name (e.g. "IT" in "IT Application & Development") —
+      // acronyms carry real identifying meaning despite being short, unlike
+      // ordinary short words.
+      const unitWordsOf = (name: string) =>
+        name.split(/[\s&]+/)
+          .filter(w => w.length > 3 || /^[A-Z]{2,4}$/.test(w))
+          .map(w => w.toLowerCase())
+          .filter(w => !ROLE_STOPWORDS.has(w));
+
+      const hasWord = (posWords: Set<string>, w: string) => posWords.has(w) || posWords.has(w + "s") || posWords.has(w + "es");
+
+      // Common Indonesian HR/GA abbreviations don't literally appear inside
+      // their expanded unit names (unlike "IT" in "IT Application &
+      // Development", which is a real substring) — "hr" is nowhere in the
+      // string "Human Resources". Each key here is treated as a match for a
+      // sibling whose significant words are a superset of the listed words.
+      const ABBREVIATIONS: Record<string, string[]> = {
+        hr: ["human", "resources"],
+        hrd: ["human", "resources"],
+        ga: ["general", "affair"],
+        mr: ["management", "representative"],
+        hse: ["health", "safety", "environment"],
+      };
+
+      // Refine into a specific sub-unit (e.g. "Payroll", "Recruitment &
+      // Development") when the employee's position clearly names one, instead
+      // of leaving everyone dumped flat under the parent division just
+      // because employees.department only ever stores the top-level division
+      // name. A sub-unit only qualifies via a word that is unique to it among
+      // its siblings (not shared by another sibling's name) — this lets a
+      // partial match like "Recruitment Staff" -> "Recruitment & Development"
+      // through, while still rejecting ambiguous generic overlaps like
+      // "account" matching both "Account Payable" and "Account Receivable".
+      function refineToSubUnit(parent: OrgUnit, position: string): OrgUnit {
+        const siblings = rows.filter(r => r.parent_code === parent.code);
+        if (siblings.length === 0) return parent;
+
+        const wordOwners = new Map<string, Set<string>>(); // word -> set of sibling codes containing it
+        for (const s of siblings) {
+          const sWords = new Set(unitWordsOf(s.name));
+          for (const w of sWords) {
+            if (!wordOwners.has(w)) wordOwners.set(w, new Set());
+            wordOwners.get(w)!.add(s.code);
+          }
+          for (const [abbrev, expansion] of Object.entries(ABBREVIATIONS)) {
+            if (expansion.every(w => sWords.has(w))) {
+              if (!wordOwners.has(abbrev)) wordOwners.set(abbrev, new Set());
+              wordOwners.get(abbrev)!.add(s.code);
+            }
+          }
+        }
+
+        const posWords = posWordsOf(position);
+        const candidates = new Set<string>();
+        for (const [word, owners] of wordOwners) {
+          if (owners.size !== 1) continue; // shared by >1 sibling — not distinctive
+          if (hasWord(posWords, word)) candidates.add([...owners][0]);
+        }
+
+        if (candidates.size !== 1) return parent; // no match, or ambiguous — stay put
+        const subUnit = map.get([...candidates][0]);
+        return subUnit || parent;
+      }
+
+      const resolved: { emp: EmpRow; parent: OrgUnit; codeConsistent: boolean }[] = [];
 
       for (const emp of empData as EmpRow[]) {
-        let parent: OrgUnit | undefined;
+        let initialParent: OrgUnit | undefined;
 
         if (emp.kode) {
           // Parent org unit = replace the last non-zero segment with 0
@@ -140,59 +220,54 @@ async function buildTree(): Promise<OrgUnit[]> {
           if (lastNonZero >= 0) {
             const parentSegs = [...segs];
             parentSegs[lastNonZero] = "0";
-            parent = map.get(parentSegs.join("."));
+            initialParent = map.get(parentSegs.join("."));
           }
         }
 
         // Fallback: match by department name directly (covers employees
         // without a resolvable kode so the tree stays accurate/live).
-        if (!parent && emp.department) {
-          parent = Array.from(map.values()).find(u => u.name === emp.department);
+        if (!initialParent && emp.department) {
+          initialParent = Array.from(map.values()).find(u => u.name === emp.department);
         }
 
-        // Refine into a specific sub-unit (e.g. "Payroll", "General Affair")
-        // when the employee's position clearly names one, instead of leaving
-        // everyone dumped flat under the parent division just because
-        // employees.department only ever stores the top-level division name.
-        // Matches whole words (with basic plural handling) rather than plain
-        // substrings — a naive `.includes()` would wrongly match "Officer"
-        // against a sub-unit named "Office ...".
-        if (parent && emp.position) {
-          const posWords = new Set(emp.position.toLowerCase().split(/[\s&,./]+/).filter(Boolean));
-          const hasWord = (w: string) => posWords.has(w) || posWords.has(w + "s") || posWords.has(w + "es");
-          const subUnit = rows.find(r => {
-            if (r.parent_code !== parent!.code) return false;
-            const words = r.name.toLowerCase().split(/[\s&]+/).filter(w => w.length > 3);
-            return words.length > 0 && words.every(hasWord);
-          });
-          if (subUnit) parent = map.get(subUnit.code);
-        }
+        if (!initialParent) continue;
 
-        if (!parent) continue;
-        resolved.push({ emp, parent });
+        const finalParent = emp.position ? refineToSubUnit(initialParent, emp.position) : initialParent;
+        // A persisted kode is only trustworthy if it still points to the same
+        // parent it always did AND it already follows the last-segment
+        // scheme below (real org-unit codes always keep that segment at 0 —
+        // confirmed true for all current units — so any kode that doesn't
+        // follow this shape is a leftover from an older scheme and must be
+        // regenerated to guarantee it can never collide with a real unit).
+        const kodeSegs = emp.kode ? emp.kode.split(".") : [];
+        const followsCurrentScheme = kodeSegs.length > 0 && Number(kodeSegs[kodeSegs.length - 1]) > 0;
+        const codeConsistent = !!emp.kode && finalParent.code === initialParent.code && followsCurrentScheme;
+        resolved.push({ emp, parent: finalParent, codeConsistent });
       }
 
-      // Seed each parent's next-sequence counter from kode values already in
-      // use, so a generated code never collides with a real one.
+      // Seed each parent's next-sequence counter from kode values already
+      // consistent with that parent, so a generated code never collides with
+      // a real one or with another generated code. Employees always get
+      // their sequence number in the very last code segment — every real
+      // org-unit code keeps that segment at 0, so this can never collide
+      // with a unit added to the tree later, unlike reusing the same
+      // segment org units use for their own children.
       const seqByParent = new Map<string, number>();
-      for (const { emp, parent } of resolved) {
-        if (!emp.kode) continue;
-        const parentSegs = parent.code.split(".");
-        const firstZero = parentSegs.findIndex(s => Number(s) === 0);
-        if (firstZero < 0) continue;
-        const usedSeq = Number(emp.kode.split(".")[firstZero]) || 0;
+      for (const { emp, parent, codeConsistent } of resolved) {
+        if (!codeConsistent || !emp.kode) continue;
+        const segs = emp.kode.split(".");
+        const usedSeq = Number(segs[segs.length - 1]) || 0;
         seqByParent.set(parent.code, Math.max(seqByParent.get(parent.code) || 0, usedSeq));
       }
 
       const toBackfill: { id: string; kode: string }[] = [];
-      for (const { emp, parent } of resolved) {
-        let personalCode = emp.kode || "";
+      for (const { emp, parent, codeConsistent } of resolved) {
+        let personalCode = codeConsistent ? emp.kode! : "";
         if (!personalCode) {
           const segments = parent.code.split(".");
-          const firstZero = segments.findIndex(s => Number(s) === 0);
           const next = (seqByParent.get(parent.code) || 0) + 1;
           seqByParent.set(parent.code, next);
-          segments[firstZero >= 0 ? firstZero : segments.length - 1] = String(next);
+          segments[segments.length - 1] = String(next);
           personalCode = segments.join(".");
           toBackfill.push({ id: emp.id, kode: personalCode });
         }

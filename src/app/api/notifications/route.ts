@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session";
-import { purgeExpiredResignedAccounts } from "@/lib/account-purge";
 
 export async function GET(request: NextRequest) {
   // Authentication: a valid signed session is required. The notification feed
@@ -18,14 +17,20 @@ export async function GET(request: NextRequest) {
   const sessionRole = session.role.toLowerCase();
   const requestedRole = request.nextUrl.searchParams.get("role") || "hrd";
 
-  // The HRD feed (applicants, all leaves, payroll drafts) is only for hrd/superadmin.
-  // Anyone else falls back to their own personal (employee) feed.
-  const role =
-    requestedRole === "hrd"
-      ? sessionRole === "hrd" || sessionRole === "superadmin"
-        ? "hrd"
-        : "employee"
-      : "employee";
+  // Each feed is gated by the actual session role — a requested role the
+  // caller isn't entitled to always falls back to their own employee feed.
+  let role: "hrd" | "employee" | "director" | "department" | "applicant";
+  if (requestedRole === "hrd" && (sessionRole === "hrd" || sessionRole === "superadmin")) {
+    role = "hrd";
+  } else if (requestedRole === "director" && (sessionRole === "director" || sessionRole === "superadmin")) {
+    role = "director";
+  } else if (requestedRole === "department" && (sessionRole === "department_manager" || sessionRole === "superadmin")) {
+    role = "department";
+  } else if (requestedRole === "applicant" && sessionRole === "applicant") {
+    role = "applicant";
+  } else {
+    role = "employee";
+  }
   const notifications: {
     id: string;
     type: string;
@@ -35,9 +40,6 @@ export async function GET(request: NextRequest) {
     link: string;
     priority: string;
   }[] = [];
-
-  // Lazy "cron": every poll sweeps accounts whose 24h deletion deadline passed.
-  await purgeExpiredResignedAccounts();
 
   try {
     if (role === "hrd") {
@@ -220,13 +222,111 @@ export async function GET(request: NextRequest) {
             id: `kpi-${latest.id}`,
             type: "warning",
             title: "Evaluasi KPI",
-            message: `Evaluasi periode ${latest.period} — Skor: ${latest.score || "-"}. Status: ${latest.status}`,
+            message: `Evaluasi periode ${latest.period} — Skor: ${latest.score ?? "-"}. Status: ${latest.status}`,
             time: new Date().toLocaleDateString("id-ID"),
             link: "/employee/kpi",
             priority: "medium",
           });
         }
       }
+    }
+
+    if (role === "director") {
+      const { data: pendingRequests } = await supabaseAdmin
+        .from("workforce_requests")
+        .select("id, position, department")
+        .eq("status", "Pending")
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (pendingRequests?.length) {
+        notifications.push({
+          id: "workforce-pending",
+          type: "request",
+          title: "Permintaan SDM Menunggu Persetujuan",
+          message: `${pendingRequests.length} permintaan penambahan karyawan menunggu keputusan Anda.`,
+          time: new Date().toLocaleDateString("id-ID"),
+          link: "/director/requests",
+          priority: "high",
+        });
+      }
+    }
+
+    if (role === "department") {
+      const { data: employeeRow } = await supabaseAdmin
+        .from("employees")
+        .select("department")
+        .eq("email", session.email || "")
+        .maybeSingle();
+      const deptName = (employeeRow as Record<string, unknown> | null)?.department as string | undefined;
+
+      if (deptName) {
+        const { data: decided } = await supabaseAdmin
+          .from("workforce_requests")
+          .select("id, position, status")
+          .eq("department", deptName)
+          .in("status", ["Disetujui", "Ditolak"])
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        const approved = (decided || []).filter((r: Record<string, unknown>) => r.status === "Disetujui");
+        const rejected = (decided || []).filter((r: Record<string, unknown>) => r.status === "Ditolak");
+
+        if (approved.length > 0) {
+          notifications.push({
+            id: "dept-request-approved",
+            type: "request",
+            title: "Permintaan SDM Disetujui",
+            message: `${approved.length} permintaan penambahan karyawan departemen Anda telah disetujui.`,
+            time: new Date().toLocaleDateString("id-ID"),
+            link: "/department/requests",
+            priority: "medium",
+          });
+        }
+        if (rejected.length > 0) {
+          notifications.push({
+            id: "dept-request-rejected",
+            type: "request",
+            title: "Permintaan SDM Ditolak",
+            message: `${rejected.length} permintaan penambahan karyawan departemen Anda ditolak.`,
+            time: new Date().toLocaleDateString("id-ID"),
+            link: "/department/requests",
+            priority: "medium",
+          });
+        }
+      }
+    }
+
+    if (role === "applicant") {
+      const userEmail = session.email || "";
+      const { data: apps } = await supabaseAdmin
+        .from("applications")
+        .select("id, status")
+        .eq("email", userEmail)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      (apps || []).forEach((a: Record<string, unknown>) => {
+        const status = a.status as string;
+        if (!status || status === "Menunggu Review") return;
+
+        let title = "Status Lamaran Diperbarui";
+        let priority: "high" | "medium" | "low" = "medium";
+        if (status === "Diterima") { title = "Selamat! Lamaran Diterima"; priority = "high"; }
+        else if (status === "Ditolak") { title = "Lamaran Tidak Lolos"; priority = "low"; }
+        else if (status === "Interview") { title = "Dijadwalkan Wawancara"; priority = "high"; }
+        else if (status === "Tes Tulis & Psikotes") { title = "Dipanggil Tes Seleksi"; priority = "high"; }
+
+        notifications.push({
+          id: `app-status-${a.id}`,
+          type: "applicant",
+          title,
+          message: `Status lamaran Anda: ${status}.`,
+          time: new Date().toLocaleDateString("id-ID"),
+          link: "/applicant/status",
+          priority,
+        });
+      });
     }
   } catch (e) {
     console.error("Notification fetch error:", e);

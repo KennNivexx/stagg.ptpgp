@@ -56,7 +56,7 @@ export default function EmployeeAttendancePage() {
         fd.append("face_descriptor", JSON.stringify(Array.from(recognition.descriptor)));
       }
       const res = await clockIn(fd);
-      if (res?.error) { setResult(res.error); return; }
+      if ("error" in res) { setResult(res.error); return; }
       setLastAction("in"); setShowSuccess(true); setResult("");
       await fetchToday();
     },
@@ -75,7 +75,7 @@ export default function EmployeeAttendancePage() {
         fd.append("face_descriptor", JSON.stringify(Array.from(recognition.descriptor)));
       }
       const res = await clockOut(fd);
-      if (res?.error) { setResult(res.error); return; }
+      if ("error" in res) { setResult(res.error); return; }
       setLastAction("out"); setShowSuccess(true); setResult("");
       await fetchToday();
     },

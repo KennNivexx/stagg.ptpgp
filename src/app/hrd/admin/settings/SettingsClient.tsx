@@ -1,7 +1,13 @@
 "use client";
-import { useRef, useState } from "react";
-import { Building2, Clock, Calendar, Mail, Eye, EyeOff, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { Building2, Clock, Calendar, Mail, Eye, EyeOff, CheckCircle2, XCircle, Loader2, MessageCircle, QrCode, Unplug } from "lucide-react";
 import { saveMultipleSettings, testGmailConfig } from "@/app/actions/admin";
+import {
+  setWaProviderSetting,
+  getBaileysConnectionStatus, startBaileysConnectionAction, disconnectBaileysSessionAction,
+} from "@/app/actions/whatsapp";
+import type { WaProvider } from "@/lib/whatsapp";
+import type { BaileysStatus } from "@/lib/whatsapp-baileys";
 
 function Msg({ m }: { m: { type: "success" | "error"; text: string } | null }) {
   if (!m) return null;
@@ -38,6 +44,45 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
   const workRef = useRef<HTMLFormElement>(null);
   const leaveRef = useRef<HTMLFormElement>(null);
   const mailRef = useRef<HTMLFormElement>(null);
+  const waRef = useRef<HTMLFormElement>(null);
+  const [showWaToken, setShowWaToken] = useState(false);
+  const [showWaSecret, setShowWaSecret] = useState(false);
+  const [waProvider, setWaProviderState] = useState<WaProvider>(s.wa_provider === "meta" ? "meta" : "baileys");
+  const [waProviderSaving, setWaProviderSaving] = useState(false);
+  const [baileysStatus, setBaileysStatus] = useState<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null }>({ status: "disconnected", qrDataUrl: null, number: null });
+  const [baileysBusy, setBaileysBusy] = useState(false);
+
+  const refreshBaileysStatus = useCallback(() => {
+    getBaileysConnectionStatus().then(setBaileysStatus).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (waProvider !== "baileys") return;
+    refreshBaileysStatus();
+    const interval = setInterval(refreshBaileysStatus, 3_000);
+    return () => clearInterval(interval);
+  }, [waProvider, refreshBaileysStatus]);
+
+  async function handleWaProviderChange(next: WaProvider) {
+    setWaProviderSaving(true);
+    const result = await setWaProviderSetting(next);
+    setWaProviderSaving(false);
+    if ("success" in result) setWaProviderState(next);
+  }
+
+  async function handleBaileysConnect() {
+    setBaileysBusy(true);
+    const status = await startBaileysConnectionAction();
+    setBaileysStatus(status);
+    setBaileysBusy(false);
+  }
+
+  async function handleBaileysDisconnect() {
+    setBaileysBusy(true);
+    await disconnectBaileysSessionAction();
+    setBaileysBusy(false);
+    refreshBaileysStatus();
+  }
 
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
   const [msgMap, setMsgMap] = useState<Record<string, { type: "success" | "error"; text: string } | null>>({});
@@ -225,6 +270,168 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
                   }
                 </span>
               )}
+            </div>
+          </form>
+        </Section>
+      </div>
+
+      {/* WhatsApp Bot — full width */}
+      <div className="lg:col-span-2">
+        <Section title="Bot WhatsApp" icon={MessageCircle} color="bg-emerald-50 text-emerald-600"
+          onSave={() => save("wa", waRef)} loading={!!loadingMap.wa} msg={msgMap.wa || null}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Mode Bot WhatsApp</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button type="button" disabled={waProviderSaving} onClick={() => handleWaProviderChange("baileys")}
+                  className={`text-left p-3 rounded-xl border-2 transition-colors ${waProvider === "baileys" ? "border-emerald-500 bg-emerald-50" : "border-slate-200 hover:border-slate-300"}`}>
+                  <p className="text-xs font-bold text-slate-800">Demo (QR Code)</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Pakai nomor WA biasa, scan QR seperti WhatsApp Web. Gratis, tanpa approval Meta — cocok untuk demo sekarang.</p>
+                </button>
+                <button type="button" disabled={waProviderSaving} onClick={() => handleWaProviderChange("meta")}
+                  className={`text-left p-3 rounded-xl border-2 transition-colors ${waProvider === "meta" ? "border-emerald-500 bg-emerald-50" : "border-slate-200 hover:border-slate-300"}`}>
+                  <p className="text-xs font-bold text-slate-800">Resmi (Meta Cloud API)</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Butuh akun WhatsApp Business Platform &amp; approval Meta. Aktifkan setelah disetujui — isi kredensial di bawah.</p>
+                </button>
+              </div>
+            </div>
+
+            {waProvider === "baileys" && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><QrCode size={14} /> Status Koneksi Demo</p>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    baileysStatus.status === "connected" ? "bg-emerald-100 text-emerald-700"
+                    : baileysStatus.status === "qr" ? "bg-amber-100 text-amber-700"
+                    : baileysStatus.status === "connecting" ? "bg-blue-100 text-blue-700"
+                    : "bg-slate-200 text-slate-600"
+                  }`}>
+                    {baileysStatus.status === "connected" ? "Terhubung"
+                      : baileysStatus.status === "qr" ? "Menunggu Scan QR"
+                      : baileysStatus.status === "connecting" ? "Menghubungkan..."
+                      : "Belum Terhubung"}
+                  </span>
+                </div>
+
+                {baileysStatus.status === "connected" && (
+                  <p className="text-xs text-slate-600">Nomor aktif: <span className="font-mono font-bold">{baileysStatus.number}</span></p>
+                )}
+
+                {baileysStatus.status === "qr" && baileysStatus.qrDataUrl && (
+                  <div className="flex flex-col items-center gap-2 py-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={baileysStatus.qrDataUrl} alt="QR code WhatsApp" className="w-48 h-48 border border-slate-200 rounded-lg bg-white p-2" />
+                    <p className="text-[10px] text-slate-500 text-center">Buka WhatsApp di HP → Perangkat Tertaut → Tautkan Perangkat → scan kode ini.</p>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  {baileysStatus.status === "disconnected" && (
+                    <button type="button" onClick={handleBaileysConnect} disabled={baileysBusy}
+                      className="px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center gap-1.5">
+                      {baileysBusy ? <Loader2 size={12} className="animate-spin" /> : <QrCode size={12} />} Hubungkan (Tampilkan QR)
+                    </button>
+                  )}
+                  {(baileysStatus.status === "connected" || baileysStatus.status === "qr" || baileysStatus.status === "connecting") && (
+                    <button type="button" onClick={handleBaileysDisconnect} disabled={baileysBusy}
+                      className="px-3 py-2 border border-red-200 bg-white text-red-600 text-xs font-bold rounded-lg hover:bg-red-50 transition-colors disabled:opacity-60 flex items-center gap-1.5">
+                      {baileysBusy ? <Loader2 size={12} className="animate-spin" /> : <Unplug size={12} />} Putuskan
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <form ref={waRef} className="space-y-4">
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-800 leading-relaxed">
+              <strong>Cara setup WhatsApp Cloud API (Meta) — hanya berlaku jika mode di atas = &quot;Resmi&quot;:</strong><br />
+              1. Buat aplikasi di <strong>developers.facebook.com</strong>, tambahkan produk WhatsApp<br />
+              2. Salin <strong>Phone Number ID</strong>, <strong>Access Token</strong> (permanen/System User), dan <strong>App Secret</strong> dari dashboard aplikasi<br />
+              3. Daftarkan URL webhook di bawah pada Meta, isi Verify Token yang sama persis dengan yang Anda isi di sini<br />
+              4. Isi <strong>Nomor WhatsApp Bot</strong> di bawah — karyawan yang chat duluan ke nomor ini (lewat tombol di Profil Saya), jadi <strong>tidak perlu Message Template</strong> untuk alur utama & tidak ada biaya per pesan<br />
+              5. (Opsional) Kalau nanti mau kirim pengingat otomatis tanpa karyawan chat duluan, baru perlu ajukan Message Template — isi field di bagian bawah setelah disetujui Meta
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Nomor WhatsApp Bot</label>
+              <input name="bot_number" type="text" defaultValue={s.wa_bot_number ?? ""}
+                placeholder="6281234567890"
+                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+              <p className="text-[10px] text-slate-400 mt-1">Nomor yang didaftarkan ke WhatsApp Cloud API di atas (format 62xxx, tanpa +/spasi). Karyawan mengetuk tombol di Profil Saya untuk chat ke nomor ini duluan. Di mode Demo, field ini terisi otomatis setelah scan QR berhasil.</p>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">URL Webhook (daftarkan ini di Meta)</label>
+              <input readOnly value={typeof window !== "undefined" ? `${window.location.origin}/api/wa/webhook` : "/api/wa/webhook"}
+                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-slate-50 text-slate-500 font-mono" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Phone Number ID</label>
+                <input name="phone_number_id" type="text" defaultValue={s.wa_phone_number_id ?? ""}
+                  placeholder="1234567890"
+                  className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">API Version</label>
+                <input name="api_version" type="text" defaultValue={s.wa_api_version ?? "v21.0"}
+                  className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Access Token</label>
+              <div className="relative">
+                <input name="access_token" type={showWaToken ? "text" : "password"} defaultValue={s.wa_access_token ?? ""}
+                  placeholder="EAAxxxxxxxxxxxx"
+                  className="w-full pr-10 text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+                <button type="button" onClick={() => setShowWaToken(!showWaToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showWaToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">App Secret</label>
+                <div className="relative">
+                  <input name="app_secret" type={showWaSecret ? "text" : "password"} defaultValue={s.wa_app_secret ?? ""}
+                    className="w-full pr-10 text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+                  <button type="button" onClick={() => setShowWaSecret(!showWaSecret)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {showWaSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Dipakai untuk verifikasi signature webhook — wajib diisi.</p>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Webhook Verify Token</label>
+                <input name="webhook_verify_token" type="text" defaultValue={s.wa_webhook_verify_token ?? ""}
+                  placeholder="Bebas, isi string apapun"
+                  className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+                <p className="text-[10px] text-slate-400 mt-1">Harus persis sama dengan yang didaftarkan di Meta.</p>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-3">Opsional — hanya untuk pengingat otomatis di luar chat aktif</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Nama Template Pesan</label>
+                  <input name="template_name" type="text" defaultValue={s.wa_template_name ?? ""}
+                    placeholder="hubungkan_bot_wa"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Kode Bahasa Template</label>
+                  <input name="template_lang" type="text" defaultValue={s.wa_template_lang ?? "id"}
+                    placeholder="id"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+                </div>
+              </div>
             </div>
           </form>
         </Section>

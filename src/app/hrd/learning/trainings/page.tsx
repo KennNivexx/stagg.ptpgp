@@ -3,11 +3,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  GraduationCap, Calendar, Users, Plus, X, Save, Pencil, Trash2,
-  AlertTriangle, CheckCircle2, Clock,
+  GraduationCap, Calendar, Users, X, Save, Pencil, Trash2,
+  AlertTriangle, CheckCircle2, Clock, Inbox, ThumbsUp, ThumbsDown, Building2,
 } from "lucide-react";
 import {
   getTrainings, saveTraining, deleteTraining, getTrainingEnrollments, removeEnrollment,
+  getTrainingRequests, reviewTrainingRequest, type TrainingRequest,
 } from "@/app/actions/trainings";
 import { getSkills } from "@/app/actions/skills";
 import EmptyState from "@/components/EmptyState";
@@ -27,6 +28,8 @@ type Training = {
   date_end: string;
   status: string;
   enrollment_count: number;
+  department?: string | null;
+  source_request_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -71,7 +74,7 @@ export default function TrainingsPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
 
-  const [modal, setModal] = useState<null | "add" | "edit" | "del">(null);
+  const [modal, setModal] = useState<null | "edit" | "del">(null);
   const [formData, setFormData] = useState({
     id: "", title: "", skill_id: "", description: "", date_start: "", date_end: "", status: "Planned",
   });
@@ -83,14 +86,38 @@ export default function TrainingsPage() {
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  const [requests, setRequests] = useState<TrainingRequest[]>([]);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [showRequests, setShowRequests] = useState(true);
+
   const showToast = (type: "error" | "success", msg: string) => {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4000);
   };
 
+  const loadRequests = async () => {
+    try {
+      const r = await getTrainingRequests();
+      setRequests(r);
+    } catch {
+      showToast("error", "Gagal memuat permintaan pelatihan.");
+    }
+  };
+
+  const doReview = async (id: string, approve: boolean) => {
+    setReviewingId(id);
+    const r = await reviewTrainingRequest(id, approve);
+    setReviewingId(null);
+    if (r?.error) { showToast("error", r.error); return; }
+    showToast("success", approve ? "Permintaan disetujui — program pelatihan otomatis dibuat." : "Permintaan ditolak.");
+    await loadRequests();
+    await refreshTrainings();
+  };
+
   const loadData = async () => {
     try {
       const [t, s] = await Promise.all([getTrainings(), getSkills()]);
+      loadRequests();
       setTrainings(t as Training[]);
       setSkills(s as Skill[]);
     } catch {
@@ -143,12 +170,6 @@ export default function TrainingsPage() {
     skills.forEach((s) => { map[s.id] = s; });
     return map;
   }, [skills]);
-
-  const openAdd = () => {
-    setFormData({ id: "", title: "", skill_id: "", description: "", date_start: "", date_end: "", status: "Planned" });
-    setFormErr("");
-    setModal("add");
-  };
 
   const openEdit = (t: Training) => {
     setFormData({
@@ -231,17 +252,12 @@ export default function TrainingsPage() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A2530]">Daftar Training</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola pelatihan, jadwal, dan peserta training perusahaan.</p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
-        >
-          <Plus size={14} /> Tambah Training
-        </button>
+      <div>
+        <h1 className="text-2xl font-bold text-[#1A2530]">Daftar Training</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Kelola pelatihan, jadwal, dan peserta training perusahaan. Program baru hanya dibuat dengan menyetujui
+          <span className="font-semibold"> Permintaan Training</span> yang diajukan Kepala Departemen berdasarkan Analisis Kesenjangan Kompetensi.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -263,6 +279,58 @@ export default function TrainingsPage() {
         ))}
       </div>
 
+      {/* Permintaan Training dari Kepala Departemen (berdasarkan Analisis Kesenjangan) */}
+      {requests.filter((r) => r.status === "Pending").length > 0 && (
+        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+          <button onClick={() => setShowRequests((v) => !v)}
+            className="w-full flex items-center justify-between px-6 py-4 bg-amber-50/50 hover:bg-amber-50 transition-colors">
+            <div className="flex items-center gap-2">
+              <Inbox size={16} className="text-amber-600" />
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-800 text-sm">Permintaan Training dari Departemen</h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">Diajukan Kepala Departemen berdasarkan Analisis Kesenjangan Kompetensi</p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold shrink-0">
+              {requests.filter((r) => r.status === "Pending").length} menunggu
+            </span>
+          </button>
+          {showRequests && (
+            <div className="divide-y divide-slate-50">
+              {requests.filter((r) => r.status === "Pending").map((r) => (
+                <div key={r.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                        <Building2 size={10} /> {r.department}
+                      </span>
+                      <p className="font-bold text-sm text-slate-800">{r.skill_name}</p>
+                      {r.current_level != null && r.required_level != null && (
+                        <span className="text-[10px] text-slate-400">Level {r.current_level} &rarr; {r.required_level}</span>
+                      )}
+                    </div>
+                    {r.reason && <p className="text-xs text-slate-500 mt-1.5">{r.reason}</p>}
+                    <p className="text-[10px] text-slate-400 mt-1.5">
+                      Diajukan oleh {r.requested_by_name || r.requested_by} &middot; {new Date(r.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => doReview(r.id, false)} disabled={reviewingId === r.id}
+                      className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center gap-1.5">
+                      <ThumbsDown size={12} /> Tolak
+                    </button>
+                    <button onClick={() => doReview(r.id, true)} disabled={reviewingId === r.id}
+                      className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center gap-1.5">
+                      <ThumbsUp size={12} /> {reviewingId === r.id ? "Memproses..." : "Setujui"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="p-12 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000] mx-auto mb-4" />
@@ -272,7 +340,7 @@ export default function TrainingsPage() {
         <EmptyState
           icon={GraduationCap}
           title="Belum ada training."
-          description="Tambahkan training untuk mulai mengelola pelatihan karyawan."
+          description="Program training akan muncul di sini setelah ada Permintaan Training dari Kepala Departemen yang disetujui."
         />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -297,6 +365,11 @@ export default function TrainingsPage() {
                       <td colSpan={isExpanded ? 0 : 1} className="py-3 px-4">
                         <div>
                           <span className="text-xs font-bold text-slate-800">{t.title}</span>
+                          {t.department && (
+                            <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-bold align-middle">
+                              <Building2 size={9} /> {t.department}
+                            </span>
+                          )}
                           {t.description && (
                             <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{t.description}</p>
                           )}
@@ -430,11 +503,9 @@ export default function TrainingsPage() {
           <div className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className={`px-5 py-4 flex items-center justify-between ${modal === "del" ? "bg-red-500" : "bg-slate-900"}`}>
               <div className="flex items-center gap-2.5">
-                {modal === "add" && <Plus size={18} className="text-emerald-400" />}
                 {modal === "edit" && <Pencil size={18} className="text-sky-400" />}
                 {modal === "del" && <Trash2 size={18} className="text-white" />}
                 <h3 className="text-white font-bold text-sm">
-                  {modal === "add" && "Tambah Training Baru"}
                   {modal === "edit" && `Edit: ${formData.title}`}
                   {modal === "del" && "Hapus Training?"}
                 </h3>
@@ -539,7 +610,7 @@ export default function TrainingsPage() {
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all"
                   >
                     <option value="Planned">Planned</option>
-                    <option value="Active">Active</option>
+                    <option value="Ongoing">Ongoing</option>
                     <option value="Completed">Completed</option>
                   </select>
                 </div>

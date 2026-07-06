@@ -8,15 +8,13 @@ const STAGES = [
   { key: "Diterima", label: "Diterima", desc: "Selamat! Anda berhasil lolos seleksi dan akan bergabung bersama kami.", icon: Award },
 ];
 
-function getStageStatus(currentStatus: string, stageKey: string): "done" | "current" | "pending" | "rejected" {
+function getStageStatus(currentStatus: string, stageKey: string, lastReachedIdx: number): "done" | "current" | "pending" | "rejected" {
+  const stageIdx = STAGES.findIndex(s => s.key === stageKey);
   if (currentStatus === "Ditolak") {
-    const currentIdx = STAGES.findIndex(s => s.key === currentStatus);
-    const stageIdx = STAGES.findIndex(s => s.key === stageKey);
-    if (stageIdx < currentIdx) return "done";
+    if (stageIdx <= lastReachedIdx) return "done";
     return "rejected";
   }
   const currentIdx = STAGES.findIndex(s => s.key === currentStatus);
-  const stageIdx = STAGES.findIndex(s => s.key === stageKey);
   if (stageIdx < currentIdx) return "done";
   if (stageIdx === currentIdx) return "current";
   return "pending";
@@ -42,6 +40,20 @@ export default async function ApplicantStatusPage() {
   const currentStatus = data.application.status;
   const isRejected = currentStatus === "Ditolak";
   const isAccepted = currentStatus === "Diterima";
+
+  // For rejected applicants, figure out how far they actually got in the
+  // pipeline (using reached_interview / test results) so earlier stages
+  // still show as "done" instead of every stage flattening to "rejected".
+  let lastReachedIdx = 0;
+  if (isRejected) {
+    if (data.application.reached_interview) {
+      lastReachedIdx = STAGES.findIndex(s => s.key === "Interview");
+    } else if (data.application.test_tulis_result || data.application.test_psikotes_result) {
+      lastReachedIdx = STAGES.findIndex(s => s.key === "Tes Tulis & Psikotes");
+    } else {
+      lastReachedIdx = STAGES.findIndex(s => s.key === "Menunggu Review");
+    }
+  }
 
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-3xl mx-auto">
@@ -91,7 +103,7 @@ export default async function ApplicantStatusPage() {
         </div>
         <div className="p-6 space-y-0">
           {STAGES.map((stage, idx) => {
-            const stageStatus = getStageStatus(currentStatus, stage.key);
+            const stageStatus = getStageStatus(currentStatus, stage.key, lastReachedIdx);
             const isLast = idx === STAGES.length - 1;
 
             return (

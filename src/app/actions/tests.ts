@@ -303,22 +303,25 @@ export async function submitPsikotesAnswers(testId: string, answers: Record<stri
   if (!test) return { error: "Tes tidak ditemukan." };
 
   const questions = test.questions as Question[];
-  const dimTotals: Record<string, { sum: number; count: number }> = {};
+  // Each dimension tracks its OWN scale — different dimensions can use
+  // different scales (e.g. 1-5 vs 1-7), so normalizing every dimension
+  // against questions[0]'s scale would skew any dimension that doesn't
+  // happen to share the first question's scale.
+  const dimTotals: Record<string, { sum: number; count: number; maxScale: number }> = {};
 
   for (const q of questions) {
     if (q.type === "skala" && q.dimension) {
       const raw = answers[q.id] ?? 3;
       const maxScale = q.scale || 5;
       const score = q.reverse ? maxScale + 1 - raw : raw;
-      if (!dimTotals[q.dimension]) dimTotals[q.dimension] = { sum: 0, count: 0 };
+      if (!dimTotals[q.dimension]) dimTotals[q.dimension] = { sum: 0, count: 0, maxScale };
       dimTotals[q.dimension].sum += score;
       dimTotals[q.dimension].count += 1;
     }
   }
 
-  const maxScale = questions[0]?.scale || 5;
   const dimensions: Record<string, number> = {};
-  for (const [dim, { sum, count }] of Object.entries(dimTotals)) {
+  for (const [dim, { sum, count, maxScale }] of Object.entries(dimTotals)) {
     dimensions[dim] = Math.round((sum / count / maxScale) * 100);
   }
 

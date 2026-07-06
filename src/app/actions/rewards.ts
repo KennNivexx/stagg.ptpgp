@@ -3,6 +3,10 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 
+const MISSING_REWARDS_SCHEMA = (error: { code?: string; message?: string } | null) =>
+  !!error && (error.code === "PGRST204" || /column .* does not exist|could not find the .* column/i.test(error.message || ""));
+const REWARDS_SCHEMA_ERROR = "Jalankan migrasi 20260704006_rewards_payroll_bonus_schema.sql terlebih dahulu.";
+
 export async function getSalaryStructureByEmployee(employeeId: string) {
   await requireRole("hrd", "superadmin");
   if (!employeeId) return null;
@@ -55,15 +59,25 @@ export async function saveIncentivePayment(formData: FormData) {
   const program = (formData.get("program") as string || "").trim();
   const amount = parseInt(formData.get("amount") as string || "0", 10) || 0;
   const period = (formData.get("period") as string || "").trim() || null;
+  const notes = (formData.get("notes") as string || "").trim() || null;
   if (!employeeId || !program) return { error: "Karyawan dan program wajib diisi." };
   if (amount <= 0) return { error: "Jumlah insentif harus lebih dari 0." };
   const { error } = await supabaseAdmin.from("incentive_payments").insert({
     id: "inc-" + crypto.randomUUID(), employee_id: employeeId,
-    program, amount, period: period || null, status: "Pending",
+    program, amount, period: period || null, notes, type: "incentive", status: "Pending",
     created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
+  if (MISSING_REWARDS_SCHEMA(error)) return { error: REWARDS_SCHEMA_ERROR };
   if (error) { console.error("[rewards] saveIncentivePayment error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  revalidatePath("/hrd/rewards/incentives");
+  return { success: true };
+}
+
+export async function updateIncentiveStatus(id: string, status: string) {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin.from("incentive_payments").update({ status }).eq("id", id).eq("type", "incentive");
+  if (error) { console.error("[rewards] updateIncentiveStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/rewards/incentives");
   return { success: true };
 }
@@ -98,7 +112,7 @@ export async function nominateAward(formData: FormData) {
 
 export async function getBonuses() {
   await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("incentive_payments").select("*, employees!employee_id(full_name, department, position)").order("created_at", { ascending: false }).limit(100);
+  const { data } = await supabaseAdmin.from("incentive_payments").select("*, employees!employee_id(full_name, department, position)").eq("type", "bonus").order("created_at", { ascending: false }).limit(100);
   return (data || []) as Array<Record<string, unknown>>;
 }
 
@@ -113,8 +127,9 @@ export async function addBonus(formData: FormData) {
   if (!employeeId || !program || amount <= 0) return { error: "Karyawan, program, dan jumlah wajib diisi." };
   const { error } = await supabaseAdmin.from("incentive_payments").insert({
     id: "inc-" + crypto.randomUUID(), employee_id: employeeId,
-    program, amount, period: period || null, status, created_at: new Date().toISOString(),
+    program, amount, period: period || null, status, type: "bonus", created_at: new Date().toISOString(),
   });
+  if (MISSING_REWARDS_SCHEMA(error)) return { error: REWARDS_SCHEMA_ERROR };
   if (error) { console.error("[rewards] addBonus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/rewards/bonuses");
   return { success: true };
@@ -122,7 +137,7 @@ export async function addBonus(formData: FormData) {
 
 export async function updateBonusStatus(id: string, status: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("incentive_payments").update({ status }).eq("id", id);
+  const { error } = await supabaseAdmin.from("incentive_payments").update({ status }).eq("id", id).eq("type", "bonus");
   if (error) { console.error("[rewards] updateBonusStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/rewards/bonuses");
   return { success: true };

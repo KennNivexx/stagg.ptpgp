@@ -29,6 +29,9 @@ export async function uploadWebsiteImage(
 
     if (error) {
       console.error("[upload] uploadWebsiteImage error:", error.message);
+      if (/bucket not found/i.test(error.message)) {
+        return { error: `Bucket penyimpanan "${BUCKET}" belum tersedia. Jalankan migrasi 20260704003_website_images_bucket.sql terlebih dahulu.` };
+      }
       return { error: "Gagal mengunggah gambar. Silakan coba lagi." };
     }
 

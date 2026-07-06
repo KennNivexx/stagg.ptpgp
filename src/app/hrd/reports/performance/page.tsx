@@ -1,6 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { TrendingUp, Users, Star, Award } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import ExportExcelButton from "@/components/ExportExcelButton";
+
+export const dynamic = "force-dynamic";
 
 function scoreColor(score: number) {
   if (score >= 80) return "bg-emerald-50 text-emerald-700";
@@ -41,11 +44,27 @@ export default async function PerformanceReportsPage() {
     .map(([dept, d]) => ({ dept, avg: d.total > 0 ? d.sum / d.total : 0, count: d.total }))
     .sort((a, b) => b.avg - a.avg);
 
+  const rows = evals.map((ev) => {
+    const emp = ev.employees as Record<string, string> | undefined;
+    const score = Number(ev.score) || 0;
+    return {
+      Karyawan: emp?.full_name || "Unknown",
+      Departemen: emp?.department || "-",
+      Jabatan: emp?.position || "-",
+      Periode: (ev.period as string) || "-",
+      Skor: score,
+      Grade: gradeLabel(score),
+    };
+  });
+
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Kinerja</h1>
-        <p className="text-sm text-gray-500">Ringkasan penilaian kinerja dan evaluasi KPI seluruh karyawan.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Kinerja</h1>
+          <p className="text-sm text-gray-500">Ringkasan penilaian kinerja dan evaluasi KPI seluruh karyawan.</p>
+        </div>
+        <ExportExcelButton filename="Laporan_Kinerja" sheetName="Kinerja" rows={rows} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

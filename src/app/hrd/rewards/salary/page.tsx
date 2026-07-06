@@ -11,20 +11,28 @@ export default async function SalaryPage() {
     .order("full_name")
     .limit(100);
 
+  // salary_structures.employee_id has no FK constraint registered in the
+  // schema cache, so PostgREST's `employees(...)` embed shorthand fails
+  // outright (PGRST200) — join manually in JS instead.
   let salaryRecords: Array<Record<string, unknown>> = [];
   const { data, error } = await supabaseAdmin
     .from("salary_structures")
-    .select("*, employees(full_name, department, position)")
+    .select("*")
     .order("created_at", { ascending: false });
   if (!error || (error as unknown as Record<string, unknown>)?.code !== "42P01") {
-    salaryRecords = data || [];
+    const rawRecords = data || [];
+    const employeeIds = rawRecords.map((r) => r.employee_id as string).filter(Boolean);
+    const { data: relatedEmployees } = employeeIds.length > 0
+      ? await supabaseAdmin.from("employees").select("id, full_name, department, position").in("id", employeeIds)
+      : { data: [] };
+    const employeeMap = new Map((relatedEmployees || []).map((e: Record<string, unknown>) => [e.id as string, e]));
+    salaryRecords = rawRecords.map((r) => ({ ...r, employees: employeeMap.get(r.employee_id as string) || null }));
   }
 
   const totalPayroll = salaryRecords.reduce((s, r) => {
-    const base = Number(r.base_salary) || 0;
-    const allow = (Number(r.position_allowance) || 0) + (Number(r.transport_allowance) || 0) + (Number(r.meal_allowance) || 0);
-    const ded = (Number(r.bpjs_tk_deduction) || 0) + (Number(r.bpjs_kes_deduction) || 0);
-    return s + base + allow - ded;
+    const base = Number(r.basic_salary) || 0;
+    const allow = (Number(r.position_allowance) || 0) + (Number(r.transport_allowance) || 0) + (Number(r.meal_allowance) || 0) + (Number(r.housing_allowance) || 0);
+    return s + base + allow;
   }, 0);
 
   function fmt(n: number) { return n.toLocaleString("id-ID"); }

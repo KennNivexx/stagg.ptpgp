@@ -1,18 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Bell, Briefcase, Calendar, FileText, UserPlus, AlertTriangle, Clock, Wallet, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-
-interface Notification {
-  id: string;
-  type: "applicant" | "leave" | "contract" | "payroll" | "new_employee" | "warning" | "training" | "resignation";
-  title: string;
-  message: string;
-  time: string;
-  link: string;
-  priority: "high" | "medium" | "low";
-}
+import { useNotifications } from "@/hooks/useNotifications";
 
 const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   applicant: <Briefcase size={14} className="text-blue-500" />,
@@ -23,31 +14,13 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   warning: <AlertTriangle size={14} className="text-red-500" />,
   training: <Clock size={14} className="text-blue-500" />,
   resignation: <FileText size={14} className="text-orange-500" />,
+  request: <Briefcase size={14} className="text-indigo-500" />,
 };
-
-const READ_KEY = (role: string) => `notif_read_${role}`;
-
-function getReadIds(role: string): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(READ_KEY(role)) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveReadIds(role: string, ids: string[]) {
-  try {
-    localStorage.setItem(READ_KEY(role), JSON.stringify(ids));
-  } catch {
-    // localStorage may be unavailable (private browsing, quota exceeded)
-  }
-}
 
 export default function NotificationBell({ role }: { role: "hrd" | "employee" }) {
   const [open, setOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unread, setUnread] = useState(0);
+  const { notifications, unreadCount, markAllRead } = useNotifications(role);
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -66,25 +39,6 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
     });
   };
 
-  const fetchNotifications = useCallback(() => {
-    fetch("/api/notifications?role=" + role)
-      .then((r) => r.json())
-      .then((data) => {
-        const fetched: Notification[] = data.notifications || [];
-        setNotifications(fetched);
-        const readIds = getReadIds(role);
-        const unreadCount = fetched.filter((n) => !readIds.includes(n.id)).length;
-        setUnread(unreadCount);
-      })
-      .catch((e) => console.error("[NotificationBell] Fetch failed:", e));
-  }, [role]);
-
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -93,10 +47,8 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const markAllRead = () => {
-    const allIds = notifications.map((n) => n.id);
-    saveReadIds(role, allIds);
-    setUnread(0);
+  const handleMarkAllRead = () => {
+    markAllRead();
     setOpen(false);
   };
 
@@ -107,14 +59,14 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
     <div ref={ref} className="relative">
       <button
         ref={buttonRef}
-        aria-label={`Notifikasi${unread > 0 ? ` (${unread} belum dibaca)` : ""}`}
+        aria-label={`Notifikasi${unreadCount > 0 ? ` (${unreadCount} belum dibaca)` : ""}`}
         onClick={toggleOpen}
         className="p-2 hover:bg-slate-100 rounded-xl relative transition-colors text-slate-500"
       >
         <Bell size={18} />
-        {unread > 0 && (
+        {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white animate-pulse">
-            {unread > 9 ? "9+" : unread}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
@@ -125,11 +77,11 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
             <div>
               <h3 className="font-extrabold text-slate-800 text-sm">Notifikasi</h3>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                {unread > 0 ? `${unread} pemberitahuan baru` : "Tidak ada notifikasi baru"}
+                {unreadCount > 0 ? `${unreadCount} pemberitahuan baru` : "Tidak ada notifikasi baru"}
               </p>
             </div>
-            {unread > 0 && (
-              <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-full">{unread} baru</span>
+            {unreadCount > 0 && (
+              <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-full">{unreadCount} baru</span>
             )}
           </div>
 
@@ -167,7 +119,7 @@ export default function NotificationBell({ role }: { role: "hrd" | "employee" })
 
           {notifications.length > 0 && (
             <div className="p-3 border-t border-slate-100 bg-slate-50/50 text-center">
-              <button onClick={markAllRead} className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors">
+              <button onClick={handleMarkAllRead} className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors">
                 Tandai semua sudah dibaca
               </button>
             </div>

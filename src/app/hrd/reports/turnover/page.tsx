@@ -1,6 +1,9 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { FileText, UserX, TrendingUp, AlertTriangle, Users } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import ExportExcelButton from "@/components/ExportExcelButton";
+
+export const dynamic = "force-dynamic";
 
 export default async function LaporanTurnover() {
   const { count: totalEmployees } = await supabaseAdmin
@@ -27,11 +30,22 @@ export default async function LaporanTurnover() {
     ? ((resignedCount || 0) / totalEmployees * 100).toFixed(1)
     : "0.0";
 
+  const rows = (resignedEmployees || []).map((emp: Record<string, unknown>) => ({
+    Nama: emp.full_name as string,
+    Jabatan: (emp.position as string) || "-",
+    Departemen: (emp.department as string) || "-",
+    "Tgl Bergabung": emp.join_date ? new Date(emp.join_date as string).toLocaleDateString("id-ID") : "-",
+    Status: "Resign",
+  }));
+
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Turnover</h1>
-        <p className="text-sm text-gray-500">Analisis tingkat turnover karyawan, alasan resign, dan tren retensi.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Turnover</h1>
+          <p className="text-sm text-gray-500">Analisis tingkat turnover karyawan, alasan resign, dan tren retensi.</p>
+        </div>
+        <ExportExcelButton filename="Laporan_Turnover" sheetName="Turnover" rows={rows} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

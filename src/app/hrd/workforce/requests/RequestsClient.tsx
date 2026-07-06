@@ -317,12 +317,18 @@ export default function RequestsClient({ departments, positions, userRole, userN
                     </div>
                   )}
                   {detail.status === "Disetujui" && (
-                    <Link
-                      href={`/hrd/recruitment/new?dept=${encodeURIComponent(detail.department)}&pos=${encodeURIComponent(detail.position)}&qty=${detail.quantity}&req=${detail.id}`}
-                      className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-colors"
-                    >
-                      <Plus size={13} /> Buat Lowongan Rekrutmen
-                    </Link>
+                    isHRD ? (
+                      <Link
+                        href={`/hrd/recruitment/new?dept=${encodeURIComponent(detail.department)}&pos=${encodeURIComponent(detail.position)}&qty=${detail.quantity}&req=${detail.id}`}
+                        className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-colors"
+                      >
+                        <Plus size={13} /> Buat Lowongan Rekrutmen
+                      </Link>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2 w-full py-2 bg-slate-50 text-slate-500 rounded-xl text-xs font-semibold">
+                        Menunggu HRD membuat lowongan rekrutmen
+                      </div>
+                    )
                   )}
                   {(isHRD || isDirector) && (
                     <button

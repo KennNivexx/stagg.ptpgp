@@ -37,7 +37,7 @@ export default async function HRDDashboardKPI() {
        evaluations.filter((e: Record<string, unknown>) => e.score != null).length)
     : 0;
 
-  const presentCount = (attendance || []).filter((a: Record<string, unknown>) => a.status === "Present").length;
+  const presentCount = (attendance || []).filter((a: Record<string, unknown>) => a.status === "Hadir").length;
   const paidPayroll = (payrolls || []).filter((p: Record<string, unknown>) => p.status === "Paid").length;
   const totalNetSalary = (payrolls || []).reduce((sum: number, p: Record<string, unknown>) => sum + (Number(p.net_salary) || 0), 0);
 

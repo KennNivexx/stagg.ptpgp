@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { Quote } from "lucide-react";
 
 interface TestimonialItem {
@@ -9,7 +10,7 @@ interface TestimonialItem {
   company?: string;
   quote?: string;
   text?: string;
-  avatar?: string;
+  avatar_url?: string;
 }
 
 interface TestimonialProps {
@@ -67,13 +68,24 @@ export default function TestimonialSection({
                 <p className="text-lg md:text-xl text-zinc-600 font-light leading-relaxed mb-8 italic relative z-10">
                   &ldquo;{content}&rdquo;
                 </p>
-                <div>
-                  <div className="font-bold text-pgp-navy">{t.name}</div>
-                  {(t.company || t.role) && (
-                    <div className="text-xs text-zinc-400 font-semibold uppercase tracking-widest mt-1">
-                      {[t.role, t.company].filter(Boolean).join(" — ")}
-                    </div>
+                <div className="flex items-center gap-3">
+                  {t.avatar_url && (
+                    <Image
+                      src={t.avatar_url}
+                      alt={t.name}
+                      width={40}
+                      height={40}
+                      className="h-10 w-10 rounded-full object-cover shrink-0"
+                    />
                   )}
+                  <div>
+                    <div className="font-bold text-pgp-navy">{t.name}</div>
+                    {(t.company || t.role) && (
+                      <div className="text-xs text-zinc-400 font-semibold uppercase tracking-widest mt-1">
+                        {[t.role, t.company].filter(Boolean).join(" — ")}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );

@@ -40,16 +40,16 @@ export default async function EmployeeLeaves() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Approved": return "bg-emerald-50 text-emerald-700";
-      case "Rejected": return "bg-red-50 text-red-700";
+      case "Disetujui": return "bg-emerald-50 text-emerald-700";
+      case "Ditolak": return "bg-red-50 text-red-700";
       default: return "bg-amber-50 text-amber-700";
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "Approved": return "Disetujui";
-      case "Rejected": return "Ditolak";
+      case "Disetujui": return "Disetujui";
+      case "Ditolak": return "Ditolak";
       default: return "Pending";
     }
   };
@@ -75,18 +75,18 @@ export default async function EmployeeLeaves() {
               <div className="mt-1">
                 <p className="text-2xl font-extrabold text-slate-800">12 Hari</p>
                 <p className="text-[9px] text-slate-400 mt-0.5">
-                  Terpakai: <span className="font-semibold text-slate-600">{annualLeaves.filter((l: Record<string, unknown>) => l.status === "Approved").length} hari</span>
+                  Terpakai: <span className="font-semibold text-slate-600">{annualLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui").length} hari</span>
                 </p>
               </div>
             </div>
             <div className="w-14 h-14 rounded-full border-4 border-blue-100 flex items-center justify-center">
-              <span className="text-xs font-extrabold text-blue-600">{12 - annualLeaves.filter((l: Record<string, unknown>) => l.status === "Approved").length}</span>
+              <span className="text-xs font-extrabold text-blue-600">{12 - annualLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui").length}</span>
             </div>
           </div>
           <div className="mt-4 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-            <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min(((annualLeaves.filter((l: Record<string, unknown>) => l.status === "Approved").length) / 12) * 100, 100)}%` }}></div>
+            <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min(((annualLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui").length) / 12) * 100, 100)}%` }}></div>
           </div>
-          <p className="text-[9px] text-slate-400 mt-2">Sisa: {12 - annualLeaves.filter((l: Record<string, unknown>) => l.status === "Approved").length} hari</p>
+          <p className="text-[9px] text-slate-400 mt-2">Sisa: {12 - annualLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui").length} hari</p>
         </div>
 
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -99,7 +99,7 @@ export default async function EmployeeLeaves() {
               <div className="mt-1">
                 <p className="text-2xl font-extrabold text-slate-800">Tidak Terbatas</p>
                 <p className="text-[9px] text-slate-400 mt-0.5">
-                  Digunakan: <span className="font-semibold text-slate-600">{sickLeaves.filter((l: Record<string, unknown>) => l.status === "Approved").length} kali</span>
+                  Digunakan: <span className="font-semibold text-slate-600">{sickLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui").length} kali</span>
                 </p>
               </div>
             </div>
@@ -120,24 +120,24 @@ export default async function EmployeeLeaves() {
               <div className="mt-1">
                 <p className="text-2xl font-extrabold text-slate-800">3 Hari</p>
                 <p className="text-[9px] text-slate-400 mt-0.5">
-                  Terpakai: <span className="font-semibold text-slate-600">{specialLeaves.filter((l: Record<string, unknown>) => l.status === "Approved").length} hari</span>
+                  Terpakai: <span className="font-semibold text-slate-600">{specialLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui").length} hari</span>
                 </p>
               </div>
             </div>
             <div className="w-14 h-14 rounded-full border-4 border-amber-100 flex items-center justify-center">
-              <span className="text-xs font-extrabold text-amber-600">{3 - specialLeaves.filter((l: Record<string, unknown>) => l.status === "Approved").length}</span>
+              <span className="text-xs font-extrabold text-amber-600">{3 - specialLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui").length}</span>
             </div>
           </div>
           <div className="mt-4 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-            <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${Math.min(((specialLeaves.filter((l: Record<string, unknown>) => l.status === "Approved").length) / 3) * 100, 100)}%` }}></div>
+            <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${Math.min(((specialLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui").length) / 3) * 100, 100)}%` }}></div>
           </div>
-          <p className="text-[9px] text-slate-400 mt-2">Sisa: {3 - specialLeaves.filter((l: Record<string, unknown>) => l.status === "Approved").length} hari</p>
+          <p className="text-[9px] text-slate-400 mt-2">Sisa: {3 - specialLeaves.filter((l: Record<string, unknown>) => l.status === "Disetujui").length} hari</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Total Pengajuan" value={leaves?.length || 0} icon={FileText} color="bg-blue-50 text-blue-600" />
-        <StatCard label="Disetujui" value={leaves?.filter((l: Record<string, unknown>) => l.status === "Approved").length || 0} icon={Calendar} color="bg-emerald-50 text-emerald-600" />
+        <StatCard label="Disetujui" value={leaves?.filter((l: Record<string, unknown>) => l.status === "Disetujui").length || 0} icon={Calendar} color="bg-emerald-50 text-emerald-600" />
         <StatCard label="Pending" value={leaves?.filter((l: Record<string, unknown>) => l.status === "Pending").length || 0} icon={FileText} color="bg-amber-50 text-amber-600" />
       </div>
 

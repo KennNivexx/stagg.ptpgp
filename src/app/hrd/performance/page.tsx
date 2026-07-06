@@ -87,7 +87,7 @@ export default async function HRDPerformance() {
         </div>
 
         {error ? (
-          <div className="p-12 text-center text-red-600 text-sm">{error.message}</div>
+          <EmptyState icon={Star} title="Data evaluasi kinerja belum tersedia." description="Terjadi kendala saat memuat data. Silakan coba lagi nanti." />
         ) : !evaluations || evaluations.length === 0 ? (
           <EmptyState icon={Star} title="Belum ada data evaluasi kinerja." description="Buat evaluasi baru untuk memulai penilaian kinerja karyawan." />
         ) : (

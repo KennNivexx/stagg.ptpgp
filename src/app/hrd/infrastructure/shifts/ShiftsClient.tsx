@@ -50,7 +50,7 @@ export default function ShiftsClient({ initialShifts, employees }: { initialShif
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const [shiftForm, setShiftForm] = useState({ name: "", start_time: "08:00", end_time: "16:00", has_bonus: false, bonus_amount: "0", color: "amber" });
+  const [shiftForm, setShiftForm] = useState({ name: "", start_time: "08:00", end_time: "16:00", color: "amber" });
   const [assignForm, setAssignForm] = useState({ employee_id: "", shift_id: shifts[0]?.id || "", shift_date: fmtDate(new Date()), has_bonus: false, bonus_amount: "0", notes: "" });
 
   const monthStart = fmtDate(new Date(cursor.getFullYear(), cursor.getMonth(), 1));
@@ -98,14 +98,12 @@ export default function ShiftsClient({ initialShifts, employees }: { initialShif
     fd.append("name", shiftForm.name);
     fd.append("start_time", shiftForm.start_time);
     fd.append("end_time", shiftForm.end_time);
-    fd.append("has_bonus", shiftForm.has_bonus ? "on" : "");
-    fd.append("bonus_amount", shiftForm.bonus_amount);
     fd.append("color", shiftForm.color);
     const result = await saveShift(fd);
     if (result?.error) { setSaveMsg({ type: "error", text: result.error }); return; }
     setSaveMsg({ type: "success", text: "Jenis shift berhasil ditambahkan." });
     setShowShiftForm(false);
-    setShiftForm({ name: "", start_time: "08:00", end_time: "16:00", has_bonus: false, bonus_amount: "0", color: "amber" });
+    setShiftForm({ name: "", start_time: "08:00", end_time: "16:00", color: "amber" });
     setTimeout(() => setSaveMsg(null), 3000);
     router.refresh();
   };
@@ -178,11 +176,6 @@ export default function ShiftsClient({ initialShifts, employees }: { initialShif
                   <p className="text-[10px] text-slate-500 font-mono">{shift.start_time} - {shift.end_time}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <p className="text-lg font-extrabold text-slate-800">{countThisMonth}<span className="text-xs font-normal text-slate-500"> tugas/bln</span></p>
-                    {shift.has_bonus && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[9px] font-bold">
-                        <Gift size={9} /> Bonus
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
@@ -402,17 +395,6 @@ export default function ShiftsClient({ initialShifts, employees }: { initialShif
                   ))}
                 </div>
               </div>
-              <label className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 cursor-pointer">
-                <input type="checkbox" checked={shiftForm.has_bonus} onChange={(e) => setShiftForm({ ...shiftForm, has_bonus: e.target.checked })} className="h-4 w-4" />
-                <span className="text-xs font-bold text-slate-700">Shift ini mendapat bonus</span>
-              </label>
-              {shiftForm.has_bonus && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Nominal Bonus Default (Rp)</label>
-                  <input type="number" min="0" value={shiftForm.bonus_amount} onChange={(e) => setShiftForm({ ...shiftForm, bonus_amount: e.target.value })}
-                    className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" />
-                </div>
-              )}
               <button type="submit" className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2">
                 <Save size={14} /> Simpan Jenis Shift
               </button>
@@ -457,7 +439,7 @@ export default function ShiftsClient({ initialShifts, employees }: { initialShif
                           assignForm.shift_id === s.id ? `${style.badge} border-current` : "border-slate-200 bg-white hover:border-slate-300"
                         }`}>
                         <input type="radio" name="shift_id" value={s.id} checked={assignForm.shift_id === s.id}
-                          onChange={(e) => setAssignForm({ ...assignForm, shift_id: e.target.value, has_bonus: s.has_bonus, bonus_amount: String(s.bonus_amount || 0) })}
+                          onChange={(e) => setAssignForm({ ...assignForm, shift_id: e.target.value })}
                           className="sr-only" />
                         <Icon size={14} className="mx-auto mb-1" />
                         <p className="text-[10px] font-bold">{s.name}</p>

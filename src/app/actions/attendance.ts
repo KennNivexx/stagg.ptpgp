@@ -3,195 +3,45 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
-import { euclideanDistance, averageDescriptors } from "@/lib/face-recognition";
+import { averageDescriptors } from "@/lib/face-recognition";
 import { encryptDescriptor, decryptDescriptor } from "@/lib/face-encryption";
 import { auditLog } from "@/lib/audit";
-
-const uid = () => crypto.randomUUID();
-
-const FACE_MATCH_THRESHOLD = 0.65;
-
-async function uploadPhoto(base64: string, employeeId: string): Promise<{ url: string } | { error: string }> {
-  try {
-    const buffer = Buffer.from(base64.split(",")[1], "base64");
-    const filename = `attendance/${employeeId}/${crypto.randomUUID()}.jpg`;
-    const { error } = await supabaseAdmin.storage
-      .from("attendance-photos")
-      .upload(filename, buffer, { contentType: "image/jpeg", upsert: true });
-    if (error) { console.error("[attendance] uploadPhoto error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
-    const { data: signedData } = await supabaseAdmin.storage
-      .from("attendance-photos")
-      .createSignedUrl(filename, 7200);
-    return { url: signedData?.signedUrl || "" };
-  } catch (e) {
-    return { error: `Gagal upload foto: ${(e as Error).message}` };
-  }
-}
+import { clockInForEmployee, clockOutForEmployee } from "@/lib/attendance-core";
 
 export async function clockIn(formData: FormData) {
   const user = await requireRole("hrd", "superadmin", "employee");
-  const employeeId = user.id;
-  const notes = (formData.get("notes") as string || "").trim();
-  const photoBase64 = (formData.get("photo_url") as string || "").trim();
-  const latitude = (formData.get("latitude") as string || "").trim();
-  const longitude = (formData.get("longitude") as string || "").trim();
-  const locationName = (formData.get("location_name") as string || "").trim();
-
-  // Validate photo: must be a valid JPEG/PNG base64
-  if (!photoBase64 || !photoBase64.startsWith("data:image/")) {
-    return { error: "Foto selfie wajib diunggah untuk clock-in." };
+  const result = await clockInForEmployee({
+    employeeId: user.id,
+    employeeEmail: user.email,
+    employeeName: user.name,
+    notes: (formData.get("notes") as string || "").trim(),
+    photoBase64: (formData.get("photo_url") as string || "").trim(),
+    latitude: (formData.get("latitude") as string || "").trim(),
+    longitude: (formData.get("longitude") as string || "").trim(),
+    locationName: (formData.get("location_name") as string || "").trim(),
+    faceDescriptorJson: (formData.get("face_descriptor") as string || "").trim(),
+  });
+  if ("success" in result) {
+    revalidatePath("/hrd/attendance");
+    revalidatePath("/employee");
   }
-
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
-  const { data: existing } = await supabaseAdmin.from("attendance").select("id").eq("employee_id", employeeId).eq("date", today).maybeSingle();
-  if (existing) return { error: "Sudah clock-in hari ini." };
-
-  // Face recognition verification
-  let faceVerified = false;
-  const faceDescriptorJson = (formData.get("face_descriptor") as string || "").trim();
-  if (faceDescriptorJson) {
-    try {
-      const capturedDescriptor = JSON.parse(faceDescriptorJson) as number[];
-      const verifyCols: string = process.env.FACE_ENCRYPTION_KEY
-        ? "encrypted_descriptor, encrypted_descriptors"
-        : "descriptor, descriptors";
-      const { data: faceData } = await supabaseAdmin
-        .from("employee_faces")
-        .select(verifyCols)
-        .eq("employee_id", employeeId)
-        .maybeSingle() as { data: Record<string, unknown> | null };
-      if (faceData) {
-        // Collect all stored descriptors (averaged + individual) for best-match comparison
-        const allDescriptors: number[][] = [];
-        if (process.env.FACE_ENCRYPTION_KEY) {
-          if (faceData.encrypted_descriptor) {
-            const d = decryptDescriptor(faceData.encrypted_descriptor as string);
-            if (d?.length) allDescriptors.push(d);
-          }
-          if (Array.isArray(faceData.encrypted_descriptors)) {
-            for (const enc of faceData.encrypted_descriptors as string[]) {
-              const d = decryptDescriptor(enc);
-              if (d?.length) allDescriptors.push(d);
-            }
-          }
-        } else {
-          if (Array.isArray(faceData.descriptor) && (faceData.descriptor as number[]).length > 0) {
-            allDescriptors.push(faceData.descriptor as number[]);
-          }
-          if (Array.isArray(faceData.descriptors)) {
-            for (const d of faceData.descriptors as number[][]) {
-              if (d?.length) allDescriptors.push(d);
-            }
-          }
-        }
-
-        if (allDescriptors.length > 0) {
-          // Take the best (minimum) distance across all stored descriptors
-          const distances = allDescriptors.map(d => euclideanDistance(capturedDescriptor, d));
-          const bestDistance = Math.min(...distances);
-          console.log("[clockIn] Face match — descriptors:", allDescriptors.length, "distances:", distances.map(d => d.toFixed(3)).join(", "), "best:", bestDistance.toFixed(4));
-          faceVerified = bestDistance <= FACE_MATCH_THRESHOLD;
-          if (!faceVerified) {
-            return { error: `Wajah tidak dikenali (jarak: ${bestDistance.toFixed(3)}, threshold: ${FACE_MATCH_THRESHOLD}). Coba dengan pencahayaan lebih baik atau posisi wajah lebih tegak.` };
-          }
-        } else {
-          console.error("[clockIn] No valid descriptors found for employee:", employeeId);
-          return { error: "Data wajah tidak ditemukan. Silakan daftarkan ulang wajah Anda." };
-        }
-      }
-    } catch (e) {
-      console.error("[clockIn] Face verification error:", e);
-      return { error: "Gagal memproses data wajah. Silakan coba lagi." };
-    }
-  }
-
-  let storedPhotoUrl: string | null = null;
-  if (photoBase64) {
-    const result = await uploadPhoto(photoBase64, employeeId);
-    if ("url" in result) {
-      storedPhotoUrl = result.url;
-    }
-  }
-
-  const { data: emp } = await supabaseAdmin.from("employees").select("full_name, department").eq("email", user.email).maybeSingle();
-  const now = new Date().toISOString();
-  const attendanceId = uid();
-
-  const { error } = await supabaseAdmin.from("attendance").upsert({
-    id: attendanceId,
-    employee_id: employeeId,
-    employee_name: emp?.full_name || user.name,
-    department: emp?.department || "",
-    date: today,
-    check_in: now,
-    status: "Hadir",
-    notes,
-    photo_url: storedPhotoUrl,
-    latitude: latitude ? parseFloat(latitude) : null,
-    longitude: longitude ? parseFloat(longitude) : null,
-    location_name: locationName || null,
-  }, { onConflict: "employee_id,date" });
-  if (error) {
-    console.error("[clockIn] Insert failed:", error.message);
-    return { error: "Gagal mencatat clock-in. Silakan coba lagi." };
-  }
-
-  // Send face photo report to HRD for attendance verification
-  if (storedPhotoUrl) {
-    const empName = emp?.full_name || user.name;
-    await supabaseAdmin.from("notifications").insert({
-      id: uid(),
-      user_email: "hrd@ptpgp.co.id",
-      type: "attendance_photo",
-      title: `Verifikasi Absensi — ${empName}`,
-      message: `${empName} telah clock-in pada ${new Date().toLocaleTimeString("id-ID")}.${faceVerified ? " [Wajah Terverifikasi]" : ""} Foto terlampir untuk verifikasi manual.`,
-      link: `/hrd/attendance?date=${today}`,
-      data: JSON.stringify({ photo_url: storedPhotoUrl, employee_id: employeeId, employee_name: empName, face_verified: faceVerified }),
-    });
-  }
-
-  revalidatePath("/hrd/attendance");
-  revalidatePath("/employee");
-  return { success: true, time: now };
+  return result;
 }
 
 export async function clockOut(formData?: FormData) {
   const user = await requireRole("hrd", "superadmin", "employee");
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
-  const now = new Date().toISOString();
-
-  const { data: existing } = await supabaseAdmin.from("attendance").select("id").eq("employee_id", user.id).eq("date", today).maybeSingle();
-  if (!existing) return { error: "Belum clock-in hari ini." };
-
-  let checkoutPhotoUrl: string | null = null;
-  let latitude: string | null = null;
-  let longitude: string | null = null;
-  let locationName: string | null = null;
-
-  if (formData) {
-    const photo = (formData.get("photo_url") as string || "").trim();
-    if (photo) {
-      const result = await uploadPhoto(photo, user.id);
-      if ("url" in result) checkoutPhotoUrl = result.url;
-    }
-    latitude = (formData.get("latitude") as string || "").trim() || null;
-    longitude = (formData.get("longitude") as string || "").trim() || null;
-    locationName = (formData.get("location_name") as string || "").trim() || null;
+  const result = await clockOutForEmployee({
+    employeeId: user.id,
+    photoBase64: (formData?.get("photo_url") as string || "").trim() || undefined,
+    latitude: (formData?.get("latitude") as string || "").trim() || undefined,
+    longitude: (formData?.get("longitude") as string || "").trim() || undefined,
+    locationName: (formData?.get("location_name") as string || "").trim() || undefined,
+  });
+  if ("success" in result) {
+    revalidatePath("/hrd/attendance");
+    revalidatePath("/employee");
   }
-
-  const updateData: Record<string, unknown> = { check_out: now };
-  if (checkoutPhotoUrl) Object.assign(updateData, { checkout_photo_url: checkoutPhotoUrl, checkout_latitude: latitude, checkout_longitude: longitude, checkout_location_name: locationName });
-  else if (latitude) Object.assign(updateData, { checkout_latitude: latitude, checkout_longitude: longitude, checkout_location_name: locationName });
-
-  const { error } = await supabaseAdmin.from("attendance").update(updateData).eq("id", (existing as Record<string, unknown>).id as string);
-  if (error) {
-    console.error("[attendance] clockOut error:", error.message);
-    return { error: "Gagal memproses. Silakan coba lagi." };
-  }
-
-  revalidatePath("/hrd/attendance");
-  revalidatePath("/employee");
-  return { success: true, time: now };
+  return result;
 }
 
 export async function getTodayAttendance() {
@@ -278,6 +128,9 @@ export async function registerFace(formData: FormData) {
     .maybeSingle();
 
   const averaged = averageDescriptors(descriptors);
+  if (averaged.length === 0) {
+    return { error: "Data wajah tidak valid (deskriptor rusak). Silakan ambil ulang foto wajah." };
+  }
 
   const upsertData: Record<string, unknown> = {
     employee_id: employeeId,
@@ -367,7 +220,11 @@ export async function getAllFaceDescriptors() {
       const allDescs = f.encrypted_descriptors as string[] | null;
       if (Array.isArray(allDescs) && allDescs.length > 0) {
         for (const desc of allDescs) {
-          result.push({ employeeId: empId, employeeName: empName, descriptor: decryptDescriptor(desc) });
+          try {
+            result.push({ employeeId: empId, employeeName: empName, descriptor: decryptDescriptor(desc) });
+          } catch (e) {
+            console.error(`[getAllFaceDescriptors] Failed to decrypt descriptor for ${empId}:`, e);
+          }
         }
       }
     } else {
@@ -427,15 +284,19 @@ export async function getMyFaceDescriptors(): Promise<{ employeeId: string; empl
   const name = user.name || user.email;
 
   if (hasEncryption) {
-    if (data.encrypted_descriptor) {
-      const d = decryptDescriptor(data.encrypted_descriptor as string);
-      if (d?.length) refs.push({ employeeId: user.id, employeeName: name, descriptor: d });
-    }
-    if (Array.isArray(data.encrypted_descriptors)) {
-      for (const enc of data.encrypted_descriptors as string[]) {
-        const d = decryptDescriptor(enc);
+    try {
+      if (data.encrypted_descriptor) {
+        const d = decryptDescriptor(data.encrypted_descriptor as string);
         if (d?.length) refs.push({ employeeId: user.id, employeeName: name, descriptor: d });
       }
+      if (Array.isArray(data.encrypted_descriptors)) {
+        for (const enc of data.encrypted_descriptors as string[]) {
+          const d = decryptDescriptor(enc);
+          if (d?.length) refs.push({ employeeId: user.id, employeeName: name, descriptor: d });
+        }
+      }
+    } catch (e) {
+      console.error(`[getMyFaceDescriptors] Failed to decrypt descriptor for ${user.id}:`, e);
     }
   } else {
     if (Array.isArray(data.descriptor) && (data.descriptor as number[]).length > 0) {
@@ -503,6 +364,9 @@ export async function submitFaceChangeRequest(formData: FormData) {
     .from("employees").select("full_name").eq("id", user.id).maybeSingle();
 
   const averaged = averageDescriptors(descriptors);
+  if (averaged.length === 0) {
+    return { error: "Data wajah tidak valid (deskriptor rusak). Silakan ambil ulang foto wajah." };
+  }
 
   const { error } = await supabaseAdmin.from("face_change_requests").insert({
     employee_id: user.id,

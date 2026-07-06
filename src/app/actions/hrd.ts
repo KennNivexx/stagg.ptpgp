@@ -418,6 +418,21 @@ export async function updateEmployeeStatus(employeeId: string, status: string) {
           .eq("email", emp.email as string);
       }
     }
+  } else if (await usersTableExists()) {
+    // Reactivation (e.g. status set back to active) — clear any pending
+    // expiry from a previous suspension so the account doesn't still
+    // expire on the old schedule.
+    const { data: emp } = await supabaseAdmin
+      .from("employees")
+      .select("email")
+      .eq("id", employeeId)
+      .single();
+    if (emp) {
+      await supabaseAdmin
+        .from("users")
+        .update({ expires_at: null })
+        .eq("email", emp.email as string);
+    }
   }
 
   revalidatePath("/hrd/employees");

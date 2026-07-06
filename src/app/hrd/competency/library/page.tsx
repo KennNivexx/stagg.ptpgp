@@ -16,7 +16,6 @@ type Position = {
 };
 
 type PositionSkill = {
-  id: string;
   position_code: string;
   skill_id: string;
   required_level: number;
@@ -25,7 +24,7 @@ type PositionSkill = {
 export default async function LibraryPage() {
   const [skillRes, posSkillRes, posRes] = await Promise.all([
     supabaseAdmin.from("skills").select("id, name, category, department").order("category").order("name"),
-    supabaseAdmin.from("position_skills").select("id, position_code, skill_id, required_level"),
+    supabaseAdmin.from("position_skills").select("position_code, skill_id, required_level"),
     supabaseAdmin.from("positions").select("id, name, department, level").order("name"),
   ]);
 

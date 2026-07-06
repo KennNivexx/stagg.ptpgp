@@ -6,25 +6,14 @@ import EmptyState from "@/components/EmptyState";
 
 export default async function EmployeeComplaints() {
   const user = await requireAuth();
-  const userEmail = user.email;
 
-  const { data: employee } = await supabaseAdmin
-    .from("employees")
-    .select("id, department")
-    .eq("email", userEmail)
-    .limit(1)
-    .single();
-
-  let complaints: Record<string, unknown>[] = [];
-  if (employee?.id) {
-    const { data } = await supabaseAdmin
-      .from("complaints")
-      .select("*")
-      .eq("employee_id", employee.id)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    complaints = data || [];
-  }
+  const { data } = await supabaseAdmin
+    .from("complaints")
+    .select("*")
+    .eq("employee_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  const complaints: Record<string, unknown>[] = data || [];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -87,6 +76,12 @@ export default async function EmployeeComplaints() {
                             {c.created_at ? new Date(c.created_at as string).toLocaleDateString("id-ID") : "-"}
                           </span>
                         </div>
+                        {(c.notes as string) && (
+                          <div className="mt-3 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Balasan HRD{(c.resolved_by as string) ? ` — ${c.resolved_by as string}` : ""}</p>
+                            <p className="text-xs text-slate-600">{c.notes as string}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

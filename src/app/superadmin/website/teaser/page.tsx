@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { getWebsiteSettings, saveWebsiteSettings } from "@/app/actions/settings";
+import { ImageUploadField } from "../_lib/ImageUploadField";
 
 export default function TeaserCMS() {
   const [loading, setLoading] = useState(true);
@@ -138,16 +139,12 @@ export default function TeaserCMS() {
                 className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
                 placeholder="/career" />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-2">URL Gambar</label>
-              <input type="text" name="career_image_url" value={form.career_image_url} onChange={handleChange}
-                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
-                placeholder="https://..." />
-              {form.career_image_url && (
-                <img src={form.career_image_url} alt="Preview" className="mt-3 rounded-xl max-h-40 object-cover border w-full"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-              )}
-            </div>
+            <ImageUploadField
+              label="Gambar"
+              value={form.career_image_url}
+              onChange={(url) => setForm({ ...form, career_image_url: url })}
+              folder="teaser"
+            />
           </div>
         </div>
 
@@ -187,16 +184,12 @@ export default function TeaserCMS() {
                 className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
                 placeholder="/e-procurement" />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-2">URL Gambar</label>
-              <input type="text" name="epro_image_url" value={form.epro_image_url} onChange={handleChange}
-                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
-                placeholder="https://..." />
-              {form.epro_image_url && (
-                <img src={form.epro_image_url} alt="Preview" className="mt-3 rounded-xl max-h-40 object-cover border w-full"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-              )}
-            </div>
+            <ImageUploadField
+              label="Gambar"
+              value={form.epro_image_url}
+              onChange={(url) => setForm({ ...form, epro_image_url: url })}
+              folder="teaser"
+            />
           </div>
         </div>
 

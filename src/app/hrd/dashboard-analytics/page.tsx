@@ -42,8 +42,8 @@ export default async function DashboardAnalytics() {
 
   const today = new Date().toISOString().split("T")[0];
   const todayAttendance = (attendance || []).filter((a: Record<string, unknown>) => a.date === today);
-  const presentToday = todayAttendance.filter((a: Record<string, unknown>) => a.status === "Present").length;
-  const absentToday = todayAttendance.filter((a: Record<string, unknown>) => a.status !== "Present").length;
+  const presentToday = todayAttendance.filter((a: Record<string, unknown>) => a.status === "Hadir").length;
+  const absentToday = todayAttendance.filter((a: Record<string, unknown>) => a.status !== "Hadir").length;
 
   const attendanceRate = activeEmployees && activeEmployees > 0 && todayAttendance.length > 0
     ? Math.round((presentToday / activeEmployees) * 100) : 0;

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Building, Briefcase, Calendar, ShieldCheck, Save, MapPin, IdCard, Heart, Droplet, Users2, GraduationCap, Siren } from "lucide-react";
+import { User, Mail, Phone, Building, Briefcase, Calendar, ShieldCheck, Save, MapPin, IdCard, Heart, Droplet, Users2, GraduationCap, Siren, MessageCircle, Link2Off } from "lucide-react";
 import { getCurrentEmployee } from "@/app/actions/employee";
 import { saveEmployeeProfile, saveContactProfile, saveBasicProfile } from "@/app/actions/profile";
+import { connectWhatsApp, disconnectWhatsApp, getContactBotUrl } from "@/app/actions/whatsapp";
 
 interface Employee {
   id: string; full_name: string; email: string; phone: string; address: string;
@@ -13,6 +14,7 @@ interface Employee {
   children_count: number | null; ktp_address: string; last_education: string;
   emergency_name: string; emergency_phone: string;
   photo_url?: string;
+  wa_number?: string | null; wa_connected_at?: string | null;
 }
 
 export default function EmployeeProfile() {
@@ -21,12 +23,16 @@ export default function EmployeeProfile() {
   const [tab, setTab] = useState<"profil" | "pribadi">("profil");
   const [toast, setToast] = useState("");
   const [saving, setSaving] = useState(false);
+  const [waNumberInput, setWaNumberInput] = useState("");
+  const [waSaving, setWaSaving] = useState(false);
+  const [waContactUrl, setWaContactUrl] = useState<string | null>(null);
 
   useEffect(() => {
     getCurrentEmployee().then((emp) => {
       setProfile(emp as Employee);
       setLoading(false);
     });
+    getContactBotUrl().then(setWaContactUrl);
   }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
@@ -52,6 +58,31 @@ export default function EmployeeProfile() {
     setSaving(false);
     if (r.error) { showToast(r.error); return; }
     showToast("Profil berhasil disimpan!");
+    getCurrentEmployee().then((emp) => setProfile(emp as Employee));
+  };
+
+  const handleConnectWa = async () => {
+    if (!waNumberInput.trim()) { showToast("Nomor WhatsApp wajib diisi."); return; }
+    setWaSaving(true);
+    const fd = new FormData();
+    fd.set("employeeId", profile?.id || "");
+    fd.set("wa_number", waNumberInput);
+    const r = await connectWhatsApp(fd);
+    setWaSaving(false);
+    if ("error" in r) { showToast(r.error); return; }
+    showToast("Nomor tersimpan! Klik tombol di bawah untuk mulai chat dengan Bot.");
+    setWaNumberInput("");
+    getCurrentEmployee().then((emp) => setProfile(emp as Employee));
+  };
+
+  const handleDisconnectWa = async () => {
+    if (!profile?.id) return;
+    if (!confirm("Putuskan koneksi Bot WA? Anda perlu mendaftarkan ulang nomor untuk menggunakannya lagi.")) return;
+    setWaSaving(true);
+    const r = await disconnectWhatsApp(profile.id);
+    setWaSaving(false);
+    if ("error" in r) { showToast(r.error); return; }
+    showToast("Koneksi Bot WA diputus.");
     getCurrentEmployee().then((emp) => setProfile(emp as Employee));
   };
 
@@ -238,6 +269,70 @@ export default function EmployeeProfile() {
                   </button>
                 </div>
               </form>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+              <div className="p-6 border-b border-slate-100">
+                <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                  <MessageCircle size={16} className="text-emerald-600" />
+                  Bot WhatsApp
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Akses profil, absen, cuti, gaji, pelatihan, KPI, deskripsi kerja, dan SP lewat WhatsApp.</p>
+              </div>
+              <div className="p-6">
+                {profile?.wa_number ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${profile.wa_connected_at ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                            {profile.wa_connected_at ? "Terhubung" : "Menunggu Anda Memulai Chat"}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-700">+{profile.wa_number}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {profile.wa_connected_at
+                            ? `Sejak ${new Date(profile.wa_connected_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`
+                            : "Nomor tersimpan. Klik tombol di bawah untuk mulai chat — bot akan balas otomatis."}
+                        </p>
+                      </div>
+                      <button type="button" onClick={handleDisconnectWa} disabled={waSaving}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5">
+                        <Link2Off size={12} /> Putuskan
+                      </button>
+                    </div>
+                    {!profile.wa_connected_at && (
+                      waContactUrl ? (
+                        <a href={waContactUrl} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors">
+                          <MessageCircle size={14} /> Chat Bot Sekarang untuk Aktivasi
+                        </a>
+                      ) : (
+                        <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                          Nomor Bot WA belum dikonfigurasi oleh admin. Hubungi HRD.
+                        </p>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-end gap-3 flex-wrap">
+                    <div className="flex-1 min-w-[220px] space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nomor WhatsApp</label>
+                      <input
+                        type="text"
+                        value={waNumberInput}
+                        onChange={(e) => setWaNumberInput(e.target.value)}
+                        placeholder="08123456789"
+                        className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+                      />
+                    </div>
+                    <button type="button" onClick={handleConnectWa} disabled={waSaving}
+                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2">
+                      <MessageCircle size={14} /> {waSaving ? "Menghubungkan..." : "Hubungkan Bot WA"}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

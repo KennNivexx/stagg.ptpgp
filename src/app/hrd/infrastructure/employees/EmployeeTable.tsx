@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { FileSpreadsheet, FileDown, Eye } from "lucide-react";
+import { useState } from "react";
+import { FileSpreadsheet, Eye } from "lucide-react";
 
 type Emp = Record<string, unknown>;
 
@@ -58,8 +58,7 @@ const isPersonalDataComplete = (e: Emp) =>
 const fmtDate = (v: unknown) => v ? new Date(v as string).toLocaleDateString("id-ID") : "-";
 
 export default function EmployeeTable({ employees }: { employees: Emp[] }) {
-  const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
-  const tableRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
 
   const rowData = (emp: Emp) => ({
     "NIK": (emp.nik as string) || "-",
@@ -81,7 +80,7 @@ export default function EmployeeTable({ employees }: { employees: Emp[] }) {
 
   const handleExportExcel = async () => {
     if (exporting) return;
-    setExporting("excel");
+    setExporting(true);
     try {
       const rows = employees.map(rowData);
       const XLSX = await import("xlsx");
@@ -94,32 +93,7 @@ export default function EmployeeTable({ employees }: { employees: Emp[] }) {
     } catch (e) {
       console.error("[employees] export excel error:", e);
     } finally {
-      setExporting(null);
-    }
-  };
-
-  const handleExportPDF = async () => {
-    if (!tableRef.current || exporting) return;
-    setExporting("pdf");
-    try {
-      const { toPng } = await import("html-to-image");
-      const jsPDF = (await import("jspdf")).default;
-      const dataUrl = await toPng(tableRef.current, { backgroundColor: "#ffffff", pixelRatio: 2 });
-      const img = new window.Image();
-      img.src = dataUrl;
-      await new Promise<void>((r) => { img.onload = () => r(); });
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "px",
-        format: [img.width, img.height],
-      });
-      pdf.addImage(img, "PNG", 0, 0, img.width, img.height);
-      const stamp = new Date().toISOString().slice(0, 10);
-      pdf.save(`Data-Karyawan-${stamp}.pdf`);
-    } catch (e) {
-      console.error("[employees] export pdf error:", e);
-    } finally {
-      setExporting(null);
+      setExporting(false);
     }
   };
 
@@ -133,22 +107,15 @@ export default function EmployeeTable({ employees }: { employees: Emp[] }) {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleExportExcel}
-            disabled={!!exporting}
+            disabled={exporting}
             className="flex items-center gap-2 px-3 py-2 bg-green-700 hover:bg-green-800 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
           >
-            <FileSpreadsheet size={14} /> {exporting === "excel" ? "Mengekspor..." : "Export Excel"}
-          </button>
-          <button
-            onClick={handleExportPDF}
-            disabled={!!exporting}
-            className="flex items-center gap-2 px-3 py-2 bg-[#CC0000] hover:bg-[#aa0000] text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
-          >
-            <FileDown size={14} /> {exporting === "pdf" ? "Mengekspor..." : "Export PDF"}
+            <FileSpreadsheet size={14} /> {exporting ? "Mengekspor..." : "Export Excel"}
           </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto" ref={tableRef}>
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/50">

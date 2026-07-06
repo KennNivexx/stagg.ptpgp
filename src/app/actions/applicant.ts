@@ -86,6 +86,9 @@ export async function getMyApplicationData() {
       full_name: app.full_name as string,
       email: app.email as string,
       phone: app.phone as string,
+      reached_interview: !!app.reached_interview,
+      test_tulis_result: app.test_tulis_result ?? null,
+      test_psikotes_result: app.test_psikotes_result ?? null,
     },
     job: job ? {
       position: (job as Record<string, unknown>).position as string,

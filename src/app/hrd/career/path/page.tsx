@@ -15,7 +15,7 @@ export default async function CareerPathPage() {
     .order("level")
     .order("name");
 
-  const levelOrder = ["Entry", "Staff", "Supervisor", "Manager", "Senior"];
+  const levelOrder = ["Staff", "Supervisor", "Manager", "Wakil Direktur", "Direktur", "Komisaris"];
 
   const grouped: Record<string, Record<string, string[]>> = {};
   (positions || []).forEach((p: Record<string, unknown>) => {
@@ -37,11 +37,12 @@ export default async function CareerPathPage() {
     }));
 
   const levelColors: Record<string, string> = {
-    Entry: "bg-slate-100 text-slate-600 border-slate-200",
     Staff: "bg-blue-50 text-blue-700 border-blue-200",
     Supervisor: "bg-amber-50 text-amber-700 border-amber-200",
     Manager: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    Senior: "bg-red-50 text-red-700 border-red-200",
+    "Wakil Direktur": "bg-purple-50 text-purple-700 border-purple-200",
+    Direktur: "bg-red-50 text-red-700 border-red-200",
+    Komisaris: "bg-slate-100 text-slate-600 border-slate-200",
   };
 
   return (

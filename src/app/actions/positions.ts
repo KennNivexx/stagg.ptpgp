@@ -240,7 +240,7 @@ export async function updatePosition(formData: FormData) {
 
   const { data: old } = await supabaseAdmin
     .from("positions")
-    .select("name")
+    .select("name, department")
     .eq("id", id)
     .maybeSingle();
 
@@ -257,8 +257,15 @@ export async function updatePosition(formData: FormData) {
   }
 
   const oldName = (old as Position)?.name;
+  const oldDepartment = (old as Position)?.department;
   if (oldName && oldName !== name) {
-    const { error: casErr } = await supabaseAdmin.from("employees").update({ position: name }).eq("position", oldName);
+    // Scope by the position's own department too — position names aren't
+    // unique across departments (uniqueness is by code), so an unscoped
+    // update would rename the same-named position's employees in every
+    // other department as well.
+    let cascadeQuery = supabaseAdmin.from("employees").update({ position: name }).eq("position", oldName);
+    if (oldDepartment) cascadeQuery = cascadeQuery.eq("department", oldDepartment);
+    const { error: casErr } = await cascadeQuery;
     if (casErr) console.error("updatePosition cascade error:", casErr);
   }
 

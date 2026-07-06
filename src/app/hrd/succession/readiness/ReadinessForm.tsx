@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { saveReadinessAssessment } from "@/app/actions/performance-hrd";
+import { useRouter } from "next/navigation";
+import { saveReadinessAssessment } from "@/app/actions/succession";
 
 const CRITERIA = [
   { key: "kepemimpinan", label: "Kepemimpinan", weight: 25 },
@@ -14,6 +15,7 @@ const CRITERIA = [
 interface Candidate { id: string; full_name: string; position: string; }
 
 export default function ReadinessForm({ candidates }: { candidates: Candidate[] }) {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState("");
   const [scores, setScores] = useState<Record<string, number>>(
     () => Object.fromEntries(CRITERIA.map((c, i) => [c.key, 50 + i * 5]))
@@ -32,11 +34,16 @@ export default function ReadinessForm({ candidates }: { candidates: Candidate[] 
     setSaving(true);
     const fd = new FormData();
     fd.append("employee_id", selectedId);
-    fd.append("score", totalScore.toString());
+    fd.append("kepemimpinan", scores.kepemimpinan.toString());
+    fd.append("keahlian_teknis", scores.keahlianTeknis.toString());
+    fd.append("pengalaman", scores.pengalaman.toString());
+    fd.append("kinerja", scores.kinerja.toString());
+    fd.append("potensi", scores.potensi.toString());
     const result = await saveReadinessAssessment(fd);
     setSaving(false);
     if (result?.error) { showToast(result.error); return; }
     showToast("Penilaian kesiapan berhasil disimpan.");
+    router.refresh();
   };
 
   return (

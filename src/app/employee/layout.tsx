@@ -21,9 +21,11 @@ import {
   MessageCircle,
   HelpCircle,
   Briefcase,
+  ClipboardList,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
+import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
 
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
@@ -32,6 +34,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const { user } = useSession();
   const clientUserName = user?.name || "Karyawan";
   const userRoleLabel = "Karyawan";
+  const { hasUnreadForHref } = useNotifications("employee");
 
   const menuItems = [
     { href: "/employee", label: "Dashboard", icon: LayoutDashboard },
@@ -47,6 +50,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
     { href: "/employee/complaints", label: "Keluhan & Saran", icon: MessageCircle },
     { href: "/employee/warnings", label: "Surat Peringatan", icon: ShieldCheck },
     { href: "/employee/resignation", label: "Pengunduran Diri", icon: LogOut },
+    { href: "/employee/surveys", label: "Survei Karyawan", icon: ClipboardList },
     { href: "/employee/guides", label: "Bantuan & Panduan", icon: HelpCircle },
   ];
 
@@ -95,6 +99,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
         <nav className="flex-1 p-4 lg:px-2 xl:px-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/employee" && pathname.startsWith(item.href));
+            const hasUnread = hasUnreadForHref(item.href, "/employee");
             const Icon = item.icon;
 
             return (
@@ -104,7 +109,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
                 onClick={() => setIsSidebarOpen(false)}
                 title={item.label}
                 className={`
-                  flex items-center gap-3 px-4 lg:px-0 xl:px-4 lg:justify-center xl:justify-start py-2.5 rounded-xl transition-all duration-200 text-xs font-semibold group
+                  relative flex items-center gap-3 px-4 lg:px-0 xl:px-4 lg:justify-center xl:justify-start py-2.5 rounded-xl transition-all duration-200 text-xs font-semibold group
                   ${isActive
                     ? "bg-[#0F172A] text-white shadow-lg shadow-slate-900/15"
                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
@@ -113,8 +118,14 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
               >
                 <Icon size={16} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-900"}`} />
                 <span className="lg:hidden xl:inline">{item.label}</span>
+                {hasUnread && !isActive && (
+                  <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
+                )}
                 {isActive && (
                   <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
+                )}
+                {hasUnread && !isActive && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
                 )}
               </Link>
             );

@@ -1,13 +1,34 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import ReportsClient from "./ReportsClient";
 
-export default async function PerformanceReportsPage() {
-  const { data: evaluations } = await supabaseAdmin
-    .from("kpi_evaluations")
-    .select("*, employees!inner(full_name, department, position)")
-    .limit(100);
+export const dynamic = "force-dynamic";
 
-  const rows = (evaluations || []) as Record<string, unknown>[];
+/** Fetches every kpi_evaluations row (not capped at a single page), so
+ * reporting stats and the Excel export reflect the full dataset regardless
+ * of how many evaluations exist. */
+async function fetchAllKpiEvaluations(): Promise<Record<string, unknown>[]> {
+  const pageSize = 1000;
+  const all: Record<string, unknown>[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabaseAdmin
+      .from("kpi_evaluations")
+      .select("*, employees!inner(full_name, department, position)")
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (error) {
+      console.error("[performance/reports] fetchAllKpiEvaluations error:", error.message);
+      break;
+    }
+    all.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
+export default async function PerformanceReportsPage() {
+  const rows = await fetchAllKpiEvaluations();
 
   const totalEval = rows.length;
 

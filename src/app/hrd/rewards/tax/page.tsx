@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, RefreshCw, Info } from "lucide-react";
-import { getTaxConfig, saveTaxConfig } from "@/app/actions/admin";
+import { getTaxConfig, saveTaxConfig, getBpjsConfig, saveBpjsConfig } from "@/app/actions/admin";
 
 const DEFAULT_CONFIG = {
   ptkp_tk0: 54_000_000,
@@ -23,6 +23,15 @@ const DEFAULT_CONFIG = {
   ],
 };
 
+const DEFAULT_BPJS_CONFIG = {
+  health_employee_percent: 1,
+  health_wage_cap: 12_000_000,
+  jht_employee_percent: 2,
+  jp_enabled: true,
+  jp_employee_percent: 1,
+  jp_wage_cap: 10_547_400,
+};
+
 const fmt = (n: number | null) => n !== null ? new Intl.NumberFormat("id-ID").format(n) : "∞";
 const rp = (v: string) => parseInt(v.replace(/\D/g, ""), 10) || 0;
 
@@ -32,12 +41,28 @@ export default function TaxConfigPage() {
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [cfg, setCfg] = useState(DEFAULT_CONFIG);
 
+  const [bpjsCfg, setBpjsCfg] = useState(DEFAULT_BPJS_CONFIG);
+  const [savingBpjs, setSavingBpjs] = useState(false);
+  const [bpjsMsg, setBpjsMsg] = useState({ type: "", text: "" });
+
   useEffect(() => {
     getTaxConfig().then(data => {
       if (data) setCfg({ ...DEFAULT_CONFIG, ...(data as typeof DEFAULT_CONFIG) });
       setLoading(false);
     });
+    getBpjsConfig().then(data => {
+      if (data) setBpjsCfg({ ...DEFAULT_BPJS_CONFIG, ...(data as typeof DEFAULT_BPJS_CONFIG) });
+    });
   }, []);
+
+  const handleSaveBpjs = async () => {
+    setSavingBpjs(true);
+    const res = await saveBpjsConfig(bpjsCfg as unknown as Record<string, unknown>);
+    setSavingBpjs(false);
+    if (res.error) { setBpjsMsg({ type: "error", text: res.error }); return; }
+    setBpjsMsg({ type: "success", text: "Konfigurasi BPJS berhasil disimpan. Berlaku untuk payslip berikutnya." });
+    setTimeout(() => setBpjsMsg({ type: "", text: "" }), 4000);
+  };
 
   const updatePtkp = (key: keyof typeof cfg, val: string) => {
     setCfg({ ...cfg, [key]: rp(val) });
@@ -74,8 +99,8 @@ export default function TaxConfigPage() {
         </Link>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Konfigurasi PPh 21</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Atur PTKP dan tarif pajak — dihitung otomatis saat generate payslip</p>
+            <h1 className="text-xl font-bold text-slate-800">Konfigurasi PPh 21 &amp; BPJS</h1>
+            <p className="text-xs text-slate-500 mt-0.5">Atur PTKP, tarif pajak, dan persentase BPJS — dihitung otomatis saat generate payslip</p>
           </div>
           <button onClick={reset} className="text-xs text-slate-400 hover:text-slate-600 underline">Reset Default 2024</button>
         </div>
@@ -185,6 +210,86 @@ export default function TaxConfigPage() {
           className="w-full py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
           {saving ? <><RefreshCw size={14} className="animate-spin" /> Menyimpan...</> : <><Save size={14} /> Simpan Konfigurasi PPh 21</>}
         </button>
+
+        {/* BPJS */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-100 bg-slate-50">
+            <h2 className="text-sm font-bold text-slate-800">Konfigurasi BPJS</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">Porsi iuran BPJS yang ditanggung karyawan (dipotong dari gaji)</p>
+          </div>
+          <div className="p-4 bg-amber-50/50 border-b border-amber-100">
+            <p className="text-[11px] text-amber-700">
+              <strong>Perhatian:</strong> Nilai di bawah adalah perkiraan awal, bukan angka final. Verifikasi dan sesuaikan
+              persentase serta batas upah sesuai ketentuan BPJS Kesehatan/Ketenagakerjaan yang berlaku saat ini.
+            </p>
+          </div>
+          <div className="p-4 space-y-5">
+            <div>
+              <p className="text-xs font-bold text-slate-700 mb-2">BPJS Kesehatan</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 mb-1">Persentase Karyawan (%)</label>
+                  <input type="number" step="0.1" value={bpjsCfg.health_employee_percent}
+                    onChange={e => setBpjsCfg({ ...bpjsCfg, health_employee_percent: parseFloat(e.target.value) || 0 })}
+                    className="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-red-400" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 mb-1">Batas Upah (Rp)</label>
+                  <input type="text" value={new Intl.NumberFormat("id-ID").format(bpjsCfg.health_wage_cap)}
+                    onChange={e => setBpjsCfg({ ...bpjsCfg, health_wage_cap: rp(e.target.value) })}
+                    className="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-red-400 text-right" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-700 mb-2">BPJS Ketenagakerjaan — JHT</p>
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 mb-1">Persentase Karyawan (%)</label>
+                <input type="number" step="0.1" value={bpjsCfg.jht_employee_percent}
+                  onChange={e => setBpjsCfg({ ...bpjsCfg, jht_employee_percent: parseFloat(e.target.value) || 0 })}
+                  className="w-full max-w-[200px] border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-red-400" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-slate-700">BPJS Ketenagakerjaan — JP (Jaminan Pensiun)</p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={bpjsCfg.jp_enabled}
+                    onChange={e => setBpjsCfg({ ...bpjsCfg, jp_enabled: e.target.checked })}
+                    className="h-4 w-4" />
+                  <span className="text-[10px] text-slate-500">Aktifkan JP</span>
+                </label>
+              </div>
+              {bpjsCfg.jp_enabled && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-1">Persentase Karyawan (%)</label>
+                    <input type="number" step="0.1" value={bpjsCfg.jp_employee_percent}
+                      onChange={e => setBpjsCfg({ ...bpjsCfg, jp_employee_percent: parseFloat(e.target.value) || 0 })}
+                      className="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-red-400" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-1">Batas Upah (Rp)</label>
+                    <input type="text" value={new Intl.NumberFormat("id-ID").format(bpjsCfg.jp_wage_cap)}
+                      onChange={e => setBpjsCfg({ ...bpjsCfg, jp_wage_cap: rp(e.target.value) })}
+                      className="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-red-400 text-right" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          {bpjsMsg.text && (
+            <div className={`mx-4 mb-4 p-3 rounded-xl text-xs font-semibold ${bpjsMsg.type === "error" ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>
+              {bpjsMsg.text}
+            </div>
+          )}
+          <div className="p-4 pt-0">
+            <button onClick={handleSaveBpjs} disabled={savingBpjs}
+              className="w-full py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              {savingBpjs ? <><RefreshCw size={14} className="animate-spin" /> Menyimpan...</> : <><Save size={14} /> Simpan Konfigurasi BPJS</>}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

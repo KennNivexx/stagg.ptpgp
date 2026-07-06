@@ -1,6 +1,10 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Users, TrendingUp, Award, Star } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import { getLatestReadinessByEmployee, getSuccessionCandidates } from "@/app/actions/succession";
+import AddCandidateForm from "./AddCandidateForm";
+
+export const dynamic = "force-dynamic";
 
 export default async function KandidatSuksesor() {
   const { data: managers } = await supabaseAdmin
@@ -12,7 +16,7 @@ export default async function KandidatSuksesor() {
 
   const { data: employees } = await supabaseAdmin
     .from("employees")
-    .select("*, kpi_evaluations(score)")
+    .select("*")
     .neq("status", "Resigned")
     .order("full_name");
 
@@ -34,16 +38,28 @@ export default async function KandidatSuksesor() {
     return Math.round(employeeScores[id] / scoreCounts[id]);
   };
 
-  const getReadiness = (score: number) => Math.min(100, Math.max(10, score || 10));
+  const readinessAssessments = await getLatestReadinessByEmployee();
+  const addedCandidates = await getSuccessionCandidates();
+
+  // Unified formula: prefer a real succession readiness assessment, else fall
+  // back to average KPI score. No fabricated floor for employees with no data.
+  const getReadiness = (id: string): number | null => {
+    if (id in readinessAssessments) return readinessAssessments[id];
+    const avg = getAvgScore(id);
+    return avg > 0 ? avg : null;
+  };
 
   const candidates = (employees || [])
-    .map((emp: Record<string, unknown>) => ({
-      ...emp,
-      avgScore: getAvgScore(emp.id as string),
-      readiness: getReadiness(getAvgScore(emp.id as string)),
-    }))
-    .filter((emp: Record<string, unknown>) => (emp.avgScore as number) >= 50)
-    .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.avgScore as number) - (a.avgScore as number))
+    .map((emp: Record<string, unknown>) => {
+      const id = emp.id as string;
+      return {
+        ...emp,
+        avgScore: getAvgScore(id),
+        readiness: getReadiness(id),
+      };
+    })
+    .filter((emp: Record<string, unknown>) => (emp.readiness as number | null) !== null && (emp.readiness as number) >= 50)
+    .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.readiness as number) - (a.readiness as number))
     .slice(0, 20);
 
   return (
@@ -190,39 +206,15 @@ export default async function KandidatSuksesor() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-800 text-sm">Tambah Kandidat</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Tambahkan kandidat ke rencana suksesi</p>
-          </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pilih Karyawan</label>
-              <select className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none">
-                <option value="">Pilih karyawan...</option>
-                {(employees || []).map((e: Record<string, unknown>) => (
-                  <option key={e.id as string} value={e.id as string}>{e.full_name as string}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Posisi Target Suksesi</label>
-              <select className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none">
-                <option value="">Pilih posisi target...</option>
-                {(managers || []).map((m: Record<string, unknown>) => (
-                  <option key={m.id as string} value={m.id as string}>{m.position as string}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tingkat Kesiapan (%)</label>
-              <input type="number" min="0" max="100" placeholder="0-100" className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none" />
-            </div>
-            <span className="w-full px-4 py-2.5 bg-slate-300 text-white text-xs font-bold rounded-xl cursor-not-allowed inline-flex items-center justify-center" title="Segera tersedia">
-              Tambah ke Rencana Suksesi
-            </span>
-          </div>
-        </div>
+        <AddCandidateForm
+          employees={(employees || []).map((e: Record<string, unknown>) => ({
+            id: e.id as string, full_name: e.full_name as string, position: (e.position as string) || "-",
+          }))}
+          managers={(managers || []).map((m: Record<string, unknown>) => ({
+            id: m.id as string, full_name: m.full_name as string, position: (m.position as string) || "-",
+          }))}
+          addedCandidates={addedCandidates}
+        />
       </div>
     </div>
   );

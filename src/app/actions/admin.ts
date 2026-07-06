@@ -136,13 +136,26 @@ export async function generatePayslip(formData: FormData) {
     .select("id").eq("employee_id", employeeId).eq("month", month).eq("year", year).maybeSingle();
   if (existing) return { error: "Slip gaji untuk periode ini sudah dibuat." };
   const { data: salaryData } = await supabaseAdmin.from("salary_structures")
-    .select("basic_salary, transport_allowance, meal_allowance, housing_allowance, ptkp_status")
+    .select("basic_salary, transport_allowance, meal_allowance, housing_allowance, position_allowance, ptkp_status")
     .eq("employee_id", employeeId).maybeSingle();
   const basic = Number(salaryData?.basic_salary) || 0;
   const allowances = (Number(salaryData?.transport_allowance) || 0) +
     (Number(salaryData?.meal_allowance) || 0) +
-    (Number(salaryData?.housing_allowance) || 0);
+    (Number(salaryData?.housing_allowance) || 0) +
+    (Number(salaryData?.position_allowance) || 0);
   if (basic === 0) return { error: "Belum ada struktur gaji untuk karyawan ini. Isi di menu Komponen Gaji terlebih dahulu." };
+
+  // ── Bonus/insentif yang sudah final (Disetujui/Dibayarkan) untuk periode
+  // yang sama — periode disimpan sebagai "MM/YYYY" di form Bonus/Insentif
+  // agar pencocokan dengan month+year di sini bisa diandalkan.
+  const periodKey = `${String(month).padStart(2, "0")}/${year}`;
+  const { data: bonusRows } = await supabaseAdmin
+    .from("incentive_payments")
+    .select("amount")
+    .eq("employee_id", employeeId)
+    .eq("period", periodKey)
+    .in("status", ["Disetujui", "Dibayarkan"]);
+  const bonus = (bonusRows || []).reduce((s, r) => s + (Number((r as Record<string, unknown>).amount) || 0), 0);
 
   // ── Hitung PPh 21 otomatis ──────────────────────────────────────────────
   let monthlyTax = 0;
@@ -183,21 +196,64 @@ export async function generatePayslip(formData: FormData) {
     monthlyTax = Math.round(annualTax / 12);
   } catch { monthlyTax = 0; }
 
+  // ── Hitung BPJS Kesehatan & Ketenagakerjaan (ditanggung karyawan) ───────
+  // Persentase dan batas upah bisa diatur HRD di Konfigurasi PPh 21 & BPJS
+  // (system_settings key "bpjs_config") — nilai di bawah hanya default awal,
+  // bukan angka final, karena ketentuan BPJS berubah dari waktu ke waktu.
+  let bpjsHealth = 0;
+  let bpjsEmployment = 0;
+  try {
+    const { data: bpjsRow } = await supabaseAdmin
+      .from("system_settings").select("value").eq("key", "bpjs_config").maybeSingle();
+    const bcfg = bpjsRow?.value ? JSON.parse(bpjsRow.value as string) : null;
+    const grossForBpjs = basic + allowances;
+
+    const healthPercent = bcfg?.health_employee_percent ?? 1;
+    const healthCap = bcfg?.health_wage_cap ?? 12_000_000;
+    bpjsHealth = Math.round(Math.min(grossForBpjs, healthCap) * (healthPercent / 100));
+
+    const jhtPercent = bcfg?.jht_employee_percent ?? 2;
+    const jht = Math.round(grossForBpjs * (jhtPercent / 100));
+
+    let jp = 0;
+    if (bcfg?.jp_enabled ?? true) {
+      const jpPercent = bcfg?.jp_employee_percent ?? 1;
+      const jpCap = bcfg?.jp_wage_cap ?? 10_547_400;
+      jp = Math.round(Math.min(grossForBpjs, jpCap) * (jpPercent / 100));
+    }
+    bpjsEmployment = jht + jp;
+  } catch { bpjsHealth = 0; bpjsEmployment = 0; }
+
+  // `deductions` represents OTHER non-tax, non-BPJS deductions (e.g. potongan
+  // pinjaman) — currently none are implemented, so it stays 0. Tax and BPJS
+  // each have their own dedicated columns/rows on the payslip so nothing is
+  // double-counted.
+  const deductions = 0;
+  const netSalary = basic + allowances + bonus - monthlyTax - bpjsHealth - bpjsEmployment - deductions;
+
   const { error } = await supabaseAdmin.from("payroll").insert({
     id: "pay-" + crypto.randomUUID(),
     employee_id: employeeId,
     month, year,
     basic_salary: basic,
     allowances,
-    deductions: monthlyTax,
+    bonus,
     tax: monthlyTax,
-    net_salary: basic + allowances - monthlyTax,
+    bpjs_health: bpjsHealth,
+    bpjs_employment: bpjsEmployment,
+    deductions,
+    net_salary: netSalary,
     status: "Draft",
     created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Tabel payroll belum tersedia. Jalankan migrasi terlebih dahulu." };
+  if (error?.code === "PGRST204" || /column .* does not exist/i.test(error?.message || "")) {
+    return { error: "Jalankan migrasi 20260704006_rewards_payroll_bonus_schema.sql terlebih dahulu." };
+  }
   if (error) { console.error("[admin] generatePayslip error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/payroll");
+  revalidatePath("/hrd/rewards/payroll");
+  revalidatePath("/hrd/rewards/payslips");
   return { success: true };
 }
 
@@ -217,4 +273,36 @@ export async function getTaxConfig(): Promise<Record<string, unknown> | null> {
     .from("system_settings").select("value").eq("key", "pph21_config").maybeSingle();
   if (!data?.value) return null;
   try { return JSON.parse(data.value as string) as Record<string, unknown>; } catch { return null; }
+}
+
+export async function saveBpjsConfig(config: Record<string, unknown>) {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin.from("system_settings").upsert(
+    { key: "bpjs_config", value: JSON.stringify(config), updated_at: new Date().toISOString() },
+    { onConflict: "key" }
+  );
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function getBpjsConfig(): Promise<Record<string, unknown> | null> {
+  await requireRole("hrd", "superadmin");
+  const { data } = await supabaseAdmin
+    .from("system_settings").select("value").eq("key", "bpjs_config").maybeSingle();
+  if (!data?.value) return null;
+  try { return JSON.parse(data.value as string) as Record<string, unknown>; } catch { return null; }
+}
+
+const PAYROLL_STATUSES = ["Draft", "Approved", "Paid"] as const;
+type PayrollStatus = (typeof PAYROLL_STATUSES)[number];
+
+export async function updatePayrollStatus(id: string, status: PayrollStatus) {
+  await requireRole("hrd", "superadmin");
+  if (!PAYROLL_STATUSES.includes(status)) return { error: "Status tidak valid." };
+  const { error } = await supabaseAdmin.from("payroll").update({ status }).eq("id", id);
+  if (error) { console.error("[admin] updatePayrollStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  revalidatePath("/hrd/payroll");
+  revalidatePath("/hrd/rewards/payroll");
+  revalidatePath("/hrd/rewards/payslips");
+  return { success: true };
 }

@@ -75,7 +75,7 @@ export default async function HRDReports() {
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).neq("status", "Inactive"),
     supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
     supabaseAdmin.from("payroll").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("training_programs").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("trainings").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("kpi_evaluations").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).eq("status", "Resigned"),
   ]);

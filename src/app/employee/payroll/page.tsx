@@ -22,9 +22,14 @@ export default async function EmployeePayroll() {
     .from("payroll")
     .select("*")
     .eq("employee_id", employeeId)
+    .in("status", ["Approved", "Paid"])
     .order("year", { ascending: false })
     .order("month", { ascending: false })
     .limit(12) : { data: [] };
+
+  const totalReceived = (payslips || [])
+    .filter((s: Record<string, unknown>) => s.status === "Paid")
+    .reduce((sum: number, s: Record<string, unknown>) => sum + (Number(s.net_salary) || 0), 0);
 
   const monthNames = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
@@ -110,7 +115,7 @@ export default async function EmployeePayroll() {
               <div className="flex justify-between">
                 <span className="text-slate-400">Total Diterima</span>
                 <span className="font-bold">
-                  Rp {(payslips?.reduce((sum: number, s: Record<string, unknown>) => sum + (Number(s.net_salary) || 0), 0) || 0).toLocaleString("id-ID")}
+                  Rp {totalReceived.toLocaleString("id-ID")}
                 </span>
               </div>
               <div className="flex justify-between">

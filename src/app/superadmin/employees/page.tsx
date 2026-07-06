@@ -44,7 +44,23 @@ export default async function SuperadminEmployees() {
     );
   }
 
-  const userList = (users || []) as Record<string, unknown>[];
+  // `users` (auth/login accounts) and `employees` (HR records) are separate
+  // tables with unrelated primary keys, matched only by email. Resolve each
+  // user's corresponding employees.id (if any) here so the table can link to
+  // the "Edit User" detail page, which looks records up by employees.id.
+  const { data: employeesForLookup } = await supabaseAdmin
+    .from("employees")
+    .select("id, email");
+  const employeeIdByEmail = new Map<string, string>();
+  for (const e of employeesForLookup || []) {
+    const email = (e.email as string)?.toLowerCase();
+    if (email) employeeIdByEmail.set(email, e.id as string);
+  }
+
+  const userList = ((users || []) as Record<string, unknown>[]).map((u) => ({
+    ...u,
+    employeeId: employeeIdByEmail.get(((u.email as string) || "").toLowerCase()) || null,
+  })) as Record<string, unknown>[];
 
   const roleCounts: Record<string, number> = {};
   for (const u of userList) {

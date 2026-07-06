@@ -15,16 +15,13 @@ export default async function EmployeeResignation() {
     .limit(1)
     .single();
 
-  let resignation: Record<string, unknown> | null = null;
-  if (employee?.id) {
-    const { data } = await supabaseAdmin
-      .from("resignations")
-      .select("*")
-      .eq("employee_id", employee.id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    resignation = data?.[0] || null;
-  }
+  const { data: resignationRows } = await supabaseAdmin
+    .from("resignations")
+    .select("*")
+    .eq("employee_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const resignation: Record<string, unknown> | null = resignationRows?.[0] || null;
 
   const r = resignation;
 

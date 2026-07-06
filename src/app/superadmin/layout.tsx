@@ -24,9 +24,21 @@ import {
   ClipboardList,
   Phone,
   Layers,
+  Info,
+  Sparkles,
+  Grid3x3,
+  MapPin,
+  BarChart3,
+  Factory,
+  GalleryHorizontal,
+  MessageSquareQuote,
+  BadgeCheck,
+  HelpCircle,
+  Megaphone,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
+import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
 
 export default function SuperadminLayout({ children }: { children: ReactNode }) {
@@ -35,6 +47,10 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
   const { user } = useSession();
   const userName = user?.name || "Super Administrator";
   const userEmail = user?.email || "superadmin@ptpgp.co.id";
+  // Superadmin's sidebar (website mgmt / monitoring / users) doesn't mirror the
+  // HRD route tree its notification feed links into, so per-item href matching
+  // wouldn't ever light up — flag the Dashboard entry instead as a general signal.
+  const { unreadCount } = useNotifications("hrd");
 
   const menuItems = [
     { href: "/superadmin", label: "Dashboard", icon: LayoutDashboard },
@@ -43,6 +59,17 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
   const websiteItems = [
     { href: "/superadmin/website/theme", label: "Tema & Warna", icon: Palette },
     { href: "/superadmin/website/hero", label: "Hero Section", icon: Image },
+    { href: "/superadmin/website/about", label: "Tentang Kami", icon: Info },
+    { href: "/superadmin/website/features", label: "Keunggulan", icon: Sparkles },
+    { href: "/superadmin/website/services", label: "Layanan", icon: Grid3x3 },
+    { href: "/superadmin/website/coverage", label: "Cakupan Wilayah", icon: MapPin },
+    { href: "/superadmin/website/stats", label: "Statistik", icon: BarChart3 },
+    { href: "/superadmin/website/industries", label: "Industri", icon: Factory },
+    { href: "/superadmin/website/gallery", label: "Galeri", icon: GalleryHorizontal },
+    { href: "/superadmin/website/testimonial", label: "Testimoni", icon: MessageSquareQuote },
+    { href: "/superadmin/website/certification", label: "Sertifikasi", icon: BadgeCheck },
+    { href: "/superadmin/website/faq", label: "FAQ", icon: HelpCircle },
+    { href: "/superadmin/website/cta", label: "Call to Action", icon: Megaphone },
     { href: "/superadmin/website/info", label: "Info Perusahaan", icon: Building2 },
     { href: "/superadmin/website/links", label: "Link & Navigasi", icon: Link2 },
     { href: "/superadmin/website/contact", label: "Kontak", icon: Phone },
@@ -112,6 +139,7 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
         <nav className="flex-1 p-4 lg:px-2 xl:px-4 space-y-1.5 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
+            const hasUnread = unreadCount > 0 && item.href === "/superadmin";
             const Icon = item.icon;
 
             return (
@@ -121,7 +149,7 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
                 onClick={() => setIsSidebarOpen(false)}
                 title={item.label}
                 className={`
-                  flex items-center gap-3 px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-3 rounded-xl transition-all duration-200 text-sm font-medium group
+                  relative flex items-center gap-3 px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-3 rounded-xl transition-all duration-200 text-sm font-medium group
                   ${isActive
                     ? "bg-amber-600 text-white shadow-lg shadow-amber-600/15"
                     : "text-slate-400 hover:text-white hover:bg-slate-800/60"
@@ -130,8 +158,14 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
               >
                 <Icon size={18} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
                 <span className="lg:hidden xl:inline">{item.label}</span>
+                {hasUnread && !isActive && (
+                  <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
+                )}
                 {isActive && (
                   <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
+                )}
+                {hasUnread && !isActive && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
                 )}
               </Link>
             );

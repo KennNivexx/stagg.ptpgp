@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, Plus, Trash2, RefreshCw } from "lucide-react";
 import { getWebsiteSettings, saveWebsiteSettings } from "@/app/actions/settings";
+import { ImageUploadField } from "../_lib/ImageUploadField";
 
 interface Testimonial {
   name: string;
@@ -230,21 +231,13 @@ export default function TestimonialCMS() {
                   onChange={(e) => handleItemChange(idx, "quote", e.target.value)}
                   className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none resize-none"
                 />
-                <input
-                  type="text"
-                  placeholder="URL Avatar (opsional)"
+                <ImageUploadField
+                  label="Avatar (opsional)"
                   value={t.avatar_url}
-                  onChange={(e) => handleItemChange(idx, "avatar_url", e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+                  onChange={(url) => handleItemChange(idx, "avatar_url", url)}
+                  folder="testimonial"
+                  placeholder="URL Avatar (opsional)"
                 />
-                {t.avatar_url && (
-                  <img
-                    src={t.avatar_url}
-                    alt="Preview"
-                    className="rounded-full h-12 w-12 object-cover border"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                )}
               </div>
             ))}
           </div>

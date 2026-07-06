@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { Users, UserCheck, Shield, AlertTriangle, Crown, Plus } from "lucide-react";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
+import { getLatestReadinessByEmployee } from "@/app/actions/succession";
 
 export default async function HRDSuccession() {
   const { data: employees } = await supabaseAdmin
@@ -11,42 +12,59 @@ export default async function HRDSuccession() {
 
   const empList = (employees || []) as Array<Record<string, string>>;
 
-  const byDept: Record<string, number> = {};
-  empList.forEach((e) => {
-    if (e.department) byDept[e.department] = (byDept[e.department] || 0) + 1;
-  });
-
   const { data: kpiData } = await supabaseAdmin
     .from("kpi_evaluations")
-    .select("employee_id, score, employees!inner(department)")
+    .select("employee_id, score")
     .order("created_at", { ascending: false });
 
-  const kpiScores: Record<string, number[]> = {};
+  const kpiByEmployee: Record<string, number[]> = {};
   ((kpiData || []) as Array<Record<string, unknown>>).forEach((k) => {
-    const emp = k.employees as Record<string, string> | undefined;
-    const dept = emp?.department || "";
-    if (!kpiScores[dept]) kpiScores[dept] = [];
-    if (kpiScores[dept].length < 5) kpiScores[dept].push(Number(k.score) || 0);
+    const eid = k.employee_id as string;
+    if (!kpiByEmployee[eid]) kpiByEmployee[eid] = [];
+    if (kpiByEmployee[eid].length < 5) kpiByEmployee[eid].push(Number(k.score) || 0);
+  });
+
+  const readinessAssessments = await getLatestReadinessByEmployee();
+
+  // Per-employee readiness: prefer a real succession assessment, else fall
+  // back to the employee's average KPI score, else null (no fabricated number).
+  const employeeReadiness: Record<string, number | null> = {};
+  empList.forEach((e) => {
+    if (e.id in readinessAssessments) {
+      employeeReadiness[e.id] = readinessAssessments[e.id];
+    } else if (kpiByEmployee[e.id]?.length > 0) {
+      const scores = kpiByEmployee[e.id];
+      employeeReadiness[e.id] = Math.round(scores.reduce((s, n) => s + n, 0) / scores.length);
+    } else {
+      employeeReadiness[e.id] = null;
+    }
+  });
+
+  const byDept: Record<string, string[]> = {};
+  empList.forEach((e) => {
+    if (e.department) {
+      if (!byDept[e.department]) byDept[e.department] = [];
+      byDept[e.department].push(e.id);
+    }
   });
 
   const positions = Object.entries(byDept)
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => b[1].length - a[1].length)
     .slice(0, 6)
-    .map(([dept, count]) => {
-      const scores = kpiScores[dept] || [];
-      const avgScore = scores.length > 0
-        ? scores.reduce((s, n) => s + n, 0) / scores.length
-        : 0;
-      const readiness = avgScore > 0 ? Math.min(Math.round(avgScore), 100) : Math.min(count * 12, 90);
-      const risk = readiness >= 75 ? "Low" : readiness >= 50 ? "Medium" : "High";
-      return { dept, count, readiness, risk };
+    .map(([dept, empIds]) => {
+      const withData = empIds.map((id) => employeeReadiness[id]).filter((v): v is number => v !== null);
+      const hasData = withData.length > 0;
+      const readiness = hasData ? Math.round(withData.reduce((s, n) => s + n, 0) / withData.length) : null;
+      const risk = readiness === null ? null : readiness >= 75 ? "Low" : readiness >= 50 ? "Medium" : "High";
+      return { dept, count: empIds.length, readiness, risk };
     });
 
   const totalCandidates = empList.length;
-  const avgReadiness = positions.length > 0
-    ? Math.round(positions.reduce((s, p) => s + p.readiness, 0) / positions.length)
-    : 0;
-  const atRisk = positions.filter((p) => p.risk !== "Low").length;
+  const positionsWithData = positions.filter((p) => p.readiness !== null);
+  const avgReadiness = positionsWithData.length > 0
+    ? Math.round(positionsWithData.reduce((s, p) => s + (p.readiness as number), 0) / positionsWithData.length)
+    : null;
+  const atRisk = positions.filter((p) => p.risk === "Medium" || p.risk === "High").length;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -85,7 +103,7 @@ export default async function HRDSuccession() {
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><Shield size={18} /></div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Avg Readiness</p>
-              <p className="text-xl font-extrabold text-slate-800">{avgReadiness}%</p>
+              <p className="text-xl font-extrabold text-slate-800">{avgReadiness === null ? "-" : `${avgReadiness}%`}</p>
             </div>
           </div>
         </div>
@@ -103,7 +121,7 @@ export default async function HRDSuccession() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         <div className="p-6 border-b border-slate-100">
           <h3 className="font-extrabold text-slate-800 text-sm">Succession Overview per Divisi</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Readiness dihitung dari rata-rata skor KPI terbaru per divisi</p>
+          <p className="text-xs text-slate-400 mt-0.5">Readiness diutamakan dari Penilaian Kesiapan suksesi, jika belum ada dipakai rata-rata skor KPI karyawan</p>
         </div>
 
         {positions.length === 0 ? (
@@ -116,8 +134,9 @@ export default async function HRDSuccession() {
         ) : (
           <div className="divide-y divide-slate-50">
             {positions.map((pos) => {
-              const barColor = pos.readiness >= 75 ? "bg-emerald-500" : pos.readiness >= 50 ? "bg-amber-500" : "bg-red-500";
-              const bgColor = pos.readiness >= 75 ? "bg-emerald-50 text-emerald-600" : pos.readiness >= 50 ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600";
+              const hasData = pos.readiness !== null;
+              const barColor = !hasData ? "bg-slate-300" : pos.readiness! >= 75 ? "bg-emerald-500" : pos.readiness! >= 50 ? "bg-amber-500" : "bg-red-500";
+              const bgColor = !hasData ? "bg-slate-50 text-slate-400" : pos.readiness! >= 75 ? "bg-emerald-50 text-emerald-600" : pos.readiness! >= 50 ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600";
               return (
                 <div key={pos.dept} className="p-6 hover:bg-slate-50/30 transition-colors">
                   <div className="flex items-start justify-between gap-4">
@@ -128,20 +147,26 @@ export default async function HRDSuccession() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-bold text-slate-800 text-sm">{pos.dept}</h4>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            pos.risk === "Low" ? "bg-emerald-50 text-emerald-700" :
-                            pos.risk === "Medium" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
-                          }`}>
-                            Risk: {pos.risk}
-                          </span>
+                          {pos.risk && (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              pos.risk === "Low" ? "bg-emerald-50 text-emerald-700" :
+                              pos.risk === "Medium" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                            }`}>
+                              Risk: {pos.risk}
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-[10px] text-slate-400">Readiness:</span>
-                          <div className="flex-1 max-w-[200px] h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pos.readiness}%` }} />
+                        {hasData ? (
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[10px] text-slate-400">Readiness:</span>
+                            <div className="flex-1 max-w-[200px] h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pos.readiness}%` }} />
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-700">{pos.readiness}%</span>
                           </div>
-                          <span className="text-[10px] font-bold text-slate-700">{pos.readiness}%</span>
-                        </div>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 italic mb-2">Data KPI belum tersedia</p>
+                        )}
                         <p className="text-[10px] text-slate-400">
                           <span className="font-bold text-slate-600">{pos.count}</span> karyawan aktif di divisi ini
                         </p>
@@ -161,8 +186,9 @@ export default async function HRDSuccession() {
           <div>
             <p className="text-sm font-bold text-blue-800">Catatan Metodologi</p>
             <p className="text-xs text-blue-700 mt-0.5">
-              Readiness dihitung dari rata-rata skor KPI terbaru karyawan per divisi. Untuk succession planning yang lebih akurat,
-              tambahkan data kandidat spesifik di menu <Link href="/hrd/succession/candidates" className="font-bold underline">Kandidat Suksesi</Link>.
+              Readiness per divisi dihitung dari rata-rata readiness karyawan: diutamakan dari Penilaian Kesiapan suksesi bila tersedia,
+              jika belum dinilai dipakai rata-rata skor KPI karyawan. Divisi tanpa data KPI maupun penilaian kesiapan ditampilkan sebagai belum tersedia, bukan angka perkiraan.
+              Untuk succession planning yang lebih akurat, tambahkan data kandidat spesifik di menu <Link href="/hrd/succession/candidates" className="font-bold underline">Kandidat Suksesi</Link>.
             </p>
           </div>
         </div>

@@ -54,9 +54,12 @@ export default async function EmployeeKPI() {
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Rata-rata Skor</p>
               <p className="text-xl font-extrabold text-slate-800">
-                {evaluations && evaluations.length > 0
-                  ? (evaluations.reduce((sum: number, e: Record<string, unknown>) => sum + (Number(e.score) || 0), 0) / evaluations.filter((e: Record<string, unknown>) => e.score != null).length).toFixed(1)
-                  : "-"}
+                {(() => {
+                  const scored = (evaluations || []).filter((e: Record<string, unknown>) => e.score != null);
+                  if (scored.length === 0) return "-";
+                  const avg = scored.reduce((sum: number, e: Record<string, unknown>) => sum + (Number(e.score) || 0), 0) / scored.length;
+                  return avg.toFixed(1);
+                })()}
               </p>
             </div>
           </div>

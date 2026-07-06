@@ -19,7 +19,7 @@ export default function LeaveRequestButton() {
     const formData = new FormData(e.currentTarget);
     const result = await submitLeave(formData);
 
-    if (result.error) {
+    if ("error" in result) {
       setError(result.error);
       setLoading(false);
       return;

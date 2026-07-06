@@ -3,8 +3,7 @@ import { getResignations } from "@/app/actions/relations";
 import ResignationsClient from "./ResignationsClient";
 
 export default async function PengunduranDiri() {
-  const [{ data: activeEmployees }, { count: resignedCount }, resignations] = await Promise.all([
-    supabaseAdmin.from("employees").select("id, full_name, department, position").neq("status", "Resigned").neq("id", "__settings__").order("full_name").limit(200),
+  const [{ count: resignedCount }, resignations] = await Promise.all([
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).eq("status", "Resigned"),
     getResignations().catch(() => []),
   ]);
@@ -16,7 +15,6 @@ export default async function PengunduranDiri() {
         <p className="text-sm text-gray-500">Kelola proses pengunduran diri, exit interview, dan clearance checklist.</p>
       </div>
       <ResignationsClient
-        activeEmployees={(activeEmployees || []) as Array<{ id: string; full_name: string; department: string; position: string; }>}
         initialResignations={resignations as Parameters<typeof ResignationsClient>[0]["initialResignations"]}
         resignedCount={resignedCount || 0}
       />

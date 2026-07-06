@@ -88,6 +88,7 @@ export default function ReportsClient({ evaluations, totalEval, avgScore, comple
         <div>
           <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Laporan Kinerja</h1>
           <p className="text-sm text-gray-500">Ringkasan dan analisis performa seluruh karyawan.</p>
+          <p className="text-xs text-slate-400 mt-1">Dihitung dari seluruh {totalEval.toLocaleString("id-ID")} data evaluasi (tidak dibatasi jumlah baris).</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleExportExcel} disabled={!!exporting}

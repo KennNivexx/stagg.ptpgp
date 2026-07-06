@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Trophy, Plus, Star, Award, Medal, Clock, X } from "lucide-react";
 import { nominateAward } from "@/app/actions/rewards";
 import EmptyState from "@/components/EmptyState";
@@ -24,6 +25,7 @@ export default function AwardsClient({
   employees: Employee[];
   initialAwards: AwardEntry[];
 }) {
+  const router = useRouter();
   const [awards, setAwards] = useState<AwardEntry[]>(initialAwards);
   const [showModal, setShowModal] = useState(false);
   const [empId, setEmpId] = useState("");
@@ -47,13 +49,8 @@ export default function AwardsClient({
     setSaving(false);
     if (result?.error) { showToast(result.error); return; }
     showToast("Nominasi berhasil disimpan!");
-    const emp = employees.find(e => e.id === empId);
-    setAwards(prev => [{
-      id: "local-" + Date.now(), employee_id: empId,
-      employee_name: emp?.full_name || "Karyawan",
-      department: emp?.department || "", category, description, award_date: awardDate,
-    }, ...prev]);
     setEmpId(""); setCategory(CATEGORIES[0]); setDescription(""); setShowModal(false);
+    router.refresh();
   };
 
   return (

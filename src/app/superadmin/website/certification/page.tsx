@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, Plus, Trash2, RefreshCw } from "lucide-react";
 import { getWebsiteSettings, saveWebsiteSettings } from "@/app/actions/settings";
+import { ImageUploadField } from "../_lib/ImageUploadField";
 
 interface CertItem {
   name: string;
@@ -63,21 +64,13 @@ function ItemList({
             onChange={(e) => onChange(idx, "issuer", e.target.value)}
             className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
           />
-          <input
-            type="text"
-            placeholder="URL Gambar / Logo (opsional)"
+          <ImageUploadField
+            label="Gambar / Logo (opsional)"
             value={item.logo}
-            onChange={(e) => onChange(idx, "logo", e.target.value)}
-            className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+            onChange={(url) => onChange(idx, "logo", url)}
+            folder="certification"
+            placeholder="URL Gambar / Logo (opsional)"
           />
-          {item.logo && (
-            <img
-              src={item.logo}
-              alt="Preview"
-              className="rounded-lg max-h-16 object-contain border bg-white p-2"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-          )}
         </div>
       ))}
     </div>
@@ -184,7 +177,7 @@ export default function CertificationCMS() {
         </Link>
         <h1 className="text-2xl font-bold text-[#1A2530]">Edit Sertifikasi & Legalitas</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Edit sertifikasi dan dokumen legalitas perusahaan. Gambar logo bisa diupload via URL.
+          Edit sertifikasi dan dokumen legalitas perusahaan. Gambar logo bisa ditempel via URL atau diunggah langsung dari perangkat.
         </p>
       </div>
 

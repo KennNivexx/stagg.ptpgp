@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Gift, Plus, DollarSign, TrendingUp, Star, X, CheckCircle } from "lucide-react";
 import { addBonus, updateBonusStatus } from "@/app/actions/rewards";
 import EmptyState from "@/components/EmptyState";
 
 const BONUS_TYPES = ["Kinerja", "Proyek", "Tahunan", "Khusus", "Lebaran", "THR"];
 const STATUSES = ["Pending", "Disetujui", "Dibayarkan"];
+const MONTHS = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
 interface Employee { id: string; full_name: string; department: string; position: string; }
 interface BonusEntry {
@@ -24,16 +27,19 @@ export default function BonusesClient({
   employees: Employee[];
   initialBonuses: BonusEntry[];
 }) {
+  const router = useRouter();
   const [bonuses, setBonuses] = useState<BonusEntry[]>(initialBonuses);
   const [showModal, setShowModal] = useState(false);
   const [empId, setEmpId] = useState("");
   const [program, setProgram] = useState(BONUS_TYPES[0]);
   const [amount, setAmount] = useState("");
-  const [period, setPeriod] = useState("");
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [year, setYear] = useState(new Date().getFullYear());
   const [status, setStatus] = useState("Pending");
   const [saving, setSaving] = useState(false);
   const [actingId, setActingId] = useState("");
   const [toast, setToast] = useState("");
+  const years = [new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2];
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
@@ -48,20 +54,14 @@ export default function BonusesClient({
     fd.append("employee_id", empId);
     fd.append("program", program);
     fd.append("amount", amount.replace(/\D/g, ""));
-    fd.append("period", period);
+    fd.append("period", `${String(month).padStart(2, "0")}/${year}`);
     fd.append("status", status);
     const result = await addBonus(fd);
     setSaving(false);
     if (result?.error) { showToast(result.error); return; }
     showToast("Bonus berhasil ditambahkan!");
-    const emp = employees.find(e => e.id === empId);
-    setBonuses(prev => [{
-      id: "local-" + Date.now(), employee_id: empId,
-      program, amount: parseInt(amount.replace(/\D/g, ""), 10), period, status,
-      created_at: new Date().toISOString(),
-      employees: emp ? { full_name: emp.full_name, department: emp.department, position: emp.position } : undefined,
-    }, ...prev]);
-    setEmpId(""); setProgram(BONUS_TYPES[0]); setAmount(""); setPeriod(""); setShowModal(false);
+    setEmpId(""); setProgram(BONUS_TYPES[0]); setAmount(""); setShowModal(false);
+    router.refresh();
   };
 
   const handleStatus = async (id: string, newStatus: string) => {
@@ -70,7 +70,7 @@ export default function BonusesClient({
     setActingId("");
     if (result?.error) { showToast(result.error); return; }
     showToast("Status diperbarui.");
-    setBonuses(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
+    router.refresh();
   };
 
   const statusStyle = (s: string) => {
@@ -115,11 +115,21 @@ export default function BonusesClient({
                 <input value={amount} onChange={e => setAmount(e.target.value.replace(/\D/g, ""))}
                   placeholder="0" className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Periode</label>
-                <input value={period} onChange={e => setPeriod(e.target.value)}
-                  placeholder="Q2 2026 / Lebaran 2026"
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Bulan</label>
+                  <select value={month} onChange={e => setMonth(parseInt(e.target.value))}
+                    className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+                    {MONTHS.slice(1).map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tahun</label>
+                  <select value={year} onChange={e => setYear(parseInt(e.target.value))}
+                    className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+                    {years.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Status Awal</label>
