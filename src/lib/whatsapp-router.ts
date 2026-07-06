@@ -58,11 +58,24 @@ const MAIN_MENU_TEXT = [
   "Balas dengan angka 1-8. Ketik *menu* kapan saja untuk kembali ke sini, atau *berhenti* untuk berhenti berlangganan.",
 ].join("\n");
 
+function isMissingTable(err: unknown): boolean {
+  const code = (err as { code?: string } | undefined)?.code;
+  return code === "42P01" || code === "PGRST205";
+}
+
+function logIfReal(err: unknown, label: string): void {
+  if (!isMissingTable(err)) {
+    console.error(`[wa router] ${label}:`, (err as Error).message);
+  }
+}
+
 async function updateConversation(id: string, patch: Record<string, unknown>): Promise<void> {
-  await supabaseAdmin
-    .from("wa_conversations")
-    .update({ ...patch, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("id", id);
+  try {
+    await supabaseAdmin
+      .from("wa_conversations")
+      .update({ ...patch, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq("id", id);
+  } catch (e) { logIfReal(e, "updateConversation"); }
 }
 
 async function resetToIdle(conversation: WaConversation): Promise<void> {
@@ -299,20 +312,26 @@ interface WaVerification {
 }
 
 async function getVerification(waNumber: string): Promise<WaVerification | null> {
-  const { data } = await supabaseAdmin
-    .from("wa_verifications")
-    .select("*")
-    .eq("wa_number", waNumber)
-    .maybeSingle();
-  return data as WaVerification | null;
+  try {
+    const { data } = await supabaseAdmin
+      .from("wa_verifications")
+      .select("*")
+      .eq("wa_number", waNumber)
+      .maybeSingle();
+    return data as WaVerification | null;
+  } catch (e) { logIfReal(e, "getVerification"); return null; }
 }
 
 async function upsertVerification(waNumber: string, patch: { step: string; name?: string; position?: string }): Promise<void> {
-  await supabaseAdmin.from("wa_verifications").upsert({ wa_number: waNumber, ...patch }, { onConflict: "wa_number" });
+  try {
+    await supabaseAdmin.from("wa_verifications").upsert({ wa_number: waNumber, ...patch }, { onConflict: "wa_number" });
+  } catch (e) { logIfReal(e, "upsertVerification"); }
 }
 
 async function deleteVerification(waNumber: string): Promise<void> {
-  await supabaseAdmin.from("wa_verifications").delete().eq("wa_number", waNumber);
+  try {
+    await supabaseAdmin.from("wa_verifications").delete().eq("wa_number", waNumber);
+  } catch (e) { logIfReal(e, "deleteVerification"); }
 }
 
 export async function handleVerificationFlow(waNumber: string, text: string): Promise<BotEmployee | null> {

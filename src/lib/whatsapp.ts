@@ -205,9 +205,13 @@ async function sendInteractiveButtonsMeta(
 /** Provider-agnostic — sends via whichever of Meta/Baileys is configured. */
 export async function sendTextMessage(to: string, body: string): Promise<{ success: true } | { error: string }> {
   const provider = await getWaProvider();
-  if (provider === "meta") return sendTextMessageMeta(to, body);
-  const { sendBaileysText } = await import("@/lib/whatsapp-baileys");
-  return sendBaileysText(to, body);
+  const result = provider === "meta"
+    ? await sendTextMessageMeta(to, body)
+    : await (async () => { const { sendBaileysText } = await import("@/lib/whatsapp-baileys"); return sendBaileysText(to, body); })();
+  if ("error" in result) {
+    console.error("[whatsapp] sendTextMessage error:", result.error);
+  }
+  return result;
 }
 
 /** Provider-agnostic confirm/cancel-style prompt. Baileys has no reliable

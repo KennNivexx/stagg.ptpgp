@@ -53,16 +53,24 @@ export async function processInboundWaMessage(msg: NormalizedInboundMessage): Pr
     if (!verified) return;
 
     const id = "wac-" + randomUUID();
-    await supabaseAdmin.from("wa_conversations").insert({
-      id, employee_id: verified.id, wa_number: from, current_menu: null, current_flow: null, flow_data: {},
-    });
+    try {
+      await supabaseAdmin.from("wa_conversations").upsert(
+        { id, employee_id: verified.id, wa_number: from, current_menu: null, current_flow: null, flow_data: {} },
+        { onConflict: "employee_id" },
+      );
+    } catch (e) {
+      console.error("[wa inbound] conversation insert error:", (e as Error).message);
+    }
     return;
   }
 
-  // Employee-initiates-first flow: their first real message IS the
-  // activation step (no template send confirms it any other way).
+  if (employee.wa_opted_out) {
+    await sendTextMessage(from, "Anda sudah berhenti berlangganan Bot WA HRIS. Hubungi HRD untuk mengaktifkan kembali.");
+    return;
+  }
+
   if (!employee.wa_connected_at) {
-    await markWaConnected(employee.id);
+    try { await markWaConnected(employee.id); } catch { /* non-critical */ }
   }
 
   const { data: existingConv } = await supabaseAdmin
@@ -76,9 +84,14 @@ export async function processInboundWaMessage(msg: NormalizedInboundMessage): Pr
     conversation = existingConv as WaConversation;
   } else {
     const id = "wac-" + randomUUID();
-    await supabaseAdmin.from("wa_conversations").insert({
-      id, employee_id: employee.id, wa_number: from, current_menu: null, current_flow: null, flow_data: {},
-    });
+    try {
+      await supabaseAdmin.from("wa_conversations").upsert(
+        { id, employee_id: employee.id, wa_number: from, current_menu: null, current_flow: null, flow_data: {} },
+        { onConflict: "employee_id" },
+      );
+    } catch (e) {
+      console.error("[wa inbound] conversation insert error:", (e as Error).message);
+    }
     conversation = {
       id, employee_id: employee.id, wa_number: from,
       current_menu: null, current_flow: null, flow_data: {},

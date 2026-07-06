@@ -20,15 +20,15 @@ export interface BotEmployee {
   wa_connected_at: string | null;
 }
 
-export async function getEmployeeByWaNumber(waNumber: string): Promise<BotEmployee | null> {
+export async function getEmployeeByWaNumber(waNumber: string): Promise<(BotEmployee & { wa_opted_out: boolean }) | null> {
   const { data } = await supabaseAdmin
     .from("employees")
     .select("id, full_name, email, wa_opted_out, wa_connected_at")
     .eq("wa_number", waNumber)
     .maybeSingle();
   const emp = data as (BotEmployee & { wa_opted_out: boolean }) | null;
-  if (!emp || emp.wa_opted_out) return null;
-  return { id: emp.id, full_name: emp.full_name, email: emp.email, wa_connected_at: emp.wa_connected_at };
+  if (!emp) return null;
+  return emp;
 }
 
 /** Verification flow: find employee by name + position match. */

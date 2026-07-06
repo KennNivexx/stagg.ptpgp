@@ -106,74 +106,75 @@ async function handleIncomingMessages(messages: unknown[]): Promise<void> {
 
 async function connect(): Promise<void> {
   const state = getGlobalState();
-  const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    fetchLatestBaileysVersion,
-    DisconnectReason,
-  } = await import("@whiskeysockets/baileys");
+  try {
+    const {
+      default: makeWASocket,
+      useMultiFileAuthState,
+      fetchLatestBaileysVersion,
+      DisconnectReason,
+    } = await import("@whiskeysockets/baileys");
 
-  await fs.mkdir(AUTH_DIR, { recursive: true });
-  // Not a React hook — Baileys names its auth-state loader with a "use" prefix,
-  // which trips the react-hooks lint rule as a false positive.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { state: authState, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-  const { version } = await fetchLatestBaileysVersion();
+    await fs.mkdir(AUTH_DIR, { recursive: true });
+    const { state: authState, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+    const { version } = await fetchLatestBaileysVersion();
 
-  state.status = "connecting";
-  const sock = makeWASocket({
-    version,
-    auth: authState,
-    printQRInTerminal: false,
-    syncFullHistory: false,
-  });
-  state.sock = sock;
+    state.status = "connecting";
+    const sock = makeWASocket({
+      version,
+      auth: authState,
+      printQRInTerminal: false,
+      syncFullHistory: false,
+    });
+    state.sock = sock;
 
-  sock.ev.on("creds.update", saveCreds);
+    sock.ev.on("creds.update", saveCreds);
 
-  sock.ev.on("connection.update", async (update: Record<string, unknown>) => {
-    const { connection, lastDisconnect, qr } = update;
+    sock.ev.on("connection.update", async (update: Record<string, unknown>) => {
+      const { connection, lastDisconnect, qr } = update;
 
-    if (qr) {
-      state.status = "qr";
-      state.qrDataUrl = await QRCode.toDataURL(qr as string);
-    }
-
-    if (connection === "open") {
-      state.status = "connected";
-      state.qrDataUrl = null;
-      const rawId = sock.user?.id as string | undefined;
-      if (rawId) {
-        const number = jidToDigits(rawId);
-        state.connectedNumber = number;
-        await saveBotNumber(number);
+      if (qr) {
+        state.status = "qr";
+        state.qrDataUrl = await QRCode.toDataURL(qr as string);
       }
-    }
 
-    if (connection === "close") {
-      const statusCode = (lastDisconnect as { error?: unknown } | undefined)?.error
-        ? ((lastDisconnect as { error: { output?: { statusCode?: number } } }).error?.output?.statusCode)
-        : undefined;
-      const loggedOut = statusCode === (DisconnectReason?.loggedOut ?? 401);
-      state.sock = null;
-      state.qrDataUrl = null;
-      state.connectedNumber = null;
-      if (loggedOut) {
-        state.status = "disconnected";
-        await fs.rm(AUTH_DIR, { recursive: true, force: true }).catch(() => {});
-      } else {
-        // Transient disconnect (network blip, server restart) — auto-reconnect
-        // using the same saved credentials, no new QR scan needed.
-        state.status = "connecting";
-        connect().catch((e) => console.error("[wa baileys] reconnect error:", (e as Error).message));
+      if (connection === "open") {
+        state.status = "connected";
+        state.qrDataUrl = null;
+        const rawId = sock.user?.id as string | undefined;
+        if (rawId) {
+          const number = jidToDigits(rawId);
+          state.connectedNumber = number;
+          await saveBotNumber(number);
+        }
       }
-    }
-  });
 
-  sock.ev.on("messages.upsert", (upsert: { messages: unknown[]; type: string }) => {
-    if (upsert.type !== "notify") return;
-    handleIncomingMessages(upsert.messages).catch((e) => console.error("[wa baileys] message handling error:", (e as Error).message));
-  });
+      if (connection === "close") {
+        const statusCode = (lastDisconnect as { error?: unknown } | undefined)?.error
+          ? ((lastDisconnect as { error: { output?: { statusCode?: number } } }).error?.output?.statusCode)
+          : undefined;
+        const loggedOut = statusCode === (DisconnectReason?.loggedOut ?? 401);
+        state.sock = null;
+        state.qrDataUrl = null;
+        state.connectedNumber = null;
+        if (loggedOut) {
+          state.status = "disconnected";
+          await fs.rm(AUTH_DIR, { recursive: true, force: true }).catch(() => {});
+        } else {
+          state.status = "connecting";
+          connect().catch((e) => console.error("[wa baileys] reconnect error:", (e as Error).message));
+        }
+      }
+    });
+
+    sock.ev.on("messages.upsert", (upsert: { messages: unknown[]; type: string }) => {
+      if (upsert.type !== "notify") return;
+      handleIncomingMessages(upsert.messages).catch((e) => console.error("[wa baileys] message handling error:", (e as Error).message));
+    });
+  } catch (e) {
+    state.status = "disconnected";
+    state.sock = null;
+    console.error("[wa baileys] connect error:", (e as Error).message);
+  }
 }
 
 export async function getBaileysStatus(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null }> {
