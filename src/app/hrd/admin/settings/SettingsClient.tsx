@@ -275,7 +275,8 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
         </Section>
       </div>
 
-      {/* WhatsApp Bot — full width */}
+      {/* WhatsApp Bot — hidden until needed */}
+      {false && (
       <div className="lg:col-span-2">
         <Section title="Bot WhatsApp" icon={MessageCircle} color="bg-emerald-50 text-emerald-600"
           onSave={() => save("wa", waRef)} loading={!!loadingMap.wa} msg={msgMap.wa || null}>
@@ -324,7 +325,7 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
                 {baileysStatus.status === "qr" && baileysStatus.qrDataUrl && (
                   <div className="flex flex-col items-center gap-2 py-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={baileysStatus.qrDataUrl} alt="QR code WhatsApp" className="w-48 h-48 border border-slate-200 rounded-lg bg-white p-2" />
+                    <img src={baileysStatus.qrDataUrl!} alt="QR code WhatsApp" className="w-48 h-48 border border-slate-200 rounded-lg bg-white p-2" />
                     <p className="text-[10px] text-slate-500 text-center">Buka WhatsApp di HP → Perangkat Tertaut → Tautkan Perangkat → scan kode ini.</p>
                   </div>
                 )}
@@ -440,6 +441,7 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
           </form>
         </Section>
       </div>
+      )}
     </div>
   );
 }
