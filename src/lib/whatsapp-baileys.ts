@@ -15,13 +15,17 @@
  * import() inside the message handler instead, which sidesteps that.
  */
 import path from "path";
+import os from "os";
 import fs from "fs/promises";
 import QRCode from "qrcode";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { NormalizedInboundMessage } from "@/lib/whatsapp-inbound";
 import type { IncomingWaMessage } from "@/lib/whatsapp-router";
 
-const AUTH_DIR = path.join(process.cwd(), ".baileys_auth");
+const AUTH_DIR = process.env.BAILEYS_AUTH_DIR
+  || (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? path.join(os.tmpdir(), ".baileys_auth")
+    : path.join(process.cwd(), ".baileys_auth"));
 
 export type BaileysStatus = "disconnected" | "connecting" | "qr" | "connected";
 
@@ -209,6 +213,11 @@ export async function getBaileysStatus(): Promise<{ status: BaileysStatus; qrDat
 /** Idempotent — if a connection attempt is already in flight or connected, just returns current status. */
 export async function startBaileysConnection(): Promise<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null; lastError: string | null }> {
   const state = getGlobalState();
+
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return { status: "disconnected", qrDataUrl: null, number: null, lastError: "Mode Demo (Baileys) tidak bisa jalan di Vercel/serverless. Pakai mode Resmi (Meta Cloud API), atau deploy ke VPS." };
+  }
+
   if (state.status === "connected" || state.status === "connecting" || state.status === "qr") {
     return getBaileysStatus();
   }
