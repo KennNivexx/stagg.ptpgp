@@ -10,7 +10,7 @@ import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendTextMessage } from "@/lib/whatsapp";
 import { getEmployeeByWaNumber, markWaConnected } from "@/lib/whatsapp-data";
-import { routeIncomingMessage, WaConversation, IncomingWaMessage } from "@/lib/whatsapp-router";
+import { routeIncomingMessage, handleVerificationFlow, WaConversation, IncomingWaMessage } from "@/lib/whatsapp-router";
 
 export interface NormalizedInboundMessage {
   /** Sender's WA number, digits only (e.g. "6281234567890"). */
@@ -44,7 +44,19 @@ export async function processInboundWaMessage(msg: NormalizedInboundMessage): Pr
 
   const employee = await getEmployeeByWaNumber(from);
   if (!employee) {
-    await sendTextMessage(from, "Nomor ini belum terdaftar. Silakan daftarkan nomor WhatsApp Anda terlebih dahulu di menu Profil Saya pada website HRIS.");
+    const text = (message.text || message.buttonId || "").trim();
+    if (message.type !== "text" || !text) {
+      await sendTextMessage(from, "Mohon kirim pesan teks untuk verifikasi.");
+      return;
+    }
+    const verified = await handleVerificationFlow(from, text);
+    if (!verified) return;
+
+    await markWaConnected(verified.id);
+    const id = "wac-" + randomUUID();
+    await supabaseAdmin.from("wa_conversations").insert({
+      id, employee_id: verified.id, wa_number: from, current_menu: null, current_flow: null, flow_data: {},
+    });
     return;
   }
 

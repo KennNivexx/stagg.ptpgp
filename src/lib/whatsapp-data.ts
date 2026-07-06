@@ -31,6 +31,30 @@ export async function getEmployeeByWaNumber(waNumber: string): Promise<BotEmploy
   return { id: emp.id, full_name: emp.full_name, email: emp.email, wa_connected_at: emp.wa_connected_at };
 }
 
+/** Verification flow: find employee by name + position match. */
+export async function findEmployeeByDetails(name: string, position: string): Promise<BotEmployee | null> {
+  const { data } = await supabaseAdmin
+    .from("employees")
+    .select("id, full_name, email, wa_opted_out, wa_connected_at, position")
+    .ilike("full_name", `%${name}%`)
+    .maybeSingle();
+  const emp = data as (BotEmployee & { wa_opted_out: boolean; position: string }) | null;
+  if (!emp || emp.wa_opted_out) return null;
+  const nameLower = name.toLowerCase().trim();
+  const empNameLower = (emp.full_name || "").toLowerCase().trim();
+  const posLower = position.toLowerCase().trim();
+  const empPosLower = (emp.position || "").toLowerCase().trim();
+  if (!empNameLower.includes(nameLower) || !empPosLower.includes(posLower)) return null;
+  return { id: emp.id, full_name: emp.full_name, email: emp.email, wa_connected_at: emp.wa_connected_at };
+}
+
+/** Link a WA number to an employee after successful verification. */
+export async function linkWaNumber(employeeId: string, waNumber: string): Promise<void> {
+  await supabaseAdmin.from("employees")
+    .update({ wa_number: waNumber, wa_connected_at: new Date().toISOString(), wa_opted_out: false })
+    .eq("id", employeeId);
+}
+
 /** Marks the connection as confirmed once the employee's first real message
  * arrives — this IS the activation step in the employee-initiates-first
  * flow (no template send to confirm it any other way). */

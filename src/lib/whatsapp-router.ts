@@ -16,6 +16,8 @@ import {
   submitLeaveViaBot,
   clockInViaBot,
   clockOutViaBot,
+  findEmployeeByDetails,
+  linkWaNumber,
 } from "@/lib/whatsapp-data";
 
 const FLOW_TIMEOUT_MS = 10 * 60 * 1000;
@@ -86,7 +88,7 @@ export async function routeIncomingMessage(
   }
   if (text === "menu") {
     await resetToIdle(conversation);
-    await sendTextMessage(conversation.wa_number, MAIN_MENU_TEXT);
+    await sendTextMessage(conversation.wa_number, `Halo *${employee.full_name}*!\n\n` + MAIN_MENU_TEXT);
     return;
   }
   if ((text === "batal" || text === "cancel") && conversation.current_flow) {
@@ -285,4 +287,100 @@ async function handleClockInFlow(employee: BotEmployee, conversation: WaConversa
 
   await resetToIdle(conversation);
   await sendTextMessage(to, `Gagal memproses absen: ${inResult.error}`);
+}
+
+const COMPANY_CODE = "PGP2026";
+
+interface WaVerification {
+  wa_number: string;
+  step: string;
+  name: string | null;
+  position: string | null;
+}
+
+async function getVerification(waNumber: string): Promise<WaVerification | null> {
+  const { data } = await supabaseAdmin
+    .from("wa_verifications")
+    .select("*")
+    .eq("wa_number", waNumber)
+    .maybeSingle();
+  return data as WaVerification | null;
+}
+
+async function upsertVerification(waNumber: string, patch: { step: string; name?: string; position?: string }): Promise<void> {
+  await supabaseAdmin.from("wa_verifications").upsert({ wa_number: waNumber, ...patch }, { onConflict: "wa_number" });
+}
+
+async function deleteVerification(waNumber: string): Promise<void> {
+  await supabaseAdmin.from("wa_verifications").delete().eq("wa_number", waNumber);
+}
+
+export async function handleVerificationFlow(waNumber: string, text: string): Promise<BotEmployee | null> {
+  const v = await getVerification(waNumber);
+
+  if (!v) {
+    await upsertVerification(waNumber, { step: "name" });
+    await sendTextMessage(waNumber, [
+      "*Bot HRIS PT Pratama Galuh Perkasa*",
+      "",
+      "Untuk verifikasi identitas, mohon jawab pertanyaan berikut:",
+      "",
+      "*Siapa nama lengkap Anda?*",
+      "",
+      "Ketik *batal* untuk membatalkan.",
+    ].join("\n"));
+    return null;
+  }
+
+  if (text === "batal" || text === "cancel") {
+    await deleteVerification(waNumber);
+    await sendTextMessage(waNumber, "Verifikasi dibatalkan. Silakan hubungi HRD jika butuh bantuan.");
+    return null;
+  }
+
+  if (v.step === "name") {
+    await upsertVerification(waNumber, { step: "jabatan", name: text.trim() });
+    await sendTextMessage(waNumber, "*Apa jabatan Anda?*\n\nContoh: Staff Finance, Supir, Admin HRD");
+    return null;
+  }
+
+  if (v.step === "jabatan") {
+    await upsertVerification(waNumber, { step: "code", position: text.trim() });
+    await sendTextMessage(waNumber, "*Apa kode perusahaan?*");
+    return null;
+  }
+
+  if (v.step === "code") {
+    if (text.trim() !== COMPANY_CODE) {
+      await deleteVerification(waNumber);
+      await sendTextMessage(waNumber, "Kode perusahaan salah. Verifikasi gagal. Silakan hubungi HRD.");
+      return null;
+    }
+
+    const name = v.name || "";
+    const position = v.position || "";
+    const employee = await findEmployeeByDetails(name, position);
+
+    if (!employee) {
+      await deleteVerification(waNumber);
+      await sendTextMessage(waNumber, "Data tidak ditemukan. Pastikan nama dan jabatan sesuai dengan data di sistem. Silakan coba lagi dengan kirim pesan apa saja, atau hubungi HRD.");
+      return null;
+    }
+
+    await deleteVerification(waNumber);
+    await linkWaNumber(employee.id, waNumber);
+
+    const profileText = await getEmployeeProfileText(employee.id);
+    await sendTextMessage(waNumber, [
+      "*Verifikasi Berhasil!*",
+      "",
+      profileText,
+      "",
+      "Bot HRIS siap membantu Anda. Ketik *menu* untuk melihat pilihan.",
+    ].join("\n"));
+
+    return employee;
+  }
+
+  return null;
 }
