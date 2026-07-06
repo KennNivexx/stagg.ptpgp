@@ -8,7 +8,7 @@ import {
   Briefcase, Award, GraduationCap, BookOpen, TrendingUp,
   Gift, GitBranch, Heart, FileText,
   LogOut, Search, Menu, X, ChevronRight, ChevronDown, Clock,
-  Users, LayoutGrid,
+  Users, LayoutGrid, Settings, Bell, ShieldCheck, KeyRound, ClipboardList,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
@@ -173,6 +173,17 @@ const MENU_GROUPS = [
       { href: "/hrd/reports/turnover", label: "Laporan Turnover" },
     ],
   },
+  {
+    label: "Admin & Pengaturan",
+    icon: Settings,
+    items: [
+      { href: "/hrd/admin", label: "Dashboard Admin" },
+      { href: "/hrd/admin/settings", label: "Pengaturan Perusahaan" },
+      { href: "/hrd/admin/roles", label: "Role & Permission" },
+      { href: "/hrd/admin/notifications", label: "Notifikasi" },
+      { href: "/hrd/admin/audit", label: "Audit Log" },
+    ],
+  },
 ];
 
 const GROUP_TOOLTIPS: Record<string, string> = {
@@ -190,6 +201,7 @@ const GROUP_TOOLTIPS: Record<string, string> = {
   "Suksesi": "Siapkan kandidat pengganti posisi penting",
   "Hubungan Karyawan": "Cuti, absensi, keluhan, dan surat peringatan",
   "Laporan & Analitik": "Laporan rekrutmen, karyawan, payroll, dan lainnya",
+  "Admin & Pengaturan": "Konfigurasi sistem, email, WA bot, user management",
 };
 
 const ITEM_TOOLTIPS: Record<string, string> = {
@@ -272,6 +284,11 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/hrd/guides/applicant": "Panduan penggunaan sistem untuk pelamar",
   "/hrd/guides/department_manager": "Panduan penggunaan sistem untuk manajer departemen",
   "/hrd/guides/director": "Panduan penggunaan sistem untuk direktur",
+  "/hrd/admin": "Dashboard admin & status sistem",
+  "/hrd/admin/settings": "Pengaturan perusahaan, email, WA bot",
+  "/hrd/admin/roles": "Atur role dan permission akses",
+  "/hrd/admin/notifications": "Template dan pengaturan notifikasi",
+  "/hrd/admin/audit": "Log aktivitas dan perubahan sistem",
 };
 
 // "/hrd" is the root — every HRD route starts with "/hrd/", so a plain prefix
