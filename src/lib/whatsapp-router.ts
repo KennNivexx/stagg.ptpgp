@@ -316,6 +316,11 @@ async function deleteVerification(waNumber: string): Promise<void> {
 }
 
 export async function handleVerificationFlow(waNumber: string, text: string): Promise<BotEmployee | null> {
+  // Clean up verification entries older than 10 minutes before processing
+  try {
+    await supabaseAdmin.from("wa_verifications").delete().lt("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
+  } catch { /* non-critical cleanup */ }
+
   const v = await getVerification(waNumber);
 
   if (!v) {
@@ -368,7 +373,11 @@ export async function handleVerificationFlow(waNumber: string, text: string): Pr
     }
 
     await deleteVerification(waNumber);
-    await linkWaNumber(employee.id, waNumber);
+    const linkResult = await linkWaNumber(employee.id, waNumber);
+    if ("error" in linkResult) {
+      await sendTextMessage(waNumber, linkResult.error);
+      return null;
+    }
 
     const profileText = await getEmployeeProfileText(employee.id);
     await sendTextMessage(waNumber, [
@@ -376,7 +385,18 @@ export async function handleVerificationFlow(waNumber: string, text: string): Pr
       "",
       profileText,
       "",
-      "Bot HRIS siap membantu Anda. Ketik *menu* untuk melihat pilihan.",
+      "*Menu Utama HRIS PT Pratama Galuh Perkasa*",
+      "",
+      "1. Profil Saya",
+      "2. Absen (Clock-in/out)",
+      "3. Ajukan Cuti/Izin",
+      "4. Slip Gaji",
+      "5. Pelatihan Saya",
+      "6. KPI & Performa",
+      "7. Deskripsi Kerja",
+      "8. Surat Peringatan (SP)",
+      "",
+      "Balas dengan angka 1-8. Ketik *menu* kapan saja untuk kembali ke sini, atau *berhenti* untuk berhenti berlangganan.",
     ].join("\n"));
 
     return employee;

@@ -33,26 +33,44 @@ export async function getEmployeeByWaNumber(waNumber: string): Promise<BotEmploy
 
 /** Verification flow: find employee by name + position match. */
 export async function findEmployeeByDetails(name: string, position: string): Promise<BotEmployee | null> {
+  const nameLower = name.toLowerCase().trim();
+  const posLower = position.toLowerCase().trim();
   const { data } = await supabaseAdmin
     .from("employees")
     .select("id, full_name, email, wa_opted_out, wa_connected_at, position")
-    .ilike("full_name", `%${name}%`)
-    .maybeSingle();
-  const emp = data as (BotEmployee & { wa_opted_out: boolean; position: string }) | null;
-  if (!emp || emp.wa_opted_out) return null;
-  const nameLower = name.toLowerCase().trim();
-  const empNameLower = (emp.full_name || "").toLowerCase().trim();
-  const posLower = position.toLowerCase().trim();
-  const empPosLower = (emp.position || "").toLowerCase().trim();
-  if (!empNameLower.includes(nameLower) || !empPosLower.includes(posLower)) return null;
-  return { id: emp.id, full_name: emp.full_name, email: emp.email, wa_connected_at: emp.wa_connected_at };
+    .ilike("full_name", `%${nameLower}%`)
+    .limit(10);
+  const rows = (data || []) as Array<BotEmployee & { wa_opted_out: boolean; position: string }>;
+  for (const emp of rows) {
+    if (emp.wa_opted_out) continue;
+    const empName = (emp.full_name || "").toLowerCase().trim();
+    const empPos = (emp.position || "").toLowerCase().trim();
+    if (empName.includes(nameLower) && empPos.includes(posLower)) {
+      return { id: emp.id, full_name: emp.full_name, email: emp.email, wa_connected_at: emp.wa_connected_at };
+    }
+  }
+  return null;
 }
 
 /** Link a WA number to an employee after successful verification. */
-export async function linkWaNumber(employeeId: string, waNumber: string): Promise<void> {
-  await supabaseAdmin.from("employees")
+export async function linkWaNumber(employeeId: string, waNumber: string): Promise<{ success: true } | { error: string }> {
+  const { data: conflict } = await supabaseAdmin
+    .from("employees")
+    .select("id, full_name")
+    .eq("wa_number", waNumber)
+    .neq("id", employeeId)
+    .maybeSingle();
+  if (conflict) {
+    return { error: `Nomor WA ini sudah terhubung ke akun ${conflict.full_name || "lain"}. Hubungi HRD.` };
+  }
+  const { error } = await supabaseAdmin.from("employees")
     .update({ wa_number: waNumber, wa_connected_at: new Date().toISOString(), wa_opted_out: false })
     .eq("id", employeeId);
+  if (error) {
+    console.error("[whatsapp] linkWaNumber error:", error.message);
+    return { error: "Gagal menghubungkan nomor WA. Hubungi HRD." };
+  }
+  return { success: true };
 }
 
 /** Marks the connection as confirmed once the employee's first real message

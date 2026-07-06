@@ -52,7 +52,6 @@ export async function processInboundWaMessage(msg: NormalizedInboundMessage): Pr
     const verified = await handleVerificationFlow(from, text);
     if (!verified) return;
 
-    await markWaConnected(verified.id);
     const id = "wac-" + randomUUID();
     await supabaseAdmin.from("wa_conversations").insert({
       id, employee_id: verified.id, wa_number: from, current_menu: null, current_flow: null, flow_data: {},
