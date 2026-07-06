@@ -30,7 +30,7 @@ function Section({ title, icon: Icon, color, children, onSave, loading, msg }: {
         {children}
         <Msg m={msg} />
         <button type="button" onClick={onSave} disabled={loading}
-          className="px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors disabled:opacity-60">
+          className="px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] active:scale-[0.97] active:bg-[#990000] transition-all disabled:opacity-60">
           {loading ? "Menyimpan..." : `Simpan ${title}`}
         </button>
       </div>
@@ -133,7 +133,7 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Alamat</label>
             <textarea name="address" rows={2} defaultValue={s.company_address ?? ""} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="Alamat lengkap perusahaan..." />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Telepon</label>
               <input name="phone" type="text" defaultValue={s.company_phone ?? ""} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="+62 xxx" />
@@ -249,8 +249,8 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
                   className="w-full pr-10 text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono"
                 />
                 <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                  {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center">
+                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 mt-1">Bukan password Gmail biasa. Harus berupa App Password 16 karakter dari Google.</p>
@@ -388,8 +388,8 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
                   placeholder="EAAxxxxxxxxxxxx"
                   className="w-full pr-10 text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
                 <button type="button" onClick={() => setShowWaToken(!showWaToken)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                  {showWaToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center">
+                  {showWaToken ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
@@ -401,8 +401,8 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
                   <input name="app_secret" type={showWaSecret ? "text" : "password"} defaultValue={s.wa_app_secret ?? ""}
                     className="w-full pr-10 text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
                   <button type="button" onClick={() => setShowWaSecret(!showWaSecret)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    {showWaSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center">
+                    {showWaSecret ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">Dipakai untuk verifikasi signature webhook — wajib diisi.</p>

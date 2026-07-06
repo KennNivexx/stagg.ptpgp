@@ -383,7 +383,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
         />
       )}
 
-      <aside className={`w-72 bg-[#0F172A] text-white flex flex-col fixed inset-y-0 left-0 z-40 transition-transform duration-300 border-r border-slate-800 lg:translate-x-0 lg:static lg:h-screen ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`w-72 bg-[#0F172A] text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300 border-r border-slate-800 lg:translate-x-0 lg:static lg:h-screen ${isSidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"}`}>
         <div className="p-5 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse shrink-0"></span>
@@ -407,7 +407,8 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
                   type="button"
                   onClick={() => toggleGroup(group.label)}
                   title={GROUP_TOOLTIPS[group.label]}
-                  className={`w-full flex items-center gap-2 px-5 py-1.5 ${hasActive ? "text-red-400" : "text-slate-500 hover:text-slate-300"} transition-colors`}
+                  aria-expanded={isExpanded}
+                  className={`w-full flex items-center gap-2 px-5 py-2.5 ${hasActive ? "text-red-400" : "text-slate-500 hover:text-slate-300"} transition-colors`}
                 >
                   <GroupIcon size={13} className="shrink-0" />
                   <span className="text-[10px] font-bold tracking-widest uppercase">{group.label}</span>
@@ -432,7 +433,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
                         href={item.href}
                         onClick={() => setIsSidebarOpen(false)}
                         title={ITEM_TOOLTIPS[item.href] || item.label}
-                        className={`flex items-center gap-2 pl-9 pr-4 py-2 text-[11px] font-medium transition-all duration-150 ${
+                        className={`flex items-center gap-2 pl-9 pr-4 py-3 text-[11px] font-medium transition-all duration-150 ${
                           isActive
                             ? "bg-red-600/20 text-white border-l-2 border-red-500"
                             : "text-slate-400 hover:text-white hover:bg-slate-800/40 border-l-2 border-transparent"
@@ -470,7 +471,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 lg:h-screen lg:overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden lg:h-screen lg:overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 lg:px-8 z-30 shrink-0">
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200 w-64 lg:w-80">
@@ -507,7 +508,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Mobile bottom navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 w-full h-14 bg-[#0F172A] border-t border-slate-800 z-40 flex items-stretch">
+      <nav className="lg:hidden fixed bottom-0 left-0 w-full h-16 bg-[#0F172A] border-t border-slate-800 z-30 flex items-stretch">
         {BOTTOM_NAV.map((item) => {
           const isActive = isItemActive(pathname, item.href);
           const hasUnread = hasUnreadForHref(item.href, "/hrd");
@@ -516,7 +517,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-semibold transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
                 isActive ? "text-red-500" : "text-slate-400"
               }`}
             >
@@ -531,7 +532,8 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
         <button
           type="button"
           onClick={() => setIsSidebarOpen(true)}
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-semibold text-slate-400"
+          aria-label="Menu lengkap (buka sidebar)"
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-slate-400 active:text-slate-300"
         >
           <LayoutGrid size={17} />
           Lainnya

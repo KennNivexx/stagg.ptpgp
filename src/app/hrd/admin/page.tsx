@@ -38,7 +38,7 @@ function AdminCard({
   return (
     <Link
       href={href}
-      className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-md hover:border-slate-200 transition-all group"
+      className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-md hover:border-slate-200 active:shadow-md active:scale-[0.98] transition-all group"
     >
       <div className="flex items-start gap-4">
         <div className={`p-3 ${c.bg} ${c.text} rounded-xl group-hover:scale-110 transition-transform`}>
