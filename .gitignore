@@ -20,6 +20,9 @@
 # production
 /build
 
+# zip archives (never commit large files)
+*.zip
+
 # misc
 .DS_Store
 *.pem
