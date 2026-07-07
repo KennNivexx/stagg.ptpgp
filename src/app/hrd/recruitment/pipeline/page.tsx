@@ -488,51 +488,47 @@ export default function PipelineKandidat() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={Users} title="Tidak ada kandidat dalam tahap ini." />
       ) : (
-        <div className="space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           {filtered.map(app => {
             const job = jobs[app.job_id as string];
             const isLoading = actionLoading === (app.id as string);
             const canTalentPool = app.status === "Ditolak" && !!app.reached_interview && !app.in_talent_pool;
 
             return (
-              <div key={app.id as string} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div key={app.id as string}>
                 {/* Header row */}
-                <div className="grid grid-cols-[2fr_2fr_1.5fr_auto] gap-0 border-b border-slate-100">
-                  {/* Nama */}
-                  <div className="px-5 py-3 flex items-center gap-3">
+                <div className="grid grid-cols-[2fr_1.5fr_1fr_auto] gap-3 px-5 py-3 border-b border-slate-100 bg-slate-50/50 items-center">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="h-9 w-9 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 text-white flex items-center justify-center font-bold text-xs shrink-0">
                       {(app.full_name as string)?.charAt(0)?.toUpperCase() || "?"}
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">{app.full_name as string}</p>
-                      <p className="text-[10px] text-slate-400">{job?.position || "-"} · {job?.department || "-"}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-800 truncate">{app.full_name as string}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{job?.position || "-"} · {job?.department || "-"}</p>
                     </div>
                   </div>
 
-                  {/* Kontak */}
-                  <div className="px-5 py-3 flex flex-col justify-center gap-0.5">
-                    <p className="text-[11px] text-slate-600 flex items-center gap-1"><Mail size={10} /> {app.email as string}</p>
-                    {!!app.phone && <p className="text-[11px] text-slate-400 flex items-center gap-1"><Phone size={10} /> {app.phone as string}</p>}
+                  <div className="flex flex-col justify-center gap-0.5 min-w-0">
+                    <p className="text-[11px] text-slate-600 flex items-center gap-1 truncate"><Mail size={10} className="shrink-0" /> {app.email as string}</p>
+                    {!!app.phone && <p className="text-[11px] text-slate-400 flex items-center gap-1 truncate"><Phone size={10} className="shrink-0" /> {app.phone as string}</p>}
                   </div>
 
-                  {/* Tanggal */}
-                  <div className="px-5 py-3 flex items-center">
-                    <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                  <div className="flex items-center gap-3">
+                    <p className="text-[11px] text-slate-500 flex items-center gap-1 whitespace-nowrap">
                       <Calendar size={10} />
                       {app.applied_at ? new Date(app.applied_at as string).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
                     </p>
                   </div>
 
-                  {/* Aksi */}
-                  <div className="px-5 py-3 flex items-center gap-2">
+                  <div className="flex items-center gap-2 justify-end">
                     {app.status === "Menunggu Review" && (
                       <>
                         <button onClick={() => handleAdvanceToTest(app)} disabled={isLoading}
-                          className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1">
+                          className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1 whitespace-nowrap">
                           <ClipboardList size={11} /> Tes Tulis & Psikotes
                         </button>
                         <button onClick={() => handleReject(app)} disabled={isLoading}
-                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1">
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1 whitespace-nowrap">
                           <XCircle size={11} /> Tolak
                         </button>
                       </>
@@ -540,11 +536,11 @@ export default function PipelineKandidat() {
                     {app.status === "Tes Tulis & Psikotes" && (
                       <>
                         <button onClick={() => handleInterview(app)} disabled={isLoading}
-                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1">
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1 whitespace-nowrap">
                           <CalendarClock size={11} /> Lanjut Interview
                         </button>
                         <button onClick={() => handleReject(app)} disabled={isLoading}
-                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1">
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1 whitespace-nowrap">
                           <XCircle size={11} /> Tolak
                         </button>
                       </>
@@ -552,28 +548,28 @@ export default function PipelineKandidat() {
                     {app.status === "Interview" && (
                       <>
                         <button onClick={() => handleHire(app)} disabled={isLoading}
-                          className="px-3 py-1.5 bg-[#CC0000] hover:bg-[#aa0000] text-white rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1">
+                          className="px-3 py-1.5 bg-[#CC0000] hover:bg-[#aa0000] text-white rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1 whitespace-nowrap">
                           <UserPlus size={11} /> Rekrut
                         </button>
                         <button onClick={() => handleReject(app)} disabled={isLoading}
-                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1">
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1 whitespace-nowrap">
                           <XCircle size={11} /> Tolak
                         </button>
                       </>
                     )}
                     {app.status === "Diterima" && (
-                      <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                      <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 whitespace-nowrap">
                         <CheckCircle2 size={11} /> Sudah Direkrut
                       </span>
                     )}
                     {canTalentPool && (
                       <button onClick={() => { setTalentDialog(app); setTalentNotes(""); }} disabled={isLoading}
-                        className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1">
+                        className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1 whitespace-nowrap">
                         <Star size={11} /> Talent Pool
                       </button>
                     )}
                     {!!app.in_talent_pool && app.status === "Ditolak" && (
-                      <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
+                      <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1 whitespace-nowrap">
                         <Star size={11} /> Di Talent Pool
                       </span>
                     )}
@@ -581,8 +577,8 @@ export default function PipelineKandidat() {
                   </div>
                 </div>
 
-                {/* Profile + Tests */}
-                <div className="px-5 pb-4 bg-slate-50/40">
+                {/* Profile data table */}
+                <div className="px-5 py-3 border-b border-slate-50">
                   <ProfileDetail app={app} />
                   <TestResults app={app} />
                 </div>
