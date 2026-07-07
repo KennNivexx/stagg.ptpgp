@@ -326,3 +326,111 @@ export async function updatePayrollStatus(id: string, status: PayrollStatus) {
   revalidatePath("/hrd/rewards/payslips");
   return { success: true };
 }
+
+export async function generateBatchPayroll(formData: FormData) {
+  await requireRole("hrd", "superadmin");
+  const month = parseInt(formData.get("month") as string || "0", 10);
+  const year = parseInt(formData.get("year") as string || "0", 10);
+  if (!month || !year) return { error: "Pilih bulan dan tahun." };
+  const { data: employees } = await supabaseAdmin
+    .from("employees").select("id, full_name, status")
+    .in("status", ["Tetap", "Kontrak", "Magang"]).order("full_name");
+  if (!employees || employees.length === 0) return { error: "Tidak ada karyawan aktif." };
+  let created = 0; let skipped = 0;
+  const warnings: string[] = [];
+  for (const emp of employees) {
+    const result = await computePayrollEntry(emp.id as string, month, year);
+    if ("error" in result) {
+      if (result.error === "exists") { skipped++; continue; }
+      warnings.push(`${emp.full_name}: ${result.error}`);
+      continue;
+    }
+    created++;
+  }
+  revalidatePath("/hrd/payroll");
+  revalidatePath("/hrd/rewards/payroll");
+  return { success: true, created, skipped, ...(warnings.length > 0 ? { warnings: warnings.slice(0, 5) } : {}) };
+}
+
+export async function updatePayrollAmounts(formData: FormData) {
+  await requireRole("hrd", "superadmin");
+  const id = (formData.get("id") as string || "").trim();
+  const bonus = parseFloat(formData.get("bonus") as string || "0") || 0;
+  const deductions = parseFloat(formData.get("deductions") as string || "0") || 0;
+  if (!id) return { error: "ID payroll tidak valid." };
+  const { data: existing } = await supabaseAdmin.from("payroll")
+    .select("status, basic_salary, allowances, tax, bpjs_health, bpjs_employment").eq("id", id).maybeSingle();
+  if (!existing) return { error: "Data payroll tidak ditemukan." };
+  if ((existing as Record<string, unknown>).status !== "Draft") return { error: "Hanya payroll Draft yang dapat diedit." };
+  const row = existing as Record<string, unknown>;
+  const net = (Number(row.basic_salary) || 0) + (Number(row.allowances) || 0) + bonus
+    - (Number(row.tax) || 0) - (Number(row.bpjs_health) || 0) - (Number(row.bpjs_employment) || 0) - deductions;
+  const { error } = await supabaseAdmin.from("payroll").update({ bonus, deductions, net_salary: net }).eq("id", id);
+  if (error) { console.error("[admin] updatePayrollAmounts:", error.message); return { error: "Gagal." }; }
+  revalidatePath("/hrd/payroll");
+  revalidatePath("/hrd/rewards/payroll");
+  return { success: true };
+}
+
+export async function batchUpdatePayrollStatus(formData: FormData) {
+  await requireRole("hrd", "superadmin");
+  const month = parseInt(formData.get("month") as string || "0", 10);
+  const year = parseInt(formData.get("year") as string || "0", 10);
+  const status = (formData.get("status") as string || "").trim();
+  if (!month || !year) return { error: "Pilih bulan dan tahun." };
+  if (!PAYROLL_STATUSES.includes(status as PayrollStatus)) return { error: "Status tidak valid." };
+  const fromStatus = status === "Approved" ? "Draft" : "Approved";
+  const { count, error } = await supabaseAdmin.from("payroll")
+    .update({ status }, { count: "exact" }).eq("month", month).eq("year", year).eq("status", fromStatus);
+  if (error) { console.error("[admin] batchUpdatePayrollStatus:", error.message); return { error: "Gagal." }; }
+  revalidatePath("/hrd/payroll");
+  revalidatePath("/hrd/rewards/payroll");
+  return { success: true, updated: count || 0 };
+}
+
+async function computePayrollEntry(employeeId: string, month: number, year: number): Promise<{ success: true } | { error: string }> {
+  const { data: existing } = await supabaseAdmin.from("payroll")
+    .select("id").eq("employee_id", employeeId).eq("month", month).eq("year", year).maybeSingle();
+  if (existing) return { error: "exists" };
+  const { data: sd } = await supabaseAdmin.from("salary_structures")
+    .select("*").eq("employee_id", employeeId).maybeSingle();
+  const basic = Number(sd?.basic_salary) || 0;
+  const allowances = (Number(sd?.transport_allowance) || 0) + (Number(sd?.meal_allowance) || 0)
+    + (Number(sd?.housing_allowance) || 0) + (Number(sd?.position_allowance) || 0);
+  if (basic === 0) return { error: "Struktur gaji belum diisi." };
+  const periodKey = `${String(month).padStart(2, "0")}/${year}`;
+  const { data: bonusRows } = await supabaseAdmin.from("incentive_payments").select("amount")
+    .eq("employee_id", employeeId).eq("period", periodKey).in("status", ["Disetujui", "Dibayarkan"]);
+  const bonus = (bonusRows || []).reduce((s, r) => s + (Number((r as Record<string, unknown>).amount) || 0), 0);
+  let tax = 0;
+  try {
+    const { data: tr } = await supabaseAdmin.from("system_settings").select("value").eq("key", "pph21_config").maybeSingle();
+    const cfg = tr?.value ? JSON.parse(tr.value as string) : null;
+    const ptkpStatus = (sd?.ptkp_status as string) || "TK/0";
+    const m: Record<string, number> = { "TK/0": cfg?.ptkp_tk0 ?? 54000000, "TK/1": cfg?.ptkp_tk1 ?? 58500000, "TK/2": cfg?.ptkp_tk2 ?? 63000000, "TK/3": cfg?.ptkp_tk3 ?? 67500000, "K/0": cfg?.ptkp_k0 ?? 58500000, "K/1": cfg?.ptkp_k1 ?? 63000000, "K/2": cfg?.ptkp_k2 ?? 67500000, "K/3": cfg?.ptkp_k3 ?? 72000000 };
+    const ptkp = m[ptkpStatus] ?? 54000000;
+    const brs: Array<{ min: number; max: number | null; rate: number }> = cfg?.brackets ?? [{ min: 0, max: 60000000, rate: 5 }, { min: 60000000, max: 250000000, rate: 15 }, { min: 250000000, max: 500000000, rate: 25 }, { min: 500000000, max: 5000000000, rate: 30 }, { min: 5000000000, max: null, rate: 35 }];
+    const annual = (basic + allowances) * 12;
+    const pkp = Math.max(0, annual - ptkp);
+    let aTax = 0; let rem = pkp;
+    for (const b of brs) { if (rem <= 0) break; const sz = b.max !== null ? b.max - b.min : rem; const tx = Math.min(rem, sz); aTax += tx * (b.rate / 100); rem -= tx; }
+    tax = Math.round(aTax / 12);
+  } catch { tax = 0; }
+  let bpH = 0; let bpE = 0;
+  try {
+    const { data: br } = await supabaseAdmin.from("system_settings").select("value").eq("key", "bpjs_config").maybeSingle();
+    const bc = br?.value ? JSON.parse(br.value as string) : null;
+    const g = basic + allowances;
+    bpH = Math.round(Math.min(g, bc?.health_wage_cap ?? 12000000) * ((bc?.health_employee_percent ?? 1) / 100));
+    bpE = Math.round(g * ((bc?.jht_employee_percent ?? 2) / 100));
+    if (bc?.jp_enabled ?? true) bpE += Math.round(Math.min(g, bc?.jp_wage_cap ?? 10547400) * ((bc?.jp_employee_percent ?? 1) / 100));
+  } catch { bpH = 0; bpE = 0; }
+  const net = basic + allowances + bonus - tax - bpH - bpE;
+  const { error } = await supabaseAdmin.from("payroll").insert({
+    id: "pay-" + crypto.randomUUID(), employee_id: employeeId, month, year,
+    basic_salary: basic, allowances, bonus, tax, bpjs_health: bpH, bpjs_employment: bpE,
+    deductions: 0, net_salary: net, status: "Draft", created_at: new Date().toISOString(),
+  });
+  if (error) { console.error("[admin] computePayrollEntry:", error.message); return { error: "Gagal" }; }
+  return { success: true };
+}
