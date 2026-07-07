@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface TeaserProps {
   career_badge?: string;
@@ -36,7 +37,13 @@ export default function TeaserSection({
     <section className="py-32 bg-gray-50/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-32">
         {/* Career Banner */}
-        <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
+        <motion.div
+          className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24"
+          initial={{ opacity: 0, x: -80 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+        >
           <div className="lg:w-1/2 flex flex-col justify-center">
             <span className="text-pgp-red font-semibold text-xs tracking-widest uppercase mb-4">
               {career_badge}
@@ -64,10 +71,16 @@ export default function TeaserSection({
               <img src={career_image_url} alt={career_title} className="w-full h-full object-cover" />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* E-Procurement Banner */}
-        <div className="flex flex-col lg:flex-row-reverse items-center gap-16 lg:gap-24">
+        <motion.div
+          className="flex flex-col lg:flex-row-reverse items-center gap-16 lg:gap-24"
+          initial={{ opacity: 0, x: 80 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+        >
           <div className="lg:w-1/2 flex flex-col justify-center">
             <span className="text-pgp-red font-semibold text-xs tracking-widest uppercase mb-4">
               {epro_badge}
@@ -95,7 +108,7 @@ export default function TeaserSection({
               <img src={epro_image_url} alt={epro_title} className="w-full h-full object-cover" />
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

@@ -95,8 +95,18 @@ export default function FeaturesSection({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {items.map((feature, index) => {
             const IconComponent = feature.icon ? iconMap[feature.icon] : null;
+            const col = index % 3;
+            const fromX = col === 0 ? -60 : col === 2 ? 60 : 0;
+            const fromY = col === 1 ? 60 : 0;
             return (
-              <div key={index} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: fromX, y: fromY }}
+                whileInView={{ opacity: 1, x: 0, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
+                className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group"
+              >
                 <div className="w-14 h-14 bg-red-50 text-pgp-red rounded-xl flex items-center justify-center mb-6 group-hover:bg-pgp-red group-hover:text-white transition-colors">
                   {IconComponent ? <IconComponent size={24} /> : <Truck size={24} />}
                 </div>
@@ -104,7 +114,7 @@ export default function FeaturesSection({
                 <p className="text-gray-500 text-sm leading-relaxed">
                   {feature.description}
                 </p>
-              </div>
+              </motion.div>
             );
           })}
         </div>

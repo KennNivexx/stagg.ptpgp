@@ -117,17 +117,24 @@ export default function ServicesGridSection({
             {items.map((service, index) => {
               const IconComponent = service.icon ? iconMap[service.icon] : null;
               return (
-                <div key={index} className="group bg-[#FCFBF9] border border-zinc-200/40 rounded-3xl p-8 hover:border-pgp-red/40 hover:shadow-md hover:bg-orange-50/20 transition-all duration-300">
-                  <div className="w-16 h-16 bg-white border border-zinc-200/50 shadow-sm text-pgp-red rounded-2xl flex items-center justify-center mb-8 group-hover:bg-pgp-red group-hover:text-white transition-all duration-300">
-                    {IconComponent ? <IconComponent size={28} /> : <PackageCheck size={28} />}
-                  </div>
-                  <h3 className="text-xl font-bold text-pgp-navy mb-4 transition-colors duration-300">
-                    {service.title}
-                  </h3>
-                  <p className="text-zinc-600 text-sm leading-relaxed transition-colors duration-300">
-                    {service.description}
-                  </p>
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="group bg-[#FCFBF9] border border-zinc-200/40 rounded-3xl p-8 hover:border-pgp-red/40 hover:shadow-md hover:bg-orange-50/20 transition-all duration-300"
+              >
+                <div className="w-16 h-16 bg-white border border-zinc-200/50 shadow-sm text-pgp-red rounded-2xl flex items-center justify-center mb-8 group-hover:bg-pgp-red group-hover:text-white transition-all duration-300">
+                  {IconComponent ? <IconComponent size={28} /> : <PackageCheck size={28} />}
                 </div>
+                <h3 className="text-xl font-bold text-pgp-navy mb-4 transition-colors duration-300">
+                  {service.title}
+                </h3>
+                <p className="text-zinc-600 text-sm leading-relaxed transition-colors duration-300">
+                  {service.description}
+                </p>
+              </motion.div>
               );
             })}
           </div>

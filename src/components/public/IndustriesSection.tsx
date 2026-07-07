@@ -70,7 +70,12 @@ export default function IndustriesSection({
           {items.map((ind, index) => {
             const IconComponent = ind.icon ? iconMap[ind.icon] : null;
             return (
-              <div key={index} className="flex flex-col items-center justify-center p-8 bg-[#FCF9F6] rounded-2xl border border-gray-100 hover:border-pgp-red hover:shadow-sm transition-all group">
+              <motion.div key={index} 
+                initial={{ opacity: 0, x: 60 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.5, delay: index * 0.07, ease: "easeOut" }}
+                className="flex flex-col items-center justify-center p-8 bg-[#FCF9F6] rounded-2xl border border-gray-100 hover:border-pgp-red hover:shadow-sm transition-all group">
                 <div className="text-gray-400 group-hover:text-pgp-red mb-4 transition-colors">
                   {IconComponent ? <IconComponent size={24} /> : <Factory size={24} />}
                 </div>
@@ -80,7 +85,7 @@ export default function IndustriesSection({
                 {ind.description && (
                   <p className="text-xs text-gray-400 text-center mt-2">{ind.description}</p>
                 )}
-              </div>
+              </motion.div>
             );
           })}
         </div>

@@ -76,7 +76,12 @@ export default function CertificationSection({
           {items.map((cert, index) => {
             const IconComponent = cert.icon ? iconMap[cert.icon] : null;
             return (
-              <div key={index} className="flex flex-col items-center gap-4 group cursor-default">
+              <motion.div key={index}
+                initial={{ opacity: 0, scale: 0.5 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1, type: "spring", stiffness: 200 }}
+                className="flex flex-col items-center gap-4 group cursor-default">
                 {cert.logo ? (
                   <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100 group-hover:shadow-lg transition-all duration-300 overflow-hidden">
                     <img src={cert.logo || undefined} alt={cert.name} className="w-12 h-12 object-contain" />
@@ -92,7 +97,7 @@ export default function CertificationSection({
                     <span className="block text-xs font-normal text-gray-400 mt-1">{cert.issuer}</span>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

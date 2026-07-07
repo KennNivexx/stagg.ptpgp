@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, MessageSquare } from "lucide-react";
+import { motion } from "framer-motion";
 import QuotationModal from "./QuotationModal";
 
 interface HeroProps {
@@ -62,17 +63,38 @@ export default function HeroSection({
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="max-w-3xl">
+        <div className="max-w-3xl space-y-0">
           {badge && (
-            <span className="inline-block py-1.5 px-4 bg-pgp-red/30 text-orange-400 font-extrabold text-xs tracking-wider uppercase rounded-full mb-6 border border-orange-500/30 backdrop-blur-sm">
+            <motion.span
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+              className="inline-block py-1.5 px-4 bg-pgp-red/30 text-orange-400 font-extrabold text-xs tracking-wider uppercase rounded-full mb-6 border border-orange-500/30 backdrop-blur-sm"
+            >
               {badge}
-            </span>
+            </motion.span>
           )}
-          {renderTitle()}
-          <p className="text-lg md:text-xl text-zinc-100 mb-10 leading-relaxed font-normal max-w-2xl">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
+          >
+            {renderTitle()}
+          </motion.div>
+          <motion.p
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
+            className="text-lg md:text-xl text-zinc-100 mb-10 leading-relaxed font-normal max-w-2xl"
+          >
             {subtitle}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4">
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
+            className="flex flex-col sm:flex-row gap-4"
+          >
             <button 
               onClick={() => setIsQuoteOpen(true)}
               className="bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-full font-bold transition-all shadow-lg hover:shadow-pgp-red/25 flex items-center justify-center gap-2 text-sm cursor-pointer"
@@ -85,7 +107,7 @@ export default function HeroSection({
             >
               Hubungi Kami <MessageSquare size={18} />
             </Link>
-          </div>
+          </motion.div>
         </div>
       </div>
 

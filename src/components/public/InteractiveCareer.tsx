@@ -165,6 +165,9 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
         setStepError("Alamat email tidak valid."); return;
       }
       if (!formData.phone.trim()) { setStepError("Nomor telepon wajib diisi."); return; }
+      if (!formData.headline.trim()) { setStepError("Professional headline wajib diisi."); return; }
+      if (!formData.location.trim()) { setStepError("Lokasi wajib diisi."); return; }
+      if (!formData.summary.trim()) { setStepError("Ringkasan profesional wajib diisi."); return; }
     }
     if (step === 2) {
       if (formData.experiences.length === 0) {
@@ -564,8 +567,8 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                                 className="w-full px-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:border-pgp-red focus:ring-1 focus:ring-pgp-red/20 outline-none transition-all" />
                             </div>
                             <div>
-                              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Professional Headline</label>
-                              <input type="text" value={formData.headline} onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
+                              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Professional Headline *</label>
+                              <input type="text" required value={formData.headline} onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
                                 placeholder="Cth: Senior Logistics Manager"
                                 className="w-full px-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:border-pgp-red focus:ring-1 focus:ring-pgp-red/20 outline-none transition-all" />
                             </div>
@@ -588,11 +591,11 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                               </div>
                             </div>
                             <div>
-                              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Lokasi</label>
-                              <div className="relative">
-                                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                <input type="text" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                  placeholder="Jakarta, Indonesia"
+                              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Lokasi *</label>
+                                <div className="relative">
+                                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                  <input type="text" required value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                    placeholder="Jakarta, Indonesia"
                                   className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:border-pgp-red focus:ring-1 focus:ring-pgp-red/20 outline-none transition-all" />
                               </div>
                             </div>
@@ -607,9 +610,9 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                             </div>
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Ringkasan Profesional</label>
-                            <textarea rows={3} value={formData.summary} onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-                              placeholder="Tulis ringkasan singkat tentang pengalaman dan keahlian profesional Anda..."
+                            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Ringkasan Profesional *</label>
+                              <textarea rows={3} required value={formData.summary} onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                                placeholder="Tulis ringkasan singkat tentang pengalaman dan keahlian profesional Anda..."
                               className="w-full p-4 text-sm rounded-xl border border-gray-200 focus:border-pgp-red focus:ring-1 focus:ring-pgp-red/20 outline-none transition-all resize-none" />
                           </div>
                         </motion.div>

@@ -48,6 +48,16 @@ export default function CTASection({
       variants={container}
     >
       <div className="absolute -top-32 -right-32 w-96 h-96 bg-pgp-red rounded-full blur-3xl opacity-5 pointer-events-none"></div>
+      <motion.div
+        className="absolute -bottom-20 -left-20 w-72 h-72 bg-pgp-navy rounded-full blur-3xl opacity-[0.03] pointer-events-none"
+        animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute top-10 left-1/3 w-48 h-48 bg-pgp-red rounded-full blur-3xl opacity-[0.04] pointer-events-none"
+        animate={{ x: [0, -20, 0], scale: [1, 1.1, 1] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+      />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
         <motion.h2 className="text-4xl md:text-5xl font-extrabold text-pgp-navy mb-6 tracking-tight" variants={item}>
