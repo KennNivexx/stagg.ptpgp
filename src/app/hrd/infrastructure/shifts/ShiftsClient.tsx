@@ -130,10 +130,6 @@ export default function ShiftsClient({ initialShifts, employees }: { initialShif
     setShowAssignForm(true);
   };
 
-  // Stats
-  const totalBonusThisMonth = schedules.filter((s) => s.has_bonus).length;
-  const bonusAmountThisMonth = schedules.reduce((sum, s) => sum + (s.has_bonus ? Number(s.bonus_amount) || 0 : 0), 0);
-
   return (
     <div className="p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -182,16 +178,6 @@ export default function ShiftsClient({ initialShifts, employees }: { initialShif
             </div>
           );
         })}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600"><Gift size={20} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Total Bonus Bulan Ini</p>
-              <p className="text-lg font-extrabold text-slate-800">{formatRupiah(bonusAmountThisMonth)}</p>
-              <p className="text-[10px] text-slate-400">{totalBonusThisMonth} penugasan berbonus</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* View toggle + month nav */}

@@ -129,7 +129,7 @@ export default function DepartmentsPage() {
       setError(res.error);
     } else {
       setParentCode(""); setCode(""); setUnitName(""); setLeaderName(""); setLeaderEmail("");
-      showSuccess("Departemen berhasil ditambahkan.");
+      showSuccess("Usulan departemen terkirim ke Direktur untuk disetujui.");
       await fetchOrg();
     }
     setAdding(false);

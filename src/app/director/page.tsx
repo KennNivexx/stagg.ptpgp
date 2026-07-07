@@ -42,7 +42,7 @@ export default async function DirectorDashboard() {
     supabaseAdmin
       .from("workforce_requests")
       .select("*")
-      .eq("status", "Direview HRD")
+      .eq("status", "Direview Direktur")
       .order("created_at", { ascending: false }),
     supabaseAdmin
       .from("workforce_requests")

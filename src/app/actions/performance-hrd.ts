@@ -154,7 +154,7 @@ export async function getKpiDetail(id: string) {
 export async function saveFeedback(formData: FormData) {
   const user = await requireRole("hrd", "superadmin", "department_manager", "employee");
   const employeeId = (formData.get("employee_id") as string || "").trim();
-  const reviewerId = (formData.get("reviewer_id") as string || "").trim();
+  const reviewerName = (formData.get("reviewer_name") as string || "").trim();
   const category = (formData.get("category") as string || "").trim();
   const ratingRaw = formData.get("rating") as string || "0";
   const comment = (formData.get("comment") as string || "").trim();
@@ -169,8 +169,8 @@ export async function saveFeedback(formData: FormData) {
   const { error } = await supabaseAdmin.from("performance_feedback").insert({
     id: "fb-" + crypto.randomUUID(),
     employee_id: employeeId,
-    reviewer_id: reviewerId || user.id,
-    reviewer_name: user.name || user.email,
+    reviewer_id: user.id,
+    reviewer_name: reviewerName || user.name || user.email,
     category, rating, comment,
     created_at: new Date().toISOString(),
   });
@@ -187,7 +187,7 @@ export async function getFeedbackHistory() {
 
   const { data } = await supabaseAdmin
     .from("performance_feedback")
-    .select("*, employees!employee_id(full_name, department)")
+    .select("*, employees!employee_id(full_name, kode, department, position)")
     .order("created_at", { ascending: false })
     .limit(50);
 

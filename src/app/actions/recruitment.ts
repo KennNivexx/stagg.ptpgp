@@ -340,10 +340,10 @@ export async function scheduleInterview(
     interview_online_link?: string;
     interview_notes?: string;
   }
-) {
+): Promise<{ error: string } | { success: true }> {
   await requireRole("hrd", "superadmin");
   if (!payload.interview_date) return { error: "Tanggal interview wajib diisi." };
-  const { error } = await supabaseAdmin
+  const { data: appRow, error } = await supabaseAdmin
     .from("applications")
     .update({
       interview_date: payload.interview_date,
@@ -353,11 +353,27 @@ export async function scheduleInterview(
       interview_online_link: payload.interview_online_link || null,
       interview_notes: payload.interview_notes || null,
     })
-    .eq("id", applicationId);
+    .eq("id", applicationId)
+    .select("email")
+    .maybeSingle();
   if (error?.code === "PGRST204" || error?.code === "42703") {
     return { error: "Jalankan migrasi 20260706001 terlebih dahulu." };
   }
   if (error) return { error: error.message };
+
+  const applicantEmail = (appRow as { email?: string } | null)?.email;
+  if (applicantEmail) {
+    const when = [payload.interview_date, payload.interview_time].filter(Boolean).join(" ");
+    const where = payload.interview_online_link || payload.interview_location || "";
+    await supabaseAdmin.from("notifications").insert({
+      id: crypto.randomUUID(),
+      user_email: applicantEmail,
+      title: "Jadwal Interview Ditentukan",
+      message: `Interview Anda dijadwalkan pada ${when}${where ? ` — ${where}` : ""}.`,
+      link: "/applicant/status",
+    });
+  }
+
   revalidatePath("/hrd/recruitment/interviews");
   return { success: true };
 }

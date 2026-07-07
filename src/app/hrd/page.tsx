@@ -441,13 +441,13 @@ export default async function HRDDashboard({
   const profileCompletionPct = profileFields.length > 0 ? Math.round((completeProfiles / profileFields.length) * 100) : 0;
 
   const quickAccess = [
-    { icon: UserCog, title: "Profil Karyawan", desc: "Lihat data diri dan profil yang diisi oleh karyawan", href: "/hrd/employees", color: "blue" },
+    { icon: UserCog, title: "Profil Karyawan", desc: "Lihat data diri dan profil yang diisi oleh karyawan", href: "/hrd/infrastructure/employees", color: "blue" },
     { icon: Briefcase, title: "Rekrutmen", desc: "Lowongan, pelamar, dan hiring", href: "/hrd/recruitment", color: "emerald" },
     { icon: CalendarCheck, title: "Absensi & Cuti", desc: "Pantau kehadiran dan setujui cuti", href: "/hrd/attendance", color: "amber" },
     { icon: Wallet, title: "Payroll", desc: "Gaji, slip, dan komponen salary", href: "/hrd/payroll", color: "purple" },
-    { icon: TrendingUp, title: "KPI & Performa", desc: "Penilaian kinerja karyawan", href: "/hrd/kpi", color: "red" },
+    { icon: TrendingUp, title: "KPI & Performa", desc: "Penilaian kinerja karyawan", href: "/hrd/performance/kpi", color: "red" },
     { icon: FileText, title: "Laporan", desc: "Rekap dan analisis data HR", href: "/hrd/reports", color: "indigo" },
-    { icon: GraduationCap, title: "Pelatihan", desc: "Program training dan sertifikasi", href: "/hrd/learning", color: "teal" },
+    { icon: GraduationCap, title: "Pelatihan", desc: "Ringkasan seluruh program training", href: "/hrd/learning/trainings", color: "teal" },
   ];
 
   const stats = [

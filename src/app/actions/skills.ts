@@ -187,8 +187,14 @@ export async function assessEmployee(
 
 const suid = () => "sk-" + crypto.randomUUID();
 
-export async function saveSkill(formData: FormData) {
-  await requireRole("hrd", "superadmin");
+/**
+ * Editing an EXISTING skill saves directly — only adding a brand NEW
+ * competency requires Director approval (see reviewCompetencyRequest below),
+ * per the explicit requirement that HRD can't unilaterally introduce new
+ * competencies into the company's standard.
+ */
+export async function saveSkill(formData: FormData): Promise<{ error: string } | { success: true; pending?: true }> {
+  const user = await requireRole("hrd", "superadmin");
 
   const id = (formData.get("id") as string || "").trim();
   const name = (formData.get("name") as string || "").trim();
@@ -202,14 +208,58 @@ export async function saveSkill(formData: FormData) {
   if (id) {
     const { error } = await supabaseAdmin.from("skills").update({ name, category, department, updated_at: now }).eq("id", id);
     if (error) return { error: "Gagal mengupdate skill." };
-  } else {
-    const { error } = await supabaseAdmin.from("skills").insert({
-      id: suid(), name, category, department, created_at: now, updated_at: now,
-    });
-    if (error) return { error: "Gagal menambah skill." };
+    revalidatePath("/hrd/competency/library");
+    return { success: true };
   }
 
+  const { error } = await supabaseAdmin.from("competency_requests").insert({
+    id: "creq-" + crypto.randomUUID(),
+    name, category, department,
+    requested_by: user.name || user.email,
+    status: "Pending",
+    created_at: now,
+  });
+  if (error?.code === "42P01") return { error: "Jalankan migrasi 20260709001_workflow_overhaul.sql terlebih dahulu." };
+  if (error) return { error: "Gagal mengajukan kompetensi baru." };
+
   revalidatePath("/hrd/competency/library");
+  return { success: true, pending: true };
+}
+
+export async function getCompetencyRequests(status?: string) {
+  await requireRole("hrd", "director", "superadmin");
+  let q = supabaseAdmin.from("competency_requests").select("*").order("created_at", { ascending: false });
+  if (status) q = q.eq("status", status);
+  const { data, error } = await q.limit(100);
+  if (error?.code === "42P01") return [];
+  return data || [];
+}
+
+export async function reviewCompetencyRequest(id: string, approve: boolean): Promise<{ error: string } | { success: true }> {
+  await requireRole("director", "superadmin");
+
+  const { data: reqRow } = await supabaseAdmin.from("competency_requests").select("*").eq("id", id).maybeSingle();
+  if (!reqRow) return { error: "Usulan tidak ditemukan." };
+  const req = reqRow as Record<string, unknown>;
+  if (req.status !== "Pending") return { error: `Usulan ini sudah diproses sebelumnya (${req.status}).` };
+
+  if (approve) {
+    const now = new Date().toISOString();
+    const { error: insertErr } = await supabaseAdmin.from("skills").insert({
+      id: suid(),
+      name: req.name, category: req.category, department: req.department,
+      created_at: now, updated_at: now,
+    });
+    if (insertErr) return { error: "Gagal membuat kompetensi." };
+  }
+
+  await supabaseAdmin.from("competency_requests").update({
+    status: approve ? "Disetujui" : "Ditolak",
+    decided_at: new Date().toISOString(),
+  }).eq("id", id);
+
+  revalidatePath("/hrd/competency/library");
+  revalidatePath("/director/competency");
   return { success: true };
 }
 

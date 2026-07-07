@@ -10,7 +10,7 @@ import EmptyState from "@/components/EmptyState";
 interface AttRecord {
   id: string; employee_id: string; employee_name: string; department: string;
   date: string; check_in: string; check_out: string; status: string; notes: string;
-  photo_url?: string; location_name?: string;
+  photo_url?: string; location_name?: string; employee_kode?: string | null;
 }
 
 interface LeaveRecord {
@@ -67,7 +67,7 @@ export default function AttendancePage() {
         getLeaves({ status: "Disetujui" }),
       ]);
       if (!active) return;
-      setData(att as AttRecord[]);
+      setData(att as unknown as AttRecord[]);
       const onDate = (leaves as LeaveRecord[]).filter(l => l.start_date <= dateFilter && l.end_date >= dateFilter);
       setLeavesToday(onDate);
       setLoading(false);
@@ -85,7 +85,7 @@ export default function AttendancePage() {
     if ("error" in r) { showToast(r.error); return; }
     showToast("Clock-in berhasil!");
     getTodayAttendance().then(setToday);
-    getAllAttendance({ date: dateFilter }).then(setData);
+    getAllAttendance({ date: dateFilter }).then((rows) => setData(rows as unknown as AttRecord[]));
   };
 
   const doClockOut = async () => {
@@ -95,7 +95,7 @@ export default function AttendancePage() {
     if ("error" in r) { showToast(r.error); return; }
     showToast("Clock-out berhasil!");
     getTodayAttendance().then(setToday);
-    getAllAttendance({ date: dateFilter }).then(setData);
+    getAllAttendance({ date: dateFilter }).then((rows) => setData(rows as unknown as AttRecord[]));
   };
 
   const handleExportExcel = async () => {
@@ -229,6 +229,7 @@ export default function AttendancePage() {
             <table className="w-full">
               <thead><tr className="border-b border-slate-100 bg-slate-50/50">
                 <th className="text-left py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Nama</th>
+                <th className="text-left py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Kode</th>
                 <th className="text-left py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Dept</th>
                 <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Clock In</th>
                 <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Clock Out</th>
@@ -240,6 +241,7 @@ export default function AttendancePage() {
                 {filtered.map(a => (
                   <tr key={a.id} className="hover:bg-slate-50/30">
                     <td className="py-2.5 px-4 text-xs font-bold text-slate-800">{a.employee_name}</td>
+                    <td className="py-2.5 px-4 text-xs font-mono text-slate-500">{a.employee_kode || "—"}</td>
                     <td className="py-2.5 px-4 text-xs text-slate-500">{a.department}</td>
                     <td className="py-2.5 px-4 text-center text-xs font-mono text-slate-600">{a.check_in ? new Date(a.check_in).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
                     <td className="py-2.5 px-4 text-center text-xs font-mono text-slate-600">{a.check_out ? new Date(a.check_out).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>

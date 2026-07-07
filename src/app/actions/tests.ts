@@ -29,6 +29,8 @@ export interface RecruitmentTest {
   passing_score: number;
   is_active: boolean;
   created_at: string;
+  department: string | null;
+  test_year: number | null;
 }
 
 // ── HRD: Get all tests ─────────────────────────────────────────────────────
@@ -36,9 +38,17 @@ export async function getAllRecruitmentTests() {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
     .from("recruitment_tests")
-    .select("id, job_posting_id, test_type, title, duration_minutes, passing_score, is_active, created_at")
+    .select("id, job_posting_id, test_type, title, duration_minutes, passing_score, is_active, created_at, department, test_year")
     .order("created_at", { ascending: false });
   if (error?.code === "42P01") return [];
+  if (error?.code === "42703") {
+    // department/test_year columns not migrated yet — fall back to old shape.
+    const { data: fallback } = await supabaseAdmin
+      .from("recruitment_tests")
+      .select("id, job_posting_id, test_type, title, duration_minutes, passing_score, is_active, created_at")
+      .order("created_at", { ascending: false });
+    return (fallback || []).map((t) => ({ ...t, department: null, test_year: null }));
+  }
   if (error) return [];
   return data || [];
 }
@@ -67,20 +77,24 @@ export async function saveRecruitmentTest(
     duration_minutes: number;
     passing_score: number;
     is_active: boolean;
+    department?: string | null;
+    test_year?: number | null;
   }
-) {
+): Promise<{ error: string } | { success: true }> {
   await requireRole("hrd", "superadmin");
   if (testId) {
     const { error } = await supabaseAdmin
       .from("recruitment_tests")
       .update(payload)
       .eq("id", testId);
+    if (error?.code === "42703") return { error: "Jalankan migrasi 20260709001_workflow_overhaul.sql terlebih dahulu." };
     if (error) return { error: error.message };
   } else {
     const { error } = await supabaseAdmin
       .from("recruitment_tests")
       .insert({ id: "test-" + crypto.randomUUID(), ...payload, created_at: new Date().toISOString() });
     if (error?.code === "42P01") return { error: "Jalankan migrasi 20260701001 terlebih dahulu." };
+    if (error?.code === "42703") return { error: "Jalankan migrasi 20260709001_workflow_overhaul.sql terlebih dahulu." };
     if (error) return { error: error.message };
   }
   revalidatePath("/hrd/recruitment/tests");

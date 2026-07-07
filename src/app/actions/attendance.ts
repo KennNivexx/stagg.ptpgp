@@ -51,6 +51,19 @@ export async function getTodayAttendance() {
   return data || null;
 }
 
+async function attachKode(rows: Record<string, unknown>[]): Promise<Record<string, unknown>[]> {
+  // attendance.employee_name/department are snapshotted at clock-in time, but
+  // kode isn't — join it in from employees so the table can show it without
+  // a schema change/backfill.
+  const employeeIds = [...new Set(rows.map((r) => r.employee_id as string).filter(Boolean))];
+  const kodeMap: Record<string, string> = {};
+  if (employeeIds.length > 0) {
+    const { data: emps } = await supabaseAdmin.from("employees").select("id, kode").in("id", employeeIds);
+    (emps || []).forEach((e: { id: string; kode?: string }) => { if (e.kode) kodeMap[e.id] = e.kode; });
+  }
+  return rows.map((r) => ({ ...r, employee_kode: kodeMap[r.employee_id as string] || null }));
+}
+
 export async function getAllAttendance(params?: { date?: string; department?: string; search?: string }) {
   await requireRole("hrd", "superadmin");
   let q = supabaseAdmin.from("attendance").select("*").order("date", { ascending: false }).order("employee_name");
@@ -58,7 +71,23 @@ export async function getAllAttendance(params?: { date?: string; department?: st
   if (params?.department) q = q.eq("department", params.department);
   if (params?.search) q = q.ilike("employee_name", `%${params.search}%`);
   const { data } = await q.limit(200);
-  return (data || []);
+  return attachKode(data || []);
+}
+
+/** Read-only attendance roster scoped to the department manager's own
+ * department — the department filter comes from the server-resolved session,
+ * never a client-supplied parameter, so a dept manager can't widen scope by
+ * calling this with someone else's department. */
+export async function getAttendanceForDept(params?: { date?: string }) {
+  const user = await requireRole("department_manager", "superadmin");
+  const { data: emp } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+  const myDept = (emp as { department?: string } | null)?.department;
+  if (!myDept) return [];
+
+  let q = supabaseAdmin.from("attendance").select("*").eq("department", myDept).order("date", { ascending: false }).order("employee_name");
+  if (params?.date) q = q.eq("date", params.date);
+  const { data } = await q.limit(200);
+  return attachKode(data || []);
 }
 
 /**

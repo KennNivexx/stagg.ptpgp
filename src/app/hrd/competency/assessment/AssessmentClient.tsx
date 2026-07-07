@@ -7,6 +7,7 @@ import EmptyState from "@/components/EmptyState";
 
 interface EmpSkill {
   id: string;
+  employee_id: string;
   employee_name: string;
   department: string;
   position: string;
@@ -57,11 +58,27 @@ export default function AssessmentClient({ data, totalEmployees }: Props) {
     });
   }, [data, search, deptFilter]);
 
-  const assessedEmployees = new Set(filtered.map(d => d.employee_name)).size;
+  const assessedEmployees = new Set(filtered.map(d => d.employee_id)).size;
   const withGap = filtered.filter(d => d.gap !== null);
   const wajibTraining = withGap.filter(d => d.gap! <= -2).length;
   const pctKompeten = withGap.length > 0 ? ((withGap.filter(d => d.gap! >= 0).length / withGap.length) * 100).toFixed(1) : "0";
   const lastAssessment = filtered.length > 0 ? new Date(Math.max(...filtered.map(d => new Date(d.updated_at).getTime()))).toLocaleDateString("id-ID") : "—";
+
+  // Setiap karyawan jadi satu kartu, kompetensinya ditampilkan menyamping
+  // sebagai kolom tabel — lebih ringkas dibanding satu baris per (karyawan, skill).
+  const groupedByEmployee = useMemo(() => {
+    const map = new Map<string, { employeeId: string; name: string; department: string; position: string; skills: EmpSkill[]; lastUpdated: string }>();
+    for (const row of filtered) {
+      const key = row.employee_id || row.employee_name;
+      if (!map.has(key)) {
+        map.set(key, { employeeId: row.employee_id, name: row.employee_name, department: row.department, position: row.position, skills: [], lastUpdated: row.updated_at });
+      }
+      const entry = map.get(key)!;
+      entry.skills.push(row);
+      if (new Date(row.updated_at) > new Date(entry.lastUpdated)) entry.lastUpdated = row.updated_at;
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [filtered]);
 
   return (
     <div className="p-6 lg:p-8">
@@ -124,64 +141,73 @@ export default function AssessmentClient({ data, totalEmployees }: Props) {
         </select>
       </div>
 
-      {filtered.length === 0 ? (
+      {groupedByEmployee.length === 0 ? (
         <EmptyState
           icon={Award}
           title="Belum ada data asesmen"
           description="Department Manager dapat melakukan penilaian melalui halaman Kompetensi."
         />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Karyawan</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Skill</th>
-                  <th className="text-center py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Current</th>
-                  <th className="text-center py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Required</th>
-                  <th className="text-center py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Gap</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Penilai</th>
-                  <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Tanggal</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filtered.map((row, i) => (
-                  <tr key={i} className="hover:bg-slate-50/30">
-                    <td className="py-2.5 px-4">
-                      <p className="text-xs font-bold text-slate-800">{row.employee_name}</p>
-                      <p className="text-[10px] text-slate-400">{row.department} · {row.position}</p>
-                    </td>
-                    <td className="py-2.5 px-4">
-                      <div>
-                        <p className="text-xs font-medium text-slate-700">{row.skill_name}</p>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${getCategoryBadge(row.skill_category)}`}>{row.skill_category}</span>
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-4 text-center">
-                      <span className="text-xs font-bold text-slate-800">{row.current_level}</span>
-                    </td>
-                    <td className="py-2.5 px-4 text-center">
-                      <span className="text-xs text-slate-500">{row.required_level !== null ? row.required_level : "—"}</span>
-                    </td>
-                    <td className="py-2.5 px-4 text-center">
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${getGapBg(row.gap)}`}>
-                        {row.gap !== null ? (row.gap > 0 ? `+${row.gap}` : row.gap) : "—"}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 text-xs text-slate-500">{row.assessed_by || "—"}</td>
-                    <td className="py-2.5 px-4 text-xs text-slate-500">
-                      {new Date(row.updated_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/30 text-[10px] text-slate-400">
-            Total: <span className="font-bold text-slate-600">{filtered.length}</span> asesmen &middot;
-            <span className="ml-2">Terakhir: {lastAssessment}</span>
-          </div>
+        <div className="space-y-5">
+          {groupedByEmployee.map((emp) => (
+            <div key={emp.employeeId || emp.name} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{emp.name}</p>
+                  <p className="text-[11px] text-slate-400">{emp.department} &middot; {emp.position}</p>
+                </div>
+                <p className="text-[10px] text-slate-400">Terakhir dinilai: {new Date(emp.lastUpdated).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/50">
+                      <th className="text-left py-2.5 px-4 text-[9px] font-bold text-slate-400 uppercase whitespace-nowrap">Metrik</th>
+                      {emp.skills.map((s) => (
+                        <th key={s.id} className="text-center py-2.5 px-4 text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap min-w-[100px]">
+                          <p>{s.skill_name}</p>
+                          <span className={`inline-block mt-1 text-[8px] font-bold px-1.5 py-0.5 rounded-full normal-case ${getCategoryBadge(s.skill_category)}`}>{s.skill_category}</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    <tr>
+                      <td className="py-2 px-4 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">Current</td>
+                      {emp.skills.map((s) => (
+                        <td key={s.id} className="py-2 px-4 text-center text-xs font-bold text-slate-800">{s.current_level}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-4 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">Required</td>
+                      {emp.skills.map((s) => (
+                        <td key={s.id} className="py-2 px-4 text-center text-xs text-slate-500">{s.required_level !== null ? s.required_level : "—"}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-4 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">Gap</td>
+                      {emp.skills.map((s) => (
+                        <td key={s.id} className="py-2 px-4 text-center">
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full ${getGapBg(s.gap)}`}>
+                            {s.gap !== null ? (s.gap > 0 ? `+${s.gap}` : s.gap) : "—"}
+                          </span>
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-4 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">Penilai</td>
+                      {emp.skills.map((s) => (
+                        <td key={s.id} className="py-2 px-4 text-center text-[10px] text-slate-400">{s.assessed_by || "—"}</td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+          <p className="text-[10px] text-slate-400 text-right">
+            Total: <span className="font-bold text-slate-600">{filtered.length}</span> asesmen di <span className="font-bold text-slate-600">{groupedByEmployee.length}</span> karyawan &middot; Terakhir: {lastAssessment}
+          </p>
         </div>
       )}
     </div>

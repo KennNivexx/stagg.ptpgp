@@ -10,7 +10,6 @@ import {
   Users, Mail, Phone, Calendar, CalendarClock, UserPlus, XCircle,
   Star, CheckCircle2, AlertTriangle, X, FileText, Search, ClipboardList,
 } from "lucide-react";
-import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 
 // ── Profile types ─────────────────────────────────────────────────────────────
@@ -577,12 +576,6 @@ export default function PipelineKandidat() {
                       <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
                         <Star size={11} /> Di Talent Pool
                       </span>
-                    )}
-                    {!!app.job_id && (
-                      <Link href={`/hrd/recruitment/${app.job_id as string}/applicants/${app.id as string}`}
-                        className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors" title="Lihat detail">
-                        <FileText size={14} />
-                      </Link>
                     )}
                     {isLoading && <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />}
                   </div>

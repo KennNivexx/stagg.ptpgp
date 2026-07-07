@@ -15,7 +15,7 @@ export default async function FeedbackPage() {
         <p className="text-sm text-gray-500">Berikan dan kelola umpan balik kinerja dari berbagai sudut pandang.</p>
       </div>
       <FeedbackClient
-        employees={(employees || []) as Array<{ id: string; full_name: string; department: string; }>}
+        employees={(employees || []) as Array<{ id: string; full_name: string; kode?: string; department: string; }>}
         initialHistory={history as Parameters<typeof FeedbackClient>[0]["initialHistory"]}
       />
     </div>

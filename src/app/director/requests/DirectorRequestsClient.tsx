@@ -19,12 +19,12 @@ interface Props {
   requests: DirectorRequest[];
 }
 
-const STATUS_OPTIONS = ["Semua", "Direview HRD", "Disetujui", "Ditolak", "Pending"] as const;
+const STATUS_OPTIONS = ["Semua", "Direview Direktur", "Disetujui", "Ditolak", "Pending"] as const;
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     Pending: "bg-amber-50 text-amber-700 border-amber-200",
-    "Direview HRD": "bg-purple-50 text-purple-700 border-purple-200",
+    "Direview Direktur": "bg-purple-50 text-purple-700 border-purple-200",
     Disetujui: "bg-emerald-50 text-emerald-700 border-emerald-200",
     Ditolak: "bg-red-50 text-red-700 border-red-200",
   };
@@ -101,7 +101,7 @@ export default function DirectorRequestsClient({ requests }: Props) {
 
   const stats = [
     { label: "Total", value: requests.length, icon: FileText, color: "bg-blue-50 text-blue-600" },
-    { label: "Direview HRD", value: requests.filter(r => r.status === "Direview HRD").length, icon: Clock, color: "bg-purple-50 text-purple-600" },
+    { label: "Direview Direktur", value: requests.filter(r => r.status === "Direview Direktur").length, icon: Clock, color: "bg-purple-50 text-purple-600" },
     { label: "Disetujui", value: requests.filter(r => r.status === "Disetujui").length, icon: CheckCircle2, color: "bg-emerald-50 text-emerald-600" },
     { label: "Ditolak", value: requests.filter(r => r.status === "Ditolak").length, icon: XCircle, color: "bg-red-50 text-red-600" },
   ];
@@ -198,7 +198,7 @@ export default function DirectorRequestsClient({ requests }: Props) {
                       {new Date(req.created_at).toLocaleDateString("id-ID")}
                     </td>
                     <td className="px-4 py-3">
-                      {req.status === "Direview HRD" ? (
+                      {req.status === "Direview Direktur" ? (
                         <ActionButtons id={req.id} />
                       ) : (
                         <StatusBadge status={req.status} />

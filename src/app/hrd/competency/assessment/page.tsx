@@ -47,6 +47,7 @@ export default async function AsesmenKompetensi() {
 
     return {
       id: r.id as string,
+      employee_id: empId,
       employee_name: emp.name,
       department: emp.dept,
       position: emp.pos,

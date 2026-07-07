@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Save, RefreshCw, ChevronDown, ChevronUp, Clock, CheckCircle, Brain, Pencil, ClipboardList } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, RefreshCw, ChevronDown, ChevronUp, Clock, CheckCircle, Brain, Pencil, ClipboardList, Search } from "lucide-react";
 import { getAllRecruitmentTests, getRecruitmentTest, saveRecruitmentTest, deleteRecruitmentTest, type Question } from "@/app/actions/tests";
 import { getJobPostings } from "@/app/actions/recruitment";
 import EmptyState from "@/components/EmptyState";
@@ -36,6 +36,8 @@ interface TestRow {
   passing_score: number;
   is_active: boolean;
   job_posting_id: string | null;
+  department: string | null;
+  test_year: number | null;
 }
 
 interface FormState {
@@ -47,6 +49,8 @@ interface FormState {
   duration_minutes: number;
   passing_score: number;
   is_active: boolean;
+  department: string;
+  test_year: number;
 }
 
 const blankForm = (): FormState => ({
@@ -58,6 +62,8 @@ const blankForm = (): FormState => ({
   duration_minutes: 60,
   passing_score: 70,
   is_active: true,
+  department: "",
+  test_year: new Date().getFullYear(),
 });
 
 export default function RecruitmentTestsPage() {
@@ -71,6 +77,9 @@ export default function RecruitmentTestsPage() {
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [expandedQ, setExpandedQ] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blankForm());
+  const [activeTab, setActiveTab] = useState<TestType>("tulis");
+  const [search, setSearch] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
 
   useEffect(() => {
     Promise.all([getAllRecruitmentTests(), getJobPostings()]).then(([t, j]) => {
@@ -82,7 +91,12 @@ export default function RecruitmentTestsPage() {
 
   const openNew = () => {
     setEditingId(null);
-    setForm(blankForm());
+    const blank = blankForm();
+    setForm({
+      ...blank,
+      test_type: activeTab,
+      questions: activeTab === "tulis" ? [defaultTulisQuestion()] : [defaultPsikotesQuestion()],
+    });
     setExpandedQ(null);
     setShowForm(true);
     setTimeout(() => document.getElementById("test-form")?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -103,6 +117,8 @@ export default function RecruitmentTestsPage() {
       duration_minutes: data.duration_minutes,
       passing_score: data.passing_score,
       is_active: data.is_active,
+      department: data.department || "",
+      test_year: data.test_year || new Date().getFullYear(),
     });
     setExpandedQ(null);
     setShowForm(true);
@@ -152,7 +168,7 @@ export default function RecruitmentTestsPage() {
     setSaving(true);
     const res = await saveRecruitmentTest(editingId, form);
     setSaving(false);
-    if (res.error) { setMsg({ type: "error", text: res.error }); return; }
+    if ("error" in res) { setMsg({ type: "error", text: res.error }); return; }
     setMsg({ type: "success", text: editingId ? "Tes berhasil diperbarui." : "Tes berhasil disimpan." });
     closeForm();
     const t = await getAllRecruitmentTests();
@@ -192,51 +208,97 @@ export default function RecruitmentTestsPage() {
         </div>
       )}
 
+      {/* Tab Tes Tulis / Psikotes */}
+      <div className="flex gap-3 mb-4">
+        {(["tulis", "psikotes"] as TestType[]).map(t => (
+          <button key={t} onClick={() => { setActiveTab(t); setSearch(""); setYearFilter(""); }}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all ${activeTab === t
+              ? t === "tulis" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-purple-500 bg-purple-50 text-purple-700"
+              : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+            {t === "tulis" ? "📝 Tes Tulis" : "🧠 Psikotes"}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={activeTab === "tulis" ? "Cari judul atau departemen..." : "Cari judul tes..."}
+            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-red-400" />
+        </div>
+        {activeTab === "psikotes" && (
+          <select value={yearFilter} onChange={e => setYearFilter(e.target.value)}
+            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-600 outline-none">
+            <option value="">Semua Tahun</option>
+            {[...new Set(tests.filter(t => t.test_type === "psikotes" && t.test_year).map(t => t.test_year))]
+              .sort((a, b) => (b as number) - (a as number))
+              .map(y => <option key={y} value={y as number}>{y}</option>)}
+          </select>
+        )}
+      </div>
+
       {/* List */}
       <div className="space-y-3 mb-6">
-        {tests.length === 0 && !showForm && (
-          <EmptyState
-            icon={ClipboardList}
-            title="Belum ada tes rekrutmen."
-            description="Jalankan migrasi SQL terlebih dahulu agar template bawaan muncul di sini."
-          />
-        )}
-        {tests.map(t => {
-          const linkedJob = t.job_posting_id ? jobPostings.find(j => j.id === t.job_posting_id) : null;
-          return (
-          <div key={t.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.test_type === "tulis" ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"}`}>
-              {t.test_type === "tulis" ? <CheckCircle size={20} /> : <Brain size={20} />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-bold text-slate-800 truncate">{t.title}</p>
-                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${t.is_active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
-                  {t.is_active ? "Aktif" : "Nonaktif"}
-                </span>
-                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${linkedJob ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500"}`}>
-                  {linkedJob ? linkedJob.title : "Semua Lowongan"}
-                </span>
+        {(() => {
+          const q = search.trim().toLowerCase();
+          const tabTests = tests
+            .filter(t => t.test_type === activeTab)
+            .filter(t => !q || t.title.toLowerCase().includes(q) || (t.department || "").toLowerCase().includes(q))
+            .filter(t => activeTab !== "psikotes" || !yearFilter || String(t.test_year) === yearFilter);
+
+          if (tabTests.length === 0 && !showForm) {
+            return (
+              <EmptyState
+                icon={ClipboardList}
+                title={`Belum ada ${activeTab === "tulis" ? "Tes Tulis" : "Psikotes"}.`}
+                description="Jalankan migrasi SQL terlebih dahulu agar template bawaan muncul di sini."
+              />
+            );
+          }
+
+          return tabTests.map(t => {
+            const linkedJob = t.job_posting_id ? jobPostings.find(j => j.id === t.job_posting_id) : null;
+            return (
+              <div key={t.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.test_type === "tulis" ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"}`}>
+                  {t.test_type === "tulis" ? <CheckCircle size={20} /> : <Brain size={20} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-bold text-slate-800 truncate">{t.title}</p>
+                    <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${t.is_active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                      {t.is_active ? "Aktif" : "Nonaktif"}
+                    </span>
+                    <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${linkedJob ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500"}`}>
+                      {linkedJob ? linkedJob.title : "Semua Lowongan"}
+                    </span>
+                    {t.test_type === "tulis" && t.department && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-indigo-100 text-indigo-700">{t.department}</span>
+                    )}
+                    {t.test_type === "psikotes" && t.test_year && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-700">Arsip {t.test_year}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1"><Clock size={10} /> {t.duration_minutes} menit</span>
+                    {t.test_type === "tulis" && <span>Nilai lulus: {t.passing_score}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => openEdit(t.id)} disabled={loadingEdit}
+                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => handleDelete(t.id)}
+                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-400">
-                <span className="flex items-center gap-1"><Clock size={10} /> {t.duration_minutes} menit</span>
-                {t.test_type === "tulis" && <span>Nilai lulus: {t.passing_score}</span>}
-                <span>{t.test_type === "tulis" ? "Tes Tulis" : "Psikotes"}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button onClick={() => openEdit(t.id)} disabled={loadingEdit}
-                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
-                <Pencil size={14} />
-              </button>
-              <button onClick={() => handleDelete(t.id)}
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus">
-                <Trash2 size={14} />
-              </button>
-            </div>
-          </div>
-          );
-        })}
+            );
+          });
+        })()}
       </div>
 
       {/* Form */}
@@ -291,6 +353,21 @@ export default function RecruitmentTestsPage() {
                   {jobPostings.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
                 </select>
               </div>
+              {form.test_type === "tulis" ? (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Departemen</label>
+                  <input type="text" value={form.department} onChange={e => setForm({ ...form, department: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-red-400"
+                    placeholder="cth: Finance, Operasional (kosongkan jika berlaku umum)" />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Tahun Arsip</label>
+                  <input type="number" value={form.test_year} min={2020} max={2100}
+                    onChange={e => setForm({ ...form, test_year: +e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-red-400" />
+                </div>
+              )}
             </div>
 
             <div>

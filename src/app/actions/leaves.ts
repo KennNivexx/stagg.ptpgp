@@ -25,11 +25,26 @@ export async function submitLeave(formData: FormData) {
   return result;
 }
 
-export async function updateLeaveStatus(id: string, status: string) {
-  const user = await requireRole("hrd", "superadmin");
+/**
+ * Only the department manager decides Cuti & Izin — HRD is report-only (per
+ * user's explicit workflow spec: "HRD hanya menerima laporan saja"). A
+ * department_manager may only decide on requests from their own department's
+ * employees; superadmin can act on any.
+ */
+export async function updateLeaveStatus(id: string, status: string): Promise<{ error: string } | { success: true }> {
+  const user = await requireRole("department_manager", "superadmin");
 
-  const { data: leave } = await supabaseAdmin.from("leave_requests").select("employee_id, employee_name, type, start_date, end_date, status").eq("id", id).maybeSingle();
+  const { data: leave } = await supabaseAdmin.from("leave_requests").select("employee_id, employee_name, department, type, start_date, end_date, status").eq("id", id).maybeSingle();
   if (!leave) return { error: "Cuti tidak ditemukan." };
+  const l = leave as Record<string, unknown>;
+
+  if (user.role === "department_manager") {
+    const { data: mgr } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+    const myDept = (mgr as { department?: string } | null)?.department;
+    if (!myDept || myDept !== l.department) {
+      return { error: "Akses ditolak: bukan karyawan departemen Anda." };
+    }
+  }
 
   // Guard against re-processing an already-decided request (double-click,
   // network retry, or re-approving/re-rejecting later) — without this, the
@@ -42,18 +57,18 @@ export async function updateLeaveStatus(id: string, status: string) {
   await supabaseAdmin.from("leave_requests").update({ status, approved_by: user.name, updated_at: new Date().toISOString() }).eq("id", id);
 
   // Notify employee
-  const l = leave as Record<string, unknown>;
   const empEmail = await getEmployeeEmail(l.employee_id as string);
   if (empEmail) {
     await supabaseAdmin.from("notifications").insert({
       id: uid(), user_email: empEmail,
       title: `Cuti ${status === "Disetujui" ? "Disetujui" : "Ditolak"}`,
-      message: `${l.type} (${l.start_date} - ${l.end_date}) ${status === "Disetujui" ? "telah disetujui" : "ditolak"}.`,
+      message: `${l.type} (${l.start_date} - ${l.end_date}) ${status === "Disetujui" ? "telah disetujui" : "ditolak"} oleh atasan Anda.`,
       link: "/employee",
     });
   }
 
   revalidatePath("/hrd/leaves");
+  revalidatePath("/department/leaves");
   revalidatePath("/employee");
   return { success: true };
 }
@@ -64,10 +79,14 @@ async function getEmployeeEmail(employeeId: string): Promise<string | null> {
 }
 
 export async function getLeaves(params?: { employeeId?: string; status?: string }) {
-  const user = await requireRole("hrd", "superadmin", "employee");
+  const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
   let q = supabaseAdmin.from("leave_requests").select("*").order("created_at", { ascending: false });
   if (user.role === "employee") {
     q = q.eq("employee_id", user.id);
+  } else if (user.role === "department_manager") {
+    const { data: mgr } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+    const myDept = (mgr as { department?: string } | null)?.department;
+    q = q.eq("department", myDept || "__none__");
   } else {
     if (params?.employeeId) q = q.eq("employee_id", params.employeeId);
   }

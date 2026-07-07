@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, AlertTriangle, Clock, Users, Plus, X, Save, RefreshCw, CheckCircle2 } from "lucide-react";
+import { FileText, AlertTriangle, Clock, Users, X, Save, RefreshCw, CheckCircle2, Search, Pencil } from "lucide-react";
 import { saveEmployeeContract, updateEmployeeStatus } from "@/app/actions/admin";
 
 type Employee = Record<string, string>;
@@ -16,6 +16,7 @@ export default function ContractsClient({ employees: initialEmployees, contracts
   const [employees, setEmployees] = useState(initialEmployees);
   const [contracts, setContracts] = useState(initialContracts);
   const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
   const [formData, setFormData] = useState({
     employeeId: "", contractType: "Kontrak",
     startDate: new Date().toISOString().split("T")[0], endDate: "", notes: "",
@@ -65,12 +66,32 @@ export default function ContractsClient({ employees: initialEmployees, contracts
     Object.entries(formData).forEach(([k, v]) => fd.append(k, v));
     const result = await saveEmployeeContract(fd);
     setSaving(false);
-    if (result?.error) { setSaveMsg({ type: "error", text: result.error }); return; }
+    if ("error" in result) { setSaveMsg({ type: "error", text: result.error }); return; }
     setSaveMsg({ type: "success", text: "Kontrak berhasil disimpan." });
     setShowForm(false);
     setFormData({ employeeId: "", contractType: "Kontrak", startDate: new Date().toISOString().split("T")[0], endDate: "", notes: "" });
     setTimeout(() => setSaveMsg(null), 4000);
   };
+
+  const openEditContract = (emp: Employee) => {
+    const real = getLatestContract(emp.id);
+    const { date: fallbackEnd } = getContractEndDate(emp);
+    setFormData({
+      employeeId: emp.id,
+      contractType: real?.contract_type || emp.status || "Kontrak",
+      startDate: real?.start_date || emp.join_date || new Date().toISOString().split("T")[0],
+      endDate: real?.end_date || (real ? "" : fallbackEnd),
+      notes: real?.notes || "",
+    });
+    setSaveMsg(null);
+    setShowForm(true);
+  };
+
+  const filteredEmployees = employees.filter((e) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return [e.full_name, e.department, e.position, e.kode].some((f) => f?.toLowerCase().includes(q));
+  });
 
   const handleUpdateStatus = async (empId: string, newStatus: string) => {
     setUpdatingStatus(empId);
@@ -112,12 +133,18 @@ export default function ContractsClient({ employees: initialEmployees, contracts
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2530]">Manajemen Kontrak Kerja</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola kontrak, perpanjangan, dan ubah status karyawan secara langsung.</p>
+          <p className="text-sm text-gray-500 mt-1">Kelola kontrak dan ubah status karyawan secara langsung. Daftar karyawan mengikuti Struktur Organisasi.</p>
         </div>
-        <button onClick={() => { setShowForm(true); setSaveMsg(null); }}
-          className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2">
-          <Plus size={14} /> Tambah Kontrak
-        </button>
+        <div className="relative w-full sm:w-72">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari nama, kode, departemen..."
+            className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+          />
+        </div>
       </div>
 
       {saveMsg && (
@@ -183,20 +210,17 @@ export default function ContractsClient({ employees: initialEmployees, contracts
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-extrabold text-slate-800 text-sm">Tambah / Perpanjang Kontrak</h3>
+              <h3 className="font-extrabold text-slate-800 text-sm">Edit Kontrak Kerja</h3>
               <button onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><X size={16} /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Karyawan</label>
-                <select required value={formData.employeeId}
-                  onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                  className="w-full border border-slate-200 p-2.5 rounded-xl text-sm">
-                  <option value="">Pilih Karyawan</option>
-                  {employees.map((e) => (
-                    <option key={e.id} value={e.id}>{e.full_name} — {e.department}</option>
-                  ))}
-                </select>
+                <div className="w-full border border-slate-100 bg-slate-50 p-2.5 rounded-xl text-sm text-slate-600">
+                  {employees.find((e) => e.id === formData.employeeId)?.full_name || "-"}
+                  {" — "}
+                  {employees.find((e) => e.id === formData.employeeId)?.department || "-"}
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Kontrak</label>
@@ -230,7 +254,7 @@ export default function ContractsClient({ employees: initialEmployees, contracts
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" rows={2} placeholder="Catatan tambahan..." />
               </div>
-              <button type="submit" disabled={saving}
+              <button type="submit" disabled={saving || !formData.employeeId}
                 className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60">
                 <Save size={14} /> {saving ? "Menyimpan..." : "Simpan Kontrak"}
               </button>
@@ -254,7 +278,10 @@ export default function ContractsClient({ employees: initialEmployees, contracts
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {employees.map((emp) => {
+              {filteredEmployees.length === 0 && (
+                <tr><td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-400">Tidak ada karyawan yang cocok dengan pencarian.</td></tr>
+              )}
+              {filteredEmployees.map((emp) => {
                 const { date: endDate, source } = getContractEndDate(emp);
                 const remaining = getRemainingDays(endDate);
                 const badge = contractLabel(emp.status);
@@ -284,6 +311,10 @@ export default function ContractsClient({ employees: initialEmployees, contracts
                         {realCtr && (
                           <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[9px] font-bold border border-emerald-100">✓</span>
                         )}
+                        <button onClick={() => openEditContract(emp)} title="Edit Kontrak"
+                          className="p-1 text-slate-400 hover:text-[#CC0000] hover:bg-red-50 rounded-md transition-colors">
+                          <Pencil size={12} />
+                        </button>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-xs text-slate-600">

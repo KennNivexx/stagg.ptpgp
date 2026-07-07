@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import {
   getTrainings, saveTraining, deleteTraining, getTrainingEnrollments, removeEnrollment,
-  getTrainingRequests, reviewTrainingRequest, type TrainingRequest,
+  getTrainingRequests, reviewTrainingRequest, markEnrollmentResult, type TrainingRequest,
 } from "@/app/actions/trainings";
 import { getSkills } from "@/app/actions/skills";
 import EmptyState from "@/components/EmptyState";
@@ -242,6 +242,15 @@ export default function TrainingsPage() {
     await refreshTrainings();
   };
 
+  const doMarkResult = async (id: string, passed: boolean) => {
+    setRemovingId(id);
+    const r = await markEnrollmentResult(id, passed);
+    setRemovingId(null);
+    if ("error" in r) { showToast("error", r.error); return; }
+    showToast("success", passed ? "Peserta ditandai lulus." : "Peserta ditandai perlu mengulang.");
+    setEnrollments((prev) => prev.map((e) => (e.id === id ? { ...e, status: passed ? "Completed" : "Perlu Mengulang" } : e)));
+  };
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {toast && (
@@ -472,19 +481,45 @@ export default function TrainingsPage() {
                             <span className="text-[10px] text-slate-500">{e.employee_position || "-"}</span>
                           </td>
                           <td className="py-2 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${e.status === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-600"}`}>
-                              {e.status === "completed" ? "Selesai" : "Terdaftar"}
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                              e.status === "Completed" ? "bg-emerald-50 text-emerald-700"
+                              : e.status === "Perlu Mengulang" ? "bg-amber-50 text-amber-700"
+                              : "bg-blue-50 text-blue-600"
+                            }`}>
+                              {e.status === "Completed" ? "Selesai" : e.status === "Perlu Mengulang" ? "Perlu Mengulang" : "Terdaftar"}
                             </span>
                           </td>
                           <td className="py-2 px-3 text-center">
-                            <button
-                              onClick={() => doRemoveEnrollment(e.id)}
-                              disabled={removingId === e.id}
-                              className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 disabled:opacity-30 transition-colors"
-                              title="Hapus Peserta"
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              {e.status !== "Completed" && (
+                                <button
+                                  onClick={() => doMarkResult(e.id, true)}
+                                  disabled={removingId === e.id}
+                                  className="p-1 rounded hover:bg-emerald-50 text-emerald-500 hover:text-emerald-700 disabled:opacity-30 transition-colors"
+                                  title="Tandai Lulus"
+                                >
+                                  <ThumbsUp size={12} />
+                                </button>
+                              )}
+                              {e.status !== "Perlu Mengulang" && (
+                                <button
+                                  onClick={() => doMarkResult(e.id, false)}
+                                  disabled={removingId === e.id}
+                                  className="p-1 rounded hover:bg-amber-50 text-amber-500 hover:text-amber-700 disabled:opacity-30 transition-colors"
+                                  title="Tandai Perlu Mengulang"
+                                >
+                                  <ThumbsDown size={12} />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => doRemoveEnrollment(e.id)}
+                                disabled={removingId === e.id}
+                                className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 disabled:opacity-30 transition-colors"
+                                title="Hapus Peserta"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

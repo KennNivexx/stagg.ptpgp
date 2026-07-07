@@ -495,7 +495,7 @@ export default function DeptDashboard() {
                     {req.quantity} orang · {new Date(req.created_at).toLocaleDateString("id-ID")}
                   </p>
                 </div>
-                <span className={`shrink-0 px-2 py-1 text-[10px] font-bold rounded-lg ${req.status === "Disetujui" ? "bg-emerald-50 text-emerald-700" : req.status === "Ditolak" ? "bg-red-50 text-red-700" : req.status === "Direview HRD" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
+                <span className={`shrink-0 px-2 py-1 text-[10px] font-bold rounded-lg ${req.status === "Disetujui" ? "bg-emerald-50 text-emerald-700" : req.status === "Ditolak" ? "bg-red-50 text-red-700" : req.status === "Direview Direktur" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
                   {req.status}
                 </span>
               </div>

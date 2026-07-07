@@ -394,14 +394,13 @@ export async function addOrgUnit(formData: FormData) {
  * code/department so its place in the 5-level org hierarchy stays well
  * defined. Level is derived from the code's position under the parent.
  */
-export async function addDepartmentManual(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin");
-
-  const code = (formData.get("code") as string || "").trim();
-  const parent_code = (formData.get("parent_code") as string || "").trim();
-  const unit_name = (formData.get("unit_name") as string || "").trim();
-  const leader_name = (formData.get("leader_name") as string || "").trim();
-  const leader_email = (formData.get("leader_email") as string || "").trim();
+/** Shared validation + insert, used by reviewDepartmentRequest once a
+ * Direktur approves — kept separate from addDepartmentManual so the actual
+ * org_units row is only ever created post-approval. */
+async function createDepartmentUnit(params: {
+  code: string; parent_code: string; unit_name: string; leader_name: string; leader_email: string;
+}): Promise<{ error: string } | { success: true; code: string }> {
+  const { code, parent_code, unit_name, leader_name, leader_email } = params;
 
   if (!code || !parent_code || !unit_name) {
     return { error: "Kode, induk (parent), dan nama departemen wajib diisi." };
@@ -433,7 +432,7 @@ export async function addDepartmentManual(formData: FormData) {
     parent_code, leader_name, leader_email, sort_order: siblingCount,
   });
   if (error) {
-    console.error("addDepartmentManual error:", error);
+    console.error("createDepartmentUnit error:", error);
     if (error.message?.includes("duplicate key") || error.code === "23505") {
       return { error: `Kode "${code}" sudah digunakan. Gunakan kode lain.` };
     }
@@ -444,8 +443,84 @@ export async function addDepartmentManual(formData: FormData) {
   revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace/departments");
   revalidatePath("/hrd/workplace");
-  auditLog({ action: "org.add_department", targetId: code, targetName: unit_name, performedBy: user, detail: `Induk: ${parent_code}` });
   return { success: true, code };
+}
+
+/** HRD's department proposal only ever creates a `department_requests` row —
+ * the actual org_units row is created by reviewDepartmentRequest once a
+ * Direktur approves it (see the Kompetensi library for the same pattern). */
+export async function addDepartmentManual(formData: FormData) {
+  const user = await requireRole("hrd", "superadmin");
+
+  const code = (formData.get("code") as string || "").trim();
+  const parent_code = (formData.get("parent_code") as string || "").trim();
+  const unit_name = (formData.get("unit_name") as string || "").trim();
+  const leader_name = (formData.get("leader_name") as string || "").trim();
+  const leader_email = (formData.get("leader_email") as string || "").trim();
+
+  if (!code || !parent_code || !unit_name) {
+    return { error: "Kode, induk (parent), dan nama departemen wajib diisi." };
+  }
+  if (!/^\d+(\.\d+)+$/.test(code)) {
+    return { error: "Format kode tidak valid. Gunakan format: 1.2.1.0.0.0.0 (dipisah titik)." };
+  }
+  if (!/^\d+(\.\d+)+$/.test(parent_code)) {
+    return { error: "Format kode induk tidak valid." };
+  }
+  const { data: existing } = await supabaseAdmin.from("org_units").select("code").eq("code", code).maybeSingle();
+  if (existing) return { error: `Kode "${code}" sudah digunakan unit lain.` };
+
+  const { error } = await supabaseAdmin.from("department_requests").insert({
+    id: "dreq-" + crypto.randomUUID(),
+    code, parent_code, name: unit_name, leader_name, leader_email,
+    requested_by: user.name || user.email,
+    status: "Pending",
+    created_at: new Date().toISOString(),
+  });
+  if (error?.code === "42P01") return { error: "Jalankan migrasi 20260709001_workflow_overhaul.sql terlebih dahulu." };
+  if (error) { console.error("[org] addDepartmentManual error:", error.message); return { error: "Gagal mengajukan departemen." }; }
+
+  revalidatePath("/hrd/workplace/departments");
+  return { success: true, pending: true };
+}
+
+export async function getDepartmentRequests(status?: string) {
+  await requireRole("hrd", "director", "superadmin");
+  let q = supabaseAdmin.from("department_requests").select("*").order("created_at", { ascending: false });
+  if (status) q = q.eq("status", status);
+  const { data, error } = await q.limit(100);
+  if (error?.code === "42P01") return [];
+  return data || [];
+}
+
+export async function reviewDepartmentRequest(id: string, approve: boolean): Promise<{ error: string } | { success: true }> {
+  const user = await requireRole("director", "superadmin");
+
+  const { data: reqRow } = await supabaseAdmin.from("department_requests").select("*").eq("id", id).maybeSingle();
+  if (!reqRow) return { error: "Usulan tidak ditemukan." };
+  const req = reqRow as Record<string, unknown>;
+  if (req.status !== "Pending") return { error: `Usulan ini sudah diproses sebelumnya (${req.status}).` };
+
+  if (approve) {
+    const result = await createDepartmentUnit({
+      code: req.code as string,
+      parent_code: req.parent_code as string,
+      unit_name: req.name as string,
+      leader_name: (req.leader_name as string) || "",
+      leader_email: (req.leader_email as string) || "",
+    });
+    if ("error" in result) return result;
+    auditLog({ action: "org.add_department", targetId: result.code, targetName: req.name as string, performedBy: user, detail: `Induk: ${req.parent_code}, disetujui Direktur` });
+  }
+
+  await supabaseAdmin.from("department_requests").update({
+    status: approve ? "Disetujui" : "Ditolak",
+    decided_at: new Date().toISOString(),
+  }).eq("id", id);
+
+  revalidatePath("/hrd/workplace/departments");
+  revalidatePath("/director/departments");
+  return { success: true };
 }
 
 export async function updateOrgUnit(formData: FormData) {

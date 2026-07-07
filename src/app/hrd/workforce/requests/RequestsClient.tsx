@@ -53,7 +53,7 @@ export default function RequestsClient({ departments, positions, userRole, userN
     setData(prev => {
       const req = prev.find(r => r.id === id);
       if (status === "Disetujui" && req) showToast(`Disetujui! Headcount ${req.department} +${req.quantity}.`);
-      else if (status === "Direview HRD") showToast("Diteruskan ke Director.");
+      else if (status === "Direview Direktur") showToast("Diteruskan ke Direktur.");
       else if (status === "Ditolak") showToast("Permintaan ditolak.");
       return prev.map(r => r.id === id ? { ...r, status } : r);
     });
@@ -96,7 +96,7 @@ export default function RequestsClient({ departments, positions, userRole, userN
   const statusBadge = (s: string) => {
     const m: Record<string, string> = {
       Pending: "bg-amber-50 text-amber-700 border-amber-200",
-      "Direview HRD": "bg-blue-50 text-blue-700 border-blue-200",
+      "Direview Direktur": "bg-blue-50 text-blue-700 border-blue-200",
       Disetujui: "bg-emerald-50 text-emerald-700 border-emerald-200",
       Ditolak: "bg-red-50 text-red-700 border-red-200",
     };
@@ -287,7 +287,7 @@ export default function RequestsClient({ departments, positions, userRole, userN
                   {isHRD && detail.status === "Pending" && (
                     <div className="flex gap-2">
                       <button
-                        onClick={() => doStatus(detail.id, "Direview HRD")}
+                        onClick={() => doStatus(detail.id, "Direview Direktur")}
                         className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1"
                       >
                         <ChevronRight size={13} /> Teruskan ke Director
@@ -300,7 +300,7 @@ export default function RequestsClient({ departments, positions, userRole, userN
                       </button>
                     </div>
                   )}
-                  {isDirector && detail.status === "Direview HRD" && (
+                  {isDirector && detail.status === "Direview Direktur" && (
                     <div className="flex gap-2">
                       <button
                         onClick={() => doStatus(detail.id, "Disetujui")}

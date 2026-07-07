@@ -122,6 +122,9 @@ async function connect(): Promise<void> {
 
     console.log("[wa baileys] creating auth dir:", AUTH_DIR);
     await fs.mkdir(AUTH_DIR, { recursive: true });
+    // Not a React hook — Baileys names its auth-state loader with a "use" prefix,
+    // which trips the react-hooks lint rule as a false positive.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { state: authState, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
     console.log("[wa baileys] fetching latest version...");
     const { version } = await fetchLatestBaileysVersion();

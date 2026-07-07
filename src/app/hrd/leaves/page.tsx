@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Calendar, CheckCircle2, Clock, Plus, XCircle, X, User, ChevronRight, CalendarDays } from "lucide-react";
-import { getLeaves, submitLeave, updateLeaveStatus } from "@/app/actions/leaves";
+import { getLeaves, submitLeave } from "@/app/actions/leaves";
 import EmptyState from "@/components/EmptyState";
 
 interface LeaveRecord {
@@ -73,13 +73,6 @@ export default function LeavesPage() {
     getLeaves({}).then(setData);
   };
 
-  const doStatus = async (id: string, status: string) => {
-    const result = await updateLeaveStatus(id, status);
-    if (result?.error) { showToast(result.error); return; }
-    setData(prev => prev.map(d => d.id === id ? { ...d, status } : d));
-    showToast(status === "Disetujui" ? "Cuti disetujui." : "Cuti ditolak.");
-  };
-
   const filtered = data.filter(d => !statusFilter || d.status === statusFilter);
   const pending = data.filter(d => d.status === "Pending").length;
   const approved = data.filter(d => d.status === "Disetujui").length;
@@ -105,7 +98,7 @@ export default function LeavesPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Cuti & Izin</h1>
-          <p className="text-sm text-gray-500">Ajukan dan kelola permintaan cuti karyawan.</p>
+          <p className="text-sm text-gray-500">Laporan cuti karyawan &mdash; keputusan disetujui/ditolak oleh Kepala Departemen masing-masing. HRD hanya memantau.</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors">
           <Plus size={14} /> {showForm ? "Tutup" : "Ajukan Cuti"}
@@ -183,7 +176,7 @@ export default function LeavesPage() {
                 <th className="text-left py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Periode</th>
                 <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Hari</th>
                 <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase">Status</th>
-                <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase w-32">Aksi</th>
+                <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 uppercase w-32">Keputusan</th>
               </tr></thead>
               <tbody className="divide-y divide-slate-50">
                 {filtered.map(l => (
@@ -202,13 +195,11 @@ export default function LeavesPage() {
                     <td className="py-2.5 px-4 text-center text-xs font-bold text-slate-600">{countDays(l.start_date, l.end_date)}</td>
                     <td className="py-2.5 px-4 text-center"><StatusBadge status={l.status} /></td>
                     <td className="py-2.5 px-4 text-center">
-                      {l.status === "Pending" && (
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => doStatus(l.id, "Disetujui")} className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">Setujui</button>
-                          <button onClick={() => doStatus(l.id, "Ditolak")} className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded text-[10px] font-bold">Tolak</button>
-                        </div>
+                      {l.status === "Pending" ? (
+                        <span className="text-[10px] text-amber-500 italic">Menunggu keputusan atasan</span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">{l.updated_at ? new Date(l.updated_at).toLocaleDateString("id-ID") : ""}</span>
                       )}
-                      {l.status !== "Pending" && <span className="text-[10px] text-slate-400">{l.updated_at ? new Date(l.updated_at).toLocaleDateString("id-ID") : ""}</span>}
                     </td>
                   </tr>
                 ))}

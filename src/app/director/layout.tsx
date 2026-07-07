@@ -19,10 +19,13 @@ const MENU_GROUPS = [
     ],
   },
   {
-    label: "Permintaan SDM",
+    label: "Persetujuan",
     icon: FileText,
     items: [
-      { href: "/director/requests", label: "Approve/Tolak" },
+      { href: "/director/requests", label: "Permintaan SDM" },
+      { href: "/director/departments", label: "Usulan Departemen" },
+      { href: "/director/competency", label: "Usulan Kompetensi" },
+      { href: "/director/trainings", label: "Anggaran Pelatihan" },
     ],
   },
   {

@@ -94,6 +94,47 @@ export async function deleteShiftSchedule(id: string) {
   return { success: true };
 }
 
+/** Read-only shift roster scoped to the department manager's own department —
+ * never exposes other departments' employees, unlike getShiftsData(). */
+export async function getShiftsDataForDept() {
+  const user = await requireRole("department_manager", "superadmin");
+  const { data: emp } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+  const myDept = (emp as { department?: string } | null)?.department || null;
+  if (!myDept) return { shifts: [], employees: [], department: null };
+
+  const [shiftsRes, employeesRes] = await Promise.all([
+    supabaseAdmin.from("shifts").select("*").order("start_time"),
+    supabaseAdmin
+      .from("employees")
+      .select("id, full_name, department, position")
+      .eq("department", myDept)
+      .not("status", "eq", "Resigned")
+      .order("full_name"),
+  ]);
+  return { shifts: shiftsRes.data || [], employees: employeesRes.data || [], department: myDept };
+}
+
+export async function getShiftSchedulesForDept(monthStart: string, monthEnd: string) {
+  const user = await requireRole("department_manager", "superadmin");
+  const { data: emp } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+  const myDept = (emp as { department?: string } | null)?.department;
+  if (!myDept) return [];
+
+  const { data: deptEmployees } = await supabaseAdmin.from("employees").select("id").eq("department", myDept);
+  const ids = (deptEmployees || []).map((e: { id: string }) => e.id);
+  if (ids.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("shift_schedules")
+    .select("*")
+    .in("employee_id", ids)
+    .gte("shift_date", monthStart)
+    .lte("shift_date", monthEnd)
+    .order("shift_date");
+  if (error?.code === "42P01") return [];
+  return data || [];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Lokasi Kerja
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,6 +183,26 @@ export async function deleteLocation(id: string) {
   if (error) return { error: "Gagal menghapus lokasi." };
   revalidatePath("/hrd/infrastructure/locations");
   return { success: true };
+}
+
+/** Read-only location roster scoped to the department manager's own
+ * department — never exposes other departments' employees. */
+export async function getLocationsDataForDept() {
+  const user = await requireRole("department_manager", "superadmin");
+  const { data: emp } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+  const myDept = (emp as { department?: string } | null)?.department || null;
+  if (!myDept) return { locations: [], employees: [], department: null };
+
+  const [locRes, empRes] = await Promise.all([
+    supabaseAdmin.from("work_locations").select("*").order("name"),
+    supabaseAdmin
+      .from("employees")
+      .select("id, full_name, department, position, location_id")
+      .eq("department", myDept)
+      .not("status", "eq", "Resigned")
+      .order("full_name"),
+  ]);
+  return { locations: locRes.data || [], employees: empRes.data || [], department: myDept };
 }
 
 export async function assignEmployeeLocation(employeeId: string, locationId: string | null) {

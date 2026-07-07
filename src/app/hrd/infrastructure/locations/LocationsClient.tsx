@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { MapPin, Building2, Warehouse, Store, Users, Plus, X, Save, Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, Building2, Warehouse, Store, Users, Plus, X, Save, Pencil, Trash2, ChevronDown, ChevronUp, Search } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { saveLocation, deleteLocation, assignEmployeeLocation } from "@/app/actions/infrastructure";
 
@@ -29,6 +29,8 @@ export default function LocationsClient({ initialLocations, employees: initialEm
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [reassigning, setReassigning] = useState<string | null>(null);
+  const [assignSearch, setAssignSearch] = useState("");
+  const [expandedDept, setExpandedDept] = useState<string | null>(null);
 
   const employeesByLocation = useMemo(() => {
     const m: Record<string, Employee[]> = {};
@@ -39,6 +41,16 @@ export default function LocationsClient({ initialLocations, employees: initialEm
   }, [employees]);
 
   const unassignedEmployees = useMemo(() => employees.filter((e) => !e.location_id), [employees]);
+
+  const employeesByDept = useMemo(() => {
+    const q = assignSearch.trim().toLowerCase();
+    const filtered = q
+      ? employees.filter((e) => [e.full_name, e.department, e.position].some((f) => f?.toLowerCase().includes(q)))
+      : employees;
+    const m: Record<string, Employee[]> = {};
+    for (const e of filtered) { (m[e.department || "Tanpa Departemen"] ||= []).push(e); }
+    return m;
+  }, [employees, assignSearch]);
 
   const activeLocations = locations.filter((l) => l.status === "Aktif").length;
 
@@ -266,46 +278,73 @@ export default function LocationsClient({ initialLocations, employees: initialEm
         </div>
       )}
 
-      {/* Penempatan karyawan */}
+      {/* Penempatan karyawan — dikelompokkan per departemen agar lebih mudah dibaca */}
       <div className="mt-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
-        <div className="p-5 border-b border-slate-100">
-          <h3 className="font-extrabold text-slate-800 text-sm">Penempatan Karyawan</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Atur lokasi kerja untuk setiap karyawan.</p>
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-extrabold text-slate-800 text-sm">Penempatan Karyawan</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">Atur lokasi kerja untuk setiap karyawan, dikelompokkan per departemen.</p>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={assignSearch}
+              onChange={(e) => setAssignSearch(e.target.value)}
+              placeholder="Cari karyawan..."
+              className="w-full pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+            />
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50">
-                <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase">Karyawan</th>
-                <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase">Departemen</th>
-                <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase">Lokasi Kerja</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {employees.map((e) => (
-                <tr key={e.id} className="hover:bg-slate-50/30 transition-colors">
-                  <td className="px-6 py-3">
-                    <p className="text-xs font-bold text-slate-800">{e.full_name}</p>
-                    <p className="text-[10px] text-slate-400">{e.position || "-"}</p>
-                  </td>
-                  <td className="px-6 py-3 text-xs text-slate-600">{e.department || "-"}</td>
-                  <td className="px-6 py-3">
-                    <select
-                      value={e.location_id || ""}
-                      disabled={reassigning === e.id}
-                      onChange={(ev) => handleReassign(e.id, ev.target.value)}
-                      className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none disabled:opacity-50"
-                    >
-                      <option value="">Belum ditugaskan</option>
-                      {locations.map((l) => (
-                        <option key={l.id} value={l.id}>{l.name}</option>
+        <div className="divide-y divide-slate-50">
+          {Object.keys(employeesByDept).length === 0 ? (
+            <p className="p-6 text-xs text-slate-400 text-center">Tidak ada karyawan yang cocok.</p>
+          ) : (
+            Object.keys(employeesByDept).sort().map((dept) => {
+              const deptEmployees = employeesByDept[dept];
+              const isOpen = expandedDept === dept || assignSearch.trim().length > 0;
+              return (
+                <div key={dept}>
+                  <button
+                    onClick={() => setExpandedDept(isOpen && !assignSearch ? null : dept)}
+                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50/50 transition-colors text-left"
+                  >
+                    <span className="text-xs font-bold text-slate-700">{dept}</span>
+                    <span className="flex items-center gap-2 text-[10px] text-slate-400">
+                      {deptEmployees.length} karyawan
+                      {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="px-5 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {deptEmployees.map((e) => (
+                        <div key={e.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/60 border border-slate-100">
+                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-[9px] shrink-0">
+                            {e.full_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-bold text-slate-800 truncate">{e.full_name}</p>
+                            <p className="text-[9px] text-slate-400 truncate">{e.position || "-"}</p>
+                          </div>
+                          <select
+                            value={e.location_id || ""}
+                            disabled={reassigning === e.id}
+                            onChange={(ev) => handleReassign(e.id, ev.target.value)}
+                            className="text-[10px] border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none disabled:opacity-50 shrink-0 max-w-[110px]"
+                          >
+                            <option value="">Belum ada</option>
+                            {locations.map((l) => (
+                              <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                          </select>
+                        </div>
                       ))}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

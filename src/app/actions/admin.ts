@@ -89,7 +89,11 @@ export async function saveNotificationTemplate(formData: FormData) {
   return { success: true };
 }
 
-export async function saveEmployeeContract(formData: FormData) {
+/** Employees only ever have ONE current contract editable from this page — no
+ * separate "add contract" flow, so this always updates the employee's latest
+ * contract row (creating one only the first time) instead of inserting a new
+ * row every save, which would otherwise accumulate duplicate contract history. */
+export async function saveEmployeeContract(formData: FormData): Promise<{ error: string } | { success: true }> {
   await requireRole("hrd", "superadmin");
   const employeeId = (formData.get("employeeId") as string || "").trim();
   const contractType = (formData.get("contractType") as string || "Kontrak").trim();
@@ -97,15 +101,31 @@ export async function saveEmployeeContract(formData: FormData) {
   const endDate = (formData.get("endDate") as string || "").trim();
   const notes = (formData.get("notes") as string || "").trim();
   if (!employeeId || !startDate) return { error: "Karyawan dan tanggal mulai wajib diisi." };
-  const { error } = await supabaseAdmin.from("employee_contracts").insert({
-    id: "ctr-" + crypto.randomUUID(),
-    employee_id: employeeId,
+
+  const { data: existing } = await supabaseAdmin
+    .from("employee_contracts")
+    .select("id")
+    .eq("employee_id", employeeId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const payload = {
     contract_type: contractType,
     start_date: startDate,
     end_date: endDate || null,
     notes: notes || null,
-    created_at: new Date().toISOString(),
-  });
+  };
+
+  const { error } = existing
+    ? await supabaseAdmin.from("employee_contracts").update(payload).eq("id", (existing as { id: string }).id)
+    : await supabaseAdmin.from("employee_contracts").insert({
+        id: "ctr-" + crypto.randomUUID(),
+        employee_id: employeeId,
+        ...payload,
+        created_at: new Date().toISOString(),
+      });
+
   if (error?.code === "42P01") return { error: "Jalankan migrasi tabel employee_contracts terlebih dahulu." };
   if (error) { console.error("[admin] saveEmployeeContract error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/infrastructure/contracts");

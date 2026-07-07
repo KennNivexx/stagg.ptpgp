@@ -31,6 +31,7 @@ type GapRow = {
   employeeName: string;
   department: string;
   position: string;
+  skillId: string;
   skillName: string;
   skillCategory: string;
   currentLevel: number;
@@ -91,6 +92,7 @@ export default async function GapAnalysisPage() {
           employeeName: emp.full_name,
           department: emp.department,
           position: emp.position,
+          skillId: skill.id,
           skillName: skill.name,
           skillCategory: skill.category,
           currentLevel: effectiveCurrent,

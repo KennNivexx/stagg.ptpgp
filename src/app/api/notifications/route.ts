@@ -43,9 +43,9 @@ export async function GET(request: NextRequest) {
 
   try {
     if (role === "hrd") {
-      const [{ data: applicants }, { data: pendingLeaves }, { data: expiringContracts }, { data: newEmployees }, { data: pendingPayroll }] = await Promise.all([
+      const [{ data: applicants }, { data: decidedLeaves }, { data: expiringContracts }, { data: newEmployees }, { data: pendingPayroll }] = await Promise.all([
         supabaseAdmin.from("applications").select("id, full_name, job_id, applied_at").eq("status", "Menunggu Review").order("applied_at", { ascending: false }).limit(5),
-        supabaseAdmin.from("leave_requests").select("id, employees!inner(full_name), type, start_date, end_date").eq("status", "Pending").order("created_at", { ascending: false }).limit(5),
+        supabaseAdmin.from("leave_requests").select("id, employees!inner(full_name), type, start_date, end_date, status").in("status", ["Disetujui", "Ditolak"]).order("updated_at", { ascending: false }).limit(5),
         supabaseAdmin.from("employees").select("id, full_name, status").order("created_at", { ascending: false }).limit(50),
         supabaseAdmin.from("employees").select("id, full_name, join_date").order("created_at", { ascending: false }).limit(5),
         supabaseAdmin.from("payroll").select("id, month, year").eq("status", "Draft").limit(5),
@@ -65,17 +65,19 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      if (pendingLeaves?.length) {
-        pendingLeaves.forEach((l: Record<string, unknown>) => {
+      if (decidedLeaves?.length) {
+        // HRD no longer approves/rejects leave — Kepala Departemen decides.
+        // This is a read-only "for your records" report, not an action item.
+        decidedLeaves.forEach((l: Record<string, unknown>) => {
           const emp = l.employees as Record<string, string> | undefined;
           notifications.push({
             id: `leave-${l.id}`,
             type: "leave",
-            title: "Pengajuan Cuti",
-            message: `${emp?.full_name || "Karyawan"} mengajukan ${l.type} (${l.start_date} - ${l.end_date}).`,
+            title: `Cuti ${l.status}`,
+            message: `${emp?.full_name || "Karyawan"} — ${l.type} (${l.start_date} - ${l.end_date}) ${l.status === "Disetujui" ? "disetujui" : "ditolak"} oleh atasan.`,
             time: new Date().toLocaleDateString("id-ID"),
             link: "/hrd/leaves",
-            priority: "high",
+            priority: "low",
           });
         });
       }
@@ -118,6 +120,40 @@ export async function GET(request: NextRequest) {
           time: new Date().toLocaleDateString("id-ID"),
           link: "/hrd/rewards/payroll",
           priority: "high",
+        });
+      }
+
+      // Director's decision on a forwarded workforce request — HRD needs to
+      // know so they can either create the job posting (Disetujui) or inform
+      // the requesting department (Ditolak).
+      const { data: decidedRequests } = await supabaseAdmin
+        .from("workforce_requests")
+        .select("id, department, position, status")
+        .in("status", ["Disetujui", "Ditolak"])
+        .order("updated_at", { ascending: false })
+        .limit(10);
+      const approvedReqs = (decidedRequests || []).filter((r: Record<string, unknown>) => r.status === "Disetujui");
+      const rejectedReqs = (decidedRequests || []).filter((r: Record<string, unknown>) => r.status === "Ditolak");
+      if (approvedReqs.length > 0) {
+        notifications.push({
+          id: "workforce-approved",
+          type: "request",
+          title: "Permintaan SDM Disetujui Direktur",
+          message: `${approvedReqs.length} permintaan disetujui — buat lowongan rekrutmennya.`,
+          time: new Date().toLocaleDateString("id-ID"),
+          link: "/hrd/workforce/requests",
+          priority: "high",
+        });
+      }
+      if (rejectedReqs.length > 0) {
+        notifications.push({
+          id: "workforce-rejected",
+          type: "request",
+          title: "Permintaan SDM Ditolak Direktur",
+          message: `${rejectedReqs.length} permintaan ditolak — informasikan ke departemen terkait.`,
+          time: new Date().toLocaleDateString("id-ID"),
+          link: "/hrd/workforce/requests",
+          priority: "medium",
         });
       }
     }
@@ -228,6 +264,31 @@ export async function GET(request: NextRequest) {
             priority: "medium",
           });
         }
+
+        // Gap-based training whose Director budget approval just came through —
+        // this is the actual "wajib mengikuti training" notice to the employee.
+        const { data: myEnrollments } = await supabaseAdmin
+          .from("training_enrollments")
+          .select("id, training_id, status, trainings!inner(title, budget_status)")
+          .eq("employee_id", empId)
+          .neq("status", "Completed")
+          .limit(10);
+        const dueTrainings = (myEnrollments || []).filter((e: Record<string, unknown>) => {
+          const t = e.trainings as { budget_status?: string } | { budget_status?: string }[];
+          const tr = Array.isArray(t) ? t[0] : t;
+          return tr?.budget_status === "Disetujui";
+        });
+        if (dueTrainings.length > 0) {
+          notifications.push({
+            id: "training-due",
+            type: "training",
+            title: "Training Wajib — Menutup Gap Kompetensi",
+            message: `${dueTrainings.length} pelatihan wajib menunggu Anda selesaikan.`,
+            time: new Date().toLocaleDateString("id-ID"),
+            link: "/employee/training",
+            priority: "high",
+          });
+        }
       }
     }
 
@@ -294,6 +355,24 @@ export async function GET(request: NextRequest) {
             priority: "medium",
           });
         }
+
+        const { data: pendingLeaves } = await supabaseAdmin
+          .from("leave_requests")
+          .select("id")
+          .eq("department", deptName)
+          .eq("status", "Pending")
+          .limit(20);
+        if (pendingLeaves?.length) {
+          notifications.push({
+            id: "dept-leave-pending",
+            type: "leave",
+            title: "Cuti Menunggu Keputusan Anda",
+            message: `${pendingLeaves.length} pengajuan cuti karyawan departemen Anda menunggu persetujuan.`,
+            time: new Date().toLocaleDateString("id-ID"),
+            link: "/department/leaves",
+            priority: "high",
+          });
+        }
       }
     }
 
@@ -301,7 +380,7 @@ export async function GET(request: NextRequest) {
       const userEmail = session.email || "";
       const { data: apps } = await supabaseAdmin
         .from("applications")
-        .select("id, status")
+        .select("id, status, interview_date, interview_time, interview_location, interview_online_link")
         .eq("email", userEmail)
         .order("created_at", { ascending: false })
         .limit(5);
@@ -312,16 +391,24 @@ export async function GET(request: NextRequest) {
 
         let title = "Status Lamaran Diperbarui";
         let priority: "high" | "medium" | "low" = "medium";
+        let message = `Status lamaran Anda: ${status}.`;
         if (status === "Diterima") { title = "Selamat! Lamaran Diterima"; priority = "high"; }
         else if (status === "Ditolak") { title = "Lamaran Tidak Lolos"; priority = "low"; }
-        else if (status === "Interview") { title = "Dijadwalkan Wawancara"; priority = "high"; }
+        else if (status === "Interview") {
+          title = "Dijadwalkan Wawancara";
+          priority = "high";
+          if (a.interview_date) {
+            const where = (a.interview_online_link as string) || (a.interview_location as string) || "";
+            message = `Interview dijadwalkan pada ${a.interview_date}${a.interview_time ? ` ${a.interview_time}` : ""}${where ? ` — ${where}` : ""}.`;
+          }
+        }
         else if (status === "Tes Tulis & Psikotes") { title = "Dipanggil Tes Seleksi"; priority = "high"; }
 
         notifications.push({
           id: `app-status-${a.id}`,
           type: "applicant",
           title,
-          message: `Status lamaran Anda: ${status}.`,
+          message,
           time: new Date().toLocaleDateString("id-ID"),
           link: "/applicant/status",
           priority,

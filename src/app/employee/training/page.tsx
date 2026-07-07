@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { GraduationCap, Calendar, Award, BookOpen, Clock, CheckCircle } from "lucide-react";
+import { GraduationCap, Calendar, Award, BookOpen, Clock, CheckCircle, AlertTriangle, FileText } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-guard";
 import TrainingRequestButton from "./TrainingRequestButton";
@@ -48,6 +48,35 @@ export default async function EmployeeTraining() {
 
   const completed = trainings.filter((t) => t.status === "Completed").length;
   const inProgress = trainings.filter((t) => t.status === "Enrolled").length;
+
+  // Every training in this system is created from a competency-gap request
+  // (either department-submitted or HRD-direct from Analisis Kesenjangan) —
+  // so an active, uncompleted quiz means "wajib dikerjakan untuk menutup gap".
+  const trainingIds = trainings.map((t) => t.training_id).filter(Boolean);
+  const [{ data: quizzes }, { data: materials }, { data: certificates }] = trainingIds.length > 0
+    ? await Promise.all([
+        supabaseAdmin.from("training_quizzes").select("id, training_id, title, pass_score, duration_minutes").in("training_id", trainingIds),
+        supabaseAdmin.from("training_materials").select("id, training_id, title, type").in("training_id", trainingIds),
+        supabaseAdmin.from("training_certificates").select("training_id, status, certificate_number").eq("employee_id", employeeId || "").in("training_id", trainingIds),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }];
+
+  const quizzesByTraining = new Map<string, { id: string; title: string; pass_score: number; duration_minutes: number }[]>();
+  (quizzes || []).forEach((q: Record<string, unknown>) => {
+    const tid = q.training_id as string;
+    if (!quizzesByTraining.has(tid)) quizzesByTraining.set(tid, []);
+    quizzesByTraining.get(tid)!.push(q as { id: string; title: string; pass_score: number; duration_minutes: number });
+  });
+  const materialsByTraining = new Map<string, { id: string; title: string; type: string }[]>();
+  (materials || []).forEach((m: Record<string, unknown>) => {
+    const tid = m.training_id as string;
+    if (!materialsByTraining.has(tid)) materialsByTraining.set(tid, []);
+    materialsByTraining.get(tid)!.push(m as { id: string; title: string; type: string });
+  });
+  const certByTraining = new Map<string, { status: string; certificate_number: string }>();
+  (certificates || []).forEach((c: Record<string, unknown>) => {
+    certByTraining.set(c.training_id as string, c as { status: string; certificate_number: string });
+  });
 
   // Available trainings not yet enrolled
   const enrolledIds = trainings.map(t => t.training_id);
@@ -117,32 +146,71 @@ export default async function EmployeeTraining() {
               </div>
             ) : (
               <div className="divide-y divide-slate-50">
-                {trainings.map((t) => (
-                  <div key={t.id} className="p-6 hover:bg-slate-50/30 transition-colors flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h4 className="text-sm font-bold text-slate-800">{t.title}</h4>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          t.status === "Completed" ? "bg-emerald-50 text-emerald-700" :
-                          t.status === "Enrolled" ? "bg-amber-50 text-amber-700" :
-                          "bg-slate-100 text-slate-600"
-                        }`}>
-                          {t.status === "Completed" ? "Selesai" : t.status === "Enrolled" ? "Terdaftar" : t.status}
-                        </span>
+                {trainings.map((t) => {
+                  const trainingQuizzes = quizzesByTraining.get(t.training_id) || [];
+                  const trainingMaterials = materialsByTraining.get(t.training_id) || [];
+                  const cert = certByTraining.get(t.training_id);
+                  const quizWajib = trainingQuizzes.length > 0 && t.status !== "Completed";
+                  return (
+                    <div key={t.id} className="p-6 hover:bg-slate-50/30 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
+                            <h4 className="text-sm font-bold text-slate-800">{t.title}</h4>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              t.status === "Completed" ? "bg-emerald-50 text-emerald-700" :
+                              t.status === "Enrolled" ? "bg-amber-50 text-amber-700" :
+                              "bg-slate-100 text-slate-600"
+                            }`}>
+                              {t.status === "Completed" ? "Selesai" : t.status === "Enrolled" ? "Terdaftar" : t.status}
+                            </span>
+                            {quizWajib && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-700 flex items-center gap-1">
+                                <AlertTriangle size={9} /> Wajib Dikerjakan
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-[10px] text-slate-400 flex-wrap">
+                            {t.date_start && (
+                              <span className="flex items-center gap-1">
+                                <Calendar size={9} />
+                                {new Date(t.date_start).toLocaleDateString("id-ID")}
+                                {t.date_end && ` — ${new Date(t.date_end).toLocaleDateString("id-ID")}`}
+                              </span>
+                            )}
+                            {t.description && <span className="text-slate-400">{t.description.slice(0, 60)}{t.description.length > 60 ? "..." : ""}</span>}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 text-[10px] text-slate-400 flex-wrap">
-                        {t.date_start && (
-                          <span className="flex items-center gap-1">
-                            <Calendar size={9} />
-                            {new Date(t.date_start).toLocaleDateString("id-ID")}
-                            {t.date_end && ` — ${new Date(t.date_end).toLocaleDateString("id-ID")}`}
-                          </span>
-                        )}
-                        {t.description && <span className="text-slate-400">{t.description.slice(0, 60)}{t.description.length > 60 ? "..." : ""}</span>}
-                      </div>
+
+                      {(trainingMaterials.length > 0 || trainingQuizzes.length > 0 || cert) && (
+                        <div className="mt-3 pl-0 space-y-1.5">
+                          {trainingMaterials.map((m) => (
+                            <p key={m.id} className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                              <FileText size={10} className="text-slate-400" /> Materi: {m.title} <span className="text-slate-300">({m.type})</span>
+                            </p>
+                          ))}
+                          {trainingQuizzes.map((q) => (
+                            <p key={q.id} className="text-[11px] flex items-center gap-1.5">
+                              <AlertTriangle size={10} className={quizWajib ? "text-red-500" : "text-slate-400"} />
+                              <span className={quizWajib ? "text-red-600 font-semibold" : "text-slate-500"}>
+                                Kuis: {q.title} — nilai lulus {q.pass_score}, {q.duration_minutes} menit
+                              </span>
+                            </p>
+                          ))}
+                          {cert && (
+                            <p className="text-[11px] flex items-center gap-1.5">
+                              <Award size={10} className="text-emerald-500" />
+                              <span className="text-emerald-700 font-semibold">
+                                Sertifikat {cert.status} {cert.certificate_number ? `— No. ${cert.certificate_number}` : ""}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

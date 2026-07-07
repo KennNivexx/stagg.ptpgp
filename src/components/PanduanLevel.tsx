@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, ChevronDown, ChevronUp, X } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronUp, X, Search } from "lucide-react";
 
 const LEVELS = [
   {
@@ -102,6 +102,17 @@ const LEVELS = [
 export default function PanduanLevel() {
   const [open, setOpen] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+
+  const q = search.trim().toLowerCase();
+  const filteredLevels = q
+    ? LEVELS.filter((lv) =>
+        lv.title.toLowerCase().includes(q) ||
+        lv.description.toLowerCase().includes(q) ||
+        lv.example.toLowerCase().includes(q) ||
+        lv.indicators.some((i) => i.toLowerCase().includes(q))
+      )
+    : LEVELS;
 
   return (
     <>
@@ -129,6 +140,17 @@ export default function PanduanLevel() {
             </div>
 
             <div className="overflow-y-auto p-6 space-y-4 flex-1">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari panduan kompetensi (judul, indikator, contoh)..."
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-sky-400"
+                />
+              </div>
+
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
                 <p className="font-bold text-amber-800 mb-1">📌 Cara Menggunakan Panduan Ini</p>
                 <p className="text-xs text-amber-700 leading-relaxed">
@@ -139,7 +161,10 @@ export default function PanduanLevel() {
                 </p>
               </div>
 
-              {LEVELS.map((lv) => (
+              {filteredLevels.length === 0 && (
+                <p className="text-center text-xs text-slate-400 py-8">Tidak ada panduan yang cocok dengan pencarian.</p>
+              )}
+              {filteredLevels.map((lv) => (
                 <div key={lv.level} className={`border rounded-xl overflow-hidden ${lv.color}`}>
                   <button
                     onClick={() => setExpandedLevel(expandedLevel === lv.level ? null : lv.level)}

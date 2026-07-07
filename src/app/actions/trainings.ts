@@ -6,6 +6,63 @@ import { requireRole } from "@/lib/auth-guard";
 
 const uid = () => "tr-" + crypto.randomUUID();
 
+/** Enrolls every employee who actually has this skill gap (current level below
+ * the position's required level) in the department — this is the "orang orang
+ * dengan kategori yang cocok akan langsung masuk ke Training itu" behavior. */
+async function autoEnrollGapEmployees(trainingId: string, skillId: string | null, department: string): Promise<number> {
+  if (!skillId) return 0;
+
+  const { data: employees } = await supabaseAdmin
+    .from("employees")
+    .select("id, position")
+    .eq("department", department)
+    .not("status", "eq", "Resigned");
+  if (!employees || employees.length === 0) return 0;
+
+  const positions = [...new Set(employees.map((e: { position: string }) => e.position).filter(Boolean))];
+  const { data: posSkills } = await supabaseAdmin
+    .from("position_skills")
+    .select("position_code, required_level")
+    .eq("skill_id", skillId)
+    .in("position_code", positions);
+  const requiredByPosition = new Map((posSkills || []).map((p: { position_code: string; required_level: number }) => [p.position_code, p.required_level]));
+
+  const employeeIds = employees.map((e: { id: string }) => e.id);
+  const { data: empSkills } = await supabaseAdmin
+    .from("employee_skills")
+    .select("employee_id, current_level")
+    .eq("skill_id", skillId)
+    .in("employee_id", employeeIds);
+  const currentByEmployee = new Map((empSkills || []).map((s: { employee_id: string; current_level: number }) => [s.employee_id, s.current_level]));
+
+  const gapEmployeeIds = employees
+    .filter((e: { id: string; position: string }) => {
+      const required = requiredByPosition.get(e.position);
+      if (required === undefined) return false;
+      const current = currentByEmployee.get(e.id) ?? 0;
+      return current < required;
+    })
+    .map((e: { id: string }) => e.id);
+
+  if (gapEmployeeIds.length === 0) return 0;
+
+  const now = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("training_enrollments").insert(
+    gapEmployeeIds.map((employeeId) => ({
+      id: "te-" + crypto.randomUUID(),
+      training_id: trainingId,
+      employee_id: employeeId,
+      status: "Enrolled",
+      enrolled_at: now,
+    }))
+  );
+  if (error) {
+    console.error("[trainings] autoEnrollGapEmployees error:", error.message);
+    return 0;
+  }
+  return gapEmployeeIds.length;
+}
+
 export async function getTrainings() {
   await requireRole("hrd", "superadmin", "department_manager");
 
@@ -99,6 +156,25 @@ export async function getTrainingEnrollments(trainingId: string) {
       created_at: e.created_at,
     };
   });
+}
+
+/** HRD marks an enrollment's outcome after reviewing quiz/completion —
+ * pass keeps it "Completed" (ready for issueCertificate); fail resets it to
+ * "Perlu Mengulang" so the employee must retry, per the explicit spec:
+ * lulus → sertifikat, tidak lolos → mengulang. */
+export async function markEnrollmentResult(id: string, passed: boolean): Promise<{ error: string } | { success: true }> {
+  await requireRole("hrd", "superadmin");
+  if (!id) return { error: "ID peserta wajib diisi." };
+
+  const { error } = await supabaseAdmin
+    .from("training_enrollments")
+    .update({ status: passed ? "Completed" : "Perlu Mengulang" })
+    .eq("id", id);
+  if (error) return { error: "Gagal memperbarui status peserta." };
+
+  revalidatePath("/hrd/learning/trainings");
+  revalidatePath("/employee/training");
+  return { success: true };
 }
 
 export async function removeEnrollment(id: string) {
@@ -228,8 +304,10 @@ export async function reviewTrainingRequest(id: string, approve: boolean) {
     return { success: true };
   }
 
-  // Approve: auto-create a Planned training program that HRD can refine
-  // (exact dates, description) via the normal edit form.
+  // Approve: auto-create a training program (jadwal ditentukan HRD, bisa
+  // direfine lewat form edit) — tapi baru benar-benar berjalan (dan karyawan
+  // baru diberi tahu) setelah Direktur menyetujui anggarannya, lihat
+  // reviewTrainingBudget di bawah.
   const trainingId = uid();
   const now = new Date();
   const startDefault = now.toISOString().split("T")[0];
@@ -242,6 +320,7 @@ export async function reviewTrainingRequest(id: string, approve: boolean) {
     description: request.reason || `Diajukan oleh ${request.department} berdasarkan kesenjangan kompetensi ${request.skill_name}.`,
     date_start: startDefault, date_end: endDefault, status: "Planned",
     department: request.department, source_request_id: id,
+    budget_status: "Menunggu Direktur",
     created_at: now.toISOString(),
   });
   if (trainErr) {
@@ -249,12 +328,123 @@ export async function reviewTrainingRequest(id: string, approve: boolean) {
     return { error: "Gagal membuat program pelatihan." };
   }
 
+  await autoEnrollGapEmployees(trainingId, request.skill_id, request.department);
+
   await supabaseAdmin.from("training_requests").update({
     status: "Disetujui", training_id: trainingId, reviewed_at: now.toISOString(),
   }).eq("id", id);
 
   revalidatePath("/hrd/learning/trainings");
   revalidatePath("/department/competency");
+  revalidatePath("/director/trainings");
+  return { success: true };
+}
+
+/**
+ * HRD-direct path: create a training straight from a Gap Analysis row
+ * (instead of waiting for a department manager to submit a request first).
+ * Still gated by Director budget approval before employees are notified —
+ * same as the department-request path above.
+ */
+export async function createTrainingFromGap(params: {
+  skillId: string; skillName: string; department: string;
+  currentLevel: number; requiredLevel: number; proposedCost: number;
+}): Promise<{ error: string } | { success: true; enrolledCount: number }> {
+  const user = await requireRole("hrd", "superadmin");
+  const { skillId, skillName, department, proposedCost } = params;
+  if (!skillId || !skillName || !department) return { error: "Data gap tidak lengkap." };
+  if (proposedCost < 0) return { error: "Estimasi biaya tidak valid." };
+
+  const trainingId = uid();
+  const now = new Date();
+  const startDefault = now.toISOString().split("T")[0];
+  const endDefault = new Date(now.getTime() + 30 * 86_400_000).toISOString().split("T")[0];
+
+  const { error } = await supabaseAdmin.from("trainings").insert({
+    id: trainingId,
+    title: `Pelatihan ${skillName}`,
+    skill_id: skillId,
+    description: `Dibuat oleh ${user.name || user.email} dari Analisis Kesenjangan (${department}) — gap level ${params.currentLevel}/${params.requiredLevel}.`,
+    date_start: startDefault, date_end: endDefault, status: "Planned",
+    department, proposed_cost: proposedCost, budget_status: "Menunggu Direktur",
+    created_at: now.toISOString(),
+  });
+  if (error?.code === "42P01" || error?.code === "42703") return { error: "Jalankan migrasi 20260709001_workflow_overhaul.sql terlebih dahulu." };
+  if (error) { console.error("[trainings] createTrainingFromGap error:", error.message); return { error: "Gagal membuat program pelatihan." }; }
+
+  const enrolledCount = await autoEnrollGapEmployees(trainingId, skillId, department);
+
+  revalidatePath("/hrd/competency/gap");
+  revalidatePath("/hrd/learning/trainings");
+  revalidatePath("/director/trainings");
+  return { success: true, enrolledCount };
+}
+
+export async function getTrainingsAwaitingBudget() {
+  await requireRole("director", "superadmin");
+  const { data, error } = await supabaseAdmin
+    .from("trainings")
+    .select("*")
+    .eq("budget_status", "Menunggu Direktur")
+    .order("created_at", { ascending: false });
+  if (error?.code === "42703") return [];
+  return data || [];
+}
+
+export async function getTrainingBudgetHistory() {
+  await requireRole("director", "superadmin");
+  const { data, error } = await supabaseAdmin
+    .from("trainings")
+    .select("*")
+    .in("budget_status", ["Disetujui", "Ditolak"])
+    .order("created_at", { ascending: false })
+    .limit(30);
+  if (error?.code === "42703") return [];
+  return data || [];
+}
+
+/** Director's budget decision — this is the point employees actually get
+ * notified, per the explicit requirement that training only gets communicated
+ * to staff after Director approves the cost. */
+export async function reviewTrainingBudget(trainingId: string, approve: boolean, finalCost?: number): Promise<{ error: string } | { success: true }> {
+  await requireRole("director", "superadmin");
+
+  const { data: trainingRow } = await supabaseAdmin.from("trainings").select("*").eq("id", trainingId).maybeSingle();
+  if (!trainingRow) return { error: "Pelatihan tidak ditemukan." };
+  const training = trainingRow as Record<string, unknown>;
+  if (training.budget_status !== "Menunggu Direktur") {
+    return { error: `Pelatihan ini sudah diproses sebelumnya (${training.budget_status}).` };
+  }
+
+  const patch: Record<string, unknown> = { budget_status: approve ? "Disetujui" : "Ditolak" };
+  if (approve && finalCost !== undefined) patch.proposed_cost = finalCost;
+  if (!approve) patch.status = "Cancelled";
+
+  const { error } = await supabaseAdmin.from("trainings").update(patch).eq("id", trainingId);
+  if (error) return { error: "Gagal memproses keputusan anggaran." };
+
+  if (approve) {
+    const { data: enrollments } = await supabaseAdmin
+      .from("training_enrollments")
+      .select("employee_id, employees!inner(email)")
+      .eq("training_id", trainingId);
+    for (const e of (enrollments || []) as unknown as Array<{ employee_id: string; employees: { email: string } | { email: string }[] }>) {
+      const emp = Array.isArray(e.employees) ? e.employees[0] : e.employees;
+      const email = emp?.email;
+      if (!email) continue;
+      await supabaseAdmin.from("notifications").insert({
+        id: crypto.randomUUID(),
+        user_email: email,
+        title: "Training Wajib — Menutup Gap Kompetensi",
+        message: `Anda terdaftar di pelatihan "${training.title}" untuk menutup kesenjangan kompetensi Anda. Jadwal: ${training.date_start} - ${training.date_end}.`,
+        link: "/employee/training",
+      });
+    }
+  }
+
+  revalidatePath("/director/trainings");
+  revalidatePath("/hrd/learning/trainings");
+  revalidatePath("/employee/training");
   return { success: true };
 }
 

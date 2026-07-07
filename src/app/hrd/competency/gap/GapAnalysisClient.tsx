@@ -6,13 +6,16 @@ import {
   AlertTriangle,
   Filter,
   Search,
-  ArrowRight,
   Zap,
   TrendingUp,
+  CheckCircle2,
+  X,
+  Save,
+  GraduationCap,
 } from "lucide-react";
-import Link from "next/link";
 import PanduanLevel from "@/components/PanduanLevel";
 import EmptyState from "@/components/EmptyState";
+import { createTrainingFromGap } from "@/app/actions/trainings";
 
 type Employee = {
   id: string;
@@ -32,6 +35,7 @@ type GapRow = {
   employeeName: string;
   department: string;
   position: string;
+  skillId: string;
   skillName: string;
   skillCategory: string;
   currentLevel: number;
@@ -52,6 +56,33 @@ export default function GapAnalysisClient({
 }: Props) {
   const [selectedDept, setSelectedDept] = useState("");
   const [searchName, setSearchName] = useState("");
+  const [trainingModalRow, setTrainingModalRow] = useState<GapRow | null>(null);
+  const [proposedCost, setProposedCost] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [toast, setToast] = useState("");
+  const [handledKeys, setHandledKeys] = useState<Set<string>>(new Set());
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 4000); };
+
+  const submitTrainingFromGap = async () => {
+    if (!trainingModalRow) return;
+    const cost = parseInt(proposedCost || "0", 10) || 0;
+    setCreating(true);
+    const result = await createTrainingFromGap({
+      skillId: trainingModalRow.skillId,
+      skillName: trainingModalRow.skillName,
+      department: trainingModalRow.department,
+      currentLevel: trainingModalRow.currentLevel,
+      requiredLevel: trainingModalRow.requiredLevel,
+      proposedCost: cost,
+    });
+    setCreating(false);
+    if ("error" in result) { showToast(result.error); return; }
+    setHandledKeys((prev) => new Set(prev).add(`${trainingModalRow.department}-${trainingModalRow.skillId}`));
+    showToast(`Training dibuat, ${result.enrolledCount} karyawan terdaftar. Menunggu persetujuan anggaran Direktur.`);
+    setTrainingModalRow(null);
+    setProposedCost("");
+  };
 
   const departments = useMemo(
     () => [...new Set(employees.map((e) => e.department))].sort(),
@@ -304,13 +335,18 @@ export default function GapAnalysisClient({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <Link
-                        href="/hrd/learning/trainings"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#CC0000] text-white rounded-lg text-[10px] font-bold hover:bg-[#aa0000] transition-colors"
-                      >
-                        Lihat Training{" "}
-                        <ArrowRight size={10} />
-                      </Link>
+                      {handledKeys.has(`${r.department}-${r.skillId}`) ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold">
+                          <CheckCircle2 size={10} /> Training Dibuat
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setTrainingModalRow(r)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#CC0000] text-white rounded-lg text-[10px] font-bold hover:bg-[#aa0000] transition-colors"
+                        >
+                          <GraduationCap size={10} /> Buat Training
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -338,6 +374,39 @@ export default function GapAnalysisClient({
           </div>
         )}
       </div>
+
+      {toast && (
+        <div className="fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-bold max-w-sm">
+          {toast}
+        </div>
+      )}
+
+      {trainingModalRow && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setTrainingModalRow(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-slate-800 text-sm">Buat Training dari Gap</h3>
+              <button onClick={() => setTrainingModalRow(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">
+              Training <b>{trainingModalRow.skillName}</b> akan dibuat untuk departemen <b>{trainingModalRow.department}</b>, dan semua karyawan dengan gap yang sama pada skill ini akan otomatis terdaftar. Training baru berjalan (dan karyawan baru diberi tahu) setelah Direktur menyetujui anggarannya.
+            </p>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Estimasi Biaya (Rp)</label>
+            <input
+              type="number"
+              min="0"
+              value={proposedCost}
+              onChange={(e) => setProposedCost(e.target.value)}
+              placeholder="0"
+              className="w-full border border-slate-200 p-2.5 rounded-xl text-sm mb-4"
+            />
+            <button onClick={submitTrainingFromGap} disabled={creating}
+              className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60">
+              <Save size={14} /> {creating ? "Membuat..." : "Ajukan ke Direktur"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

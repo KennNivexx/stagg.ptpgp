@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Award, Lightbulb, Save, X, AlertTriangle, CheckCi
 import {
   saveSkill, deleteSkill, saveRequiredLevel, removeSkillFromPosition,
   getDeptSkillList, saveDeptSkillList, getSkills, getPositionSkills,
+  getCompetencyRequests,
 } from "@/app/actions/skills";
 import PanduanLevelForm from "./PanduanLevelForm";
 import EmptyState from "@/components/EmptyState";
@@ -75,6 +76,11 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   const [removingSkillIds, setRemovingSkillIds] = useState<Set<string>>(new Set());
   const [modalCategoryFilter, setModalCategoryFilter] = useState<string>("__dept__");
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<{ id: string; name: string; category: string }[]>([]);
+
+  useEffect(() => {
+    getCompetencyRequests("Pending").then((rows) => setPendingRequests(rows as { id: string; name: string; category: string }[])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const map: Record<string, number> = {};
@@ -216,10 +222,13 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     if (skillForm.department) fd.append("department", skillForm.department);
     const r = await saveSkill(fd);
     setSkillFormLoading(false);
-    if (r?.error) { showToast("error", r.error); setSkillFormErr(r.error); return; }
-    showToast("success", skillForm.id ? "Skill berhasil diupdate." : "Skill berhasil ditambahkan.");
+    if ("error" in r) { showToast("error", r.error); setSkillFormErr(r.error); return; }
+    showToast("success", skillForm.id
+      ? "Skill berhasil diupdate."
+      : "Usulan kompetensi baru terkirim ke Direktur untuk disetujui.");
     closeSkillModal();
     await refreshData();
+    getCompetencyRequests("Pending").then((rows) => setPendingRequests(rows as { id: string; name: string; category: string }[])).catch(() => {});
   };
 
   const doDeleteSkill = async () => {
@@ -291,8 +300,18 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#1A2530]">Pustaka Kompetensi</h1>
-        <p className="text-sm text-gray-500 mt-1">Kelola katalog skill dan required level per jabatan.</p>
+        <p className="text-sm text-gray-500 mt-1">Kelola katalog skill dan required level per jabatan. Menambah kompetensi baru butuh persetujuan Direktur.</p>
       </div>
+
+      {pendingRequests.length > 0 && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-bold text-amber-800">{pendingRequests.length} usulan kompetensi baru menunggu persetujuan Direktur</p>
+            <p className="text-[11px] text-amber-700 mt-0.5">{pendingRequests.map((r) => r.name).join(", ")}</p>
+          </div>
+        </div>
+      )}
 
 
       <div className="grid grid-cols-3 gap-4 mb-6">

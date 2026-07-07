@@ -5,7 +5,7 @@ export default async function ManajemenKontrakKerja() {
   const [empRes, ctrRes] = await Promise.all([
     supabaseAdmin
       .from("employees")
-      .select("id, full_name, department, position, status, join_date, phone")
+      .select("id, full_name, kode, department, position, status, join_date, phone")
       .not("status", "eq", "Resigned")
       .order("full_name"),
     supabaseAdmin

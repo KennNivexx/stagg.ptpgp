@@ -26,10 +26,23 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
   const contentRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
+  // Cetak/PDF selalu memakai tampilan Tabel — tree diagram (posisi node bebas,
+  // garis penghubung) tidak pernah rapi ketika di-screenshot/dicetak, sementara
+  // tabel flat sudah otomatis rapi dan bisa page-break dengan wajar.
+  const waitForTableTab = () => new Promise<void>((resolve) => {
+    setTab("table");
+    // AnimatePresence mode="wait" runs an exit+enter transition (~300ms) before
+    // the table DOM actually settles — a couple of rAFs isn't enough to
+    // outlast that, so wait past the transition instead of racing it.
+    setTimeout(resolve, 400);
+  });
+
   const handleExportPDF = async () => {
     if (!contentRef.current || exporting) return;
     setExporting(true);
     try {
+      await waitForTableTab();
+      if (!contentRef.current) return;
       const { toPng } = await import("html-to-image");
       const jsPDF = (await import("jspdf")).default;
       const dataUrl = await toPng(contentRef.current, { backgroundColor: "#ffffff", pixelRatio: 2 });
@@ -46,7 +59,10 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
     setExporting(false);
   };
 
-  const handlePrint = () => { window.print(); };
+  const handlePrint = async () => {
+    await waitForTableTab();
+    window.print();
+  };
 
   const [fName, setFName] = useState("");
   const [fCode, setFCode] = useState("");
