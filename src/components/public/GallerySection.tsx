@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import Image from "next/image";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageItem {
@@ -98,10 +99,12 @@ export default function GallerySection({
               className="flex flex-col text-left cursor-zoom-in"
             >
               <div className="aspect-square rounded-2xl overflow-hidden shadow-sm group relative">
-                <img
+                <Image
                   src={photo.url}
                   alt={photo.caption || `Gallery ${index + 1}`}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  fill
+                  unoptimized
+                  className="object-cover group-hover:scale-110 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>
@@ -161,6 +164,7 @@ export default function GallerySection({
               onDragEnd={handleDragEnd}
               onClick={(e) => e.stopPropagation()}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element -- lightbox shows the photo at its natural aspect ratio capped by max-h/max-w; fill needs a fixed-size parent and would break the shrink-to-fit sizing */}
               <img
                 src={active.url}
                 alt={active.caption || "Gallery"}

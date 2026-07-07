@@ -175,7 +175,7 @@ export async function saveFeedback(formData: FormData) {
     created_at: new Date().toISOString(),
   });
 
-  if (error?.code === "42P01") return { error: "Jalankan migrasi 20260625_performance_feedback.sql terlebih dahulu." };
+  if (error?.code === "42P01" || error?.code === "PGRST205") return { error: "Jalankan migrasi 20260625_performance_feedback.sql terlebih dahulu." };
   if (error) { console.error("[performance-hrd] saveFeedback error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
 
   revalidatePath("/hrd/performance/feedback");

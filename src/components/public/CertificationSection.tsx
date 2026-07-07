@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { Shield, Award, FileText, CheckCircle, LucideIcon } from "lucide-react";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -84,7 +85,7 @@ export default function CertificationSection({
                 className="flex flex-col items-center gap-4 group cursor-default">
                 {cert.logo ? (
                   <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100 group-hover:shadow-lg transition-all duration-300 overflow-hidden">
-                    <img src={cert.logo || undefined} alt={cert.name} className="w-12 h-12 object-contain" />
+                    <Image src={cert.logo || ""} alt={cert.name} width={48} height={48} unoptimized className="w-12 h-12 object-contain" />
                   </div>
                 ) : (
                   <div className="w-20 h-20 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center border border-gray-100 group-hover:bg-pgp-red group-hover:text-white group-hover:border-pgp-red group-hover:shadow-lg transition-all duration-300">
@@ -113,7 +114,7 @@ export default function CertificationSection({
                 <div key={index} className="flex flex-col items-center gap-4 group cursor-default">
                   {cert.logo ? (
                     <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100 group-hover:shadow-lg transition-all duration-300 overflow-hidden">
-                      <img src={cert.logo} alt={cert.name} className="w-12 h-12 object-contain" />
+                      <Image src={cert.logo || ""} alt={cert.name} width={48} height={48} unoptimized className="w-12 h-12 object-contain" />
                     </div>
                   ) : (
                     <div className="w-20 h-20 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center border border-gray-100 group-hover:bg-pgp-navy group-hover:text-white group-hover:border-pgp-navy group-hover:shadow-lg transition-all duration-300">

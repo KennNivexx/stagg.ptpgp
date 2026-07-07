@@ -52,14 +52,25 @@ export async function getTodayAttendance() {
 }
 
 async function attachKode(rows: Record<string, unknown>[]): Promise<Record<string, unknown>[]> {
-  // attendance.employee_name/department are snapshotted at clock-in time, but
-  // kode isn't — join it in from employees so the table can show it without
-  // a schema change/backfill.
-  const employeeIds = [...new Set(rows.map((r) => r.employee_id as string).filter(Boolean))];
+  // attendance.employee_id stores the session's users.id (self clock-in), NOT
+  // employees.id — the two tables use different ids for the same person. So
+  // resolving kode needs an extra hop: users.id -> users.email -> employees.kode.
+  const userIds = [...new Set(rows.map((r) => r.employee_id as string).filter(Boolean))];
   const kodeMap: Record<string, string> = {};
-  if (employeeIds.length > 0) {
-    const { data: emps } = await supabaseAdmin.from("employees").select("id, kode").in("id", employeeIds);
-    (emps || []).forEach((e: { id: string; kode?: string }) => { if (e.kode) kodeMap[e.id] = e.kode; });
+  if (userIds.length > 0) {
+    const { data: users } = await supabaseAdmin.from("users").select("id, email").in("id", userIds);
+    const emailByUserId: Record<string, string> = {};
+    (users || []).forEach((u: { id: string; email?: string }) => { if (u.email) emailByUserId[u.id] = u.email; });
+
+    const emails = [...new Set(Object.values(emailByUserId))];
+    if (emails.length > 0) {
+      const { data: emps } = await supabaseAdmin.from("employees").select("email, kode").in("email", emails);
+      const kodeByEmail: Record<string, string> = {};
+      (emps || []).forEach((e: { email: string; kode?: string }) => { if (e.kode) kodeByEmail[e.email] = e.kode; });
+      Object.entries(emailByUserId).forEach(([userId, email]) => {
+        if (kodeByEmail[email]) kodeMap[userId] = kodeByEmail[email];
+      });
+    }
   }
   return rows.map((r) => ({ ...r, employee_kode: kodeMap[r.employee_id as string] || null }));
 }
@@ -149,12 +160,12 @@ export async function registerFace(formData: FormData) {
     return { error: "Format descriptor tidak valid." };
   }
 
-  // Look up employee name to store alongside — avoids join in getAllFaceDescriptors
-  const { data: emp } = await supabaseAdmin
-    .from("employees")
-    .select("full_name")
-    .eq("id", employeeId)
-    .maybeSingle();
+  // Look up employee name to store alongside — avoids join in getAllFaceDescriptors.
+  // For self-registration, employeeId is user.id (not employees.id — different
+  // id spaces for the same person), so that path must look up by email instead.
+  const { data: emp } = user.role === "employee"
+    ? await supabaseAdmin.from("employees").select("full_name").eq("email", user.email).maybeSingle()
+    : await supabaseAdmin.from("employees").select("full_name").eq("id", employeeId).maybeSingle();
 
   const averaged = averageDescriptors(descriptors);
   if (averaged.length === 0) {
@@ -389,8 +400,9 @@ export async function submitFaceChangeRequest(formData: FormData) {
     return { error: "Format descriptor tidak valid." };
   }
 
+  // user.id here is users.id, not employees.id — look up by email instead.
   const { data: emp } = await supabaseAdmin
-    .from("employees").select("full_name").eq("id", user.id).maybeSingle();
+    .from("employees").select("full_name").eq("email", user.email).maybeSingle();
 
   const averaged = averageDescriptors(descriptors);
   if (averaged.length === 0) {

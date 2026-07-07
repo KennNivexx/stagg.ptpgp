@@ -298,6 +298,7 @@ export default function AttendancePage() {
             <button onClick={() => setExpandedPhoto(null)} className="absolute -top-3 -right-3 p-2 bg-white rounded-full shadow-lg hover:bg-slate-100 transition-colors z-10">
               <X size={16} className="text-slate-600" />
             </button>
+            {/* eslint-disable-next-line @next/next/no-img-element -- variable-aspect photo capped by max-h/max-w + object-contain; fill would require a fixed-size parent and change the shrink-to-fit behavior */}
             <img src={expandedPhoto} alt="Foto Absensi" className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain" />
           </div>
         </div>

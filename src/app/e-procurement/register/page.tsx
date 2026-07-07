@@ -26,7 +26,7 @@ export default function VendorRegistrationForm() {
       } else {
         setSuccess(true);
       }
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan sistem saat mendaftar.");
       setLoading(false);
     }

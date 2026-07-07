@@ -1,5 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
-import { FileText, Briefcase, Users, Clock, TrendingUp, Calendar } from "lucide-react";
+import { FileText, Briefcase, Users, Clock, TrendingUp } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
 
@@ -11,7 +11,7 @@ export default async function LaporanRekrutmen() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  const { data: applications, error: appError } = await supabaseAdmin
+  const { data: applications } = await supabaseAdmin
     .from("applications")
     .select("*");
 

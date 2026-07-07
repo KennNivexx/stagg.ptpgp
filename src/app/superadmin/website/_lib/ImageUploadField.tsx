@@ -80,6 +80,7 @@ export function ImageUploadField({
         )}
         {hint && <p className="text-[10px] text-gray-400">{hint}</p>}
         {value && (
+          // eslint-disable-next-line @next/next/no-img-element -- live preview of an in-progress, possibly invalid/incomplete admin-typed URL; needs the silent onError fallback that next/image's stricter loading doesn't provide
           <img
             src={value}
             alt="Preview"

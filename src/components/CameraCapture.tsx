@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Camera, CameraOff, MapPin, CheckCircle, AlertTriangle, RefreshCw, UserCheck, UserX } from "lucide-react";
+import { CameraOff, MapPin, CheckCircle, AlertTriangle, RefreshCw, UserCheck, UserX } from "lucide-react";
 import { findBestFaceMatch, type FaceReference } from "@/lib/face-recognition";
 
 // Models served locally from /public/models — NOT from external CDN
@@ -25,7 +25,6 @@ interface CameraCaptureProps {
   employeeName?: string;
   mode?: "detection" | "recognition" | "registration";
   referenceDescriptors?: FaceReference[];
-  onDescriptorsReady?: (descriptors: Float32Array[]) => void;
 }
 
 function formatDate(date: Date): string {
@@ -41,7 +40,6 @@ export default function CameraCapture({
   employeeName = "Karyawan",
   mode = "detection",
   referenceDescriptors = [],
-  onDescriptorsReady,
 }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);

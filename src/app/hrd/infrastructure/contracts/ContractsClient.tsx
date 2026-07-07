@@ -14,7 +14,7 @@ interface Props {
 
 export default function ContractsClient({ employees: initialEmployees, contracts: initialContracts }: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
-  const [contracts, setContracts] = useState(initialContracts);
+  const [contracts] = useState(initialContracts);
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [formData, setFormData] = useState({

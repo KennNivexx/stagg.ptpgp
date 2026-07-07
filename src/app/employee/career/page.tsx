@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { TrendingUp, Target, ArrowUp, Briefcase, GraduationCap, Calendar, CheckCircle } from "lucide-react";
+import { TrendingUp, Target, ArrowUp, Briefcase, GraduationCap, CheckCircle } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-guard";
 import { ApplyButton, ConsultationButton } from "./CareerActionButtons";

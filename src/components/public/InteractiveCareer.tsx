@@ -5,13 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MapPin, Briefcase, FileText, User, Mail, Phone,
   ChevronRight, X, CheckCircle2, Loader2, ArrowRight,
-  Building2, Calendar, GraduationCap, Award, Link2, Globe,
+  Building2, GraduationCap, Award, Link2, Globe,
   Sparkles, Plus, Trash2, ChevronLeft, Languages,
 } from "lucide-react";
 import { submitApplication } from "@/app/actions/hrd";
 import { Job } from "@/types";
-
-const DEPARTMENTS = ["Operasional", "Administrasi", "Keuangan", "IT & Sistem", "HRD", "Marketing", "Legal"];
 
 type Experience = { company: string; position: string; start: string; end: string; current: boolean; description: string };
 type Education = { school: string; degree: string; field: string; start: string; end: string };
@@ -28,7 +26,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [accountWarning, setAccountWarning] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [showingJobInfo, setShowingJobInfo] = useState(false);
@@ -148,7 +146,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
       setActiveJob(null);
       setIsSpontaneousOpen(false);
       setSubmitSuccess(false);
-      setCredentials(null);
+      setEmailSent(false);
       setAccountWarning(null);
       setShowingJobInfo(false);
       resetForm();
@@ -228,9 +226,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
       } else {
         setSubmitSuccess(true);
         setSubmitting(false);
-        if (result.credentials) {
-          setCredentials(result.credentials as { email: string; password: string });
-        }
+        setEmailSent(!!result.emailSent);
         if (result.accountWarning) {
           setAccountWarning(result.accountWarning as string);
         }
@@ -408,35 +404,17 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                     <h4 className="text-lg font-bold text-pgp-navy mb-2">Lamaran Berhasil Dikirim!</h4>
                     <p className="text-sm text-gray-500 max-w-sm mb-6">Tim HRD kami akan meninjau lamaran Anda segera. Pantau perkembangannya melalui Portal Pelamar.</p>
 
-                    {credentials && (
+                    {emailSent && !accountWarning ? (
                       <div className="w-full max-w-sm bg-slate-900 rounded-2xl p-6 text-left mt-2">
-                        <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">✅ Akun Portal Pelamar Dibuat</p>
-                        <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                          Gunakan akun ini untuk login ke <strong className="text-white">portal.ptpgp.co.id/applicant</strong> dan memantau status lamaran Anda secara real-time.
+                        <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">✅ Cek Email Anda</p>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          Kami telah mengirim link untuk mengakses <strong className="text-white">Portal Pelamar</strong> ke alamat email yang Anda daftarkan. Klik link tersebut untuk login dan memantau status lamaran Anda secara real-time.
                         </p>
-                        <div className="space-y-3">
-                          <div className="bg-slate-800 rounded-xl p-3">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Email</p>
-                            <p className="text-sm text-white font-mono font-bold">{credentials.email}</p>
-                          </div>
-                          <div className="bg-slate-800 rounded-xl p-3">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Password Sementara</p>
-                            <p className="text-sm text-emerald-400 font-mono font-bold tracking-wider">{credentials.password}</p>
-                          </div>
-                        </div>
                         <p className="text-[10px] text-amber-400 mt-4 leading-relaxed">
-                          ⚠️ Simpan kredensial ini. Akun akan otomatis dihapus jika lamaran tidak lolos seleksi.
+                          ⚠️ Tidak menerima email? Periksa folder spam, atau hubungi HRD. Akun akan otomatis dihapus jika lamaran tidak lolos seleksi.
                         </p>
-                        <a
-                          href="/login"
-                          className="mt-4 w-full block text-center py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors"
-                        >
-                          Login ke Portal Pelamar →
-                        </a>
                       </div>
-                    )}
-
-                    {!credentials && (
+                    ) : (
                       <div className="w-full max-w-sm mt-2">
                         {accountWarning && (
                           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3 text-left">

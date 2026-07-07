@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Building, Briefcase, Calendar, ShieldCheck, Save, MapPin, IdCard, Heart, Droplet, Users2, GraduationCap, Siren, MessageCircle, Link2Off } from "lucide-react";
+import { User, Mail, Phone, Building, Briefcase, Calendar, ShieldCheck, Save, MapPin, IdCard, MessageCircle, Link2Off } from "lucide-react";
 import { getCurrentEmployee } from "@/app/actions/employee";
-import { saveEmployeeProfile, saveContactProfile, saveBasicProfile } from "@/app/actions/profile";
+import { saveEmployeeProfile, saveBasicProfile } from "@/app/actions/profile";
 import { connectWhatsApp, disconnectWhatsApp, getContactBotUrl } from "@/app/actions/whatsapp";
 
 interface Employee {
@@ -36,18 +36,6 @@ export default function EmployeeProfile() {
   }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
-
-  const handleSaveContact = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setSaving(true);
-    const fd = new FormData(e.currentTarget);
-    fd.set("employeeId", profile?.id || "");
-    const r = await saveContactProfile(fd);
-    setSaving(false);
-    if (r.error) { showToast(r.error); return; }
-    showToast("Profil berhasil disimpan!");
-    getCurrentEmployee().then((emp) => setProfile(emp as Employee));
-  };
 
   const handleSaveBasic = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

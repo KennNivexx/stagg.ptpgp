@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS succession_readiness_assessments (
   id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
+  employee_id UUID NOT NULL REFERENCES employees(id),
   year INTEGER NOT NULL,
   kepemimpinan INTEGER NOT NULL DEFAULT 0 CHECK (kepemimpinan BETWEEN 0 AND 100),
   keahlian_teknis INTEGER NOT NULL DEFAULT 0 CHECK (keahlian_teknis BETWEEN 0 AND 100),

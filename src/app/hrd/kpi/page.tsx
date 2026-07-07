@@ -11,7 +11,7 @@ export default async function HRDKPI() {
   const { data: employees } = await supabaseAdmin
     .from("employees")
     .select("id, full_name, department, position")
-    .neq("id", "__settings__")
+    .neq("email", "__settings__@ptpgp.co.id")
     .order("full_name")
     .limit(100);
 

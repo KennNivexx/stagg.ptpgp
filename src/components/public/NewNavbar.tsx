@@ -18,7 +18,7 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
   const router = useRouter();
 
   const handleHashClick = (e: React.MouseEvent, href: string) => {
-    const [path, hash] = href.split("#");
+    const [, hash] = href.split("#");
     if (!hash) return;
 
     if (pathname === "/" || pathname === "") {

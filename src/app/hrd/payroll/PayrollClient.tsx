@@ -6,7 +6,6 @@ import { DollarSign, Download, FileText, Clock, Users, X, Plus, CheckCircle2, Ed
 import { generateBatchPayroll, updatePayrollStatus, updatePayrollAmounts, batchUpdatePayrollStatus } from "@/app/actions/admin";
 import EmptyState from "@/components/EmptyState";
 
-type Employee = { id: string; full_name: string; department: string; position: string };
 type Payroll = Record<string, unknown>;
 
 const MONTHS = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -16,13 +15,13 @@ function fmt(n: number) { return n.toLocaleString("id-ID"); }
 
 interface Props {
   payrolls: Payroll[];
-  employees: Employee[];
+  employees?: { id: string; full_name: string; department: string; position: string }[];
   totalEmployees: number;
   title?: string;
   subtitle?: string;
 }
 
-export default function PayrollClient({ payrolls, employees, totalEmployees, title = "Payroll", subtitle = "Kelola penggajian dan slip gaji seluruh karyawan." }: Props) {
+export default function PayrollClient({ payrolls, totalEmployees, title = "Payroll", subtitle = "Kelola penggajian dan slip gaji seluruh karyawan." }: Props) {
   const router = useRouter();
   const [showGen, setShowGen] = useState(false);
   const [showEdit, setShowEdit] = useState<Payroll | null>(null);
@@ -38,11 +37,9 @@ export default function PayrollClient({ payrolls, employees, totalEmployees, tit
 
   const years = [new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2];
 
-  const { draftCount, approvedCount, draftPayrolls, approvedPayrolls } = useMemo(() => ({
+  const { draftCount, approvedCount } = useMemo(() => ({
     draftCount: payrolls.filter(p => p.status === "Draft").length,
     approvedCount: payrolls.filter(p => p.status === "Approved").length,
-    draftPayrolls: payrolls.filter(p => p.status === "Draft"),
-    approvedPayrolls: payrolls.filter(p => p.status === "Approved"),
   }), [payrolls]);
 
   const handleStatusChange = async (id: string, status: "Approved" | "Paid") => {

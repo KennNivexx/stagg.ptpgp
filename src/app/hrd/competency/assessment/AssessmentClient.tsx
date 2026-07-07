@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Users, Award, Clock, Search, CheckCircle, AlertTriangle } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Users, Award, Search, CheckCircle, AlertTriangle } from "lucide-react";
 import PanduanLevel from "@/components/PanduanLevel";
 import EmptyState from "@/components/EmptyState";
 

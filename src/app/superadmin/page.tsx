@@ -33,17 +33,6 @@ import {
   AlertOctagon,
 } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
-
-function parseRole(address: unknown): string {
-  if (!address || typeof address !== "string") return "employee";
-  try {
-    const parsed = JSON.parse(address);
-    return parsed.__auth__?.role || "employee";
-  } catch {
-    return "employee";
-  }
-}
-
 import { requireRole } from "@/lib/auth-guard";
 
 export default async function SuperadminDashboard() {
@@ -74,12 +63,14 @@ export default async function SuperadminDashboard() {
   );
   const totalUsers = employeeList.length;
 
-  let totalHRD = 0;
-
-  for (const emp of employeeList) {
-    const role = parseRole(emp.address);
-    if (role === "hrd") totalHRD++;
-  }
+  // Role lives in the users table (users.role), not employees.address — the
+  // parseRole()/__auth__ pattern below is a legacy fallback for a
+  // credentials-embedded-in-address auth path that current accounts don't
+  // use, so counting via parseRole always came out 0.
+  const { count: totalHRD } = await supabaseAdmin
+    .from("users")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "hrd");
 
   // System Overview — derived from real audit_logs entries (no dedicated
   // login/session table exists in the schema, so audit_logs is used as the

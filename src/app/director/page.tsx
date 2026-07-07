@@ -12,8 +12,7 @@ import {
 import EmptyState from "@/components/EmptyState";
 
 export default async function DirectorDashboard() {
-  const user = await requireRole("director", "superadmin");
-  const userName = user.name || "Direktur";
+  await requireRole("director", "superadmin");
 
   const now = new Date();
   const currentDateStr = now.toLocaleDateString("id-ID", {

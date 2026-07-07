@@ -824,7 +824,10 @@ export async function submitApplication(formData: FormData) {
     accountWarning = "Akun portal pelamar gagal dibuat. Silakan hubungi HRD.";
   }
 
-  // Send credentials via Gmail (non-fatal)
+  // The login link (and only the login link) is delivered via email — never
+  // shown in the browser response, so an account is only usable by whoever
+  // actually controls that inbox. A made-up email simply never receives it.
+  let emailSent = false;
   let emailWarning: string | undefined;
   if (accountCreated && tempPassword) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://portal.ptpgp.co.id";
@@ -836,9 +839,11 @@ export async function submitApplication(formData: FormData) {
         email: normalizedEmail,
         loginUrl: `${appUrl}/login/token?t=${oneTimeToken}`,
       }),
+    }).then(() => {
+      emailSent = true;
     }).catch(err => {
       console.error("Failed to send applicant credentials email:", err);
-      emailWarning = "Lamaran tercatat tetapi email kredensial gagal dikirim.";
+      emailWarning = "Lamaran tercatat, tetapi email berisi link akun gagal dikirim. Hubungi HRD untuk mendapatkan akses ke Portal Pelamar.";
     });
   }
 
@@ -849,7 +854,7 @@ export async function submitApplication(formData: FormData) {
     success: true,
     applicationId,
     accountCreated,
-    credentials: accountCreated ? { email: normalizedEmail, password: tempPassword } : null,
+    emailSent,
     accountWarning: accountWarning || emailWarning || cvUploadError || null,
   };
 }
@@ -956,7 +961,19 @@ export async function getEmployeeById(id: string) {
     if (parsed.__auth__) displayAddress = parsed.home_address || "";
   } catch { /* plain address, already correct */ }
 
-  return { ...emp, address: displayAddress };
+  // Role lives in users.role, not embedded in employees.address — resolve it
+  // via email so the edit form's role dropdown pre-fills with the real value.
+  let role = "employee";
+  if (emp.email) {
+    const { data: userRow } = await supabaseAdmin
+      .from("users")
+      .select("role")
+      .eq("email", (emp.email as string).toLowerCase())
+      .maybeSingle();
+    if (userRow?.role) role = userRow.role as string;
+  }
+
+  return { ...emp, address: displayAddress, role };
 }
 
 export async function getEmployees(status?: string) {

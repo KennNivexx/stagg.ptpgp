@@ -7,8 +7,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  AlertTriangle,
-  MapPin,
   Users,
 } from "lucide-react";
 import { updateRequestStatus } from "@/app/actions/requests";

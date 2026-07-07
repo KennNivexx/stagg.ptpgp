@@ -3,11 +3,10 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  User, 
-  Calendar, 
-  FileText, 
-  Target, 
+import {
+  User,
+  Calendar,
+  FileText,
   LogOut,
   Search,
   Menu,

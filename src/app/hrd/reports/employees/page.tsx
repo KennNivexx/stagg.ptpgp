@@ -1,5 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
-import { FileText, Users, TrendingUp, UserPlus, UserX, Building2 } from "lucide-react";
+import { Users, UserPlus, UserX, Building2 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
 

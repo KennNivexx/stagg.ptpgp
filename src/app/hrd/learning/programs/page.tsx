@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { GraduationCap, Clock, Users, MapPin, Plus, X, Save, Search, Pencil, BarChart3 } from "lucide-react";
+import { GraduationCap, Clock, Users, MapPin, Plus, X, Save, Search, Pencil } from "lucide-react";
 
 type Program = {
   id: string;

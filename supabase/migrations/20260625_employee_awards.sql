@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS employee_awards (
   id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
+  employee_id UUID NOT NULL REFERENCES employees(id),
   employee_name TEXT DEFAULT '',
   department TEXT DEFAULT '',
   category TEXT NOT NULL,

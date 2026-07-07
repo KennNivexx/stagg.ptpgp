@@ -1,5 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
-import { Target, Plus, Calendar, User, Flag, Trash2 } from "lucide-react";
+import { Target, Plus, Calendar, User, Flag } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 
 async function saveInitiative(formData: FormData) {
@@ -8,14 +8,12 @@ async function saveInitiative(formData: FormData) {
 }
 
 export default async function PerencanaanStrategis() {
-  const [{ data: evaluations }, { data: employees }, { data: departments }] = await Promise.all([
+  const [{ data: evaluations }] = await Promise.all([
     supabaseAdmin
       .from("kpi_evaluations")
       .select("*, employees!inner(full_name, department, position)")
       .order("created_at", { ascending: false })
       .limit(50),
-    supabaseAdmin.from("employees").select("id, full_name, department").neq("status", "Inactive"),
-    supabaseAdmin.from("departments").select("name").order("name"),
   ]);
 
   const evals = (evaluations || []) as Record<string, unknown>[];

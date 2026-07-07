@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { PackageCheck, Truck, Ship, Plane, Warehouse, HardHat, LucideIcon } from "lucide-react";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -95,11 +96,13 @@ export default function ServicesGridSection({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {items.map((service, index) => (
               <div key={index} className="group bg-white border border-zinc-200/40 rounded-3xl overflow-hidden hover:border-pgp-red/40 hover:shadow-md transition-all duration-300">
-                <div className="aspect-[16/9] overflow-hidden">
-                  <img
-                    src={service.image_url || undefined}
+                <div className="aspect-[16/9] overflow-hidden relative">
+                  <Image
+                    src={service.image_url || ""}
                     alt={service.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    fill
+                    unoptimized
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>
                 <div className="p-8">

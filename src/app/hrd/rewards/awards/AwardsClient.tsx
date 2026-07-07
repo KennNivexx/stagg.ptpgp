@@ -26,7 +26,7 @@ export default function AwardsClient({
   initialAwards: AwardEntry[];
 }) {
   const router = useRouter();
-  const [awards, setAwards] = useState<AwardEntry[]>(initialAwards);
+  const [awards] = useState<AwardEntry[]>(initialAwards);
   const [showModal, setShowModal] = useState(false);
   const [empId, setEmpId] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);

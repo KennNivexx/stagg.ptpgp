@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ClipboardList, Building2, User, LogOut, ChevronRight, PenLine, HelpCircle, Menu, X } from "lucide-react";
+import { LayoutDashboard, ClipboardList, Building2, User, LogOut, ChevronRight, PenLine, HelpCircle, Menu } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { motion, AnimatePresence } from "framer-motion";

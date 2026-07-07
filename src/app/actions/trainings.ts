@@ -426,11 +426,16 @@ export async function reviewTrainingBudget(trainingId: string, approve: boolean,
   if (approve) {
     const { data: enrollments } = await supabaseAdmin
       .from("training_enrollments")
-      .select("employee_id, employees!inner(email)")
+      .select("employee_id")
       .eq("training_id", trainingId);
-    for (const e of (enrollments || []) as unknown as Array<{ employee_id: string; employees: { email: string } | { email: string }[] }>) {
-      const emp = Array.isArray(e.employees) ? e.employees[0] : e.employees;
-      const email = emp?.email;
+    const employeeIds = [...new Set((enrollments || []).map((e: { employee_id: string }) => e.employee_id).filter(Boolean))];
+    const emailByEmployeeId: Record<string, string> = {};
+    if (employeeIds.length > 0) {
+      const { data: emps } = await supabaseAdmin.from("employees").select("id, email").in("id", employeeIds);
+      (emps || []).forEach((e: { id: string; email?: string }) => { if (e.email) emailByEmployeeId[e.id] = e.email; });
+    }
+    for (const employeeId of employeeIds) {
+      const email = emailByEmployeeId[employeeId];
       if (!email) continue;
       await supabaseAdmin.from("notifications").insert({
         id: crypto.randomUUID(),

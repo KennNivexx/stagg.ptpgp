@@ -67,11 +67,25 @@ export async function clockInForEmployee(params: {
       const verifyCols: string = process.env.FACE_ENCRYPTION_KEY
         ? "encrypted_descriptor, encrypted_descriptors"
         : "descriptor, descriptors";
-      const { data: faceData } = await supabaseAdmin
+      let { data: faceData } = await supabaseAdmin
         .from("employee_faces")
         .select(verifyCols)
         .eq("employee_id", employeeId)
         .maybeSingle() as { data: Record<string, unknown> | null };
+      if (!faceData) {
+        // Not found under the caller's own id (users.id, for self clock-in) —
+        // a face registered by HRD is keyed by employees.id instead, so fall
+        // back to that id space via email before concluding no face exists.
+        const { data: emp } = await supabaseAdmin.from("employees").select("id").eq("email", employeeEmail).maybeSingle();
+        if (emp?.id) {
+          const fallback = await supabaseAdmin
+            .from("employee_faces")
+            .select(verifyCols)
+            .eq("employee_id", emp.id)
+            .maybeSingle() as { data: Record<string, unknown> | null };
+          faceData = fallback.data;
+        }
+      }
       if (faceData) {
         const allDescriptors: number[][] = [];
         if (process.env.FACE_ENCRYPTION_KEY) {

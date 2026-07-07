@@ -3,16 +3,6 @@ import { ArrowLeft, Users, Mail, Search } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
 import EmptyState from "@/components/EmptyState";
 
-function parseRole(address: unknown): string {
-  if (!address || typeof address !== "string") return "employee";
-  try {
-    const parsed = JSON.parse(address);
-    return parsed.__auth__?.role || "employee";
-  } catch {
-    return "employee";
-  }
-}
-
 function getRoleBadge(role: string) {
   const base = "px-2.5 py-1 rounded-lg text-xs font-bold";
   if (role === "superadmin") return `${base} bg-amber-50 text-amber-700`;
@@ -41,10 +31,10 @@ export default async function MonitoringEmployees({
 }) {
   const { q } = await searchParams;
 
-  const { data: allEmployees, error } = await supabaseAdmin
-    .from("employees")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [{ data: allEmployees, error }, { data: allUsers }] = await Promise.all([
+    supabaseAdmin.from("employees").select("*").order("created_at", { ascending: false }),
+    supabaseAdmin.from("users").select("email, role"),
+  ]);
 
   if (error) {
     return (
@@ -55,6 +45,11 @@ export default async function MonitoringEmployees({
       </div>
     );
   }
+
+  // Role lives in users.role, not embedded in employees.address.
+  const roleByEmail = new Map(
+    (allUsers || []).map((u) => [(u.email as string).toLowerCase(), u.role as string])
+  );
 
   let employees = (allEmployees || []).filter(
     (e) => (e.email as string) !== "__settings__@ptpgp.co.id"
@@ -200,7 +195,7 @@ export default async function MonitoringEmployees({
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {employees.map((emp) => {
-                  const role = parseRole(emp.address);
+                  const role = roleByEmail.get(((emp.email as string) || "").toLowerCase()) || "employee";
                   return (
                     <tr
                       key={emp.id as string}

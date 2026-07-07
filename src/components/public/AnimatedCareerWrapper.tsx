@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { HeartPulse, Coins, GraduationCap } from "lucide-react";
 import InteractiveCareer from "./InteractiveCareer";
 import { Job } from "@/types";
@@ -66,14 +67,15 @@ export default function AnimatedCareerWrapper({ jobs }: { jobs: Job[] }) {
         </div>
 
         <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-90 pointer-events-none hidden md:block z-0">
-          <img 
-            src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&q=80&w=1000" 
-            className="w-full h-full object-cover" 
-            style={{ 
-              maskImage: 'linear-gradient(to left, rgba(0,0,0,1), rgba(0,0,0,0))', 
-              WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,1), rgba(0,0,0,0))' 
-            }} 
-            alt="Team working" 
+          <Image
+            src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&q=80&w=1000"
+            alt="Team working"
+            fill
+            className="object-cover"
+            style={{
+              maskImage: 'linear-gradient(to left, rgba(0,0,0,1), rgba(0,0,0,0))',
+              WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,1), rgba(0,0,0,0))'
+            }}
           />
         </div>
 
@@ -181,7 +183,7 @@ export default function AnimatedCareerWrapper({ jobs }: { jobs: Job[] }) {
             transition={{ type: "spring", duration: 1 }}
             className="relative rounded-3xl overflow-hidden group shadow-lg h-[300px] md:h-full"
           >
-            <img src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Team Collaboration" />
+            <Image src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=800" fill className="object-cover transition-transform duration-700 group-hover:scale-105" alt="Team Collaboration" />
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-900/20 to-transparent flex items-end p-8">
               <div>
                 <span className="px-2.5 py-1 bg-pgp-red/80 text-white text-[10px] font-bold rounded-full uppercase tracking-wider mb-3 inline-block">Teamwork</span>
@@ -199,7 +201,7 @@ export default function AnimatedCareerWrapper({ jobs }: { jobs: Job[] }) {
                 viewport={{ once: true }}
                 className="relative rounded-3xl overflow-hidden shadow-md"
               >
-                <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover" alt="Focus" />
+                <Image src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800" fill className="object-cover" alt="Focus" />
               </motion.div>
               <motion.div 
                 initial={{ opacity: 0, y: 30 }}
@@ -208,7 +210,7 @@ export default function AnimatedCareerWrapper({ jobs }: { jobs: Job[] }) {
                 transition={{ delay: 0.1 }}
                 className="relative rounded-3xl overflow-hidden shadow-md"
               >
-                <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover" alt="Discussion" />
+                <Image src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800" fill className="object-cover" alt="Discussion" />
               </motion.div>
             </div>
             
@@ -219,7 +221,7 @@ export default function AnimatedCareerWrapper({ jobs }: { jobs: Job[] }) {
               transition={{ type: "spring", duration: 1 }}
               className="relative rounded-3xl overflow-hidden group shadow-lg"
             >
-              <img src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Training" />
+              <Image src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&q=80&w=800" fill className="object-cover transition-transform duration-700 group-hover:scale-105" alt="Training" />
               <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-900/20 to-transparent flex items-end p-8">
                 <div>
                   <span className="px-2.5 py-1 bg-pgp-red/80 text-white text-[10px] font-bold rounded-full uppercase tracking-wider mb-3 inline-block">Career Growth</span>

@@ -3,16 +3,6 @@ import { ArrowLeft, UserCog, Mail } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
 import EmptyState from "@/components/EmptyState";
 
-function parseAuth(address: unknown): Record<string, unknown> {
-  if (!address || typeof address !== "string") return {};
-  try {
-    const parsed = JSON.parse(address);
-    return parsed.__auth__ || {};
-  } catch {
-    return {};
-  }
-}
-
 function getStatusBadge(status: string) {
   const base = "px-2.5 py-1 rounded-lg text-xs font-bold";
   if (status === "Tetap") return `${base} bg-emerald-50 text-emerald-700`;
@@ -22,10 +12,12 @@ function getStatusBadge(status: string) {
 }
 
 export default async function MonitoringHRD() {
-  const { data: allEmployees, error } = await supabaseAdmin
-    .from("employees")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // Role lives in users.role, not embedded in employees.address — resolve
+  // HRD staff by joining users(role='hrd') to employees via email.
+  const [{ data: hrdUsers, error }, { data: allEmployees }] = await Promise.all([
+    supabaseAdmin.from("users").select("email").eq("role", "hrd"),
+    supabaseAdmin.from("employees").select("*").order("created_at", { ascending: false }),
+  ]);
 
   if (error) {
     return (
@@ -37,11 +29,10 @@ export default async function MonitoringHRD() {
     );
   }
 
+  const hrdEmails = new Set((hrdUsers || []).map((u) => (u.email as string).toLowerCase()));
   const hrdStaff = (allEmployees || []).filter((e) => {
-    const email = (e.email as string) || "";
-    if (email === "__settings__@ptpgp.co.id") return false;
-    const auth = parseAuth(e.address);
-    return auth.role === "hrd";
+    const email = ((e.email as string) || "").toLowerCase();
+    return hrdEmails.has(email);
   });
 
   const activeHRD = hrdStaff.filter(

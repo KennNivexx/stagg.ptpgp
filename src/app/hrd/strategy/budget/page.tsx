@@ -1,5 +1,4 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
-import { DollarSign, Plus, TrendingUp, AlertCircle, CheckCircle2, Wallet, Briefcase, Users, GraduationCap, Building2 } from "lucide-react";
+﻿import { DollarSign, Plus, TrendingUp, AlertCircle, CheckCircle2, Wallet, Briefcase, Users, GraduationCap, Building2 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 
 async function saveBudget(formData: FormData) {
@@ -23,9 +22,6 @@ function formatRupiah(n: number) {
 }
 
 export default async function AnggaranSDM() {
-  const { data: payrolls } = await supabaseAdmin.from("payroll").select("net_salary, status");
-  const totalActualPayroll = (payrolls || []).reduce((s: number, p: Record<string, unknown>) => s + (Number(p.net_salary) || 0), 0);
-
   const totalAllocated = SEED_BUDGET.reduce((s, b) => s + b.allocated, 0);
   const totalUsed = SEED_BUDGET.reduce((s, b) => s + b.used, 0);
   const totalRemaining = totalAllocated - totalUsed;

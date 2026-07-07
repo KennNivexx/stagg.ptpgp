@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth-guard";
-import { LogOut, Calendar, CheckCircle, XCircle, Clock, FileText, AlertTriangle } from "lucide-react";
+import { Calendar, CheckCircle, XCircle, Clock, FileText, AlertTriangle } from "lucide-react";
 import ResignationForm from "@/components/ResignationForm";
 
 export default async function EmployeeResignation() {

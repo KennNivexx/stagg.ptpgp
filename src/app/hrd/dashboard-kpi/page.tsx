@@ -2,14 +2,13 @@ import { supabaseAdmin } from "@/lib/supabase";
 import {
   Target, TrendingUp, Users, DollarSign, Calendar,
   Briefcase, Award, Star, Activity, BarChart3,
-  ArrowUp, ArrowDown, CheckCircle2, Clock, AlertCircle
+  ArrowUp, CheckCircle2, AlertCircle
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 
 export default async function HRDDashboardKPI() {
   const [
     { count: totalEmployees },
-    { data: employees },
     { count: totalJobs },
     { count: openJobs },
     { data: evaluations },
@@ -20,7 +19,6 @@ export default async function HRDDashboardKPI() {
     { data: recentEvals },
   ] = await Promise.all([
     supabaseAdmin.from("employees").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("employees").select("id, full_name, department, position, status"),
     supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
     supabaseAdmin.from("kpi_evaluations").select("score, status, employee_id"),

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { X, CheckCircle2, Camera, AlertTriangle, RefreshCw, Trash2, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import CameraCapture, { type RecognitionResult } from "@/components/CameraCapture";
 import { registerFace, removeFaceData, getEmployeeFaceStatus } from "@/app/actions/attendance";
@@ -30,7 +30,6 @@ export default function FaceRegistration({ employeeId, employeeName, onClose, on
   const [existingStatus, setExistingStatus] = useState<Record<string, unknown> | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [removing, setRemoving] = useState(false);
-  const cameraRef = useRef<{ reset: () => void }>(null);
 
   const checkStatus = useCallback(async () => {
     setCheckingStatus(true);
@@ -219,7 +218,6 @@ export default function FaceRegistration({ employeeId, employeeName, onClose, on
 
   // ── REGISTRATION / SAVE STATE ─────────────────────────────────
   const currentAngle = ANGLE_STEPS[step] || ANGLE_STEPS[0];
-  const allCaptured = descriptors.length >= 3;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-start justify-center p-6 pt-[3vh]" onClick={onClose}>
@@ -294,6 +292,7 @@ export default function FaceRegistration({ employeeId, employeeName, onClose, on
               <div className="grid grid-cols-3 gap-2">
                 {photos.map((p, i) => (
                   <div key={i} className="aspect-square rounded-xl overflow-hidden bg-slate-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- base64 data URI from canvas capture, not a next/image-optimizable URL */}
                     <img src={p} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
                   </div>
                 ))}

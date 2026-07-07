@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { DollarSign, Download, Gift, TrendingUp, FileText, Users } from "lucide-react";
+import { DollarSign, Download, Gift, FileText, Users } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 
 export default async function HRDRewards() {

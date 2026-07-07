@@ -52,10 +52,6 @@ export default function JadwalPelatihan() {
     setFormData({ programName: "", date: "", time: "08:00 - 16:00", location: "", instructor: "", maxParticipants: 30 });
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  };
-
   const isToday = (dateStr: string) => {
     const today = new Date().toISOString().split("T")[0];
     return dateStr === today;

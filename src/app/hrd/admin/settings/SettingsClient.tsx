@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { Building2, Clock, Calendar, Mail, Eye, EyeOff, CheckCircle2, XCircle, Loader2, MessageCircle, QrCode, Unplug } from "lucide-react";
 import { saveMultipleSettings, testGmailConfig } from "@/app/actions/admin";
 import {
@@ -324,8 +325,7 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
 
                 {baileysStatus.status === "qr" && baileysStatus.qrDataUrl && (
                   <div className="flex flex-col items-center gap-2 py-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={baileysStatus.qrDataUrl!} alt="QR code WhatsApp" className="w-48 h-48 border border-slate-200 rounded-lg bg-white p-2" />
+                    <Image src={baileysStatus.qrDataUrl!} alt="QR code WhatsApp" width={192} height={192} className="w-48 h-48 border border-slate-200 rounded-lg bg-white p-2" unoptimized />
                     <p className="text-[10px] text-slate-500 text-center">Buka WhatsApp di HP → Perangkat Tertaut → Tautkan Perangkat → scan kode ini.</p>
                   </div>
                 )}

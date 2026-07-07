@@ -1,5 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
-import { FileText, DollarSign, TrendingUp, Users, Building2 } from "lucide-react";
+import { FileText, DollarSign, TrendingUp, Building2 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
 

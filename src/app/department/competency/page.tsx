@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Plus, X, BookOpen, Settings2, GraduationCap, Clock } from "lucide-react";
+import { Users, Award, Save, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Plus, X, BookOpen, GraduationCap, Clock } from "lucide-react";
 import { getDeptEmployees, getSkills, getEmployeeSkills, getPositionSkills, getDeptSkillList, saveDeptSkillList, assessEmployee } from "@/app/actions/skills";
 import { addDeptSkill, getAllSkillGuidesMap, type LevelGuide } from "@/app/actions/competency-guides";
 import { getMyDept } from "@/app/actions/department";

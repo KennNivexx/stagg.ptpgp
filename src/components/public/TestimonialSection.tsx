@@ -38,11 +38,9 @@ export default function TestimonialSection({
   title = "Apa Kata Mereka?",
   testimonials = defaultTestimonials,
 }: TestimonialProps) {
-  if (!show) return null;
-
   const items = testimonials?.length ? testimonials : defaultTestimonials;
-  const [active, setActive] = useState(0);
   const total = items.length;
+  const [active, setActive] = useState(0);
 
   const next = useCallback(() => setActive((p) => (p + 1) % total), [total]);
   const prev = useCallback(() => setActive((p) => (p - 1 + total) % total), [total]);
@@ -52,6 +50,8 @@ export default function TestimonialSection({
     const t = setInterval(next, 5000);
     return () => clearInterval(t);
   }, [total, next]);
+
+  if (!show) return null;
 
   return (
     <motion.section

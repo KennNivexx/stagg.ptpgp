@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 interface AboutProps {
   show?: boolean;
@@ -39,10 +40,12 @@ export default function AboutSection({
           {image_url ? (
             <div className="lg:w-1/2 relative">
               <div className="aspect-square md:aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl relative z-10">
-                <img
+                <Image
                   src={image_url}
                   alt="Tentang PT Pratama Galuh Perkasa"
-                  className="w-full h-full object-cover"
+                  fill
+                  unoptimized
+                  className="object-cover"
                 />
               </div>
               <div className="absolute -bottom-6 -right-6 w-48 h-48 bg-pgp-red/10 rounded-3xl -z-10"></div>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { submitQuotation } from "@/app/actions/vendor";
-import { X, User, Building, Mail, Phone, MapPin, Truck, Box, Loader2, CheckCircle2, AlertCircle, ArrowRight } from "lucide-react";
+import { X, User, Building, Mail, Phone, MapPin, Truck, Box, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function QuotationModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [submitting, setSubmitting] = useState(false);

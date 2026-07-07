@@ -8,7 +8,7 @@ import {
   Briefcase, Award, GraduationCap, BookOpen, TrendingUp,
   Gift, GitBranch, Heart, FileText,
   LogOut, Search, Menu, X, ChevronRight, ChevronDown, Clock,
-  Users, LayoutGrid, Settings, Bell, ShieldCheck, KeyRound, ClipboardList,
+  Users, LayoutGrid, Settings,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";

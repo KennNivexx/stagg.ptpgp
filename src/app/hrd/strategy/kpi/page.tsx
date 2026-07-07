@@ -24,7 +24,6 @@ export default async function KPIStrategis() {
     : 0;
 
   const aboveTarget = evals.filter((e) => Number(e.score) >= 80).length;
-  const onTrack = evals.filter((e) => Number(e.score) >= 60 && Number(e.score) < 80).length;
   const belowTarget = evals.filter((e) => Number(e.score) < 60 && e.score != null).length;
 
   const deptList = (departments || []).length > 0

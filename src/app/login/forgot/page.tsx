@@ -57,7 +57,6 @@ export default function ForgotPasswordPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [faceLoading, setFaceLoading] = useState(false);
-  const [faceReady, setFaceReady] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
@@ -91,7 +90,6 @@ export default function ForgotPasswordPage() {
         faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ]);
-      setFaceReady(true);
 
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
       streamRef.current = stream;

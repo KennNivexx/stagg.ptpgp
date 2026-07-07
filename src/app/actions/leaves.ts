@@ -74,7 +74,10 @@ export async function updateLeaveStatus(id: string, status: string): Promise<{ e
 }
 
 async function getEmployeeEmail(employeeId: string): Promise<string | null> {
-  const { data } = await supabaseAdmin.from("employees").select("email").eq("id", employeeId).maybeSingle();
+  // leave_requests.employee_id stores the submitter's users.id, not
+  // employees.id — those are different ids for the same person, so the
+  // email must be resolved via the users table, not employees.
+  const { data } = await supabaseAdmin.from("users").select("email").eq("id", employeeId).maybeSingle();
   return (data as Record<string, unknown>)?.email as string || null;
 }
 

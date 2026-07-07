@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     if (role === "hrd") {
       const [{ data: applicants }, { data: decidedLeaves }, { data: expiringContracts }, { data: newEmployees }, { data: pendingPayroll }] = await Promise.all([
         supabaseAdmin.from("applications").select("id, full_name, job_id, applied_at").eq("status", "Menunggu Review").order("applied_at", { ascending: false }).limit(5),
-        supabaseAdmin.from("leave_requests").select("id, employees!inner(full_name), type, start_date, end_date, status").in("status", ["Disetujui", "Ditolak"]).order("updated_at", { ascending: false }).limit(5),
+        supabaseAdmin.from("leave_requests").select("id, employee_name, type, start_date, end_date, status").in("status", ["Disetujui", "Ditolak"]).order("updated_at", { ascending: false }).limit(5),
         supabaseAdmin.from("employees").select("id, full_name, status").order("created_at", { ascending: false }).limit(50),
         supabaseAdmin.from("employees").select("id, full_name, join_date").order("created_at", { ascending: false }).limit(5),
         supabaseAdmin.from("payroll").select("id, month, year").eq("status", "Draft").limit(5),
@@ -69,12 +69,11 @@ export async function GET(request: NextRequest) {
         // HRD no longer approves/rejects leave — Kepala Departemen decides.
         // This is a read-only "for your records" report, not an action item.
         decidedLeaves.forEach((l: Record<string, unknown>) => {
-          const emp = l.employees as Record<string, string> | undefined;
           notifications.push({
             id: `leave-${l.id}`,
             type: "leave",
             title: `Cuti ${l.status}`,
-            message: `${emp?.full_name || "Karyawan"} — ${l.type} (${l.start_date} - ${l.end_date}) ${l.status === "Disetujui" ? "disetujui" : "ditolak"} oleh atasan.`,
+            message: `${l.employee_name || "Karyawan"} — ${l.type} (${l.start_date} - ${l.end_date}) ${l.status === "Disetujui" ? "disetujui" : "ditolak"} oleh atasan.`,
             time: new Date().toLocaleDateString("id-ID"),
             link: "/hrd/leaves",
             priority: "low",

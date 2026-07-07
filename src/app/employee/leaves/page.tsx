@@ -6,29 +6,23 @@ import { redirect } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
 
 export default async function EmployeeLeaves() {
-  let userEmail: string;
+  let userId: string;
   try {
     const auth = await requireAuth();
-    userEmail = auth.email;
+    userId = auth.id;
   } catch {
     redirect("/login");
   }
 
-  const { data: employee } = await supabaseAdmin
-    .from("employees")
-    .select("id")
-    .eq("email", userEmail)
-    .limit(1)
-    .single();
-
-  const employeeId = employee?.id;
-
-  const { data: leaves } = employeeId ? await supabaseAdmin
+  // leave_requests.employee_id stores the session's users.id (set at submit
+  // time in submitLeave()), NOT employees.id — those are different ids for
+  // the same person, so this must match on user.id, not look up employees.id.
+  const { data: leaves } = await supabaseAdmin
     .from("leave_requests")
     .select("*")
-    .eq("employee_id", employeeId)
+    .eq("employee_id", userId)
     .order("created_at", { ascending: false })
-    .limit(50) : { data: [] };
+    .limit(50);
 
   const annualLeaves = leaves?.filter((l: Record<string, unknown>) => l.type === "Cuti Tahunan") || [];
   const sickLeaves = leaves?.filter((l: Record<string, unknown>) => l.type === "Cuti Sakit") || [];

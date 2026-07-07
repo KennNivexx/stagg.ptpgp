@@ -161,10 +161,15 @@ export async function updateResignationStatus(id: string, status: string) {
     reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   };
   if (status === "Disetujui") {
-    const { data: res } = await supabaseAdmin.from("resignations").select("employee_id, last_day").eq("id", id).maybeSingle();
+    // resignations.employee_id stores the submitter's users.id, not
+    // employees.id — those are different ids for the same person, so the
+    // employees row must be resolved via employee_email instead.
+    const { data: res } = await supabaseAdmin.from("resignations").select("employee_email, last_day").eq("id", id).maybeSingle();
     if (res) {
       const r = res as Record<string, unknown>;
-      await supabaseAdmin.from("employees").update({ status: "Resigned" }).eq("id", r.employee_id as string);
+      if (r.employee_email) {
+        await supabaseAdmin.from("employees").update({ status: "Resigned" }).eq("email", r.employee_email as string);
+      }
     }
     // Schedule permanent account deletion 24 hours from approval.
     updateData.delete_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();

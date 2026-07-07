@@ -7,16 +7,6 @@ import { getEmployeeById, updateEmployeeAsSuperadmin } from "@/app/actions/hrd";
 
 type Employee = Record<string, unknown>;
 
-function parseRole(address: unknown): string {
-  if (!address || typeof address !== "string") return "employee";
-  try {
-    const parsed = JSON.parse(address);
-    return parsed.__auth__?.role || "employee";
-  } catch {
-    return "employee";
-  }
-}
-
 function getRoleIcon(role: string) {
   if (role === "superadmin")
     return <ShieldCheck size={14} className="text-amber-500" />;
@@ -61,7 +51,7 @@ export default function SuperadminEditEmployee({
         if (!cancelled) {
           if (data) {
             setEmployee(data as Employee);
-            setCurrentRole(parseRole((data as Employee).address));
+            setCurrentRole(((data as Employee).role as string) || "employee");
           }
           setLoading(false);
         }

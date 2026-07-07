@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { Capability } from "@/types";
 
 export default function CapabilitiesSection({ capabilities }: { capabilities: Capability[] }) {
@@ -32,10 +33,12 @@ export default function CapabilitiesSection({ capabilities }: { capabilities: Ca
               className="group relative overflow-hidden rounded-2xl h-80 cursor-pointer"
             >
               <div className="absolute inset-0 bg-pgp-navy/60 group-hover:bg-pgp-navy/40 transition-colors z-10" />
-              <img 
-                src={cap.image_url || "https://images.unsplash.com/photo-1494412519320-aa613dfb7738?q=80&w=2070&auto=format&fit=crop"} 
-                alt={cap.title} 
-                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              <Image
+                src={cap.image_url || "https://images.unsplash.com/photo-1494412519320-aa613dfb7738?q=80&w=2070&auto=format&fit=crop"}
+                alt={cap.title}
+                fill
+                unoptimized={!!cap.image_url}
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
               />
               <div className="absolute inset-0 z-20 p-8 flex flex-col justify-end">
                 <h3 className="text-2xl font-bold text-white mb-2">{cap.title}</h3>

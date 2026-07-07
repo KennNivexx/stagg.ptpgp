@@ -6,8 +6,8 @@
 
 CREATE TABLE IF NOT EXISTS succession_candidates (
   id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
-  target_position_employee_id TEXT,
+  employee_id UUID NOT NULL REFERENCES employees(id),
+  target_position_employee_id UUID REFERENCES employees(id),
   readiness_override INTEGER CHECK (readiness_override BETWEEN 0 AND 100),
   notes TEXT,
   added_by TEXT,
@@ -18,7 +18,7 @@ CREATE INDEX IF NOT EXISTS idx_succession_candidates_employee ON succession_cand
 
 CREATE TABLE IF NOT EXISTS succession_critical_positions (
   id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
+  employee_id UUID NOT NULL REFERENCES employees(id),
   risk_level TEXT NOT NULL CHECK (risk_level IN ('Rendah', 'Sedang', 'Tinggi')),
   vacancy_risk_date DATE,
   marked_by TEXT,
@@ -29,7 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_succession_critical_positions_employee ON success
 
 CREATE TABLE IF NOT EXISTS succession_talent_pool (
   id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
+  employee_id UUID NOT NULL REFERENCES employees(id),
   potential_rating TEXT NOT NULL CHECK (potential_rating IN ('Bintang', 'Potensial Tinggi', 'Solid', 'Perlu Pengembangan')),
   notes TEXT,
   added_by TEXT,

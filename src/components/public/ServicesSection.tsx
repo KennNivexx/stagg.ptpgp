@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
 export default function ServicesSection() {
@@ -41,9 +42,10 @@ export default function ServicesSection() {
           {/* Right Image Side */}
           <div className="lg:w-1/2 w-full">
             <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl">
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop"
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
                 alt="Port Logistics"
               />
               <div className="absolute inset-0 bg-gradient-to-tr from-pgp-navy/20 to-transparent mix-blend-overlay"></div>

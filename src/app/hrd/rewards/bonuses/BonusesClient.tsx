@@ -28,7 +28,7 @@ export default function BonusesClient({
   initialBonuses: BonusEntry[];
 }) {
   const router = useRouter();
-  const [bonuses, setBonuses] = useState<BonusEntry[]>(initialBonuses);
+  const [bonuses] = useState<BonusEntry[]>(initialBonuses);
   const [showModal, setShowModal] = useState(false);
   const [empId, setEmpId] = useState("");
   const [program, setProgram] = useState(BONUS_TYPES[0]);

@@ -41,17 +41,18 @@ export default async function EmployeeDashboard() {
   const employeeId = employee?.id;
   const department = employee?.department || "-";
 
+  // attendance/leave_requests store the session's users.id (not employees.id
+  // — a different id for the same person), so those two must filter on
+  // user.id directly; payroll/training_enrollments correctly use employees.id.
   let annualLeaveUsed = 0;
   const annualLeaveTotal = 12;
-  if (employeeId) {
-    const { data: approvedLeaves } = await supabaseAdmin
-      .from("leave_requests")
-      .select("id")
-      .eq("employee_id", employeeId)
-      .eq("type", "Cuti Tahunan")
-      .eq("status", "Disetujui");
-    annualLeaveUsed = (approvedLeaves || []).length;
-  }
+  const { data: approvedLeaves } = await supabaseAdmin
+    .from("leave_requests")
+    .select("id")
+    .eq("employee_id", user.id)
+    .eq("type", "Cuti Tahunan")
+    .eq("status", "Disetujui");
+  annualLeaveUsed = (approvedLeaves || []).length;
 
   let lastPayroll: Record<string, unknown> | null = null;
   if (employeeId) {
@@ -66,16 +67,13 @@ export default async function EmployeeDashboard() {
 
   // ── C1: today's check-in status ──────────────────────────────────────────
   const todayStr = new Date().toISOString().split("T")[0];
-  let todayAttendance: Record<string, unknown> | null = null;
-  if (employeeId) {
-    const { data } = await supabaseAdmin
-      .from("attendance")
-      .select("check_in, check_out, status")
-      .eq("employee_id", employeeId)
-      .eq("date", todayStr)
-      .maybeSingle();
-    todayAttendance = data || null;
-  }
+  const { data: todayAttendanceRow } = await supabaseAdmin
+    .from("attendance")
+    .select("check_in, check_out, status")
+    .eq("employee_id", user.id)
+    .eq("date", todayStr)
+    .maybeSingle();
+  const todayAttendance: Record<string, unknown> | null = todayAttendanceRow || null;
   const checkInTime = todayAttendance?.check_in
     ? new Date(todayAttendance.check_in as string).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
     : null;
@@ -94,8 +92,8 @@ export default async function EmployeeDashboard() {
     const in7DaysStr = in7Days.toISOString().split("T")[0];
 
     const [{ data: recentAttendance }, { data: recentLeaves }, { data: myEnrollments }] = await Promise.all([
-      supabaseAdmin.from("attendance").select("date, check_in, status").eq("employee_id", employeeId).order("date", { ascending: false }).limit(5),
-      supabaseAdmin.from("leave_requests").select("type, start_date, end_date, status, created_at").eq("employee_id", employeeId).order("created_at", { ascending: false }).limit(5),
+      supabaseAdmin.from("attendance").select("date, check_in, status").eq("employee_id", user.id).order("date", { ascending: false }).limit(5),
+      supabaseAdmin.from("leave_requests").select("type, start_date, end_date, status, created_at").eq("employee_id", user.id).order("created_at", { ascending: false }).limit(5),
       supabaseAdmin.from("training_enrollments").select("training_id, status, trainings(title, date_start, date_end)").eq("employee_id", employeeId),
     ]);
 

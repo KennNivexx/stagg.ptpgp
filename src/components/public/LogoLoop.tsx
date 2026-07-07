@@ -209,6 +209,7 @@ const LogoLoop = memo(function LogoLoop({
     const content = isNode ? (
       <span className="logoloop__node" aria-hidden={!!item.href && !item.ariaLabel}>{item.node}</span>
     ) : (
+      // eslint-disable-next-line @next/next/no-img-element -- useImageLoader measures raw <img> elements via querySelectorAll + load/error listeners, and this primitive exposes custom srcSet/sizes control that next/image doesn't accept as a passthrough prop
       <img src={item.src} srcSet={item.srcSet} sizes={item.sizes} width={item.width} height={item.height}
         alt={item.alt ?? ""} title={item.title} loading="lazy" decoding="async" draggable={false} />
     );

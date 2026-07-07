@@ -33,7 +33,7 @@ export default function HeadcountClient({
       setData(fresh);
       router.refresh();
       showToast("Headcount disinkronkan dari data karyawan + permintaan disetujui.", "success");
-    } catch (_e) {
+    } catch {
       showToast("Sinkronisasi gagal.", "error");
     }
     setSyncing(false);

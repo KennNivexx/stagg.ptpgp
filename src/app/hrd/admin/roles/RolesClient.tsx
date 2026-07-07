@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Shield, Plus, Save } from "lucide-react";
+import { Shield, Save } from "lucide-react";
 import { saveSystemSetting } from "@/app/actions/admin";
 
 const ROLES = [

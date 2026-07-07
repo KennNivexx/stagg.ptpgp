@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Users, Sun, Moon, Sunset, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { Users, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { getShiftSchedulesForDept } from "@/app/actions/infrastructure";
 
@@ -9,9 +9,6 @@ type Employee = { id: string; full_name: string; department: string; position: s
 type Shift = { id: string; name: string; start_time: string; end_time: string; color: string };
 type Schedule = { id: string; employee_id: string; shift_id: string; shift_date: string };
 
-const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  amber: Sun, orange: Sunset, indigo: Moon,
-};
 const COLOR_STYLES: Record<string, { badge: string; dot: string }> = {
   amber:  { badge: "bg-amber-50 text-amber-700 border-amber-200",  dot: "bg-amber-500" },
   orange: { badge: "bg-orange-50 text-orange-700 border-orange-200", dot: "bg-orange-500" },

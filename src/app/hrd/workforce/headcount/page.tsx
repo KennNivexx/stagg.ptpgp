@@ -7,7 +7,7 @@ export default async function HeadcountPlanning() {
   const { data: employees } = await supabaseAdmin
     .from("employees")
     .select("id, department, status")
-    .neq("id", "__settings__");
+    .neq("email", "__settings__@ptpgp.co.id");
 
   const { data: departments } = await supabaseAdmin
     .from("departments")

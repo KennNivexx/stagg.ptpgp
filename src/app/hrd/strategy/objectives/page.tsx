@@ -1,5 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
-import { Crosshair, Plus, Target, Calendar, TrendingUp, Clock } from "lucide-react";
+import { Crosshair, Plus, Target, Calendar, TrendingUp } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 
 async function saveObjective(formData: FormData) {
@@ -24,7 +24,6 @@ export default async function TujuanSasaran() {
 
   const tercapai = SEED_OBJECTIVES.filter((o) => o.progress >= 100).length;
   const onTrack = SEED_OBJECTIVES.filter((o) => o.progress >= 70 && o.progress < 100).length;
-  const inProgress = SEED_OBJECTIVES.filter((o) => o.progress < 70).length;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">

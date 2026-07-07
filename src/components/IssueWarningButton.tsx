@@ -55,14 +55,6 @@ export default function IssueWarningButton({ employees }: { employees: Employee[
     }, 1500);
   };
 
-  const resetForm = () => {
-    setSuccess(false);
-    setError("");
-    setSelectedEmp(null);
-    setEmpSearch("");
-    setShowResults(false);
-  };
-
   return (
     <>
       <button
