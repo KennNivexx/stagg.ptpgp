@@ -402,7 +402,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
                   onClick={() => toggleGroup(group.label)}
                   title={GROUP_TOOLTIPS[group.label]}
                   aria-expanded={isExpanded}
-                  className={`w-full flex items-center gap-2 px-5 py-2.5 ${hasActive ? "text-red-400" : "text-slate-500 hover:text-slate-300"} transition-colors`}
+                  className={`w-full flex items-center gap-2 px-5 py-2.5 text-left ${hasActive ? "text-red-400" : "text-slate-500 hover:text-slate-300"} transition-colors`}
                 >
                   <GroupIcon size={13} className="shrink-0" />
                   <span className="text-[10px] font-bold tracking-widest uppercase">{group.label}</span>
