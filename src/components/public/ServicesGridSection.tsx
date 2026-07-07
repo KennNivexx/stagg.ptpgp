@@ -73,14 +73,14 @@ export default function ServicesGridSection({
   return (
     <motion.section
       id="services"
-      className="py-24 bg-white border-t border-gray-100 scroll-mt-[72px]"
+      className="py-16 lg:py-24 bg-white border-t border-gray-100 scroll-mt-[72px]"
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6 }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-16">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-10 lg:mb-16">
           <div className="max-w-2xl">
             <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
               {subtitle}

@@ -21,6 +21,7 @@ import FAQSection from "@/components/public/FAQSection";
 import CTASection from "@/components/public/CTASection";
 import ContactSection from "@/components/public/ContactSection";
 import TeaserSection from "@/components/public/TeaserSection";
+import ClickSparkWrapper from "@/components/public/ClickSparkWrapper";
 import FloatingWhatsApp from "@/components/public/FloatingWhatsApp";
 
 async function getSettings() {
@@ -61,6 +62,7 @@ export default async function Home() {
   const teaser = settings?.teaser || {};
 
   return (
+    <ClickSparkWrapper>
     <main className="min-h-screen font-sans bg-[#FCF9F6]">
       <ThemeStyle
         primary={theme.primary as string}
@@ -94,5 +96,6 @@ export default async function Home() {
       <PGPFooter info={info} footer={footer} links={links} />
       <FloatingWhatsApp phoneNumber={(cta.whatsapp_number as string) || (info.company_phone as string)} />
     </main>
+    </ClickSparkWrapper>
   );
 }

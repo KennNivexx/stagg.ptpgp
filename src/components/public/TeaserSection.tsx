@@ -34,8 +34,8 @@ export default function TeaserSection({
   epro_image_url = "https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&q=80&w=800",
 }: TeaserProps) {
   return (
-    <section className="py-32 bg-gray-50/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-32">
+    <section className="py-20 lg:py-32 bg-gray-50/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 lg:space-y-32">
         {/* Career Banner */}
         <motion.div
           className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24"
@@ -48,10 +48,10 @@ export default function TeaserSection({
             <span className="text-pgp-red font-semibold text-xs tracking-widest uppercase mb-4">
               {career_badge}
             </span>
-            <h2 className="text-4xl lg:text-5xl font-bold text-pgp-navy mb-6 leading-tight tracking-tight">
+            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-pgp-navy mb-6 leading-tight tracking-tight">
               {career_title}
             </h2>
-            <p className="text-lg text-gray-500 mb-10 font-light leading-relaxed max-w-lg">
+            <p className="text-base md:text-lg text-gray-500 mb-10 font-light leading-relaxed max-w-lg">
               {career_description}
             </p>
             <div>
@@ -85,10 +85,10 @@ export default function TeaserSection({
             <span className="text-pgp-red font-semibold text-xs tracking-widest uppercase mb-4">
               {epro_badge}
             </span>
-            <h2 className="text-4xl lg:text-5xl font-bold text-pgp-navy mb-6 leading-tight tracking-tight">
+            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-pgp-navy mb-6 leading-tight tracking-tight">
               {epro_title}
             </h2>
-            <p className="text-lg text-gray-500 mb-10 font-light leading-relaxed max-w-lg">
+            <p className="text-base md:text-lg text-gray-500 mb-10 font-light leading-relaxed max-w-lg">
               {epro_description}
             </p>
             <div>

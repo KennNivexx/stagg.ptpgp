@@ -30,15 +30,15 @@ export default function HeroSection({
     if (titleHighlight && title.includes(titleHighlight)) {
       const parts = title.split(titleHighlight);
       return (
-        <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white leading-tight mb-6 tracking-tight">
-          {parts[0]}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pgp-red">{titleHighlight}</span>
-          {parts[1]}
-        </h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-tight mb-6 tracking-tight">
+            {parts[0]}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pgp-red">{titleHighlight}</span>
+            {parts[1]}
+          </h1>
       );
     }
     return (
-      <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white leading-tight mb-6 tracking-tight">
+      <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-tight mb-6 tracking-tight">
         {title}
       </h1>
     );
@@ -85,7 +85,7 @@ export default function HeroSection({
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
-            className="text-lg md:text-xl text-zinc-100 mb-10 leading-relaxed font-normal max-w-2xl"
+            className="text-base sm:text-lg md:text-xl text-zinc-100 mb-8 md:mb-10 leading-relaxed font-normal max-w-2xl"
           >
             {subtitle}
           </motion.p>

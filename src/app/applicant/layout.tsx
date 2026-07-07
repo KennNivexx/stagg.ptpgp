@@ -34,7 +34,7 @@ export default async function ApplicantLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <ApplicantSidebar userName={userName} userEmail={userEmail} />
-      <main className="flex-1 min-w-0 min-h-screen overflow-x-hidden">
+      <main className="flex-1 min-w-0 min-h-screen overflow-x-auto">
         {children}
       </main>
     </div>

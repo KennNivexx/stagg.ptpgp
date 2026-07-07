@@ -176,7 +176,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page Content Container */}
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden bg-[#F8FAFC]">
+        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC]">
           {children}
         </main>
       </div>

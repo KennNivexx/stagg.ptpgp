@@ -28,14 +28,14 @@ export default function AboutSection({
   return (
     <motion.section
       id="about"
-      className="py-24 bg-white scroll-mt-[72px]"
+      className="py-16 lg:py-24 bg-white scroll-mt-[72px]"
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6 }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row items-center gap-16">
+        <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
           {image_url ? (
             <div className="lg:w-1/2 relative">
               <div className="aspect-square md:aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl relative z-10">
@@ -68,7 +68,7 @@ export default function AboutSection({
               ))}
             </div>
 
-            <div className="mt-10 grid grid-cols-2 gap-6">
+            <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="border-l-2 border-pgp-red pl-4">
                 <div className="font-bold text-pgp-navy mb-1">Visi Kami</div>
                 <div className="text-sm text-gray-500">

@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ClipboardList, Building2, User, LogOut, ChevronRight, PenLine, HelpCircle } from "lucide-react";
+import { LayoutDashboard, ClipboardList, Building2, User, LogOut, ChevronRight, PenLine, HelpCircle, Menu, X } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,11 +24,11 @@ interface Props {
 
 export default function ApplicantSidebar({ userName, userEmail }: Props) {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
   const { hasUnreadForHref } = useNotifications("applicant");
 
-  return (
-    <aside className="w-64 lg:w-20 xl:w-64 shrink-0 bg-pgp-navy text-white flex flex-col min-h-screen sticky top-0 transition-[width] duration-300">
-      {/* Logo */}
+  const sidebarContent = (
+    <>
       <div className="px-6 lg:px-3 xl:px-6 py-6 border-b border-white/10">
         <div className="flex items-center gap-3 lg:justify-center xl:justify-start">
           <div className="w-9 h-9 bg-pgp-red rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0">
@@ -40,7 +41,6 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
         </div>
       </div>
 
-      {/* User info */}
       <div className="px-5 lg:px-3 xl:px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-3 lg:justify-center xl:justify-start">
           <div className="w-9 h-9 bg-slate-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
@@ -56,7 +56,6 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-3 lg:px-2 xl:px-3 py-4 space-y-1">
         {NAV.map(({ href, label, icon: Icon }, i) => {
           const isActive = href === "/applicant" ? pathname === "/applicant" : pathname.startsWith(href);
@@ -71,9 +70,9 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
               <Link
                 href={href}
                 title={label}
+                onClick={() => setIsOpen(false)}
                 className="relative flex items-center gap-3 lg:justify-center xl:justify-start px-3 lg:px-0 xl:px-3 py-2.5 rounded-xl text-xs font-semibold overflow-hidden"
               >
-                {/* Sliding background */}
                 {isActive && (
                   <motion.span
                     layoutId="nav-pill"
@@ -82,12 +81,10 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
                   />
                 )}
 
-                {/* Hover background (only when not active) */}
                 {!isActive && (
                   <span className="absolute inset-0 rounded-xl opacity-0 hover:opacity-100 bg-white/5 transition-opacity duration-150" />
                 )}
 
-                {/* Content */}
                 <span className={`relative flex items-center gap-3 lg:justify-center xl:justify-start w-full transition-colors duration-150 ${isActive ? "text-white" : "text-slate-400 hover:text-white"}`}>
                   <Icon size={15} className="shrink-0" />
                   <span className="lg:hidden xl:inline">{label}</span>
@@ -117,7 +114,6 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
         })}
       </nav>
 
-      {/* Logout */}
       <div className="px-3 lg:px-2 xl:px-3 pb-6">
         <form action={logoutAction}>
           <button
@@ -130,6 +126,29 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
           </button>
         </form>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        aria-label="Buka menu"
+        className="lg:hidden fixed top-4 left-4 z-[51] p-2 bg-pgp-navy text-white rounded-lg shadow-md hover:bg-slate-800 transition-colors"
+      >
+        <Menu size={20} />
+      </button>
+
+      {isOpen && (
+        <div
+          onClick={() => setIsOpen(false)}
+          className="lg:hidden fixed inset-0 bg-black/40 z-40"
+        />
+      )}
+
+      <aside className={`w-64 lg:w-20 xl:w-64 shrink-0 bg-pgp-navy text-white flex flex-col min-h-screen sticky top-0 transition-[width] duration-300 fixed inset-y-0 left-0 z-50 lg:sticky lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

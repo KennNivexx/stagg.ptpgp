@@ -465,7 +465,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden lg:h-screen lg:overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 lg:h-screen lg:overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 lg:px-8 z-30 shrink-0">
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200 w-64 lg:w-80">
@@ -498,7 +498,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden bg-[#F8FAFC] pb-16 lg:pb-0">{children}</main>
+        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC] pb-16 lg:pb-0">{children}</main>
       </div>
 
       {/* Mobile bottom navigation */}

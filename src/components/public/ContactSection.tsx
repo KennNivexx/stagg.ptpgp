@@ -66,7 +66,7 @@ export default function ContactSection({
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6 }}
     >
-      <div className="bg-[#FFFDFB] py-20 border-t border-gray-100">
+      <div className="bg-[#FFFDFB] py-12 lg:py-20 border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="lg:w-[60%] bg-white p-8 md:p-10 border border-[#EBE5DE] shadow-sm">
@@ -240,7 +240,7 @@ export default function ContactSection({
         </div>
       </div>
 
-      <div className="relative h-[400px] w-full overflow-hidden rounded-none">
+      <div className="relative h-[250px] sm:h-[350px] lg:h-[400px] w-full overflow-hidden rounded-none">
         <iframe
           title={`Peta lokasi ${map_city}`}
           src={`https://www.google.com/maps?q=${encodeURIComponent(`${map_address}, ${map_city}`)}&output=embed`}

@@ -42,7 +42,7 @@ export default function StatsSection({
 
   return (
     <motion.section
-      className="bg-pgp-red py-16"
+      className="bg-pgp-red py-12 lg:py-16"
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
@@ -55,7 +55,7 @@ export default function StatsSection({
           </h2>
         )}
         <motion.div
-          className="grid grid-cols-2 md:grid-cols-4 gap-8 md:divide-x md:divide-white/20"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8 md:divide-x md:divide-white/20"
           variants={container}
           initial="hidden"
           whileInView="show"
@@ -63,7 +63,7 @@ export default function StatsSection({
         >
           {items.map((stat, index) => (
             <motion.div key={index} className="text-center" variants={item}>
-              <div className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
+              <div className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
                 {stat.value}
               </div>
               <div className="text-xs font-bold text-red-200 uppercase tracking-widest">

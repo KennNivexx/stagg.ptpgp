@@ -41,7 +41,7 @@ export default function CTASection({
   return (
     <motion.section
       id="cta"
-      className="py-24 bg-orange-50/25 border-y border-orange-500/5 relative overflow-hidden scroll-mt-[72px]"
+      className="py-16 lg:py-24 bg-orange-50/25 border-y border-orange-500/5 relative overflow-hidden scroll-mt-[72px]"
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, margin: "-80px" }}
@@ -60,10 +60,10 @@ export default function CTASection({
       />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-        <motion.h2 className="text-4xl md:text-5xl font-extrabold text-pgp-navy mb-6 tracking-tight" variants={item}>
+        <motion.h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-pgp-navy mb-6 tracking-tight" variants={item}>
           {title}
         </motion.h2>
-        <motion.p className="text-xl text-zinc-600 font-light mb-12" variants={item}>
+        <motion.p className="text-base md:text-lg lg:text-xl text-zinc-600 font-light mb-12" variants={item}>
           {subtitle}
         </motion.p>
 

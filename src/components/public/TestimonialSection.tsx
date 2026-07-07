@@ -55,7 +55,7 @@ export default function TestimonialSection({
 
   return (
     <motion.section
-      className="py-24 bg-[#FCF9F6] text-pgp-navy"
+      className="py-16 lg:py-24 bg-[#FCF9F6] text-pgp-navy"
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
@@ -83,10 +83,10 @@ export default function TestimonialSection({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
                   transition={{ duration: 0.4, ease: "easeInOut" }}
-                  className="bg-zinc-50/70 border border-zinc-100 p-10 rounded-3xl relative shadow-sm mx-auto max-w-2xl text-center"
+                  className="bg-zinc-50/70 border border-zinc-100 p-6 md:p-10 rounded-3xl relative shadow-sm mx-auto max-w-2xl text-center"
                 >
                   <Quote size={48} className="text-pgp-red/10 absolute top-8 left-1/2 -translate-x-1/2" />
-                  <p className="text-lg md:text-xl text-zinc-600 font-light leading-relaxed mb-8 italic relative z-10 pt-8">
+                  <p className="text-base sm:text-lg md:text-xl text-zinc-600 font-light leading-relaxed mb-8 italic relative z-10 pt-8">
                     &ldquo;{content}&rdquo;
                   </p>
                   <div className="flex items-center justify-center gap-3">
