@@ -8,6 +8,7 @@ import {
   XCircle,
   Clock,
   Users,
+  CalendarClock,
 } from "lucide-react";
 import { updateRequestStatus } from "@/app/actions/requests";
 import type { DirectorRequest } from "./page";
@@ -17,14 +18,27 @@ interface Props {
   requests: DirectorRequest[];
 }
 
-const STATUS_OPTIONS = ["Semua", "Direview Direktur", "Disetujui", "Ditolak", "Pending"] as const;
+function slaInfo(needByDate?: string): { label: string; className: string } | null {
+  if (!needByDate) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const target = new Date(needByDate); target.setHours(0, 0, 0, 0);
+  const daysLeft = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0) return { label: `Terlewat ${Math.abs(daysLeft)}h`, className: "bg-red-50 text-red-700 border-red-200" };
+  if (daysLeft <= 3) return { label: `Sisa ${daysLeft}h`, className: "bg-amber-50 text-amber-700 border-amber-200" };
+  return { label: `Sisa ${daysLeft}h`, className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+}
+
+const STATUS_OPTIONS = ["Semua", "Draft", "Pending", "Menunggu Finance", "Direview Direktur", "Disetujui", "Ditolak", "Dibatalkan"] as const;
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
+    Draft: "bg-slate-100 text-slate-500 border-slate-200",
     Pending: "bg-amber-50 text-amber-700 border-amber-200",
-    "Direview Direktur": "bg-purple-50 text-purple-700 border-purple-200",
+    "Menunggu Finance": "bg-purple-50 text-purple-700 border-purple-200",
+    "Direview Direktur": "bg-blue-50 text-blue-700 border-blue-200",
     Disetujui: "bg-emerald-50 text-emerald-700 border-emerald-200",
     Ditolak: "bg-red-50 text-red-700 border-red-200",
+    Dibatalkan: "bg-slate-100 text-slate-500 border-slate-300",
   };
   const color = colors[status] || "bg-slate-100 text-slate-600 border-slate-200";
   return (
@@ -36,20 +50,33 @@ function StatusBadge({ status }: { status: string }) {
 
 function ActionButtons({
   id,
+  financeRequired,
+  financeApproved,
 }: {
   id: string;
+  financeRequired?: boolean;
+  financeApproved?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState<"approve" | "reject" | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [showReject, setShowReject] = useState(false);
+  const [rejectNote, setRejectNote] = useState("");
 
-  const handleAction = async (status: string) => {
+  const handleAction = async (status: string, note?: string) => {
     setLoading(status === "Disetujui" ? "approve" : "reject");
-    await updateRequestStatus(id, status);
+    const result = await updateRequestStatus(id, status, note);
     setLoading(null);
+    if (result && "error" in result) {
+      setToast({ msg: result.error as string, ok: false });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
     const ok = status === "Disetujui";
     setToast({ msg: ok ? "Request disetujui!" : "Request ditolak.", ok });
     setTimeout(() => setToast(null), 3000);
+    setShowReject(false);
+    setRejectNote("");
     router.refresh();
   };
 
@@ -64,20 +91,48 @@ function ActionButtons({
           {toast.msg}
         </div>
       )}
+      {showReject && (
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowReject(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-extrabold text-slate-800 text-sm">Alasan Penolakan</h3>
+            <textarea
+              value={rejectNote}
+              onChange={e => setRejectNote(e.target.value)}
+              rows={3}
+              autoFocus
+              placeholder="Jelaskan alasan penolakan permintaan ini..."
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-none"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setShowReject(false)} className="flex-1 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-colors">
+                Batal
+              </button>
+              <button
+                onClick={() => { if (rejectNote.trim()) handleAction("Ditolak", rejectNote.trim()); }}
+                disabled={!rejectNote.trim() || loading !== null}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
+              >
+                {loading === "reject" ? "..." : "Tolak Permintaan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-1">
         <button
           onClick={() => handleAction("Disetujui")}
-          disabled={loading !== null}
-          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold transition-colors disabled:opacity-50"
+          disabled={loading !== null || (!!financeRequired && !financeApproved)}
+          title={financeRequired && !financeApproved ? "Menunggu approval Finance Controller" : undefined}
+          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {loading === "approve" ? "..." : "Approve"}
         </button>
         <button
-          onClick={() => handleAction("Ditolak")}
+          onClick={() => setShowReject(true)}
           disabled={loading !== null}
           className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded text-[10px] font-bold transition-colors disabled:opacity-50"
         >
-          {loading === "reject" ? "..." : "Tolak"}
+          Tolak
         </button>
       </div>
     </>
@@ -158,6 +213,7 @@ export default function DirectorRequestsClient({ requests }: Props) {
                 <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jumlah</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Urgensi</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">SLA</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Diajukan Oleh</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tanggal</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aksi</th>
@@ -166,7 +222,7 @@ export default function DirectorRequestsClient({ requests }: Props) {
             <tbody className="divide-y divide-slate-50">
               {paged.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-4">
+                  <td colSpan={9} className="px-4 py-4">
                     <EmptyState icon={Users} title="Tidak ada data permintaan." />
                   </td>
                 </tr>
@@ -191,13 +247,22 @@ export default function DirectorRequestsClient({ requests }: Props) {
                       </span>
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={req.status} /></td>
+                    <td className="px-4 py-3">
+                      {req.status !== "Disetujui" && req.status !== "Ditolak" && slaInfo(req.need_by_date) ? (
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1 w-fit ${slaInfo(req.need_by_date)!.className}`}>
+                          <CalendarClock size={9} /> {slaInfo(req.need_by_date)!.label}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-300">-</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-xs text-slate-500">{req.requested_by || "-"}</td>
                     <td className="px-4 py-3 text-xs text-slate-500">
                       {new Date(req.created_at).toLocaleDateString("id-ID")}
                     </td>
                     <td className="px-4 py-3">
                       {req.status === "Direview Direktur" ? (
-                        <ActionButtons id={req.id} />
+                        <ActionButtons id={req.id} financeRequired={req.finance_required} financeApproved={req.finance_approved} />
                       ) : (
                         <StatusBadge status={req.status} />
                       )}

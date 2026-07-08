@@ -9,9 +9,10 @@ interface Request {
   id: string; department: string; position: string;
   quantity: number; reason: string; urgency: string; status: string;
   requested_by: string; created_at: string;
+  request_type?: string; need_by_date?: string;
 }
 
-const STATUS_FILTERS = ["Semua", "Pending", "Disetujui", "Ditolak"];
+const STATUS_FILTERS = ["Semua", "Draft", "Pending", "Menunggu Finance", "Direview Direktur", "Disetujui", "Ditolak", "Dibatalkan"];
 
 export default function DeptRequests() {
   const [deptName, setDeptName] = useState("");
@@ -46,9 +47,13 @@ export default function DeptRequests() {
 
   const getStatusBadge = (s: string) => {
     const m: Record<string, string> = {
+      Draft: "bg-slate-100 text-slate-500 border-slate-200",
       Pending: "bg-amber-50 text-amber-700 border-amber-200",
+      "Menunggu Finance": "bg-purple-50 text-purple-700 border-purple-200",
+      "Direview Direktur": "bg-blue-50 text-blue-700 border-blue-200",
       Disetujui: "bg-emerald-50 text-emerald-700 border-emerald-200",
       Ditolak: "bg-red-50 text-red-700 border-red-200",
+      Dibatalkan: "bg-slate-100 text-slate-500 border-slate-300",
     };
     return m[s] || "bg-slate-100 text-slate-600 border-slate-200";
   };
@@ -118,10 +123,12 @@ export default function DeptRequests() {
               <thead className="bg-slate-50 sticky top-0">
                 <tr>
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Posisi</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Jenis</th>
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Jumlah</th>
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Urgensi</th>
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Alasan</th>
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Status</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Need By</th>
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Tanggal</th>
                 </tr>
               </thead>
@@ -129,6 +136,7 @@ export default function DeptRequests() {
                 {filtered.map(req => (
                   <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-4 py-3 font-medium text-slate-800">{req.position}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{req.request_type || "-"}</td>
                     <td className="px-4 py-3 text-slate-600">{req.quantity}</td>
                     <td className="px-4 py-3">
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${getUrgencyBadge(req.urgency)}`}>{req.urgency}</span>
@@ -137,6 +145,7 @@ export default function DeptRequests() {
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${getStatusBadge(req.status)}`}>{req.status}</span>
                     </td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{req.need_by_date ? new Date(req.need_by_date).toLocaleDateString("id-ID") : "-"}</td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{new Date(req.created_at).toLocaleDateString("id-ID")}</td>
                   </tr>
                 ))}

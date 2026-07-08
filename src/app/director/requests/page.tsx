@@ -11,6 +11,12 @@ export interface DirectorRequest {
   status: string;
   requested_by: string;
   created_at: string;
+  request_type?: string;
+  need_by_date?: string;
+  rejection_reason?: string;
+  finance_required?: boolean;
+  finance_approved?: boolean;
+  cancel_reason?: string;
 }
 
 export default async function DirectorRequestsPage() {

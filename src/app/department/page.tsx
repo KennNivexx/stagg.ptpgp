@@ -6,6 +6,7 @@ import {
   X, Info, Tag, FileText, BookOpen, ChevronRight,
 } from "lucide-react";
 import { getDeptData, submitRequest, getMyDept } from "@/app/actions/department";
+import { editRequest, cancelRequest } from "@/app/actions/requests";
 import EmptyState from "@/components/EmptyState";
 
 interface Employee {
@@ -18,6 +19,7 @@ interface Request {
   quantity: number; reason: string; urgency: string; status: string;
   requested_by: string; created_at: string;
   grade_code?: string; job_desc?: string;
+  request_type?: string; need_by_date?: string; rejection_reason?: string;
 }
 
 interface OrgUnitFlat {
@@ -26,6 +28,7 @@ interface OrgUnitFlat {
 }
 
 const URGENCY = ["Tinggi", "Sedang", "Rendah"];
+const REQUEST_TYPE_OPTS = ["Posisi Baru", "Replacement", "Promosi", "Mutasi", "Pensiun", "Sementara"];
 
 
 // ─── Modal panduan + form ──────────────────────────────────────────────────────
@@ -33,21 +36,25 @@ function RequestModal({
   deptName,
   orgUnits,
   positions,
+  editTarget,
   onClose,
   onSuccess,
 }: {
   deptName: string;
   orgUnits: OrgUnitFlat[];
   positions: string[];
+  editTarget?: Request | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [fGrade, setFGrade] = useState("");
-  const [fPos, setFPos] = useState("");
-  const [fQty, setFQty] = useState(1);
-  const [fUrgency, setFUrgency] = useState("Sedang");
-  const [fJobDesc, setFJobDesc] = useState("");
-  const [fReason, setFReason] = useState("");
+  const [fGrade, setFGrade] = useState(editTarget?.grade_code || "");
+  const [fPos, setFPos] = useState(editTarget?.position || "");
+  const [fQty, setFQty] = useState(editTarget?.quantity || 1);
+  const [fUrgency, setFUrgency] = useState(editTarget?.urgency || "Sedang");
+  const [fJobDesc, setFJobDesc] = useState(editTarget?.job_desc || "");
+  const [fReason, setFReason] = useState(editTarget?.reason || "");
+  const [fType, setFType] = useState(editTarget?.request_type || "");
+  const [fNeedBy, setFNeedBy] = useState(editTarget?.need_by_date || "");
   const [fErr, setFErr] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -55,7 +62,7 @@ function RequestModal({
   const exampleUnit = orgUnits.length > 1 ? orgUnits[1] : orgUnits[0];
   const exampleCode = exampleUnit?.code ?? "";
 
-  const doSubmit = async () => {
+  const doSubmit = async (asDraft: boolean) => {
     if (!fPos.trim()) { setFErr("Nama posisi wajib diisi."); return; }
     setLoading(true); setFErr("");
     const fd = new FormData();
@@ -66,9 +73,13 @@ function RequestModal({
     fd.append("urgency", fUrgency);
     fd.append("job_desc", fJobDesc.trim());
     fd.append("reason", fReason.trim());
-    const r = await submitRequest(fd);
+    fd.append("request_type", fType);
+    fd.append("need_by_date", fNeedBy);
+    const r = editTarget
+      ? await editRequest(editTarget.id, fd, !asDraft)
+      : await submitRequest(fd, asDraft);
     setLoading(false);
-    if (r?.error) { setFErr(r.error); return; }
+    if ("error" in r && r.error) { setFErr(r.error); return; }
     onSuccess();
     onClose();
   };
@@ -210,7 +221,7 @@ function RequestModal({
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
             <div>
-              <h3 className="font-extrabold text-slate-800 text-sm">Ajukan Permintaan SDM</h3>
+              <h3 className="font-extrabold text-slate-800 text-sm">{editTarget ? "Revisi Permintaan SDM" : "Ajukan Permintaan SDM"}</h3>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 <p className="text-[11px] text-slate-500 font-medium">{deptName}</p>
@@ -295,6 +306,30 @@ function RequestModal({
               </div>
             </div>
 
+            {/* Jenis Permintaan + Need By Date */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Jenis Permintaan</label>
+                <select
+                  value={fType}
+                  onChange={e => setFType(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                >
+                  <option value="">Pilih jenis</option>
+                  {REQUEST_TYPE_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Need By Date</label>
+                <input
+                  type="date"
+                  value={fNeedBy}
+                  onChange={e => setFNeedBy(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                />
+              </div>
+            </div>
+
             {/* Deskripsi Pekerjaan */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Deskripsi Pekerjaan</label>
@@ -336,11 +371,18 @@ function RequestModal({
               Batal
             </button>
             <button
-              onClick={doSubmit}
+              onClick={() => doSubmit(true)}
+              disabled={loading}
+              className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-100 transition-colors disabled:opacity-60"
+            >
+              Simpan Draft
+            </button>
+            <button
+              onClick={() => doSubmit(false)}
               disabled={loading}
               className="flex-1 py-2.5 bg-[#0a2e22] hover:bg-[#0d3b2e] text-white text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm"
             >
-              <Send size={13} /> {loading ? "Mengirim..." : "Kirim Permintaan"}
+              <Send size={13} /> {loading ? "Mengirim..." : editTarget ? "Ajukan Ulang" : "Kirim Permintaan"}
             </button>
           </div>
         </div>
@@ -359,6 +401,7 @@ export default function DeptDashboard() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<Request | null>(null);
 
   const showToast = (type: "error" | "success", msg: string) => {
     setToast({ type, msg });
@@ -425,9 +468,10 @@ export default function DeptDashboard() {
           deptName={deptName}
           orgUnits={orgUnits}
           positions={deptPositions}
-          onClose={() => setShowModal(false)}
+          editTarget={editTarget}
+          onClose={() => { setShowModal(false); setEditTarget(null); }}
           onSuccess={() => {
-            showToast("success", "Permintaan SDM berhasil diajukan! HRD akan segera mereview.");
+            showToast("success", editTarget ? "Perubahan berhasil disimpan." : "Permintaan SDM berhasil diajukan! HRD akan segera mereview.");
             loadData(deptName);
           }}
         />
@@ -441,7 +485,7 @@ export default function DeptDashboard() {
         </div>
         {deptName && (
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => { setEditTarget(null); setShowModal(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-[#0d3b2e] hover:bg-[#1a5c45] text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
           >
             <Plus size={15} /> Ajukan SDM
@@ -487,15 +531,53 @@ export default function DeptDashboard() {
                         Grade {req.grade_code}
                       </span>
                     )}
+                    {req.request_type && (
+                      <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        {req.request_type}
+                      </span>
+                    )}
                     <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded border ${req.urgency === "Tinggi" ? "bg-red-50 text-red-700 border-red-200" : req.urgency === "Sedang" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
                       {req.urgency}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {req.quantity} orang · {new Date(req.created_at).toLocaleDateString("id-ID")}
+                    {req.need_by_date && <> · Need by {new Date(req.need_by_date).toLocaleDateString("id-ID")}</>}
                   </p>
+                  {req.status === "Ditolak" && req.rejection_reason && (
+                    <p className="text-[10px] text-red-500 mt-0.5">Alasan: {req.rejection_reason}</p>
+                  )}
+                  {["Draft", "Ditolak"].includes(req.status) && (
+                    <button
+                      onClick={() => { setEditTarget(req); setShowModal(true); }}
+                      className="text-[10px] font-bold text-amber-600 hover:text-amber-700 mt-1"
+                    >
+                      Revisi
+                    </button>
+                  )}
+                  {["Draft", "Pending"].includes(req.status) && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Batalkan permintaan ini?")) return;
+                        const r = await cancelRequest(req.id, "");
+                        if ("error" in r) { showToast("error", r.error); return; }
+                        showToast("success", "Permintaan dibatalkan.");
+                        loadData(deptName);
+                      }}
+                      className="text-[10px] font-bold text-slate-400 hover:text-slate-600 mt-1 ml-3"
+                    >
+                      Batalkan
+                    </button>
+                  )}
                 </div>
-                <span className={`shrink-0 px-2 py-1 text-[10px] font-bold rounded-lg ${req.status === "Disetujui" ? "bg-emerald-50 text-emerald-700" : req.status === "Ditolak" ? "bg-red-50 text-red-700" : req.status === "Direview Direktur" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
+                <span className={`shrink-0 px-2 py-1 text-[10px] font-bold rounded-lg ${
+                  req.status === "Disetujui" ? "bg-emerald-50 text-emerald-700"
+                  : req.status === "Ditolak" ? "bg-red-50 text-red-700"
+                  : req.status === "Direview Direktur" ? "bg-blue-50 text-blue-700"
+                  : req.status === "Menunggu Finance" ? "bg-purple-50 text-purple-700"
+                  : req.status === "Draft" || req.status === "Dibatalkan" ? "bg-slate-100 text-slate-500"
+                  : "bg-amber-50 text-amber-700"
+                }`}>
                   {req.status}
                 </span>
               </div>

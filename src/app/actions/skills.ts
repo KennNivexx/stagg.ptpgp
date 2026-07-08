@@ -351,6 +351,27 @@ export async function saveDeptSkillList(dept: string, skillIds: string[]) {
   return { success: true };
 }
 
+// Read-only accessor for previewing a department's required competencies
+// (e.g. from a workforce request detail) — broader role list than
+// getDeptSkillList since director/employee also need to view this, not just edit it.
+export async function getDeptRequiredSkills(dept: string): Promise<{ id: string; name: string; category: string }[]> {
+  await requireRole("department_manager", "hrd", "director", "superadmin", "employee");
+  if (!dept) return [];
+
+  const { data: mappings } = await supabaseAdmin
+    .from("position_skills")
+    .select("skill_id")
+    .eq("position_code", "_dept_" + dept);
+  const skillIds = ((mappings || []) as { skill_id: string }[]).map((m) => m.skill_id);
+  if (skillIds.length === 0) return [];
+
+  const { data: skills } = await supabaseAdmin
+    .from("skills")
+    .select("id, name, category")
+    .in("id", skillIds);
+  return (skills || []) as { id: string; name: string; category: string }[];
+}
+
 export async function removeSkillFromPosition(positionCode: string, skillId: string) {
   await requireRole("hrd", "superadmin");
 

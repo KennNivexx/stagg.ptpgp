@@ -16,6 +16,8 @@ interface RequestRow {
   quantity: number; reason: string; urgency: string; status: string;
   requested_by: string; created_at: string;
   grade_code?: string; job_desc?: string;
+  request_type?: string; need_by_date?: string; rejection_reason?: string;
+  cancel_reason?: string; recruitment_stage?: string;
 }
 
 interface DeptRow {
@@ -105,7 +107,7 @@ export async function getDeptData(deptName: string) {
   };
 }
 
-export async function submitRequest(formData: FormData) {
+export async function submitRequest(formData: FormData, asDraft?: boolean) {
   const user = await requireRole("department_manager", "superadmin");
 
   const department = (formData.get("department") as string || "").trim();
@@ -128,21 +130,70 @@ export async function submitRequest(formData: FormData) {
   const reason = (formData.get("reason") as string || "").trim();
   const grade_code = (formData.get("grade_code") as string || "").trim() || null;
   const job_desc = (formData.get("job_desc") as string || "").trim() || null;
+  const request_type = (formData.get("request_type") as string || "").trim() || null;
+  const need_by_date = (formData.get("need_by_date") as string || "").trim() || null;
+  const site_location = (formData.get("site_location") as string || "").trim() || null;
+  const cost_center = (formData.get("cost_center") as string || "").trim() || null;
+  const salary_range_min = formData.get("salary_range_min") ? parseFloat(formData.get("salary_range_min") as string) : null;
+  const salary_range_max = formData.get("salary_range_max") ? parseFloat(formData.get("salary_range_max") as string) : null;
+  const budget_recruitment = formData.get("budget_recruitment") ? parseFloat(formData.get("budget_recruitment") as string) : null;
+  const budget_available = formData.get("budget_available") === "on" || formData.get("budget_available") === "true";
   const requested_by = user.name || user.email;
 
-  if (!department || !position) return { error: "Departemen dan posisi wajib diisi." };
+  if (!asDraft && (!department || !position)) return { error: "Departemen dan posisi wajib diisi." };
 
   const id = uid();
   const now = new Date().toISOString();
+  const status = asDraft ? "Draft" : "Pending";
   const { error } = await supabaseAdmin.from("workforce_requests").insert({
-    id, department, position, quantity, reason, urgency, status: "Pending",
-    requested_by, grade_code, job_desc, created_at: now,
+    id, department, position, quantity, reason, urgency, status,
+    requested_by, grade_code, job_desc, request_type, need_by_date,
+    site_location, cost_center, salary_range_min, salary_range_max,
+    budget_recruitment, budget_available, created_at: now,
   });
   if (error) {
     console.error("submitRequest error:", error);
     return { error: "Gagal memproses. Silakan coba lagi." };
   }
 
+  await supabaseAdmin.from("workforce_request_history").insert({
+    id: "wrh-" + crypto.randomUUID(),
+    request_id: id,
+    action: asDraft ? "Disimpan sebagai Draft" : "Diajukan",
+    actor_name: requested_by,
+    actor_role: user.role,
+    to_status: status,
+  });
+
   revalidatePath("/department");
+  revalidatePath("/hrd/workforce/requests");
   return { success: true };
+}
+
+// Rantai breadcrumb organisasi berjenjang (Organisasi > Divisi > Department >
+// Seksi > Unit Kerja) berdasarkan tabel org_units yang sudah ada (code
+// berjenjang, mis. "1.1.2.1.0.0"), dari root sampai unit departemen ini.
+export async function getOrgBreadcrumb(deptName: string): Promise<string[]> {
+  await requireRole("department_manager", "hrd", "director", "superadmin");
+
+  const { data: mainUnit } = await supabaseAdmin
+    .from("org_units").select("id, code, name, level").eq("name", deptName).maybeSingle();
+  const mu = mainUnit as { code?: string; name?: string } | null;
+  if (!mu?.code) return mu?.name ? [mu.name] : [];
+
+  // Ambil semua org_units lalu susun path dari root ke node saat ini dengan
+  // menaiki parent_code — lebih andal daripada menebak dari prefix code.
+  const { data: allUnits } = await supabaseAdmin.from("org_units").select("code, name, parent_code");
+  const units = (allUnits as { code: string; name: string; parent_code: string | null }[]) || [];
+  const byCode = new Map(units.map(u => [u.code, u]));
+
+  let node = byCode.get(mu.code) || null;
+  const path: string[] = [];
+  const seen = new Set<string>();
+  while (node && !seen.has(node.code)) {
+    path.unshift(node.name);
+    seen.add(node.code);
+    node = node.parent_code ? byCode.get(node.parent_code) || null : null;
+  }
+  return path.length ? path : (mu.name ? [mu.name] : []);
 }
