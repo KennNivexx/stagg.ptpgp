@@ -4,7 +4,7 @@
  * webhook route so it stays testable without mocking HTTP.
  */
 import { supabaseAdmin } from "@/lib/supabase";
-import { sendTextMessage, sendInteractiveButtons, getWaProvider } from "@/lib/whatsapp";
+import { sendTextMessage, sendInteractiveButtons } from "@/lib/whatsapp";
 import {
   BotEmployee,
   getEmployeeProfileText,
@@ -58,53 +58,8 @@ const MAIN_MENU_TEXT = [
   "Balas dengan angka 1-8. Ketik *menu* kapan saja untuk kembali ke sini, atau *berhenti* untuk berhenti berlangganan.",
 ].join("\n");
 
-// Keys match the switch cases in handleMainMenu exactly, so a resolved poll
-// vote can be routed the same way a typed reply would be.
-const MAIN_MENU_OPTIONS: { key: string; label: string }[] = [
-  { key: "profil", label: "Profil Saya" },
-  { key: "absen", label: "Absen (Clock-in/out)" },
-  { key: "cuti", label: "Ajukan Cuti/Izin" },
-  { key: "gaji", label: "Slip Gaji" },
-  { key: "pelatihan", label: "Pelatihan Saya" },
-  { key: "kpi", label: "KPI & Performa" },
-  { key: "jobdesc", label: "Deskripsi Kerja" },
-  { key: "sp", label: "Surat Peringatan (SP)" },
-];
-
-/** Sends the main menu. On Fonnte this is a tap-to-vote poll (see
- * sendFonntePoll) instead of the plain numbered MAIN_MENU_TEXT, since Fonnte
- * has no button-send capability — falls back to the numbered text if the
- * poll fails to send (e.g. token misconfigured). Meta/Baileys are unchanged. */
 async function sendMainMenu(to: string, greeting?: string): Promise<void> {
-  const provider = await getWaProvider();
-  if (provider === "fonnte") {
-    if (greeting) await sendTextMessage(to, greeting);
-    const { sendFonntePoll } = await import("@/lib/whatsapp-fonnte");
-    const result = await sendFonntePoll(to, "menu_utama", MAIN_MENU_OPTIONS.map((o) => o.label));
-    if ("error" in result) {
-      console.error("[wa router] sendMainMenu poll fallback to text:", result.error);
-      await sendTextMessage(to, MAIN_MENU_TEXT);
-    }
-    return;
-  }
   await sendTextMessage(to, (greeting ? `${greeting}\n\n` : "") + MAIN_MENU_TEXT);
-}
-
-/** Reverses a Fonnte poll vote back to the value routeIncomingMessage/
- * handleMainMenu would get from a typed reply — e.g. tapping "Profil Saya" on
- * the menu_utama poll resolves to "profil", same as typing "profil" or "1"
- * would've matched in handleMainMenu's switch. Returns null if the pollKey or
- * choice label isn't recognized (caller should fall back to the raw text). */
-export function resolveFonntePollChoice(pollKey: string, choiceLabel: string): string | null {
-  const label = choiceLabel.trim().toLowerCase();
-  let options: { key: string; label: string }[] | null = null;
-  if (pollKey === "menu_utama") options = MAIN_MENU_OPTIONS;
-  else if (pollKey === "cuti_jenis") options = [{ key: "1", label: "Cuti Tahunan" }, { key: "2", label: "Sakit" }, { key: "3", label: "Izin" }];
-  else if (pollKey === "cuti_konfirmasi") options = [{ key: "leave_yes", label: "Ya, Kirim" }, { key: "leave_no", label: "Batal" }];
-  else if (pollKey === "berhenti_konfirmasi") options = [{ key: "unsub_yes", label: "Ya, Berhenti" }, { key: "unsub_no", label: "Batal" }];
-  if (!options) return null;
-  const found = options.find((o) => o.label.trim().toLowerCase() === label);
-  return found ? found.key : null;
 }
 
 function isMissingTable(err: unknown): boolean {
@@ -159,7 +114,6 @@ export async function routeIncomingMessage(
       conversation.wa_number,
       "Anda yakin ingin berhenti berlangganan Bot WA HRIS? Anda tidak akan menerima balasan/notifikasi lagi sampai diaktifkan ulang lewat Profil Saya di website.",
       [{ id: "unsub_yes", title: "Ya, Berhenti" }, { id: "unsub_no", title: "Batal" }],
-      "berhenti_konfirmasi",
     );
     return;
   }
@@ -218,7 +172,6 @@ async function handleMainMenu(employee: BotEmployee, conversation: WaConversatio
         to,
         "Pilih jenis cuti:",
         [{ id: "1", title: "Cuti Tahunan" }, { id: "2", title: "Sakit" }, { id: "3", title: "Izin" }],
-        "cuti_jenis",
       );
       break;
 
@@ -304,7 +257,6 @@ async function handleLeaveFlow(employee: BotEmployee, conversation: WaConversati
       to,
       `Konfirmasi pengajuan:\n*Jenis:* ${updated.type as string}\n*Mulai:* ${updated.start_date as string}\n*Selesai:* ${updated.end_date as string}\n*Alasan:* ${text}`,
       [{ id: "leave_yes", title: "Ya, Kirim" }, { id: "leave_no", title: "Batal" }],
-      "cuti_konfirmasi",
     );
     return;
   }

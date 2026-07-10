@@ -15,9 +15,18 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 const FONNTE_SEND_URL = "https://api.fonnte.com/send";
 
+// This barely ever changes (only when HRD edits it in Pengaturan), so a
+// short in-memory cache avoids re-querying pengaturan_sistem on every single
+// outbound message — pure round-trip latency otherwise.
+let tokenCache: { value: string | null; expiresAt: number } | null = null;
+const TOKEN_CACHE_MS = 60_000;
+
 export async function getFonnteToken(): Promise<string | null> {
+  if (tokenCache && tokenCache.expiresAt > Date.now()) return tokenCache.value;
   const { data } = await supabaseAdmin.from("pengaturan_sistem").select("value").eq("key", "wa_fonnte_token").maybeSingle();
-  return (data?.value as string) || process.env.FONNTE_TOKEN || null;
+  const value = (data?.value as string) || process.env.FONNTE_TOKEN || null;
+  tokenCache = { value, expiresAt: Date.now() + TOKEN_CACHE_MS };
+  return value;
 }
 
 export async function sendFonnteText(to: string, message: string): Promise<{ success: true } | { error: string }> {
@@ -38,35 +47,5 @@ export async function sendFonnteText(to: string, message: string): Promise<{ suc
     return { success: true };
   } catch (e) {
     return { error: `Gagal mengirim via Fonnte: ${(e as Error).message}` };
-  }
-}
-
-/**
- * Sends a WhatsApp Poll — the closest thing to tappable buttons a gateway
- * like Fonnte can offer (there's no quick-reply/button send parameter in
- * Fonnte's API, only `choices`/`select`/`pollname` for polls). The recipient
- * taps an option instead of typing; Fonnte reports the vote back to our
- * webhook as `pollname` + `choices` fields (see webhook-fonnte/route.ts).
- * `pollName` must match what the webhook route expects to resolve the vote.
- */
-export async function sendFonntePoll(to: string, pollName: string, choices: string[]): Promise<{ success: true } | { error: string }> {
-  const token = await getFonnteToken();
-  if (!token) return { error: "Token Fonnte belum diatur." };
-  if (choices.length < 2 || choices.length > 12) return { error: "Jumlah pilihan poll harus 2-12." };
-
-  try {
-    const body = new URLSearchParams({ target: to, pollname: pollName, choices: choices.join(","), select: "single" });
-    const res = await fetch(FONNTE_SEND_URL, {
-      method: "POST",
-      headers: { Authorization: token, "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-    });
-    const json = await res.json().catch(() => null) as { status?: boolean; reason?: string } | null;
-    if (!res.ok || !json?.status) {
-      return { error: `Fonnte error: ${json?.reason || res.statusText}` };
-    }
-    return { success: true };
-  } catch (e) {
-    return { error: `Gagal mengirim polling via Fonnte: ${(e as Error).message}` };
   }
 }

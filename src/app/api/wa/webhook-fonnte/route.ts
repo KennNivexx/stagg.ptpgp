@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { IncomingWaMessage, resolveFonntePollChoice } from "@/lib/whatsapp-router";
+import { IncomingWaMessage } from "@/lib/whatsapp-router";
 import { processInboundWaMessage } from "@/lib/whatsapp-inbound";
 import { normalizeWaNumber } from "@/lib/whatsapp";
 
@@ -14,9 +14,18 @@ import { normalizeWaNumber } from "@/lib/whatsapp";
  * empty the check is skipped (fail-open) so the integration works with zero
  * setup — HRD can harden it later once the bot is confirmed working.
  */
+// Cached briefly — this almost never changes, and it was previously the
+// first of several sequential DB round trips on every single webhook call,
+// pure added latency before any actual message processing even started.
+let secretCache: { value: string; expiresAt: number } | null = null;
+const SECRET_CACHE_MS = 60_000;
+
 async function getFonnteWebhookSecret(): Promise<string> {
+  if (secretCache && secretCache.expiresAt > Date.now()) return secretCache.value;
   const { data } = await supabaseAdmin.from("pengaturan_sistem").select("value").eq("key", "wa_fonnte_webhook_secret").maybeSingle();
-  return (data?.value as string) || "";
+  const value = (data?.value as string) || "";
+  secretCache = { value, expiresAt: Date.now() + SECRET_CACHE_MS };
+  return value;
 }
 
 export async function POST(request: NextRequest) {
@@ -50,13 +59,7 @@ export async function POST(request: NextRequest) {
     const normalized = normalizeWaNumber(sender);
     if ("error" in normalized) return NextResponse.json({ success: true });
 
-    // A poll vote (from sendFonntePoll — see whatsapp.ts/whatsapp-router.ts)
-    // arrives with `pollname`+`choices` instead of a normal `message` body.
-    // Resolve the tapped option's label back to the same value a typed reply
-    // would produce, so routeIncomingMessage needs no poll-specific handling.
-    const text = fields.choices && fields.pollname
-      ? (resolveFonntePollChoice(fields.pollname, fields.choices) ?? fields.choices.trim())
-      : (fields.message || fields.text || "").trim();
+    const text = (fields.message || fields.text || "").trim();
 
     let incoming: IncomingWaMessage;
     if (fields.url) {

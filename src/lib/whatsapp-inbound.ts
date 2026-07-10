@@ -26,23 +26,26 @@ export async function processInboundWaMessage(msg: NormalizedInboundMessage): Pr
   // Idempotency guard: a provider may redeliver the same message (Meta
   // retries on non-2xx/slow responses; Baileys can replay on reconnect).
   // wa_message_id is the provider's own id — a UNIQUE conflict here IS the
-  // "already processed" signal.
-  const { error: insertErr } = await supabaseAdmin.from("log_pesan_wa").insert({
-    id: "wamsg-" + randomUUID(),
-    wa_message_id: messageId,
-    wa_number: from,
-    direction: "inbound",
-    message_type: message.type,
-    payload: message as unknown as Record<string, unknown>,
-  });
+  // "already processed" signal. This insert doesn't need the employee lookup
+  // to happen first (or vice versa) — running them concurrently instead of
+  // sequentially shaves a full DB round trip off every inbound message.
+  const [{ error: insertErr }, employee] = await Promise.all([
+    supabaseAdmin.from("log_pesan_wa").insert({
+      id: "wamsg-" + randomUUID(),
+      wa_message_id: messageId,
+      wa_number: from,
+      direction: "inbound",
+      message_type: message.type,
+      payload: message as unknown as Record<string, unknown>,
+    }),
+    getEmployeeByWaNumber(from),
+  ]);
   if (insertErr?.code === "23505") {
     return; // already processed
   }
   if (insertErr && insertErr.code !== "42P01" && insertErr.code !== "PGRST205") {
     console.error("[wa inbound] log insert error:", insertErr.message);
   }
-
-  const employee = await getEmployeeByWaNumber(from);
   if (!employee) {
     const text = (message.text || message.buttonId || "").trim();
     if (message.type !== "text" || !text) {
