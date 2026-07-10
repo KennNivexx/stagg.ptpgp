@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { IncomingWaMessage } from "@/lib/whatsapp-router";
+import { IncomingWaMessage, resolveFonntePollChoice } from "@/lib/whatsapp-router";
 import { processInboundWaMessage } from "@/lib/whatsapp-inbound";
 import { normalizeWaNumber } from "@/lib/whatsapp";
 
@@ -45,18 +45,36 @@ export async function POST(request: NextRequest) {
 
   try {
     const sender = (fields.sender || "").trim();
-    const text = (fields.message || fields.text || "").trim();
     if (!sender) return NextResponse.json({ success: true });
 
     const normalized = normalizeWaNumber(sender);
     if ("error" in normalized) return NextResponse.json({ success: true });
 
-    const incoming: IncomingWaMessage = { type: "text", text };
-    // Fonnte's free tier doesn't include media URLs in the webhook payload
-    // (`url` is documented as premium-package-only) — image/selfie clock-in
-    // via Fonnte isn't supported yet, same limitation noted in whatsapp-fonnte.ts.
+    // A poll vote (from sendFonntePoll — see whatsapp.ts/whatsapp-router.ts)
+    // arrives with `pollname`+`choices` instead of a normal `message` body.
+    // Resolve the tapped option's label back to the same value a typed reply
+    // would produce, so routeIncomingMessage needs no poll-specific handling.
+    const text = fields.choices && fields.pollname
+      ? (resolveFonntePollChoice(fields.pollname, fields.choices) ?? fields.choices.trim())
+      : (fields.message || fields.text || "").trim();
+
+    let incoming: IncomingWaMessage;
     if (fields.url) {
-      incoming.mediaError = "Lampiran media via Fonnte belum didukung.";
+      // `url` is only present on Fonnte plans that include media in the
+      // webhook payload (documented as a paid-package feature) — attempt the
+      // download so photo clock-in works wherever Fonnte does provide it.
+      try {
+        const mediaRes = await fetch(fields.url);
+        if (!mediaRes.ok) throw new Error(String(mediaRes.status));
+        const buffer = Buffer.from(await mediaRes.arrayBuffer());
+        const contentType = mediaRes.headers.get("content-type") || "image/jpeg";
+        incoming = { type: "image", imageDataUrl: `data:${contentType};base64,${buffer.toString("base64")}` };
+      } catch (e) {
+        console.error("[wa webhook-fonnte] media download error:", (e as Error).message);
+        incoming = { type: "image", mediaError: "Gagal mengunduh foto dari Fonnte. Silakan coba lagi." };
+      }
+    } else {
+      incoming = { type: "text", text };
     }
 
     // Fonnte doesn't provide a stable per-message id in the base payload —

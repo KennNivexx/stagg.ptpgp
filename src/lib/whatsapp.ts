@@ -225,18 +225,31 @@ export async function sendTextMessage(to: string, body: string): Promise<{ succe
   return result;
 }
 
-/** Provider-agnostic confirm/cancel-style prompt. Baileys and Fonnte have no
- * reliable interactive-button rendering for unofficial clients, so both fall
- * back to a numbered plain-text list — the router already accepts the
- * button's own id or its lowercased title as a reply (e.g. "ya"/"leave_yes"),
- * so this fallback needs no router changes. */
+/** Provider-agnostic confirm/cancel-style prompt. Meta gets native quick-reply
+ * buttons. Fonnte has no button send parameter at all, so when `pollKey` is
+ * given it sends a real WhatsApp Poll instead (tap-to-vote — see
+ * sendFonntePoll and webhook-fonnte/route.ts, which resolves the vote back to
+ * one of `buttons`' ids via resolveFonntePollChoice in whatsapp-router.ts).
+ * Baileys has no interactive UI for either, and Fonnte without a pollKey
+ * falls back the same way — a numbered plain-text list; the router already
+ * accepts the button's own id or its lowercased title as a typed reply. */
 export async function sendInteractiveButtons(
   to: string,
   bodyText: string,
   buttons: { id: string; title: string }[],
+  pollKey?: string,
 ): Promise<{ success: true } | { error: string }> {
   const provider = await getWaProvider();
   if (provider === "meta") return sendInteractiveButtonsMeta(to, bodyText, buttons);
+
+  if (provider === "fonnte" && pollKey) {
+    const { sendFonntePoll } = await import("@/lib/whatsapp-fonnte");
+    await sendTextMessage(to, bodyText);
+    const result = await sendFonntePoll(to, pollKey, buttons.map((b) => b.title));
+    if ("success" in result) return result;
+    console.error("[whatsapp] sendInteractiveButtons poll fallback to text:", result.error);
+  }
+
   const optionsText = buttons.map((b, i) => `${i + 1}. ${b.title} (balas: *${b.title.toLowerCase()}*)`).join("\n");
   if (provider === "fonnte") {
     const { sendFonnteText } = await import("@/lib/whatsapp-fonnte");
