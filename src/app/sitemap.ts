@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const { data: jobs } = await supabaseAdmin
-      .from("job_postings")
+      .from("lowongan_kerja")
       .select("id, created_at")
       .eq("status", "Open")
       .limit(100);

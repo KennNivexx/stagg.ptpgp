@@ -11,7 +11,7 @@ export async function getJobPostings() {
   await requireRole("hrd", "superadmin", "director");
 
   const { data, error } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .select("*")
     .order("created_at", { ascending: false });
 
@@ -33,7 +33,7 @@ export async function hireCandidate(formData: FormData) {
   }
 
   const { data: jobPosting, error: postingError } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .select("*")
     .eq("id", job_posting_id)
     .single();
@@ -46,7 +46,7 @@ export async function hireCandidate(formData: FormData) {
 
   let kode = "";
   const { data: orgUnit } = await supabaseAdmin
-    .from("org_units")
+    .from("unit_organisasi")
     .select("code")
     .eq("name", dept)
     .maybeSingle();
@@ -54,7 +54,7 @@ export async function hireCandidate(formData: FormData) {
   if (orgUnit) {
     const segments = (orgUnit.code as string).split(".");
     const { count } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("*", { count: "exact", head: true })
       .eq("department", dept);
     const seq = (count || 0) + 1;
@@ -75,7 +75,7 @@ export async function hireCandidate(formData: FormData) {
   const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
   const { error: usersCheckError } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .select("id")
     .limit(1);
   const hasUsersTable = !usersCheckError || !usersCheckError.message.includes("Could not find the table");
@@ -88,7 +88,7 @@ export async function hireCandidate(formData: FormData) {
     : JSON.stringify({ __auth__: { password_hash: passwordHash, role: "employee" } });
 
   const { error: empError } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .insert([
       {
         full_name,
@@ -109,13 +109,13 @@ export async function hireCandidate(formData: FormData) {
   if (hasUsersTable) {
     // Upsert: if they had an applicant account, upgrade it; otherwise insert
     const { data: existingUser } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .select("id, role")
       .eq("email", normalizedEmail)
       .maybeSingle();
 
     if (existingUser) {
-      await supabaseAdmin.from("users").update({
+      await supabaseAdmin.from("pengguna").update({
         password_hash: passwordHash,
         role: "employee",
         full_name,
@@ -126,7 +126,7 @@ export async function hireCandidate(formData: FormData) {
         one_time_token_expires: tokenExpires,
       }).eq("email", normalizedEmail);
     } else {
-      await supabaseAdmin.from("users").insert([{
+      await supabaseAdmin.from("pengguna").insert([{
         email: normalizedEmail,
         password_hash: passwordHash,
         role: "employee",
@@ -145,7 +145,7 @@ export async function hireCandidate(formData: FormData) {
   }
 
   const { error: updateError } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .update(updates)
     .eq("id", job_posting_id);
 
@@ -183,7 +183,7 @@ export async function rejectApplicant(applicantId: string, applicantEmail: strin
   await requireRole("hrd", "superadmin");
 
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update({ status: "Ditolak" })
     .eq("id", applicantId);
 
@@ -193,7 +193,7 @@ export async function rejectApplicant(applicantId: string, applicantEmail: strin
   // so the applicant can login and see the rejection notice.
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .update({ expires_at: expiresAt })
     .eq("email", applicantEmail.toLowerCase().trim())
     .eq("role", "applicant");
@@ -211,7 +211,7 @@ export async function createJobPosting(formData: FormData) {
   const status = (formData.get("status") as string || "Draft").trim();
   const description = (formData.get("description") as string || "").trim();
   if (!title || !department) return { error: "Judul posisi dan departemen wajib diisi." };
-  const { error } = await supabaseAdmin.from("job_postings").insert({
+  const { error } = await supabaseAdmin.from("lowongan_kerja").insert({
     id: "job-" + crypto.randomUUID(),
     title, department, location: location || null,
     status, description: description || null,
@@ -228,7 +228,7 @@ export async function updateJobPostingStatus(id: string, status: string) {
   await requireRole("hrd", "superadmin");
 
   const { error } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .update({ status })
     .eq("id", id);
 
@@ -246,7 +246,7 @@ export async function updateJobPostingStatus(id: string, status: string) {
 export async function getCandidatesForNegotiation() {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("id, full_name, email, position, department, offered_salary, salary_expectation, final_salary, negotiation_status, negotiation_notes, status")
     .order("created_at", { ascending: false });
   if (error) return [];
@@ -260,7 +260,7 @@ export async function getCandidatesForNegotiation() {
 export async function setOfferedSalary(applicationId: string, offeredSalary: number, notes: string) {
   await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update({ offered_salary: offeredSalary, negotiation_status: "offered", negotiation_notes: notes || null })
     .eq("id", applicationId);
   if (error) return { error: error.message };
@@ -271,7 +271,7 @@ export async function setOfferedSalary(applicationId: string, offeredSalary: num
 export async function finalizeNegotiation(applicationId: string, finalSalary: number, agreed: boolean) {
   await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update({ final_salary: finalSalary || null, negotiation_status: agreed ? "agreed" : "rejected" })
     .eq("id", applicationId);
   if (error) return { error: error.message };
@@ -282,10 +282,10 @@ export async function finalizeNegotiation(applicationId: string, finalSalary: nu
 export async function getMyNegotiation() {
   const session = await requireRole("applicant");
   const { data: user } = await supabaseAdmin
-    .from("users").select("application_id").eq("email", session.email).maybeSingle();
+    .from("pengguna").select("application_id").eq("email", session.email).maybeSingle();
   if (!user?.application_id) return null;
   const { data } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("id, offered_salary, salary_expectation, final_salary, negotiation_status, negotiation_notes, position")
     .eq("id", user.application_id).maybeSingle();
   return data;
@@ -295,7 +295,7 @@ export async function getMyNegotiation() {
 export async function getApplicationsForPipeline() {
   await requireRole("hrd", "superadmin");
   const { data: apps, error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("*")
     .order("applied_at", { ascending: false })
     .limit(500);
@@ -303,7 +303,7 @@ export async function getApplicationsForPipeline() {
 
   const jobIds = [...new Set((apps || []).map((a: Record<string, unknown>) => a.job_id as string).filter(Boolean))];
   const { data: jobs } = jobIds.length > 0
-    ? await supabaseAdmin.from("job_postings").select("id, position, department").in("id", jobIds)
+    ? await supabaseAdmin.from("lowongan_kerja").select("id, position, department").in("id", jobIds)
     : { data: [] };
 
   const jobMap: Record<string, { position: string; department: string }> = {};
@@ -318,7 +318,7 @@ export async function moveApplicationStatus(applicationId: string, newStatus: st
   const updates: Record<string, unknown> = { status: newStatus };
   if (newStatus === "Interview") updates.reached_interview = true;
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update(updates)
     .eq("id", applicationId);
   if (error) return { error: error.message };
@@ -344,7 +344,7 @@ export async function scheduleInterview(
   await requireRole("hrd", "superadmin");
   if (!payload.interview_date) return { error: "Tanggal interview wajib diisi." };
   const { data: appRow, error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update({
       interview_date: payload.interview_date,
       interview_time: payload.interview_time || null,
@@ -365,7 +365,7 @@ export async function scheduleInterview(
   if (applicantEmail) {
     const when = [payload.interview_date, payload.interview_time].filter(Boolean).join(" ");
     const where = payload.interview_online_link || payload.interview_location || "";
-    await supabaseAdmin.from("notifications").insert({
+    await supabaseAdmin.from("notifikasi").insert({
       id: crypto.randomUUID(),
       user_email: applicantEmail,
       title: "Jadwal Interview Ditentukan",
@@ -383,11 +383,11 @@ export async function hireCandidateFromPipeline(applicationId: string) {
   await requireRole("hrd", "superadmin");
 
   const { data: app } = await supabaseAdmin
-    .from("applications").select("*").eq("id", applicationId).single();
+    .from("pelamar").select("*").eq("id", applicationId).single();
   if (!app) return { error: "Lamaran tidak ditemukan." };
 
   const { data: job } = await supabaseAdmin
-    .from("job_postings").select("position, department").eq("id", app.job_id as string).single();
+    .from("lowongan_kerja").select("position, department").eq("id", app.job_id as string).single();
 
   const fd = new FormData();
   fd.set("job_posting_id", app.job_id as string);
@@ -397,7 +397,7 @@ export async function hireCandidateFromPipeline(applicationId: string) {
   fd.set("department", (job?.department as string) || (app.department as string) || "");
 
   // Mark as Diterima before creating employee
-  await supabaseAdmin.from("applications").update({ status: "Diterima" }).eq("id", applicationId);
+  await supabaseAdmin.from("pelamar").update({ status: "Diterima" }).eq("id", applicationId);
 
   return hireCandidate(fd);
 }
@@ -406,7 +406,7 @@ export async function hireCandidateFromPipeline(applicationId: string) {
 export async function addToTalentPool(applicationId: string, notes: string) {
   await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update({
       in_talent_pool: true,
       talent_pool_notes: notes || "",
@@ -423,7 +423,7 @@ export async function addToTalentPool(applicationId: string, notes: string) {
 export async function getTalentPool() {
   await requireRole("hrd", "superadmin");
   const { data: apps, error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("*")
     .eq("in_talent_pool", true)
     .order("talent_pool_added_at", { ascending: false });
@@ -431,7 +431,7 @@ export async function getTalentPool() {
 
   const jobIds = [...new Set((apps || []).map((a: Record<string, unknown>) => a.job_id as string).filter(Boolean))];
   const { data: jobs } = jobIds.length > 0
-    ? await supabaseAdmin.from("job_postings").select("id, position, department").in("id", jobIds)
+    ? await supabaseAdmin.from("lowongan_kerja").select("id, position, department").in("id", jobIds)
     : { data: [] };
 
   const jobMap: Record<string, { position: string; department: string }> = {};
@@ -447,7 +447,7 @@ export async function getTalentPool() {
 export async function removeFromTalentPool(applicationId: string) {
   await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update({ in_talent_pool: false, talent_pool_notes: "", talent_pool_added_at: null })
     .eq("id", applicationId);
   if (error) return { error: error.message };
@@ -464,7 +464,7 @@ export async function getHiringDecisions() {
   // drop them from the talentPool bucket below even though they're correctly
   // shown on the dedicated /hrd/recruitment/talentpool page.
   const { data: apps, error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("*")
     .or("status.in.(Diterima,Ditolak),in_talent_pool.eq.true")
     .order("applied_at", { ascending: false });
@@ -473,7 +473,7 @@ export async function getHiringDecisions() {
   const allApps = apps || [];
   const jobIds = [...new Set(allApps.map((a: Record<string, unknown>) => a.job_id as string).filter(Boolean))];
   const { data: jobs } = jobIds.length > 0
-    ? await supabaseAdmin.from("job_postings").select("id, position, department").in("id", jobIds)
+    ? await supabaseAdmin.from("lowongan_kerja").select("id, position, department").in("id", jobIds)
     : { data: [] };
 
   const jobMap: Record<string, { position: string; department: string }> = {};
@@ -494,13 +494,13 @@ export async function getHiringDecisions() {
 export async function respondToOffer(response: "accepted" | "counter", counterSalary?: number) {
   const session = await requireRole("applicant");
   const { data: user } = await supabaseAdmin
-    .from("users").select("application_id").eq("email", session.email).maybeSingle();
+    .from("pengguna").select("application_id").eq("email", session.email).maybeSingle();
   if (!user?.application_id) return { error: "Lamaran tidak ditemukan." };
 
   const updates: Record<string, unknown> = {};
   if (response === "accepted") {
     const { data: app } = await supabaseAdmin
-      .from("applications").select("offered_salary").eq("id", user.application_id).single();
+      .from("pelamar").select("offered_salary").eq("id", user.application_id).single();
     updates.final_salary = app?.offered_salary;
     updates.negotiation_status = "agreed";
   } else {
@@ -509,7 +509,7 @@ export async function respondToOffer(response: "accepted" | "counter", counterSa
   }
 
   const { error } = await supabaseAdmin
-    .from("applications").update(updates).eq("id", user.application_id);
+    .from("pelamar").update(updates).eq("id", user.application_id);
   if (error) return { error: error.message };
   revalidatePath("/applicant/test");
   return { success: true };

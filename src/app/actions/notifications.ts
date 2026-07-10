@@ -8,17 +8,17 @@ import { requireRole } from "@/lib/auth-guard";
 // or mutate another user's notifications by passing their address (IDOR).
 export async function getNotifications() {
   const user = await requireRole("hrd", "superadmin", "employee");
-  const { data } = await supabaseAdmin.from("notifications").select("*").eq("user_email", user.email).order("created_at", { ascending: false }).limit(20);
+  const { data } = await supabaseAdmin.from("notifikasi").select("*").eq("user_email", user.email).order("created_at", { ascending: false }).limit(20);
   return (data || []);
 }
 
 export async function markAsRead(ids: string[]) {
   const user = await requireRole("hrd", "superadmin", "employee");
-  await supabaseAdmin.from("notifications").update({ is_read: true }).in("id", ids).eq("user_email", user.email);
+  await supabaseAdmin.from("notifikasi").update({ is_read: true }).in("id", ids).eq("user_email", user.email);
 }
 
 export async function getUnreadCount(): Promise<number> {
   const user = await requireRole("hrd", "superadmin", "employee", "director", "department_manager");
-  const { count } = await supabaseAdmin.from("notifications").select("*", { count: "exact", head: true }).eq("user_email", user.email).eq("is_read", false);
+  const { count } = await supabaseAdmin.from("notifikasi").select("*", { count: "exact", head: true }).eq("user_email", user.email).eq("is_read", false);
   return count || 0;
 }

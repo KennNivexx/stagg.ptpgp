@@ -4,7 +4,7 @@ import ResignationsClient from "./ResignationsClient";
 
 export default async function PengunduranDiri() {
   const [{ count: resignedCount }, resignations] = await Promise.all([
-    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).eq("status", "Resigned"),
+    supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }).eq("status", "Resigned"),
     getResignations().catch(() => []),
   ]);
 

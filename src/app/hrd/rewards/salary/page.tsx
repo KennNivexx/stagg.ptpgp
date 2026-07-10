@@ -4,7 +4,7 @@ import SalaryForm from "./SalaryForm";
 
 export default async function SalaryPage() {
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, department, position")
     .neq("status", "Inactive")
     .order("department")
@@ -16,14 +16,14 @@ export default async function SalaryPage() {
   // outright (PGRST200) — join manually in JS instead.
   let salaryRecords: Array<Record<string, unknown>> = [];
   const { data, error } = await supabaseAdmin
-    .from("salary_structures")
+    .from("struktur_gaji")
     .select("*")
     .order("created_at", { ascending: false });
   if (!error || (error as unknown as Record<string, unknown>)?.code !== "42P01") {
     const rawRecords = data || [];
     const employeeIds = rawRecords.map((r) => r.employee_id as string).filter(Boolean);
     const { data: relatedEmployees } = employeeIds.length > 0
-      ? await supabaseAdmin.from("employees").select("id, full_name, department, position").in("id", employeeIds)
+      ? await supabaseAdmin.from("karyawan").select("id, full_name, department, position").in("id", employeeIds)
       : { data: [] };
     const employeeMap = new Map((relatedEmployees || []).map((e: Record<string, unknown>) => [e.id as string, e]));
     salaryRecords = rawRecords.map((r) => ({ ...r, employees: employeeMap.get(r.employee_id as string) || null }));

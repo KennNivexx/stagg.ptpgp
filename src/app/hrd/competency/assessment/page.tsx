@@ -2,13 +2,13 @@
 import AssessmentClient from "./AssessmentClient";
 
 export default async function AsesmenKompetensi() {
-  const { data: employees } = await supabaseAdmin.from("employees").select("id, full_name").neq("status", "Inactive");
+  const { data: employees } = await supabaseAdmin.from("karyawan").select("id, full_name").neq("status", "Inactive");
 
-  const { data: employeeSkills } = await supabaseAdmin.from("employee_skills")
+  const { data: employeeSkills } = await supabaseAdmin.from("kompetensi_karyawan")
     .select("id, employee_id, skill_id, current_level, assessed_by, updated_at")
     .order("updated_at", { ascending: false });
 
-  const { data: skills } = await supabaseAdmin.from("skills").select("id, name, category");
+  const { data: skills } = await supabaseAdmin.from("master_kompetensi").select("id, name, category");
 
   const skillMap = new Map<string, { name: string; category: string }>();
   (skills || []).forEach(s => skillMap.set(s.id, { name: s.name, category: s.category }));
@@ -16,7 +16,7 @@ export default async function AsesmenKompetensi() {
   const empIds = [...new Set((employeeSkills || []).map(e => (e as Record<string, unknown>).employee_id as string))];
   const empMap = new Map<string, { name: string; dept: string; pos: string }>();
   if (empIds.length > 0) {
-    const { data: emps } = await supabaseAdmin.from("employees")
+    const { data: emps } = await supabaseAdmin.from("karyawan")
       .select("id, full_name, department, position")
       .in("id", empIds);
     (emps || []).forEach(e => {
@@ -25,7 +25,7 @@ export default async function AsesmenKompetensi() {
     });
   }
 
-  const { data: posSkills } = await supabaseAdmin.from("position_skills").select("position_code, skill_id, required_level");
+  const { data: posSkills } = await supabaseAdmin.from("kompetensi_jabatan").select("position_code, skill_id, required_level");
   const posSkillMap = new Map<string, number>();
   (posSkills || []).forEach(p => {
     const r = p as Record<string, unknown>;

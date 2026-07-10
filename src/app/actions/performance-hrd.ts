@@ -55,7 +55,7 @@ export async function saveKpiEvaluation(formData: FormData) {
   }
 
   const { data: existing } = await supabaseAdmin
-    .from("kpi_evaluations")
+    .from("evaluasi_kpi")
     .select("id")
     .eq("employee_id", employeeId)
     .eq("period", period)
@@ -66,12 +66,12 @@ export async function saveKpiEvaluation(formData: FormData) {
     // hardcoding "Draft" would silently revert it out of Approved, dropping
     // it from any Approved-gated reports with no warning to the editor.
     const { error } = await supabaseAdmin
-      .from("kpi_evaluations")
+      .from("evaluasi_kpi")
       .update({ score, comments, metrics, updated_at: new Date().toISOString() })
       .eq("id", (existing as { id: string }).id);
     if (error) { console.error("[performance-hrd] saveKpiEvaluation update error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   } else {
-    const { error } = await supabaseAdmin.from("kpi_evaluations").insert({
+    const { error } = await supabaseAdmin.from("evaluasi_kpi").insert({
       id: "kpi-" + crypto.randomUUID(), employee_id: employeeId, period,
       score, comments, metrics, status: "Draft",
       evaluator_id: user.email, created_at: new Date().toISOString(),
@@ -91,7 +91,7 @@ export async function updateKpiStatus(id: string, status: KpiStatus) {
   await requireRole("hrd", "superadmin", "department_manager");
   if (!KPI_STATUSES.includes(status)) return { error: "Status tidak valid." };
   const { error } = await supabaseAdmin
-    .from("kpi_evaluations")
+    .from("evaluasi_kpi")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) { console.error("[performance-hrd] updateKpiStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
@@ -108,7 +108,7 @@ export async function saveOkr(formData: FormData) {
   const objective = (formData.get("objective") as string || "").trim();
   const keyResults = (formData.get("key_results") as string || "").trim();
   if (!department || !objective) return { error: "Departemen dan objective wajib diisi." };
-  const { error } = await supabaseAdmin.from("okr_objectives").insert({
+  const { error } = await supabaseAdmin.from("okr").insert({
     id: "okr-" + crypto.randomUUID(), department,
     period: period || null, objective,
     key_results: keyResults || null, progress: 0, status: "On Track",
@@ -135,7 +135,7 @@ export async function updateOkrProgress(id: string, progress: number, status?: s
   } else if (progress >= 100) {
     updateData.status = "Achieved";
   }
-  const { error } = await supabaseAdmin.from("okr_objectives").update(updateData).eq("id", id);
+  const { error } = await supabaseAdmin.from("okr").update(updateData).eq("id", id);
   if (error) { console.error("[performance-hrd] updateOkrProgress error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/performance/okr");
   return { success: true };
@@ -144,8 +144,8 @@ export async function updateOkrProgress(id: string, progress: number, status?: s
 export async function getKpiDetail(id: string) {
   await requireRole("hrd", "superadmin", "department_manager");
   const { data } = await supabaseAdmin
-    .from("kpi_evaluations")
-    .select("*, employees!inner(full_name, department, position)")
+    .from("evaluasi_kpi")
+    .select("*, karyawan!inner(full_name, department, position)")
     .eq("id", id)
     .maybeSingle();
   return data || null;
@@ -166,7 +166,7 @@ export async function saveFeedback(formData: FormData) {
   }
   const rating = parsedRating;
 
-  const { error } = await supabaseAdmin.from("performance_feedback").insert({
+  const { error } = await supabaseAdmin.from("umpan_balik_kinerja").insert({
     id: "fb-" + crypto.randomUUID(),
     employee_id: employeeId,
     reviewer_id: user.id,
@@ -186,8 +186,8 @@ export async function getFeedbackHistory() {
   await requireRole("hrd", "superadmin", "department_manager");
 
   const { data } = await supabaseAdmin
-    .from("performance_feedback")
-    .select("*, employees!employee_id(full_name, kode, department, position)")
+    .from("umpan_balik_kinerja")
+    .select("*, karyawan!employee_id(full_name, kode, department, position)")
     .order("created_at", { ascending: false })
     .limit(50);
 

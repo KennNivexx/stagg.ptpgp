@@ -27,7 +27,7 @@ export async function connectWhatsApp(formData: FormData): Promise<{ error: stri
   // Ownership check, same pattern as saveContactProfile in profile.ts
   if (user.role === "employee") {
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id")
       .eq("id", employeeId)
       .eq("email", user.email)
@@ -42,7 +42,7 @@ export async function connectWhatsApp(formData: FormData): Promise<{ error: stri
   if ("error" in normalized) return normalized;
 
   const { data: conflict } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id")
     .eq("wa_number", normalized.number)
     .neq("id", employeeId)
@@ -50,7 +50,7 @@ export async function connectWhatsApp(formData: FormData): Promise<{ error: stri
   if (conflict) return { error: "Nomor WhatsApp ini sudah terhubung ke akun lain." };
 
   const { error: updateErr } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .update({ wa_number: normalized.number, wa_opted_out: false, wa_connected_at: null })
     .eq("id", employeeId);
   if (isMissingWaSchema(updateErr?.code)) {
@@ -69,7 +69,7 @@ export async function disconnectWhatsApp(employeeId: string): Promise<{ error: s
   const user = await requireRole("employee", "hrd", "superadmin");
   if (user.role === "employee") {
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id")
       .eq("id", employeeId)
       .eq("email", user.email)
@@ -78,7 +78,7 @@ export async function disconnectWhatsApp(employeeId: string): Promise<{ error: s
   }
 
   const { error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .update({ wa_number: null, wa_connected_at: null, wa_opted_out: false })
     .eq("id", employeeId);
   if (error) {
@@ -86,7 +86,7 @@ export async function disconnectWhatsApp(employeeId: string): Promise<{ error: s
     return { error: "Gagal memproses. Silakan coba lagi." };
   }
 
-  await supabaseAdmin.from("wa_conversations").delete().eq("employee_id", employeeId);
+  await supabaseAdmin.from("percakapan_wa").delete().eq("employee_id", employeeId);
 
   revalidatePath("/employee/profile");
   return { success: true };
@@ -107,8 +107,8 @@ export async function getWaProviderSetting(): Promise<WaProvider> {
 
 export async function setWaProviderSetting(provider: WaProvider): Promise<{ error: string } | { success: true }> {
   await requireRole("hrd", "superadmin");
-  if (provider !== "meta" && provider !== "baileys") return { error: "Mode tidak valid." };
-  const { error } = await supabaseAdmin.from("system_settings").upsert({ key: "wa_provider", value: provider }, { onConflict: "key" });
+  if (provider !== "meta" && provider !== "baileys" && provider !== "fonnte") return { error: "Mode tidak valid." };
+  const { error } = await supabaseAdmin.from("pengaturan_sistem").upsert({ key: "wa_provider", value: provider }, { onConflict: "key" });
   if (error) {
     console.error("[whatsapp] setWaProviderSetting error:", error.message);
     return { error: "Gagal menyimpan mode bot." };

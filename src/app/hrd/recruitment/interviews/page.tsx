@@ -82,7 +82,7 @@ export default function JadwalInterview() {
   const load = () => {
     setLoading(true);
     supabase
-      .from("applications")
+      .from("pelamar")
       .select("*")
       .eq("status", "Interview")
       .order("applied_at", { ascending: false })
@@ -91,7 +91,7 @@ export default function JadwalInterview() {
         const jobIds = [...new Set(apps.map((a) => a.job_id as string).filter(Boolean))];
         const jobMap = new Map<string, string>();
         if (jobIds.length > 0) {
-          const { data: jobs } = await supabase.from("job_postings").select("id, position").in("id", jobIds);
+          const { data: jobs } = await supabase.from("lowongan_kerja").select("id, position").in("id", jobIds);
           (jobs || []).forEach((j: Record<string, unknown>) => jobMap.set(j.id as string, j.position as string));
         }
         const mapped = apps.map((app) => ({

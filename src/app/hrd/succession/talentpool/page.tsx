@@ -11,18 +11,18 @@ export default async function TalentPoolSuksesi({ searchParams }: { searchParams
   const filterDept = params?.dept || "";
   const poolEntries = await getTalentPoolEntries();
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .neq("status", "Resigned")
     .order("full_name");
 
   const { data: evaluations } = await supabaseAdmin
-    .from("kpi_evaluations")
+    .from("evaluasi_kpi")
     .select("employee_id, score")
     .order("created_at", { ascending: false });
 
   const { data: departments } = await supabaseAdmin
-    .from("departments")
+    .from("departemen")
     .select("name")
     .order("name");
 

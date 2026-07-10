@@ -72,12 +72,12 @@ export default async function HRDReports() {
     { count: kpiEvaluations },
     { count: resignedEmployees },
   ] = await Promise.all([
-    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).neq("status", "Inactive"),
-    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
-    supabaseAdmin.from("payroll").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("trainings").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("kpi_evaluations").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).eq("status", "Resigned"),
+    supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }).neq("status", "Inactive"),
+    supabaseAdmin.from("lowongan_kerja").select("*", { count: "exact", head: true }).eq("status", "Open"),
+    supabaseAdmin.from("penggajian").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("pelatihan").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("evaluasi_kpi").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }).eq("status", "Resigned"),
   ]);
 
   const reports = [

@@ -18,15 +18,15 @@ export default async function HRDDashboardKPI() {
     { count: totalPositions },
     { data: recentEvals },
   ] = await Promise.all([
-    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("job_postings").select("*", { count: "exact", head: true }).eq("status", "Open"),
-    supabaseAdmin.from("kpi_evaluations").select("score, status, employee_id"),
-    supabaseAdmin.from("attendance").select("status, date"),
-    supabaseAdmin.from("payroll").select("net_salary, allowances, deductions, status"),
-    supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("positions").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("kpi_evaluations").select("score, status, created_at, employees!inner(full_name, department)").order("created_at", { ascending: false }).limit(5),
+    supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("lowongan_kerja").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("lowongan_kerja").select("*", { count: "exact", head: true }).eq("status", "Open"),
+    supabaseAdmin.from("evaluasi_kpi").select("score, status, employee_id"),
+    supabaseAdmin.from("absensi").select("status, date"),
+    supabaseAdmin.from("penggajian").select("net_salary, allowances, deductions, status"),
+    supabaseAdmin.from("departemen").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("jabatan").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("evaluasi_kpi").select("score, status, created_at, karyawan!inner(full_name, department)").order("created_at", { ascending: false }).limit(5),
   ]);
 
   const avgScore = evaluations && evaluations.length > 0
@@ -276,7 +276,7 @@ export default async function HRDDashboardKPI() {
               <EmptyState icon={Target} title="Belum ada evaluasi." className="py-4" />
             ) : (
               (recentEvals as Record<string, unknown>[]).map((ev, i) => {
-                const emp = ev.employees as Record<string, string> | undefined;
+                const emp = ev.karyawan as Record<string, string> | undefined;
                 return (
                   <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
                     <div>

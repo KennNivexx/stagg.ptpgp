@@ -87,7 +87,7 @@ function StatusItem({
 export default async function HRDAdmin() {
   let dbConnected = false;
   try {
-    const { error } = await supabaseAdmin.from("employees").select("id", { count: "exact", head: true });
+    const { error } = await supabaseAdmin.from("karyawan").select("id", { count: "exact", head: true });
     dbConnected = !error;
   } catch {
     dbConnected = false;

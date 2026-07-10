@@ -39,13 +39,13 @@ export async function saveReadinessAssessment(formData: FormData) {
 
   const year = new Date().getFullYear();
   const { data: existing } = await supabaseAdmin
-    .from("succession_readiness_assessments")
+    .from("penilaian_kesiapan_suksesi")
     .select("id")
     .eq("employee_id", employeeId)
     .eq("year", year)
     .maybeSingle();
 
-  const { error } = await supabaseAdmin.from("succession_readiness_assessments").upsert({
+  const { error } = await supabaseAdmin.from("penilaian_kesiapan_suksesi").upsert({
     id: (existing as { id: string } | null)?.id || ("sra-" + crypto.randomUUID()),
     employee_id: employeeId, year,
     kepemimpinan, keahlian_teknis: keahlianTeknis, pengalaman, kinerja, potensi,
@@ -66,14 +66,14 @@ export async function saveReadinessAssessment(formData: FormData) {
 export async function getReadinessAssessments() {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("succession_readiness_assessments")
+    .from("penilaian_kesiapan_suksesi")
     .select("*")
     .order("updated_at", { ascending: false });
   if (MISSING_TABLE(error?.code) || error) return [];
   const rows = (data || []) as Array<Record<string, unknown>>;
   const employeeIds = [...new Set(rows.map((r) => r.employee_id as string))];
   const { data: employees } = employeeIds.length > 0
-    ? await supabaseAdmin.from("employees").select("id, full_name, department, position").in("id", employeeIds)
+    ? await supabaseAdmin.from("karyawan").select("id, full_name, department, position").in("id", employeeIds)
     : { data: [] };
   const employeeMap = new Map((employees || []).map((e: Record<string, unknown>) => [e.id as string, e]));
   return rows.map((r) => ({
@@ -89,7 +89,7 @@ export async function getReadinessAssessments() {
     assessed_by: r.assessed_by as string | null,
     created_at: r.created_at as string | null,
     updated_at: r.updated_at as string | null,
-    employees: employeeMap.get(r.employee_id as string) || null,
+    karyawan: employeeMap.get(r.employee_id as string) || null,
   }));
 }
 
@@ -99,7 +99,7 @@ export async function getReadinessAssessments() {
 export async function getLatestReadinessByEmployee(): Promise<Record<string, number>> {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("succession_readiness_assessments")
+    .from("penilaian_kesiapan_suksesi")
     .select("employee_id, year, total_score")
     .order("year", { ascending: false });
   if (MISSING_TABLE(error?.code) || error) return {};
@@ -134,12 +134,12 @@ export async function addSuccessionCandidate(formData: FormData) {
   }
 
   const { data: existing } = await supabaseAdmin
-    .from("succession_candidates")
+    .from("kandidat_suksesor")
     .select("id")
     .eq("employee_id", employeeId)
     .maybeSingle();
 
-  const { error } = await supabaseAdmin.from("succession_candidates").upsert({
+  const { error } = await supabaseAdmin.from("kandidat_suksesor").upsert({
     id: (existing as { id: string } | null)?.id || ("sc-" + crypto.randomUUID()),
     employee_id: employeeId,
     target_position_employee_id: targetPositionEmployeeId || null,
@@ -158,7 +158,7 @@ export async function addSuccessionCandidate(formData: FormData) {
 export async function getSuccessionCandidates() {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("succession_candidates")
+    .from("kandidat_suksesor")
     .select("*")
     .order("created_at", { ascending: false });
   if (MISSING_TABLE(error?.code) || error) return [];
@@ -168,7 +168,7 @@ export async function getSuccessionCandidates() {
     ...rows.map((r) => r.target_position_employee_id as string).filter(Boolean),
   ])];
   const { data: employees } = employeeIds.length > 0
-    ? await supabaseAdmin.from("employees").select("id, full_name, department, position").in("id", employeeIds)
+    ? await supabaseAdmin.from("karyawan").select("id, full_name, department, position").in("id", employeeIds)
     : { data: [] };
   const employeeMap = new Map((employees || []).map((e: Record<string, unknown>) => [e.id as string, e as unknown as EmployeeRef]));
   return rows.map((r) => ({
@@ -197,12 +197,12 @@ export async function addCriticalPosition(formData: FormData) {
   if (!RISK_LEVELS.includes(riskLevel)) return { error: "Tingkat risiko wajib dipilih." };
 
   const { data: existing } = await supabaseAdmin
-    .from("succession_critical_positions")
+    .from("posisi_kritis")
     .select("id")
     .eq("employee_id", employeeId)
     .maybeSingle();
 
-  const { error } = await supabaseAdmin.from("succession_critical_positions").upsert({
+  const { error } = await supabaseAdmin.from("posisi_kritis").upsert({
     id: (existing as { id: string } | null)?.id || ("scp-" + crypto.randomUUID()),
     employee_id: employeeId,
     risk_level: riskLevel,
@@ -220,14 +220,14 @@ export async function addCriticalPosition(formData: FormData) {
 export async function getCriticalPositions() {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("succession_critical_positions")
+    .from("posisi_kritis")
     .select("*")
     .order("created_at", { ascending: false });
   if (MISSING_TABLE(error?.code) || error) return [];
   const rows = (data || []) as Array<Record<string, unknown>>;
   const employeeIds = [...new Set(rows.map((r) => r.employee_id as string))];
   const { data: employees } = employeeIds.length > 0
-    ? await supabaseAdmin.from("employees").select("id, full_name, department, position").in("id", employeeIds)
+    ? await supabaseAdmin.from("karyawan").select("id, full_name, department, position").in("id", employeeIds)
     : { data: [] };
   const employeeMap = new Map((employees || []).map((e: Record<string, unknown>) => [e.id as string, e as unknown as EmployeeRef]));
   return rows.map((r) => ({
@@ -254,12 +254,12 @@ export async function addToTalentPool(formData: FormData) {
   if (!RATINGS.includes(potentialRating)) return { error: "Rating potensi wajib dipilih." };
 
   const { data: existing } = await supabaseAdmin
-    .from("succession_talent_pool")
+    .from("pool_suksesi")
     .select("id")
     .eq("employee_id", employeeId)
     .maybeSingle();
 
-  const { error } = await supabaseAdmin.from("succession_talent_pool").upsert({
+  const { error } = await supabaseAdmin.from("pool_suksesi").upsert({
     id: (existing as { id: string } | null)?.id || ("stp-" + crypto.randomUUID()),
     employee_id: employeeId,
     potential_rating: potentialRating,
@@ -277,14 +277,14 @@ export async function addToTalentPool(formData: FormData) {
 export async function getTalentPoolEntries() {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("succession_talent_pool")
+    .from("pool_suksesi")
     .select("*")
     .order("created_at", { ascending: false });
   if (MISSING_TABLE(error?.code) || error) return [];
   const rows = (data || []) as Array<Record<string, unknown>>;
   const employeeIds = [...new Set(rows.map((r) => r.employee_id as string))];
   const { data: employees } = employeeIds.length > 0
-    ? await supabaseAdmin.from("employees").select("id, full_name, department, position").in("id", employeeIds)
+    ? await supabaseAdmin.from("karyawan").select("id, full_name, department, position").in("id", employeeIds)
     : { data: [] };
   const employeeMap = new Map((employees || []).map((e: Record<string, unknown>) => [e.id as string, e as unknown as EmployeeRef]));
   return rows.map((r) => ({

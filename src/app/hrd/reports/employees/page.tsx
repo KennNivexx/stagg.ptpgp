@@ -7,26 +7,26 @@ export const dynamic = "force-dynamic";
 
 export default async function LaporanKaryawan() {
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .order("full_name");
 
   const { count: totalEmployees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*", { count: "exact", head: true });
 
   const { count: tetapCount } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*", { count: "exact", head: true })
     .eq("status", "Tetap");
 
   const { count: kontrakCount } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*", { count: "exact", head: true })
     .eq("status", "Kontrak");
 
   const { count: resignedCount } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*", { count: "exact", head: true })
     .eq("status", "Resigned");
 

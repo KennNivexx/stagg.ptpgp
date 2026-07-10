@@ -35,7 +35,7 @@ export default function ReportsClient({ evaluations, totalEval, avgScore, comple
     setExporting("excel");
     try {
       const rows = evaluations.map((e) => {
-        const emp = e.employees as Record<string, string> | undefined;
+        const emp = e.karyawan as Record<string, string> | undefined;
         return {
           "Nama Karyawan": emp?.full_name || "-",
           "Departemen": emp?.department || "-",

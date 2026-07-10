@@ -8,7 +8,7 @@ import { processInboundWaMessage } from "@/lib/whatsapp-inbound";
 async function getWebhookSecrets(): Promise<{ appSecret: string; verifyToken: string }> {
   try {
     const { data } = await supabaseAdmin
-      .from("system_settings")
+      .from("pengaturan_sistem")
       .select("key, value")
       .in("key", ["wa_app_secret", "wa_webhook_verify_token"]);
     const map = Object.fromEntries((data || []).map((r: { key: string; value: string }) => [r.key, r.value]));

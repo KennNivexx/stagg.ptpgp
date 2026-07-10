@@ -27,6 +27,10 @@ const MENU_GROUPS = [
       { href: "/department/kpi", label: "KPI Karyawan" },
       { href: "/department/warnings", label: "Surat Peringatan" },
       { href: "/department/leaves", label: "Cuti & Izin" },
+      { href: "/department/business-trips", label: "Perjalanan Dinas" },
+      { href: "/department/incidents", label: "Laporan Insiden" },
+      { href: "/department/fleet", label: "Armada & SIM Tim" },
+      { href: "/department/trips", label: "Lembur & Biaya Trip" },
       { href: "/department/shifts", label: "Shift Kerja" },
       { href: "/department/locations", label: "Lokasi Kerja" },
       { href: "/department/attendance", label: "Absensi" },
@@ -142,7 +146,10 @@ export default function DepartmentLayout({ children }: { children: ReactNode }) 
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 lg:h-screen lg:overflow-hidden">
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC]">{children}</main>
+        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC]">
+          <div className="h-14 lg:hidden" aria-hidden="true" />
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -111,7 +111,7 @@ export default function MutationsClient({ employees, departments, initialMutatio
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {mutations.map((m) => {
-                    const emp = m.employees as Record<string, string> | undefined;
+                    const emp = m.karyawan as Record<string, string> | undefined;
                     return (
                       <tr key={m.id as string} className="hover:bg-slate-50/30 transition-colors">
                         <td className="px-6 py-4">

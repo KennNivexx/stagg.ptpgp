@@ -3,9 +3,9 @@ import PayrollClient from "../../payroll/PayrollClient";
 
 export default async function PayrollPage() {
   const [{ data: payrolls }, { data: employees }, { count: totalEmployees }] = await Promise.all([
-    supabaseAdmin.from("payroll").select("*, employees!inner(full_name, department, position)").order("year", { ascending: false }).order("month", { ascending: false }).limit(50),
-    supabaseAdmin.from("employees").select("id, full_name, department, position").neq("status", "Resigned").order("full_name"),
-    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("penggajian").select("*, karyawan!inner(full_name, department, position)").order("year", { ascending: false }).order("month", { ascending: false }).limit(50),
+    supabaseAdmin.from("karyawan").select("id, full_name, department, position").neq("status", "Resigned").order("full_name"),
+    supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }),
   ]);
 
   return (

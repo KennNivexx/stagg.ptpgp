@@ -10,9 +10,9 @@ import { requireRole } from "@/lib/auth-guard";
 export async function getShiftsData() {
   await requireRole("hrd", "superadmin");
   const [shiftsRes, employeesRes] = await Promise.all([
-    supabaseAdmin.from("shifts").select("*").order("start_time"),
+    supabaseAdmin.from("shift_kerja").select("*").order("start_time"),
     supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id, full_name, department, position")
       .not("status", "eq", "Resigned")
       .order("full_name"),
@@ -26,7 +26,7 @@ export async function getShiftsData() {
 export async function getShiftSchedules(monthStart: string, monthEnd: string) {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("shift_schedules")
+    .from("jadwal_shift")
     .select("*")
     .gte("shift_date", monthStart)
     .lte("shift_date", monthEnd)
@@ -45,7 +45,7 @@ export async function saveShift(formData: FormData) {
   const color = (formData.get("color") as string || "amber").trim();
   if (!name || !startTime || !endTime) return { error: "Nama, jam mulai, dan jam selesai wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("shifts").insert({
+  const { error } = await supabaseAdmin.from("shift_kerja").insert({
     id: "shift-" + crypto.randomUUID(),
     name,
     start_time: startTime,
@@ -71,7 +71,7 @@ export async function assignShift(formData: FormData) {
   const notes = (formData.get("notes") as string || "").trim();
   if (!employeeId || !shiftId || !shiftDate) return { error: "Karyawan, shift, dan tanggal wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("shift_schedules").upsert({
+  const { error } = await supabaseAdmin.from("jadwal_shift").upsert({
     id: `sched-${employeeId}-${shiftDate}`,
     employee_id: employeeId,
     shift_id: shiftId,
@@ -88,7 +88,7 @@ export async function assignShift(formData: FormData) {
 
 export async function deleteShiftSchedule(id: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("shift_schedules").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("jadwal_shift").delete().eq("id", id);
   if (error) return { error: "Gagal menghapus penugasan shift." };
   revalidatePath("/hrd/infrastructure/shifts");
   return { success: true };
@@ -98,14 +98,14 @@ export async function deleteShiftSchedule(id: string) {
  * never exposes other departments' employees, unlike getShiftsData(). */
 export async function getShiftsDataForDept() {
   const user = await requireRole("department_manager", "superadmin");
-  const { data: emp } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+  const { data: emp } = await supabaseAdmin.from("karyawan").select("department").eq("email", user.email).maybeSingle();
   const myDept = (emp as { department?: string } | null)?.department || null;
   if (!myDept) return { shifts: [], employees: [], department: null };
 
   const [shiftsRes, employeesRes] = await Promise.all([
-    supabaseAdmin.from("shifts").select("*").order("start_time"),
+    supabaseAdmin.from("shift_kerja").select("*").order("start_time"),
     supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id, full_name, department, position")
       .eq("department", myDept)
       .not("status", "eq", "Resigned")
@@ -116,16 +116,16 @@ export async function getShiftsDataForDept() {
 
 export async function getShiftSchedulesForDept(monthStart: string, monthEnd: string) {
   const user = await requireRole("department_manager", "superadmin");
-  const { data: emp } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+  const { data: emp } = await supabaseAdmin.from("karyawan").select("department").eq("email", user.email).maybeSingle();
   const myDept = (emp as { department?: string } | null)?.department;
   if (!myDept) return [];
 
-  const { data: deptEmployees } = await supabaseAdmin.from("employees").select("id").eq("department", myDept);
+  const { data: deptEmployees } = await supabaseAdmin.from("karyawan").select("id").eq("department", myDept);
   const ids = (deptEmployees || []).map((e: { id: string }) => e.id);
   if (ids.length === 0) return [];
 
   const { data, error } = await supabaseAdmin
-    .from("shift_schedules")
+    .from("jadwal_shift")
     .select("*")
     .in("employee_id", ids)
     .gte("shift_date", monthStart)
@@ -142,9 +142,9 @@ export async function getShiftSchedulesForDept(monthStart: string, monthEnd: str
 export async function getLocationsData() {
   await requireRole("hrd", "superadmin");
   const [locRes, empRes] = await Promise.all([
-    supabaseAdmin.from("work_locations").select("*").order("name"),
+    supabaseAdmin.from("lokasi_kerja").select("*").order("name"),
     supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id, full_name, department, position, location_id")
       .not("status", "eq", "Resigned")
       .order("full_name"),
@@ -162,14 +162,20 @@ export async function saveLocation(formData: FormData) {
   const address = (formData.get("address") as string || "").trim();
   const type = (formData.get("type") as string || "Kantor").trim();
   const status = (formData.get("status") as string || "Aktif").trim();
+  const latitude = (formData.get("latitude") as string || "").trim();
+  const longitude = (formData.get("longitude") as string || "").trim();
+  const radius_meters = parseInt(formData.get("radius_meters") as string || "200") || 200;
   if (!name || !address) return { error: "Nama dan alamat lokasi wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("work_locations").upsert({
+  const { error } = await supabaseAdmin.from("lokasi_kerja").upsert({
     id: id || "loc-" + crypto.randomUUID(),
     name,
     address,
     type,
     status,
+    latitude: latitude ? parseFloat(latitude) : null,
+    longitude: longitude ? parseFloat(longitude) : null,
+    radius_meters,
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi 20260707001_shifts_locations_documents.sql terlebih dahulu." };
   if (error) { console.error("[infrastructure] saveLocation error:", error.message); return { error: "Gagal menyimpan lokasi." }; }
@@ -179,7 +185,7 @@ export async function saveLocation(formData: FormData) {
 
 export async function deleteLocation(id: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("work_locations").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("lokasi_kerja").delete().eq("id", id);
   if (error) return { error: "Gagal menghapus lokasi." };
   revalidatePath("/hrd/infrastructure/locations");
   return { success: true };
@@ -189,14 +195,14 @@ export async function deleteLocation(id: string) {
  * department — never exposes other departments' employees. */
 export async function getLocationsDataForDept() {
   const user = await requireRole("department_manager", "superadmin");
-  const { data: emp } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+  const { data: emp } = await supabaseAdmin.from("karyawan").select("department").eq("email", user.email).maybeSingle();
   const myDept = (emp as { department?: string } | null)?.department || null;
   if (!myDept) return { locations: [], employees: [], department: null };
 
   const [locRes, empRes] = await Promise.all([
-    supabaseAdmin.from("work_locations").select("*").order("name"),
+    supabaseAdmin.from("lokasi_kerja").select("*").order("name"),
     supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id, full_name, department, position, location_id")
       .eq("department", myDept)
       .not("status", "eq", "Resigned")
@@ -208,7 +214,7 @@ export async function getLocationsDataForDept() {
 export async function assignEmployeeLocation(employeeId: string, locationId: string | null) {
   await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .update({ location_id: locationId })
     .eq("id", employeeId);
   if (error) return { error: "Gagal menugaskan lokasi karyawan." };
@@ -223,7 +229,7 @@ export async function assignEmployeeLocation(employeeId: string, locationId: str
 export async function getDocumentsData() {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("documents")
+    .from("dokumen_perusahaan")
     .select("*")
     .order("created_at", { ascending: false });
   if (error?.code === "42P01") return [];
@@ -239,7 +245,7 @@ export async function saveDocument(formData: FormData) {
   const visibleToDeptHead = formData.get("visible_to_department_head") === "on" || formData.get("visible_to_department_head") === "true";
   if (!title) return { error: "Judul dokumen wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("documents").insert({
+  const { error } = await supabaseAdmin.from("dokumen_perusahaan").insert({
     id: "doc-" + crypto.randomUUID(),
     title,
     category,
@@ -261,7 +267,7 @@ export async function saveDocument(formData: FormData) {
 export async function updateDocumentVisibility(id: string, field: "visible_to_employee" | "visible_to_department_head", value: boolean) {
   await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin
-    .from("documents")
+    .from("dokumen_perusahaan")
     .update({ [field]: value, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) { console.error("[infrastructure] updateDocumentVisibility error:", error.message); return { error: "Gagal memperbarui visibilitas dokumen." }; }
@@ -273,7 +279,7 @@ export async function updateDocumentVisibility(id: string, field: "visible_to_em
 
 export async function deleteDocument(id: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("documents").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("dokumen_perusahaan").delete().eq("id", id);
   if (error) return { error: "Gagal menghapus dokumen." };
   revalidatePath("/hrd/infrastructure/documents");
   revalidatePath("/employee/documents");

@@ -183,7 +183,7 @@ export default function KpiForm({ employees, evaluations }: Props) {
           <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-8">
             <h3 className="font-extrabold text-slate-800 mb-4">Detail Evaluasi KPI</h3>
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-slate-500">Karyawan</span><span className="font-bold">{(detail.employees as Record<string, string>)?.full_name || "-"}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Karyawan</span><span className="font-bold">{(detail.karyawan as Record<string, string>)?.full_name || "-"}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Periode</span><span className="font-bold">{detail.period as string}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Skor</span>
                 <span className={`px-3 py-1 rounded-lg text-xs font-bold ${scoreColor(Number(detail.score))}`}>{Number(detail.score).toFixed(0)}</span>
@@ -224,7 +224,7 @@ export default function KpiForm({ employees, evaluations }: Props) {
             {evaluations.length === 0 ? (
               <tr><td colSpan={7}><EmptyState icon={Star} title={'Belum ada evaluasi KPI. Klik "Buat Evaluasi Baru" untuk mulai.'} /></td></tr>
             ) : evaluations.map((ev) => {
-              const emp = ev.employees as Record<string, string> | undefined;
+              const emp = ev.karyawan as Record<string, string> | undefined;
               const score = Number(ev.score) || 0;
               const grade = score >= 90 ? "A" : score >= 80 ? "B+" : score >= 70 ? "B" : score >= 60 ? "C" : "D";
               return (

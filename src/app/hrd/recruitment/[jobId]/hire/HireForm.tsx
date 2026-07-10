@@ -382,7 +382,7 @@ export default function HireForm({ jobPosting }: { jobPosting: Record<string, un
 
   const fetchApplicants = async () => {
     try {
-      const { data } = await supabase.from("applications")
+      const { data } = await supabase.from("pelamar")
         .select("*")
         .eq("job_id", jobPosting.id as string)
         .order("applied_at", { ascending: false });
@@ -399,7 +399,7 @@ export default function HireForm({ jobPosting }: { jobPosting: Record<string, un
     setActionLoading(applicantId);
     const updates: Record<string, unknown> = { status };
     if (status === "Interview") updates.reached_interview = true;
-    const { error } = await supabase.from("applications").update(updates).eq("id", applicantId);
+    const { error } = await supabase.from("pelamar").update(updates).eq("id", applicantId);
     setActionLoading(null);
     if (error) { showToast("Gagal update status."); return; }
     setApplicants(prev => prev.map(a => a.id === applicantId ? { ...a, status } : a));

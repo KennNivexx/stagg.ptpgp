@@ -30,7 +30,7 @@ function getRoleLabel(role: string) {
 
 export default async function SuperadminEmployees() {
   const { data: users, error } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .select("*")
     .order("created_at", { ascending: false });
 
@@ -49,7 +49,7 @@ export default async function SuperadminEmployees() {
   // user's corresponding employees.id (if any) here so the table can link to
   // the "Edit User" detail page, which looks records up by employees.id.
   const { data: employeesForLookup } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, email");
   const employeeIdByEmail = new Map<string, string>();
   for (const e of employeesForLookup || []) {

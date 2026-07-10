@@ -7,7 +7,7 @@ import { auditLog } from "@/lib/audit";
 
 export async function getWebsiteSettings() {
   const { data, error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("address")
     .eq("email", "__settings__@ptpgp.co.id")
     .single();
@@ -31,7 +31,7 @@ export async function saveWebsiteSettings(
   const current = await getWebsiteSettings();
   current[section] = values;
 
-  const { error } = await supabaseAdmin.from("employees").upsert(
+  const { error } = await supabaseAdmin.from("karyawan").upsert(
     {
       full_name: "System Settings",
       email: "__settings__@ptpgp.co.id",

@@ -21,11 +21,15 @@ import {
   HelpCircle,
   Briefcase,
   ClipboardList,
+  Plane,
+  AlertTriangle,
+  Route,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
+import SOSButton from "@/components/SOSButton";
 
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -40,6 +44,9 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
     { href: "/employee/profile", label: "Profil Saya", icon: User },
     { href: "/employee/attendance", label: "Absensi", icon: Calendar },
     { href: "/employee/leaves", label: "Cuti & Izin", icon: FileText },
+    { href: "/employee/business-trip", label: "Perjalanan Dinas", icon: Plane },
+    { href: "/employee/incidents", label: "Laporan Insiden", icon: AlertTriangle },
+    { href: "/employee/trips", label: "Trip & Insentif", icon: Route },
     { href: "/employee/payroll", label: "Gaji & Slip", icon: DollarSign },
     { href: "/employee/training", label: "Pelatihan", icon: GraduationCap },
     { href: "/employee/documents", label: "Dokumen & SOP", icon: BookOpen },
@@ -179,6 +186,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      <SOSButton />
     </div>
   );
 }

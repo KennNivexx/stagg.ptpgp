@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/auth-guard";
 export async function getSopDocuments() {
   await requireRole("hrd", "superadmin");
   const { data } = await supabaseAdmin
-    .from("sop_documents")
+    .from("dokumen_sop")
     .select("*")
     .order("created_at", { ascending: false });
   return data || [];
@@ -25,7 +25,7 @@ export async function saveSop(formData: FormData) {
   crypto.getRandomValues(arr);
   const autoNum = `SOP-${Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("").toUpperCase().substring(0, 6)}`;
   const finalNumber = number || autoNum;
-  const { error } = await supabaseAdmin.from("sop_documents").insert({
+  const { error } = await supabaseAdmin.from("dokumen_sop").insert({
     id: "sop-" + crypto.randomUUID(), number: finalNumber, title, department,
     version, description, document_url: documentUrl, status: "Aktif",
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
@@ -46,7 +46,7 @@ const MISSING_TABLE = (code?: string) => code === "42P01" || code === "PGRST205"
 
 export async function getPolicies() {
   const { data, error } = await supabaseAdmin
-    .from("company_policies")
+    .from("kebijakan_perusahaan")
     .select("*")
     .order("created_at", { ascending: false });
   if (error) return [];
@@ -54,7 +54,7 @@ export async function getPolicies() {
 }
 
 export async function getPolicyById(id: string) {
-  const { data, error } = await supabaseAdmin.from("company_policies").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabaseAdmin.from("kebijakan_perusahaan").select("*").eq("id", id).maybeSingle();
   if (error) return null;
   return data as Record<string, unknown> | null;
 }
@@ -67,7 +67,7 @@ export async function savePolicy(formData: FormData) {
   const effectiveDate = (formData.get("effective_date") as string || "").trim() || null;
   const revision = (formData.get("revision") as string || "Rev. 1").trim();
   if (!title || !content) return { error: "Judul dan isi kebijakan wajib diisi." };
-  const { error } = await supabaseAdmin.from("company_policies").insert({
+  const { error } = await supabaseAdmin.from("kebijakan_perusahaan").insert({
     id: "pol-" + crypto.randomUUID(), title, category, content,
     effective_date: effectiveDate, revision, created_by: user.name || user.email,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
@@ -82,7 +82,7 @@ export async function savePolicy(formData: FormData) {
 
 export async function getArticles() {
   const { data, error } = await supabaseAdmin
-    .from("knowledge_articles")
+    .from("artikel_pengetahuan")
     .select("*")
     .order("created_at", { ascending: false });
   if (error) return [];
@@ -90,9 +90,9 @@ export async function getArticles() {
 }
 
 export async function getArticleById(id: string) {
-  const { data, error } = await supabaseAdmin.from("knowledge_articles").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabaseAdmin.from("artikel_pengetahuan").select("*").eq("id", id).maybeSingle();
   if (error || !data) return null;
-  await supabaseAdmin.from("knowledge_articles").update({ views: (Number((data as Record<string, unknown>).views) || 0) + 1 }).eq("id", id);
+  await supabaseAdmin.from("artikel_pengetahuan").update({ views: (Number((data as Record<string, unknown>).views) || 0) + 1 }).eq("id", id);
   return data as Record<string, unknown>;
 }
 
@@ -102,7 +102,7 @@ export async function saveArticle(formData: FormData) {
   const category = (formData.get("category") as string || "").trim() || null;
   const content = (formData.get("content") as string || "").trim();
   if (!title || !content) return { error: "Judul dan isi artikel wajib diisi." };
-  const { error } = await supabaseAdmin.from("knowledge_articles").insert({
+  const { error } = await supabaseAdmin.from("artikel_pengetahuan").insert({
     id: "art-" + crypto.randomUUID(), title, category, author: user.name || user.email,
     content, views: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   });
@@ -116,7 +116,7 @@ export async function saveArticle(formData: FormData) {
 
 export async function getVideos() {
   const { data, error } = await supabaseAdmin
-    .from("training_videos")
+    .from("video_pelatihan")
     .select("*")
     .order("created_at", { ascending: false });
   if (error) return [];
@@ -124,9 +124,9 @@ export async function getVideos() {
 }
 
 export async function getVideoById(id: string) {
-  const { data, error } = await supabaseAdmin.from("training_videos").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabaseAdmin.from("video_pelatihan").select("*").eq("id", id).maybeSingle();
   if (error || !data) return null;
-  await supabaseAdmin.from("training_videos").update({ views: (Number((data as Record<string, unknown>).views) || 0) + 1 }).eq("id", id);
+  await supabaseAdmin.from("video_pelatihan").update({ views: (Number((data as Record<string, unknown>).views) || 0) + 1 }).eq("id", id);
   return data as Record<string, unknown>;
 }
 
@@ -138,7 +138,7 @@ export async function saveVideo(formData: FormData) {
   const duration = (formData.get("duration") as string || "").trim() || null;
   const description = (formData.get("description") as string || "").trim() || null;
   if (!title || !videoUrl) return { error: "Judul dan URL video wajib diisi." };
-  const { error } = await supabaseAdmin.from("training_videos").insert({
+  const { error } = await supabaseAdmin.from("video_pelatihan").insert({
     id: "vid-" + crypto.randomUUID(), title, category, video_url: videoUrl, duration, description,
     views: 0, created_by: user.name || user.email, created_at: new Date().toISOString(),
   });

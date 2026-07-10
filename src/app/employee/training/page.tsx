@@ -15,7 +15,7 @@ export default async function EmployeeTraining() {
   }
 
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, department, position")
     .eq("email", userEmail)
     .limit(1)
@@ -25,14 +25,14 @@ export default async function EmployeeTraining() {
 
   // Correct: query through training_enrollments, not trainings directly
   const { data: enrollments } = employeeId ? await supabaseAdmin
-    .from("training_enrollments")
-    .select("*, trainings!inner(id, title, description, date_start, date_end, status, skill_id)")
+    .from("peserta_pelatihan")
+    .select("*, pelatihan!inner(id, title, description, date_start, date_end, status, skill_id)")
     .eq("employee_id", employeeId)
     .order("enrolled_at", { ascending: false })
     .limit(50) : { data: [] };
 
   const trainings = (enrollments || []).map((e: Record<string, unknown>) => {
-    const t = e.trainings as Record<string, unknown>;
+    const t = e.pelatihan as Record<string, unknown>;
     return {
       id: e.id as string,
       training_id: t.id as string,
@@ -55,9 +55,9 @@ export default async function EmployeeTraining() {
   const trainingIds = trainings.map((t) => t.training_id).filter(Boolean);
   const [{ data: quizzes }, { data: materials }, { data: certificates }] = trainingIds.length > 0
     ? await Promise.all([
-        supabaseAdmin.from("training_quizzes").select("id, training_id, title, pass_score, duration_minutes").in("training_id", trainingIds),
-        supabaseAdmin.from("training_materials").select("id, training_id, title, type").in("training_id", trainingIds),
-        supabaseAdmin.from("training_certificates").select("training_id, status, certificate_number").eq("employee_id", employeeId || "").in("training_id", trainingIds),
+        supabaseAdmin.from("kuis_pelatihan").select("id, training_id, title, pass_score, duration_minutes").in("training_id", trainingIds),
+        supabaseAdmin.from("materi_pelatihan").select("id, training_id, title, type").in("training_id", trainingIds),
+        supabaseAdmin.from("sertifikat_pelatihan").select("training_id, status, certificate_number").eq("employee_id", employeeId || "").in("training_id", trainingIds),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }];
 
@@ -81,7 +81,7 @@ export default async function EmployeeTraining() {
   // Available trainings not yet enrolled
   const enrolledIds = trainings.map(t => t.training_id);
   const { data: availableTrainings } = await supabaseAdmin
-    .from("trainings")
+    .from("pelatihan")
     .select("id, title, date_start, date_end, status")
     .in("status", ["Planned", "Ongoing"])
     .order("date_start", { ascending: true })

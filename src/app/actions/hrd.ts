@@ -11,7 +11,7 @@ import { auditLog } from "@/lib/audit";
 // Always query fresh — a module-level cache would permanently freeze to false
 // if the DB returned a transient error on the first cold request.
 async function usersTableExists(): Promise<boolean> {
-  const { error } = await supabaseAdmin.from("users").select("id").limit(1);
+  const { error } = await supabaseAdmin.from("pengguna").select("id").limit(1);
   return !error || !error.message.includes("Could not find the table");
 }
 
@@ -24,7 +24,7 @@ export async function createJob(formData: FormData) {
   const description = formData.get("description") as string;
 
   const { error } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .insert([
       {
         id: crypto.randomUUID(),
@@ -72,7 +72,7 @@ export async function createEmployee(formData: FormData) {
   if (email) {
     normalizedEmail = email.toLowerCase().trim();
     const { data: dup } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id")
       .eq("email", normalizedEmail)
       .maybeSingle();
@@ -81,7 +81,7 @@ export async function createEmployee(formData: FormData) {
     }
   } else {
     const { data: existingEmails } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("email");
     const usedEmails = (existingEmails || []).map((e: Record<string, unknown>) => e.email as string);
     normalizedEmail = generateCompanyEmailUnique(full_name, usedEmails);
@@ -90,7 +90,7 @@ export async function createEmployee(formData: FormData) {
   const tableExists = await usersTableExists();
   if (tableExists) {
     const { data: existing, error: checkError } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .select("id")
       .eq("email", normalizedEmail)
       .limit(1);
@@ -115,10 +115,10 @@ export async function createEmployee(formData: FormData) {
   // Generate employee kode
   let kode = "";
   if (department) {
-    const { data: orgUnit } = await supabaseAdmin.from("org_units").select("code").eq("name", department).maybeSingle();
+    const { data: orgUnit } = await supabaseAdmin.from("unit_organisasi").select("code").eq("name", department).maybeSingle();
     if (orgUnit) {
       const segments = (orgUnit.code as string).split(".");
-      const { count } = await supabaseAdmin.from("employees").select("*", { count: "exact", head: true }).eq("department", department);
+      const { count } = await supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }).eq("department", department);
       const seq = (count || 0) + 1;
       const firstZero = segments.findIndex(s => Number(s) === 0);
       if (firstZero >= 0) segments[firstZero] = String(seq);
@@ -138,7 +138,7 @@ export async function createEmployee(formData: FormData) {
   if (kode) empData.kode = kode;
 
   const { error: empError } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .insert([empData])
     .select("id")
     .single();
@@ -149,7 +149,7 @@ export async function createEmployee(formData: FormData) {
 
   if (tableExists) {
     await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .insert([
         {
           email: normalizedEmail,
@@ -178,7 +178,7 @@ export async function updateApplicationStatus(applicationId: string, status: str
 
   // Fetch application email before update (needed for account deletion)
   const { data: application } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("email, full_name")
     .eq("id", applicationId)
     .maybeSingle();
@@ -187,7 +187,7 @@ export async function updateApplicationStatus(applicationId: string, status: str
   if (status === "Interview") updates.reached_interview = true;
 
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update(updates)
     .eq("id", applicationId);
 
@@ -203,7 +203,7 @@ export async function updateApplicationStatus(applicationId: string, status: str
     if (appEmail) {
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .update({ expires_at: expiresAt })
         .eq("email", appEmail)
         .eq("role", "applicant")
@@ -232,7 +232,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   const password = (formData.get("password") as string) || generateNumericPassword();
 
   const { data: application, error: appError } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("full_name, email, phone")
     .eq("id", applicationId)
     .single();
@@ -248,7 +248,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   // Check if a non-applicant user already exists with this email
   if (await usersTableExists()) {
     const { data: existing } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .select("id, role")
       .eq("email", normalizedEmail)
       .limit(1);
@@ -265,11 +265,11 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   let kode = "";
   {
     let orgUnitCode: string | null = null;
-    const { data: byPos } = await supabaseAdmin.from("org_units").select("code").eq("name", position).maybeSingle();
+    const { data: byPos } = await supabaseAdmin.from("unit_organisasi").select("code").eq("name", position).maybeSingle();
     if (byPos) {
       orgUnitCode = (byPos as { code: string }).code;
     } else {
-      const { data: byDept } = await supabaseAdmin.from("org_units").select("code").eq("name", department).maybeSingle();
+      const { data: byDept } = await supabaseAdmin.from("unit_organisasi").select("code").eq("name", department).maybeSingle();
       if (byDept) orgUnitCode = (byDept as { code: string }).code;
     }
     if (orgUnitCode) {
@@ -278,7 +278,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
       if (firstZero >= 0) {
         const prefix = segments.slice(0, firstZero).join(".");
         const { data: existing } = await supabaseAdmin
-          .from("employees").select("kode").like("kode", `${prefix}.%`);
+          .from("karyawan").select("kode").like("kode", `${prefix}.%`);
         const maxSeq = ((existing || []) as { kode: string | null }[]).reduce((max, e) => {
           if (!e.kode) return max;
           const n = Number(e.kode.split(".")[firstZero] || 0);
@@ -291,7 +291,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   }
 
   const { error: empError } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .insert([{
       full_name: application.full_name,
       email: normalizedEmail,
@@ -311,7 +311,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   if (await usersTableExists()) {
     const passwordHash = hashPassword(password);
     const { data: existingApplicant } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .select("id")
       .eq("email", normalizedEmail)
       .eq("role", "applicant")
@@ -319,7 +319,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
 
     if (existingApplicant) {
       const { error: updateError } = await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .update({
           password_hash: passwordHash,
           role: "employee",
@@ -337,7 +337,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
       }
     } else {
       const { error: insertError } = await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .insert([{
           email: normalizedEmail,
           password_hash: passwordHash,
@@ -354,7 +354,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   }
 
   await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update({ status: "Diterima" })
     .eq("id", applicationId);
 
@@ -393,7 +393,7 @@ export async function updateEmployeeStatus(employeeId: string, status: string) {
   const user = await requireRole("hrd", "superadmin");
 
   const { error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .update({ status })
     .eq("id", employeeId);
 
@@ -405,7 +405,7 @@ export async function updateEmployeeStatus(employeeId: string, status: string) {
   if (status === "Inactive" || status === "Suspended" || status === "Resigned" || status === "Terminated") {
     if (await usersTableExists()) {
       const { data: emp } = await supabaseAdmin
-        .from("employees")
+        .from("karyawan")
         .select("email")
         .eq("id", employeeId)
         .single();
@@ -413,7 +413,7 @@ export async function updateEmployeeStatus(employeeId: string, status: string) {
       if (emp) {
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         await supabaseAdmin
-          .from("users")
+          .from("pengguna")
           .update({ expires_at: expiresAt })
           .eq("email", emp.email as string);
       }
@@ -423,13 +423,13 @@ export async function updateEmployeeStatus(employeeId: string, status: string) {
     // expiry from a previous suspension so the account doesn't still
     // expire on the old schedule.
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("email")
       .eq("id", employeeId)
       .single();
     if (emp) {
       await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .update({ expires_at: null })
         .eq("email", emp.email as string);
     }
@@ -465,7 +465,7 @@ export async function updateEmployee(formData: FormData) {
 
   // Get old employee data to know if email changed.
   const { data: oldEmp, error: fetchError } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("email")
     .eq("id", id)
     .single();
@@ -481,7 +481,7 @@ export async function updateEmployee(formData: FormData) {
   // by the employee via their own account after face registration. HRD can
   // only view it (see infrastructure/employees), never overwrite it from here.
   const { error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .update({
       full_name,
       email: normalizedEmail,
@@ -501,7 +501,7 @@ export async function updateEmployee(formData: FormData) {
   if (await usersTableExists()) {
     // Check if user exists with old email
     const { data: oldUser } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .select("id")
       .eq("email", oldEmail)
       .limit(1);
@@ -509,7 +509,7 @@ export async function updateEmployee(formData: FormData) {
     if (oldUser && oldUser.length > 0) {
       // User exists with old email, update their email and full_name
       const { error: userUpdateError } = await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .update({
           email: normalizedEmail,
           full_name,
@@ -523,7 +523,7 @@ export async function updateEmployee(formData: FormData) {
       // User did not exist, create new login account!
       // Check first if the new email already exists in users table (to avoid conflicts)
       const { data: newUserCheck } = await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .select("id")
         .eq("email", normalizedEmail)
         .limit(1);
@@ -532,7 +532,7 @@ export async function updateEmployee(formData: FormData) {
         const newPw = generateNumericPassword();
         const passwordHash = hashPassword(newPw);
         const { error: userInsertError } = await supabaseAdmin
-          .from("users")
+          .from("pengguna")
           .insert([
             {
               email: normalizedEmail,
@@ -563,7 +563,7 @@ export async function resetEmployeePassword(employeeId: string) {
   const user = await requireRole("superadmin");
 
   const { data: emp } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("email, full_name, phone")
     .eq("id", employeeId)
     .single();
@@ -578,7 +578,7 @@ export async function resetEmployeePassword(employeeId: string) {
     const passwordHash = hashPassword(newPassword);
 
     const { error } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .update({ password_hash: passwordHash })
       .eq("email", emp.email as string);
 
@@ -609,7 +609,7 @@ export async function resetUserPasswordByEmail(userEmail: string) {
   const passwordHash = hashPassword(newPassword);
 
   const { error } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .update({ password_hash: passwordHash })
     .eq("email", userEmail.toLowerCase().trim());
 
@@ -627,21 +627,21 @@ export async function deleteEmployee(employeeId: string) {
 
   if (await usersTableExists()) {
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("email")
       .eq("id", employeeId)
       .single();
 
     if (emp) {
       await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .delete()
         .eq("email", emp.email as string);
     }
   }
 
   const { error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .delete()
     .eq("id", employeeId);
 
@@ -664,7 +664,7 @@ export async function updateJobStatus(jobId: string, status: string) {
   const user = await requireRole("hrd", "superadmin");
 
   const { error } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .update({ status })
     .eq("id", jobId);
 
@@ -699,7 +699,7 @@ export async function submitApplication(formData: FormData) {
 
   // Prevent duplicate application with same email for same job
   const { data: dupApp } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("id, status")
     .eq("email", normalizedEmail)
     .eq("job_id", job_id)
@@ -712,7 +712,7 @@ export async function submitApplication(formData: FormData) {
   const applicationId = "app-" + crypto.randomUUID();
 
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .insert([{
       id: applicationId,
       job_id,
@@ -724,6 +724,9 @@ export async function submitApplication(formData: FormData) {
     }]);
 
   if (error) {
+    if (error.code === "23505") {
+      return { error: "Anda sudah pernah melamar untuk posisi ini." };
+    }
     console.error("[hrd] submitApplication error:", error.message);
     return { error: "Gagal memproses. Silakan coba lagi." };
   }
@@ -751,7 +754,7 @@ export async function submitApplication(formData: FormData) {
             let merged: Record<string, unknown> = {};
             try { merged = JSON.parse(profile_data) || {}; } catch { /* ignore */ }
             merged.cv_url = cvUrlData.signedUrl;
-            await supabaseAdmin.from("applications").update({ resume_url: JSON.stringify(merged) }).eq("id", applicationId);
+            await supabaseAdmin.from("pelamar").update({ resume_url: JSON.stringify(merged) }).eq("id", applicationId);
           }
         }
       } catch {
@@ -769,27 +772,24 @@ export async function submitApplication(formData: FormData) {
   try {
     // Check if user with this email already exists (might have applied before)
     const { data: existingUser } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .select("id, role")
       .eq("email", normalizedEmail)
       .maybeSingle();
 
     if (!existingUser) {
-      // Generate a readable temp password: 3 words style e.g. "Lamar2026!"
-      const numArr = new Uint16Array(1);
-      crypto.getRandomValues(numArr);
-      const randomNum = 1000 + (numArr[0] % 9000);
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-      const charArr = new Uint8Array(1);
-      crypto.getRandomValues(charArr);
-      const suffix = chars[charArr[0] % chars.length];
-      tempPassword = `Lamar${randomNum}${suffix}`;
+      // Generate a readable but high-entropy temp password, e.g. "Lamar-7Xk2Qw9Z"
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+      const randomBytes = new Uint8Array(10);
+      crypto.getRandomValues(randomBytes);
+      const suffix = Array.from(randomBytes, (b) => chars[b % chars.length]).join("");
+      tempPassword = `Lamar-${suffix}`;
 
       const passwordHash = hashPassword(tempPassword);
       oneTimeToken = generateOneTimeToken(normalizedEmail);
       const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
-      const { error: insertErr } = await supabaseAdmin.from("users").insert([{
+      const { error: insertErr } = await supabaseAdmin.from("pengguna").insert([{
         email: normalizedEmail,
         password_hash: passwordHash,
         role: "applicant",
@@ -808,7 +808,7 @@ export async function submitApplication(formData: FormData) {
       }
     } else if (existingUser.role === "applicant") {
       // Update application_id and full_name to the latest application
-      const { error: updateErr } = await supabaseAdmin.from("users").update({ application_id: applicationId, full_name }).eq("email", normalizedEmail);
+      const { error: updateErr } = await supabaseAdmin.from("pengguna").update({ application_id: applicationId, full_name }).eq("email", normalizedEmail);
       if (updateErr) {
         console.error("Failed to update applicant user application_id:", updateErr);
       } else {
@@ -877,7 +877,7 @@ export async function updateEmployeeAsSuperadmin(formData: FormData) {
     authData.password_hash = hashPassword(newPassword);
   } else {
     const { data: existing } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("address")
       .eq("id", id)
       .single();
@@ -894,7 +894,7 @@ export async function updateEmployeeAsSuperadmin(formData: FormData) {
   }
 
   const { error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .update({
       full_name,
       email: email.toLowerCase().trim(),
@@ -911,7 +911,7 @@ export async function updateEmployeeAsSuperadmin(formData: FormData) {
   if (email) {
     const normalizedEmail = email.toLowerCase().trim();
     const { data: existingUser } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .select("id")
       .eq("email", normalizedEmail)
       .maybeSingle();
@@ -926,7 +926,7 @@ export async function updateEmployeeAsSuperadmin(formData: FormData) {
       if (role) {
         userUpdates.role = role;
       }
-      await supabaseAdmin.from("users").update(userUpdates).eq("email", normalizedEmail);
+      await supabaseAdmin.from("pengguna").update(userUpdates).eq("email", normalizedEmail);
     }
   }
 
@@ -945,7 +945,7 @@ export async function getEmployeeById(id: string) {
   await requireRole("hrd", "superadmin");
 
   const { data, error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .eq("id", id)
     .single();
@@ -966,7 +966,7 @@ export async function getEmployeeById(id: string) {
   let role = "employee";
   if (emp.email) {
     const { data: userRow } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .select("role")
       .eq("email", (emp.email as string).toLowerCase())
       .maybeSingle();
@@ -980,7 +980,7 @@ export async function getEmployees(status?: string) {
   await requireRole("hrd", "superadmin");
 
   let query = supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .order("created_at", { ascending: false });
   if (status) {
@@ -995,8 +995,8 @@ export async function getApplicantDetail(applicantId: string, jobId: string) {
   await requireRole("hrd", "superadmin");
 
   const [{ data: application }, { data: job }] = await Promise.all([
-    supabaseAdmin.from("applications").select("*").eq("id", applicantId).single(),
-    supabaseAdmin.from("job_postings").select("position, department").eq("id", jobId).single(),
+    supabaseAdmin.from("pelamar").select("*").eq("id", applicantId).single(),
+    supabaseAdmin.from("lowongan_kerja").select("position, department").eq("id", jobId).single(),
   ]);
 
   return { application, job };

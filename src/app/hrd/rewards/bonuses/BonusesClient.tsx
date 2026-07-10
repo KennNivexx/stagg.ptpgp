@@ -15,7 +15,7 @@ interface Employee { id: string; full_name: string; department: string; position
 interface BonusEntry {
   id: string; employee_id: string; program: string;
   amount: number; period?: string; status: string; created_at: string;
-  employees?: { full_name: string; department: string; position: string; };
+  karyawan?: { full_name: string; department: string; position: string; };
 }
 
 const fmt = (n: number) => "Rp " + n.toLocaleString("id-ID");
@@ -209,7 +209,7 @@ export default function BonusesClient({
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {bonuses.map(b => {
-                  const empInfo = b.employees as { full_name: string; department: string; } | undefined;
+                  const empInfo = b.karyawan as { full_name: string; department: string; } | undefined;
                   return (
                     <tr key={b.id} className="hover:bg-slate-50/30 transition-colors">
                       <td className="px-6 py-4">

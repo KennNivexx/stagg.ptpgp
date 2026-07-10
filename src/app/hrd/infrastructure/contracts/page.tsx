@@ -4,12 +4,12 @@ import ContractsClient from "./ContractsClient";
 export default async function ManajemenKontrakKerja() {
   const [empRes, ctrRes] = await Promise.all([
     supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id, full_name, kode, department, position, status, join_date, phone")
       .not("status", "eq", "Resigned")
       .order("full_name"),
     supabaseAdmin
-      .from("employee_contracts")
+      .from("kontrak_kerja")
       .select("*")
       .order("created_at", { ascending: false }),
   ]);

@@ -8,20 +8,20 @@ export const dynamic = "force-dynamic";
 
 export default async function KandidatSuksesor() {
   const { data: managers } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .or("position.ilike.%Manager%, position.ilike.%Direktur%, position.ilike.%Kepala%, position.ilike.%Head%, position.ilike.%Lead%")
     .neq("status", "Resigned")
     .order("full_name");
 
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .neq("status", "Resigned")
     .order("full_name");
 
   const { data: evaluations } = await supabaseAdmin
-    .from("kpi_evaluations")
+    .from("evaluasi_kpi")
     .select("employee_id, score")
     .order("created_at", { ascending: false });
 

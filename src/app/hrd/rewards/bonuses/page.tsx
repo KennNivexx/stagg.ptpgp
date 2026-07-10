@@ -4,7 +4,7 @@ import BonusesClient from "./BonusesClient";
 
 export default async function BonusesPage() {
   const [{ data: employees }, bonuses] = await Promise.all([
-    supabaseAdmin.from("employees").select("id, full_name, department, position")    .neq("email", "__settings__@ptpgp.co.id")
+    supabaseAdmin.from("karyawan").select("id, full_name, department, position")    .neq("email", "__settings__@ptpgp.co.id")
     .neq("email", "superadmin@ptpgp.co.id").order("full_name").limit(200),
     getBonuses().catch(() => []),
   ]);

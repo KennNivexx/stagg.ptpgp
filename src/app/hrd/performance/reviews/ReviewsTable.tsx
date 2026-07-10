@@ -115,7 +115,7 @@ export default function ReviewsTable({ evaluations: initialEvaluations }: Props)
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
             <h3 className="font-extrabold text-slate-800 mb-5 text-sm">Detail Review Kinerja</h3>
             {(() => {
-              const emp = detail.employees as Record<string, string> | undefined;
+              const emp = detail.karyawan as Record<string, string> | undefined;
               const score = Number(detail.score) || 0;
               return (
                 <div className="space-y-3 text-sm">
@@ -179,7 +179,7 @@ export default function ReviewsTable({ evaluations: initialEvaluations }: Props)
             </thead>
             <tbody className="divide-y divide-slate-50">
               {evaluations.map((ev) => {
-                const emp = ev.employees as Record<string, string> | undefined;
+                const emp = ev.karyawan as Record<string, string> | undefined;
                 const score = Number(ev.score) || 0;
                 return (
                   <tr key={ev.id as string} className="hover:bg-slate-50/30 transition-colors">

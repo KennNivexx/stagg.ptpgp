@@ -7,21 +7,21 @@ export const dynamic = "force-dynamic";
 
 export default async function LaporanTurnover() {
   const { count: totalEmployees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*", { count: "exact", head: true });
 
   const { count: resignedCount } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*", { count: "exact", head: true })
     .eq("status", "Resigned");
 
   const { data: activeEmployees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .neq("status", "Resigned");
 
   const { data: resignedEmployees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .eq("status", "Resigned")
     .order("full_name");

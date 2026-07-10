@@ -42,19 +42,19 @@ type GapRow = {
 export default async function GapAnalysisPage() {
   const [empRes, skillRes, empSkillRes, posSkillRes] = await Promise.all([
     supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id, full_name, department, position")
       .neq("status", "Inactive")
       .order("full_name", { ascending: true }),
     supabaseAdmin
-      .from("skills")
+      .from("master_kompetensi")
       .select("id, name, category")
       .order("name", { ascending: true }),
     supabaseAdmin
-      .from("employee_skills")
+      .from("kompetensi_karyawan")
       .select("employee_id, skill_id, current_level"),
     supabaseAdmin
-      .from("position_skills")
+      .from("kompetensi_jabatan")
       .select("position_code, skill_id, required_level"),
   ]);
 

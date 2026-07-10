@@ -6,14 +6,14 @@ import { getLatestReadinessByEmployee } from "@/app/actions/succession";
 
 export default async function HRDSuccession() {
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, department, position, status")
     .neq("status", "Resigned");
 
   const empList = (employees || []) as Array<Record<string, string>>;
 
   const { data: kpiData } = await supabaseAdmin
-    .from("kpi_evaluations")
+    .from("evaluasi_kpi")
     .select("employee_id, score")
     .order("created_at", { ascending: false });
 

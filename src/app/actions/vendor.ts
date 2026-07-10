@@ -29,7 +29,7 @@ export async function registerVendor(formData: FormData) {
   if (rlResult.limited) return { error: "Terlalu banyak pendaftaran. Silakan coba lagi besok." };
 
   const { error } = await supabaseAdmin
-    .from("vendors")
+    .from("vendor")
     .insert([
       {
         company_name,
@@ -74,7 +74,7 @@ export async function submitQuotation(formData: FormData) {
   if (rlResult.limited) return { error: "Terlalu banyak pengiriman. Silakan coba lagi besok." };
 
   const { error } = await supabaseAdmin
-    .from("vendors")
+    .from("vendor")
     .insert([{
       company_name,
       company_email: email,

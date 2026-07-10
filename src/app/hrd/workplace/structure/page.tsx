@@ -12,7 +12,7 @@ export default async function OrgStructurePage() {
   const org = await getOrgStructure();
 
   const { data: employeesData } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, email, position, department")
     .order("full_name");
 

@@ -19,7 +19,7 @@ export async function purgeExpiredResignedAccounts(): Promise<number> {
   try {
     const now = new Date().toISOString();
     const { data: due, error } = await supabaseAdmin
-      .from("resignations")
+      .from("pengunduran_diri")
       .select("id, employee_email, employee_id")
       .eq("status", "Disetujui")
       .not("delete_at", "is", null)
@@ -38,8 +38,8 @@ export async function purgeExpiredResignedAccounts(): Promise<number> {
       if (empId) ids.add(empId);
       if (email) {
         const [{ data: emp }, { data: usr }] = await Promise.all([
-          supabaseAdmin.from("employees").select("id").eq("email", email).maybeSingle(),
-          supabaseAdmin.from("users").select("id").eq("email", email).maybeSingle(),
+          supabaseAdmin.from("karyawan").select("id").eq("email", email).maybeSingle(),
+          supabaseAdmin.from("pengguna").select("id").eq("email", email).maybeSingle(),
         ]);
         const e = emp as Record<string, unknown> | null;
         const u = usr as Record<string, unknown> | null;
@@ -58,17 +58,17 @@ export async function purgeExpiredResignedAccounts(): Promise<number> {
 
       // Permanently delete the account + biometric data.
       if (ids.size > 0) {
-        await supabaseAdmin.from("employee_faces").delete().in("employee_id", [...ids]);
+        await supabaseAdmin.from("data_wajah_karyawan").delete().in("employee_id", [...ids]);
       }
       if (email) {
-        await supabaseAdmin.from("employees").delete().eq("email", email);
-        await supabaseAdmin.from("users").delete().eq("email", email);
+        await supabaseAdmin.from("karyawan").delete().eq("email", email);
+        await supabaseAdmin.from("pengguna").delete().eq("email", email);
       } else if (empId) {
-        await supabaseAdmin.from("employees").delete().eq("id", empId);
+        await supabaseAdmin.from("karyawan").delete().eq("id", empId);
       }
 
       // Clear delete_at so this resignation is not processed again.
-      await supabaseAdmin.from("resignations").update({ delete_at: null }).eq("id", row.id as string);
+      await supabaseAdmin.from("pengunduran_diri").update({ delete_at: null }).eq("id", row.id as string);
       purged++;
     }
     return purged;

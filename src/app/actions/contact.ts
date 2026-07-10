@@ -25,7 +25,7 @@ export async function submitContact(formData: FormData) {
   const rlResult = await rateLimit(`contact:${email}`, 5, 60 * 60 * 1000);
   if (rlResult.limited) return { error: "Terlalu banyak pesan. Silakan coba lagi nanti." };
 
-  const { error } = await supabaseAdmin.from("contact_messages").insert([
+  const { error } = await supabaseAdmin.from("pesan_kontak").insert([
     {
       name,
       email,

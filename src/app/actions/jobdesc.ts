@@ -13,7 +13,7 @@ export interface JobDesc {
 
 export async function getJobDescs(): Promise<JobDesc[]> {
   await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("job_descriptions").select("*").order("department", { ascending: true }).order("position", { ascending: true });
+  const { data } = await supabaseAdmin.from("deskripsi_kerja").select("*").order("department", { ascending: true }).order("position", { ascending: true });
   return ((data || []) as JobDesc[]).map(d => ({ ...d, title: d.title || "", kode: d.kode || "" }));
 }
 
@@ -22,14 +22,14 @@ export async function getJobDescs(): Promise<JobDesc[]> {
 export async function getJobDescsForPosition(position: string): Promise<JobDesc[]> {
   await requireAuth();
   if (!position) return [];
-  const { data } = await supabaseAdmin.from("job_descriptions").select("*").eq("position", position);
+  const { data } = await supabaseAdmin.from("deskripsi_kerja").select("*").eq("position", position);
   return ((data || []) as JobDesc[]).map(d => ({ ...d, title: d.title || "", kode: d.kode || "" }));
 }
 
 export async function getJobDescsForDepartment(department: string): Promise<JobDesc[]> {
   await requireAuth();
   if (!department) return [];
-  const { data } = await supabaseAdmin.from("job_descriptions").select("*").eq("department", department).order("position", { ascending: true });
+  const { data } = await supabaseAdmin.from("deskripsi_kerja").select("*").eq("department", department).order("position", { ascending: true });
   return ((data || []) as JobDesc[]).map(d => ({ ...d, title: d.title || "", kode: d.kode || "" }));
 }
 
@@ -49,7 +49,7 @@ export async function saveJobDesc(formData: FormData) {
 
   const now = new Date().toISOString();
   if (id) {
-    const { error } = await supabaseAdmin.from("job_descriptions").update({
+    const { error } = await supabaseAdmin.from("deskripsi_kerja").update({
       title, position, department, kode, responsibilities, requirements, updated_at: now,
     }).eq("id", id);
     if (error) {
@@ -58,7 +58,7 @@ export async function saveJobDesc(formData: FormData) {
     }
   } else {
     const newId = uid();
-    const { error } = await supabaseAdmin.from("job_descriptions").insert({
+    const { error } = await supabaseAdmin.from("deskripsi_kerja").insert({
       id: newId, title, position, department, kode, responsibilities, requirements, created_at: now, updated_at: now,
     });
     if (error) {
@@ -75,7 +75,7 @@ export async function saveJobDesc(formData: FormData) {
 
 export async function deleteJobDesc(id: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("job_descriptions").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("deskripsi_kerja").delete().eq("id", id);
   if (error) { console.error("[jobdesc] deleteJobDesc error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/workplace/jobdesc");
   revalidatePath("/employee/jobdesc");

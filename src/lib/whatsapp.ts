@@ -1,14 +1,16 @@
 /**
  * WhatsApp outbound dispatcher. Server-only — never import from client
- * components. Two providers exist: Meta's official Cloud API (this file)
- * and Baileys, an unofficial QR-paired library (whatsapp-baileys.ts) for
- * demoing before Meta business approval comes through. `system_settings.wa_provider`
- * ("meta" | "baileys", defaults to "baileys" since that's usable with zero
- * setup) picks which one sendTextMessage/sendInteractiveButtons actually use —
- * callers (whatsapp-router.ts) never need to know which is active.
+ * components. Three providers exist: Meta's official Cloud API (this file),
+ * Baileys, an unofficial QR-paired library (whatsapp-baileys.ts), and Fonnte
+ * (whatsapp-fonnte.ts), a third-party Indonesian WhatsApp gateway that's
+ * QR-based like Baileys but doesn't need a persistent self-hosted socket —
+ * Fonnte hosts the connection on their own servers. `pengaturan_sistem.wa_provider`
+ * ("meta" | "baileys" | "fonnte", defaults to "baileys" since that's usable
+ * with zero setup) picks which one sendTextMessage/sendInteractiveButtons
+ * actually use — callers (whatsapp-router.ts) never need to know which is active.
  *
  * Meta credentials follow the tiered pattern used by mailer.ts:
- * system_settings (set by HRD via /hrd/admin/settings) first, falling back
+ * pengaturan_sistem (set by HRD via /hrd/admin/settings) first, falling back
  * to env vars, defaulting to empty string — failures surface only when a
  * send is actually attempted, with a friendly Indonesian error.
  *
@@ -18,12 +20,14 @@
  */
 import { supabaseAdmin } from "@/lib/supabase";
 
-export type WaProvider = "meta" | "baileys";
+export type WaProvider = "meta" | "baileys" | "fonnte";
 
 export async function getWaProvider(): Promise<WaProvider> {
   try {
-    const { data } = await supabaseAdmin.from("system_settings").select("value").eq("key", "wa_provider").maybeSingle();
-    return data?.value === "meta" ? "meta" : "baileys";
+    const { data } = await supabaseAdmin.from("pengaturan_sistem").select("value").eq("key", "wa_provider").maybeSingle();
+    if (data?.value === "meta") return "meta";
+    if (data?.value === "fonnte") return "fonnte";
+    return "baileys";
   } catch {
     return "baileys";
   }
@@ -41,7 +45,7 @@ interface WaConfig {
 async function getWaConfig(): Promise<WaConfig> {
   try {
     const { data } = await supabaseAdmin
-      .from("system_settings")
+      .from("pengaturan_sistem")
       .select("key, value")
       .in("key", ["wa_phone_number_id", "wa_access_token", "wa_api_version", "wa_template_name", "wa_template_lang", "wa_bot_number"]);
     const map = Object.fromEntries((data || []).map((r: { key: string; value: string }) => [r.key, r.value]));
@@ -97,7 +101,7 @@ export function normalizeWaNumber(raw: string): { number: string } | { error: st
 }
 
 async function logOutboundMessage(to: string, messageType: string, messageId: string, payload: Record<string, unknown>) {
-  const { error } = await supabaseAdmin.from("wa_message_log").insert({
+  const { error } = await supabaseAdmin.from("log_pesan_wa").insert({
     id: "wamsg-" + crypto.randomUUID(),
     wa_message_id: messageId,
     wa_number: to,
@@ -202,23 +206,30 @@ async function sendInteractiveButtonsMeta(
   });
 }
 
-/** Provider-agnostic — sends via whichever of Meta/Baileys is configured. */
+/** Provider-agnostic — sends via whichever of Meta/Baileys/Fonnte is configured. */
 export async function sendTextMessage(to: string, body: string): Promise<{ success: true } | { error: string }> {
   const provider = await getWaProvider();
-  const result = provider === "meta"
-    ? await sendTextMessageMeta(to, body)
-    : await (async () => { const { sendBaileysText } = await import("@/lib/whatsapp-baileys"); return sendBaileysText(to, body); })();
+  let result: { success: true } | { error: string };
+  if (provider === "meta") {
+    result = await sendTextMessageMeta(to, body);
+  } else if (provider === "fonnte") {
+    const { sendFonnteText } = await import("@/lib/whatsapp-fonnte");
+    result = await sendFonnteText(to, body);
+  } else {
+    const { sendBaileysText } = await import("@/lib/whatsapp-baileys");
+    result = await sendBaileysText(to, body);
+  }
   if ("error" in result) {
     console.error("[whatsapp] sendTextMessage error:", result.error);
   }
   return result;
 }
 
-/** Provider-agnostic confirm/cancel-style prompt. Baileys has no reliable
- * interactive-button rendering for unofficial clients, so it falls back to
- * a numbered plain-text list — the router already accepts the button's own
- * id or its lowercased title as a reply (e.g. "ya"/"leave_yes"), so this
- * fallback needs no router changes. */
+/** Provider-agnostic confirm/cancel-style prompt. Baileys and Fonnte have no
+ * reliable interactive-button rendering for unofficial clients, so both fall
+ * back to a numbered plain-text list — the router already accepts the
+ * button's own id or its lowercased title as a reply (e.g. "ya"/"leave_yes"),
+ * so this fallback needs no router changes. */
 export async function sendInteractiveButtons(
   to: string,
   bodyText: string,
@@ -227,6 +238,10 @@ export async function sendInteractiveButtons(
   const provider = await getWaProvider();
   if (provider === "meta") return sendInteractiveButtonsMeta(to, bodyText, buttons);
   const optionsText = buttons.map((b, i) => `${i + 1}. ${b.title} (balas: *${b.title.toLowerCase()}*)`).join("\n");
+  if (provider === "fonnte") {
+    const { sendFonnteText } = await import("@/lib/whatsapp-fonnte");
+    return sendFonnteText(to, `${bodyText}\n\n${optionsText}`);
+  }
   const { sendBaileysText } = await import("@/lib/whatsapp-baileys");
   return sendBaileysText(to, `${bodyText}\n\n${optionsText}`);
 }

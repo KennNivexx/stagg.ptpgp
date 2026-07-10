@@ -21,7 +21,7 @@ export default async function EmployeeJobDescPage() {
   }
 
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, position, department")
     .eq("email", userEmail)
     .maybeSingle();
@@ -30,7 +30,7 @@ export default async function EmployeeJobDescPage() {
   const department = (employee as Record<string, unknown> | null)?.department as string | undefined;
 
   const { data: descs } = position
-    ? await supabaseAdmin.from("job_descriptions").select("*").eq("position", position)
+    ? await supabaseAdmin.from("deskripsi_kerja").select("*").eq("position", position)
     : { data: [] };
 
   const jobDescs = ((descs || []) as JobDescRow[]).map(d => ({ ...d, title: d.title || "" }));

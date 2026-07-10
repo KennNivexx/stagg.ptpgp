@@ -4,8 +4,8 @@ import ReviewsTable from "./ReviewsTable";
 
 export default async function ReviewsPage() {
   const { data: evaluations } = await supabaseAdmin
-    .from("kpi_evaluations")
-    .select("*, employees!inner(full_name, department, position)")
+    .from("evaluasi_kpi")
+    .select("*, karyawan!inner(full_name, department, position)")
     .order("created_at", { ascending: false })
     .limit(30);
 

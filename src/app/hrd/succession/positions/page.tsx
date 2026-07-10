@@ -10,14 +10,14 @@ export default async function PosisiKritis() {
   const markedPositions = await getCriticalPositions();
 
   const { data: managers } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .or("position.ilike.%Manager%, position.ilike.%Direktur%, position.ilike.%Kepala%, position.ilike.%Head%, position.ilike.%Lead%")
     .neq("status", "Resigned")
     .order("full_name");
 
   const { data: allEmployees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, position, department")
     .neq("status", "Resigned");
 

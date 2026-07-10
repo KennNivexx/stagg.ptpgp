@@ -4,10 +4,10 @@ import OkrForm from "./OkrForm";
 
 export default async function OKRPage() {
   const [{ data: employees }, { data: okrRaw }] = await Promise.all([
-    supabaseAdmin.from("employees").select("id, full_name, department").limit(100),
+    supabaseAdmin.from("karyawan").select("id, full_name, department").limit(100),
     (async () => {
       const { data, error } = await supabaseAdmin
-        .from("okr_objectives")
+        .from("okr")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(50);

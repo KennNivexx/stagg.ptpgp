@@ -3,13 +3,13 @@ import KPIClient from "./KPIClient";
 
 export default async function HRDKPI() {
   const { data: evaluations } = await supabaseAdmin
-    .from("kpi_evaluations")
-    .select("*, employees!inner(full_name, department, position)")
+    .from("evaluasi_kpi")
+    .select("*, karyawan!inner(full_name, department, position)")
     .order("created_at", { ascending: false })
     .limit(20);
 
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, department, position")
     .neq("email", "__settings__@ptpgp.co.id")
     .order("full_name")

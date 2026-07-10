@@ -27,7 +27,7 @@ export async function processInboundWaMessage(msg: NormalizedInboundMessage): Pr
   // retries on non-2xx/slow responses; Baileys can replay on reconnect).
   // wa_message_id is the provider's own id — a UNIQUE conflict here IS the
   // "already processed" signal.
-  const { error: insertErr } = await supabaseAdmin.from("wa_message_log").insert({
+  const { error: insertErr } = await supabaseAdmin.from("log_pesan_wa").insert({
     id: "wamsg-" + randomUUID(),
     wa_message_id: messageId,
     wa_number: from,
@@ -54,7 +54,7 @@ export async function processInboundWaMessage(msg: NormalizedInboundMessage): Pr
 
     const id = "wac-" + randomUUID();
     try {
-      await supabaseAdmin.from("wa_conversations").upsert(
+      await supabaseAdmin.from("percakapan_wa").upsert(
         { id, employee_id: verified.id, wa_number: from, current_menu: null, current_flow: null, flow_data: {} },
         { onConflict: "employee_id" },
       );
@@ -74,7 +74,7 @@ export async function processInboundWaMessage(msg: NormalizedInboundMessage): Pr
   }
 
   const { data: existingConv } = await supabaseAdmin
-    .from("wa_conversations")
+    .from("percakapan_wa")
     .select("*")
     .eq("employee_id", employee.id)
     .maybeSingle();
@@ -85,7 +85,7 @@ export async function processInboundWaMessage(msg: NormalizedInboundMessage): Pr
   } else {
     const id = "wac-" + randomUUID();
     try {
-      await supabaseAdmin.from("wa_conversations").upsert(
+      await supabaseAdmin.from("percakapan_wa").upsert(
         { id, employee_id: employee.id, wa_number: from, current_menu: null, current_flow: null, flow_data: {} },
         { onConflict: "employee_id" },
       );

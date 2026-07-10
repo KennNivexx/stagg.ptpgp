@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default async function HRDKnowledge() {
   const { count: sopCount } = await supabaseAdmin
-    .from("sop_documents")
+    .from("dokumen_sop")
     .select("*", { count: "exact", head: true });
 
   const categories = [

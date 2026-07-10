@@ -18,7 +18,7 @@ export default async function EmployeeLeaves() {
   // time in submitLeave()), NOT employees.id — those are different ids for
   // the same person, so this must match on user.id, not look up employees.id.
   const { data: leaves } = await supabaseAdmin
-    .from("leave_requests")
+    .from("pengajuan_cuti")
     .select("*")
     .eq("employee_id", userId)
     .order("created_at", { ascending: false })

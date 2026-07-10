@@ -21,7 +21,7 @@ export interface DirectorRequest {
 
 export default async function DirectorRequestsPage() {
   const { data } = await supabaseAdmin
-    .from("workforce_requests")
+    .from("permintaan_sdm")
     .select("*")
     .order("created_at", { ascending: false });
 

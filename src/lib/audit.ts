@@ -51,7 +51,7 @@ export async function auditLog(params: {
 
   try {
     const { error } = await supabaseAdmin
-      .from("audit_logs")
+      .from("log_audit")
       .insert([
         {
           action,

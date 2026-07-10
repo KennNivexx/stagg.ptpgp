@@ -4,14 +4,14 @@ import EmptyState from "@/components/EmptyState";
 
 export default async function HRDRewards() {
   const { data: payrolls, error } = await supabaseAdmin
-    .from("payroll")
-    .select("*, employees!inner(full_name, department)")
+    .from("penggajian")
+    .select("*, karyawan!inner(full_name, department)")
     .order("year", { ascending: false })
     .order("month", { ascending: false })
     .limit(20);
 
   const { count: totalEmployees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*", { count: "exact", head: true });
 
   const totalNetSalary = (payrolls || []).reduce(
@@ -128,7 +128,7 @@ export default async function HRDRewards() {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {(payrolls as Record<string, unknown>[]).map((p) => {
-                    const emp = p.employees as Record<string, string> | undefined;
+                    const emp = p.karyawan as Record<string, string> | undefined;
                     return (
                       <tr key={p.id as string} className="hover:bg-slate-50/30 transition-colors">
                         <td className="px-6 py-4">

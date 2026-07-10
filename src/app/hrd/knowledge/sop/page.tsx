@@ -4,7 +4,7 @@ import SopClient from "./SopClient";
 
 export default async function SOPPage() {
   const { data: departments } = await supabaseAdmin
-    .from("departments")
+    .from("departemen")
     .select("name")
     .order("name");
 
@@ -12,7 +12,7 @@ export default async function SOPPage() {
 
   let sops: Array<Record<string, unknown>> = [];
   const { data, error } = await supabaseAdmin
-    .from("sop_documents")
+    .from("dokumen_sop")
     .select("*")
     .order("created_at", { ascending: false });
   if (!error || (error as unknown as Record<string, unknown>)?.code !== "42P01") {

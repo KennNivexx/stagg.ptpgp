@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 async function getMailConfig(): Promise<{ user: string; pass: string }> {
   try {
     const { data } = await supabaseAdmin
-      .from("system_settings")
+      .from("pengaturan_sistem")
       .select("key, value")
       .in("key", ["mail_gmail_user", "mail_gmail_app_password"]);
 

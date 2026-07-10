@@ -7,7 +7,7 @@ export default async function DepartmentDocuments() {
   await requireRole("department_manager", "superadmin");
 
   const { data, error } = await supabaseAdmin
-    .from("documents")
+    .from("dokumen_perusahaan")
     .select("*")
     .eq("visible_to_department_head", true)
     .order("created_at", { ascending: false })

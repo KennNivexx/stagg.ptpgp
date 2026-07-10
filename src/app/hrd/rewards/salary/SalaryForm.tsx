@@ -170,7 +170,7 @@ export default function SalaryForm({ employees, salaryRecords }: Props) {
                   <EmptyState icon={Wallet} title={'Belum ada struktur gaji. Klik "Edit Komponen Gaji" untuk mulai.'} />
                 </td></tr>
               ) : salaryRecords.map((rec) => {
-                const emp = rec.employees as Record<string, string> | undefined;
+                const emp = rec.karyawan as Record<string, string> | undefined;
                 const base = Number(rec.basic_salary) || 0;
                 const allowances = (Number(rec.housing_allowance) || 0) + (Number(rec.transport_allowance) || 0) +
                   (Number(rec.meal_allowance) || 0) + (Number(rec.position_allowance) || 0);

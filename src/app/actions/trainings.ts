@@ -13,7 +13,7 @@ async function autoEnrollGapEmployees(trainingId: string, skillId: string | null
   if (!skillId) return 0;
 
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, position")
     .eq("department", department)
     .not("status", "eq", "Resigned");
@@ -21,7 +21,7 @@ async function autoEnrollGapEmployees(trainingId: string, skillId: string | null
 
   const positions = [...new Set(employees.map((e: { position: string }) => e.position).filter(Boolean))];
   const { data: posSkills } = await supabaseAdmin
-    .from("position_skills")
+    .from("kompetensi_jabatan")
     .select("position_code, required_level")
     .eq("skill_id", skillId)
     .in("position_code", positions);
@@ -29,7 +29,7 @@ async function autoEnrollGapEmployees(trainingId: string, skillId: string | null
 
   const employeeIds = employees.map((e: { id: string }) => e.id);
   const { data: empSkills } = await supabaseAdmin
-    .from("employee_skills")
+    .from("kompetensi_karyawan")
     .select("employee_id, current_level")
     .eq("skill_id", skillId)
     .in("employee_id", employeeIds);
@@ -47,7 +47,7 @@ async function autoEnrollGapEmployees(trainingId: string, skillId: string | null
   if (gapEmployeeIds.length === 0) return 0;
 
   const now = new Date().toISOString();
-  const { error } = await supabaseAdmin.from("training_enrollments").insert(
+  const { error } = await supabaseAdmin.from("peserta_pelatihan").insert(
     gapEmployeeIds.map((employeeId) => ({
       id: "te-" + crypto.randomUUID(),
       training_id: trainingId,
@@ -67,8 +67,8 @@ export async function getTrainings() {
   await requireRole("hrd", "superadmin", "department_manager");
 
   const [{ data: trainings }, { data: enrollments }] = await Promise.all([
-    supabaseAdmin.from("trainings").select("*").order("date_start", { ascending: false }),
-    supabaseAdmin.from("training_enrollments").select("training_id"),
+    supabaseAdmin.from("pelatihan").select("*").order("date_start", { ascending: false }),
+    supabaseAdmin.from("peserta_pelatihan").select("training_id"),
   ]);
 
   const countMap: Record<string, number> = {};
@@ -109,7 +109,7 @@ export async function saveTraining(formData: FormData) {
   }
   if (new Date(date_end) < new Date(date_start)) return { error: "Tanggal selesai harus setelah tanggal mulai." };
 
-  const { error } = await supabaseAdmin.from("trainings").update({
+  const { error } = await supabaseAdmin.from("pelatihan").update({
     title, skill_id: skill_id || null, description, date_start, date_end, status
   }).eq("id", id);
   if (error) return { error: "Gagal mengupdate pelatihan." };
@@ -123,8 +123,8 @@ export async function deleteTraining(id: string) {
 
   if (!id) return { error: "ID pelatihan wajib diisi." };
 
-  await supabaseAdmin.from("training_enrollments").delete().eq("training_id", id);
-  const { error } = await supabaseAdmin.from("trainings").delete().eq("id", id);
+  await supabaseAdmin.from("peserta_pelatihan").delete().eq("training_id", id);
+  const { error } = await supabaseAdmin.from("pelatihan").delete().eq("id", id);
   if (error) return { error: "Gagal menghapus pelatihan." };
 
   revalidatePath("/hrd/learning");
@@ -135,15 +135,15 @@ export async function getTrainingEnrollments(trainingId: string) {
   await requireRole("hrd", "superadmin", "department_manager");
 
   const { data, error } = await supabaseAdmin
-    .from("training_enrollments")
-    .select("*, employees!inner(full_name, email, department, position)")
+    .from("peserta_pelatihan")
+    .select("*, karyawan!inner(full_name, email, department, position)")
     .eq("training_id", trainingId)
     .order("created_at", { ascending: true });
 
   if (error) return [];
 
   return (data || []).map((e: Record<string, unknown>) => {
-    const emp = (e.employees as Record<string, unknown>) || {};
+    const emp = (e.karyawan as Record<string, unknown>) || {};
     return {
       id: e.id,
       training_id: e.training_id,
@@ -167,7 +167,7 @@ export async function markEnrollmentResult(id: string, passed: boolean): Promise
   if (!id) return { error: "ID peserta wajib diisi." };
 
   const { error } = await supabaseAdmin
-    .from("training_enrollments")
+    .from("peserta_pelatihan")
     .update({ status: passed ? "Completed" : "Perlu Mengulang" })
     .eq("id", id);
   if (error) return { error: "Gagal memperbarui status peserta." };
@@ -182,7 +182,7 @@ export async function removeEnrollment(id: string) {
 
   if (!id) return { error: "ID enrollment wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("training_enrollments").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("peserta_pelatihan").delete().eq("id", id);
   if (error) return { error: "Gagal menghapus peserta." };
 
   revalidatePath("/hrd/learning");
@@ -201,7 +201,7 @@ export async function requestTrainingEnrollment(employeeId: string, trainingId: 
 
   // Check training exists and is open
   const { data: training } = await supabaseAdmin
-    .from("trainings")
+    .from("pelatihan")
     .select("id, status")
     .eq("id", trainingId)
     .maybeSingle();
@@ -213,7 +213,7 @@ export async function requestTrainingEnrollment(employeeId: string, trainingId: 
 
   // Check not already enrolled
   const { data: existing } = await supabaseAdmin
-    .from("training_enrollments")
+    .from("peserta_pelatihan")
     .select("id")
     .eq("training_id", trainingId)
     .eq("employee_id", employeeId)
@@ -221,7 +221,7 @@ export async function requestTrainingEnrollment(employeeId: string, trainingId: 
 
   if (existing) return { error: "Anda sudah terdaftar di pelatihan ini." };
 
-  const { error } = await supabaseAdmin.from("training_enrollments").insert({
+  const { error } = await supabaseAdmin.from("peserta_pelatihan").insert({
     id: "te-" + crypto.randomUUID(),
     training_id: trainingId,
     employee_id: employeeId,
@@ -257,7 +257,7 @@ export async function submitTrainingRequest(formData: FormData) {
 
   if (!department || !skill_name) return { error: "Departemen dan kompetensi wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("training_requests").insert({
+  const { error } = await supabaseAdmin.from("permintaan_pelatihan").insert({
     id: "treq-" + crypto.randomUUID(),
     department, skill_id, skill_name, current_level, required_level, reason,
     requested_by: user.email, requested_by_name: user.name || "",
@@ -275,7 +275,7 @@ export async function getMyDeptTrainingRequests(department: string) {
   await requireRole("department_manager", "superadmin");
   if (!department) return [];
   const { data } = await supabaseAdmin
-    .from("training_requests")
+    .from("permintaan_pelatihan")
     .select("*")
     .eq("department", department)
     .order("created_at", { ascending: false });
@@ -284,7 +284,7 @@ export async function getMyDeptTrainingRequests(department: string) {
 
 export async function getTrainingRequests() {
   await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("training_requests").select("*").order("created_at", { ascending: false });
+  const { data } = await supabaseAdmin.from("permintaan_pelatihan").select("*").order("created_at", { ascending: false });
   return (data || []) as TrainingRequest[];
 }
 
@@ -292,13 +292,13 @@ export async function reviewTrainingRequest(id: string, approve: boolean) {
   await requireRole("hrd", "superadmin");
   if (!id) return { error: "ID permintaan wajib diisi." };
 
-  const { data: req } = await supabaseAdmin.from("training_requests").select("*").eq("id", id).maybeSingle();
+  const { data: req } = await supabaseAdmin.from("permintaan_pelatihan").select("*").eq("id", id).maybeSingle();
   if (!req) return { error: "Permintaan tidak ditemukan." };
   const request = req as TrainingRequest;
   if (request.status !== "Pending") return { error: "Permintaan ini sudah diproses sebelumnya." };
 
   if (!approve) {
-    await supabaseAdmin.from("training_requests").update({ status: "Ditolak", reviewed_at: new Date().toISOString() }).eq("id", id);
+    await supabaseAdmin.from("permintaan_pelatihan").update({ status: "Ditolak", reviewed_at: new Date().toISOString() }).eq("id", id);
     revalidatePath("/hrd/learning/trainings");
     revalidatePath("/department/competency");
     return { success: true };
@@ -313,7 +313,7 @@ export async function reviewTrainingRequest(id: string, approve: boolean) {
   const startDefault = now.toISOString().split("T")[0];
   const endDefault = new Date(now.getTime() + 30 * 86_400_000).toISOString().split("T")[0];
 
-  const { error: trainErr } = await supabaseAdmin.from("trainings").insert({
+  const { error: trainErr } = await supabaseAdmin.from("pelatihan").insert({
     id: trainingId,
     title: `Pelatihan ${request.skill_name}`,
     skill_id: request.skill_id,
@@ -330,7 +330,7 @@ export async function reviewTrainingRequest(id: string, approve: boolean) {
 
   await autoEnrollGapEmployees(trainingId, request.skill_id, request.department);
 
-  await supabaseAdmin.from("training_requests").update({
+  await supabaseAdmin.from("permintaan_pelatihan").update({
     status: "Disetujui", training_id: trainingId, reviewed_at: now.toISOString(),
   }).eq("id", id);
 
@@ -360,7 +360,7 @@ export async function createTrainingFromGap(params: {
   const startDefault = now.toISOString().split("T")[0];
   const endDefault = new Date(now.getTime() + 30 * 86_400_000).toISOString().split("T")[0];
 
-  const { error } = await supabaseAdmin.from("trainings").insert({
+  const { error } = await supabaseAdmin.from("pelatihan").insert({
     id: trainingId,
     title: `Pelatihan ${skillName}`,
     skill_id: skillId,
@@ -383,7 +383,7 @@ export async function createTrainingFromGap(params: {
 export async function getTrainingsAwaitingBudget() {
   await requireRole("director", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("trainings")
+    .from("pelatihan")
     .select("*")
     .eq("budget_status", "Menunggu Direktur")
     .order("created_at", { ascending: false });
@@ -394,7 +394,7 @@ export async function getTrainingsAwaitingBudget() {
 export async function getTrainingBudgetHistory() {
   await requireRole("director", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("trainings")
+    .from("pelatihan")
     .select("*")
     .in("budget_status", ["Disetujui", "Ditolak"])
     .order("created_at", { ascending: false })
@@ -409,7 +409,7 @@ export async function getTrainingBudgetHistory() {
 export async function reviewTrainingBudget(trainingId: string, approve: boolean, finalCost?: number): Promise<{ error: string } | { success: true }> {
   await requireRole("director", "superadmin");
 
-  const { data: trainingRow } = await supabaseAdmin.from("trainings").select("*").eq("id", trainingId).maybeSingle();
+  const { data: trainingRow } = await supabaseAdmin.from("pelatihan").select("*").eq("id", trainingId).maybeSingle();
   if (!trainingRow) return { error: "Pelatihan tidak ditemukan." };
   const training = trainingRow as Record<string, unknown>;
   if (training.budget_status !== "Menunggu Direktur") {
@@ -420,24 +420,24 @@ export async function reviewTrainingBudget(trainingId: string, approve: boolean,
   if (approve && finalCost !== undefined) patch.proposed_cost = finalCost;
   if (!approve) patch.status = "Cancelled";
 
-  const { error } = await supabaseAdmin.from("trainings").update(patch).eq("id", trainingId);
+  const { error } = await supabaseAdmin.from("pelatihan").update(patch).eq("id", trainingId);
   if (error) return { error: "Gagal memproses keputusan anggaran." };
 
   if (approve) {
     const { data: enrollments } = await supabaseAdmin
-      .from("training_enrollments")
+      .from("peserta_pelatihan")
       .select("employee_id")
       .eq("training_id", trainingId);
     const employeeIds = [...new Set((enrollments || []).map((e: { employee_id: string }) => e.employee_id).filter(Boolean))];
     const emailByEmployeeId: Record<string, string> = {};
     if (employeeIds.length > 0) {
-      const { data: emps } = await supabaseAdmin.from("employees").select("id, email").in("id", employeeIds);
+      const { data: emps } = await supabaseAdmin.from("karyawan").select("id, email").in("id", employeeIds);
       (emps || []).forEach((e: { id: string; email?: string }) => { if (e.email) emailByEmployeeId[e.id] = e.email; });
     }
     for (const employeeId of employeeIds) {
       const email = emailByEmployeeId[employeeId];
       if (!email) continue;
-      await supabaseAdmin.from("notifications").insert({
+      await supabaseAdmin.from("notifikasi").insert({
         id: crypto.randomUUID(),
         user_email: email,
         title: "Training Wajib — Menutup Gap Kompetensi",
@@ -471,8 +471,8 @@ export interface TrainingROIRow {
 export async function getTrainingROI(): Promise<TrainingROIRow[]> {
   await requireRole("hrd", "superadmin");
   const [{ data: trainings }, { data: roiRows }] = await Promise.all([
-    supabaseAdmin.from("trainings").select("id, title, department, status, date_start, date_end").order("date_start", { ascending: false }),
-    supabaseAdmin.from("training_roi").select("*"),
+    supabaseAdmin.from("pelatihan").select("id, title, department, status, date_start, date_end").order("date_start", { ascending: false }),
+    supabaseAdmin.from("roi_pelatihan").select("*"),
   ]);
 
   const roiMap = new Map((roiRows || []).map((r: Record<string, unknown>) => [r.training_id as string, r]));
@@ -508,7 +508,7 @@ export async function saveTrainingROI(formData: FormData) {
 
   if (!training_id) return { error: "Program pelatihan wajib dipilih." };
 
-  const { error } = await supabaseAdmin.from("training_roi").upsert({
+  const { error } = await supabaseAdmin.from("roi_pelatihan").upsert({
     training_id, cost, benefit, notes, updated_at: new Date().toISOString(),
   }, { onConflict: "training_id" });
   if (error?.code === "42P01" || error?.code === "PGRST205") return { error: "Jalankan migrasi 20260703002_training_requests_roi.sql terlebih dahulu." };
@@ -522,7 +522,7 @@ export async function saveTrainingROI(formData: FormData) {
 
 export async function getTrainingMaterials() {
   await requireRole("hrd", "superadmin", "department_manager", "employee");
-  const { data } = await supabaseAdmin.from("training_materials").select("*").order("created_at", { ascending: false });
+  const { data } = await supabaseAdmin.from("materi_pelatihan").select("*").order("created_at", { ascending: false });
   return (data || []) as Record<string, unknown>[];
 }
 
@@ -533,7 +533,7 @@ export async function saveTrainingMaterial(formData: FormData) {
   const type = (formData.get("type") as string || "File").trim();
   if (!training_id || !title) return { error: "Program pelatihan dan judul materi wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("training_materials").insert({
+  const { error } = await supabaseAdmin.from("materi_pelatihan").insert({
     id: "mat-" + crypto.randomUUID(), training_id, title, type, file_size: "-", created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01" || error?.code === "PGRST205") return { error: "Jalankan migrasi 20260703002_training_requests_roi.sql terlebih dahulu." };
@@ -544,7 +544,7 @@ export async function saveTrainingMaterial(formData: FormData) {
 
 export async function deleteTrainingMaterial(id: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("training_materials").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("materi_pelatihan").delete().eq("id", id);
   if (error) return { error: "Gagal menghapus materi." };
   revalidatePath("/hrd/learning/materials");
   return { success: true };
@@ -552,7 +552,7 @@ export async function deleteTrainingMaterial(id: string) {
 
 export async function getTrainingQuizzes() {
   await requireRole("hrd", "superadmin", "department_manager", "employee");
-  const { data } = await supabaseAdmin.from("training_quizzes").select("*").order("created_at", { ascending: false });
+  const { data } = await supabaseAdmin.from("kuis_pelatihan").select("*").order("created_at", { ascending: false });
   return (data || []) as Record<string, unknown>[];
 }
 
@@ -565,7 +565,7 @@ export async function saveTrainingQuiz(formData: FormData) {
   const duration_minutes = parseInt(formData.get("duration_minutes") as string || "30", 10) || 30;
   if (!training_id || !title) return { error: "Program pelatihan dan judul kuis wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("training_quizzes").insert({
+  const { error } = await supabaseAdmin.from("kuis_pelatihan").insert({
     id: "quiz-" + crypto.randomUUID(), training_id, title, questions_count, pass_score, duration_minutes,
     status: "Draft", created_at: new Date().toISOString(),
   });
@@ -577,7 +577,7 @@ export async function saveTrainingQuiz(formData: FormData) {
 
 export async function deleteTrainingQuiz(id: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("training_quizzes").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("kuis_pelatihan").delete().eq("id", id);
   if (error) return { error: "Gagal menghapus kuis." };
   revalidatePath("/hrd/learning/quizzes");
   return { success: true };
@@ -585,7 +585,7 @@ export async function deleteTrainingQuiz(id: string) {
 
 export async function getTrainingCertificates() {
   await requireRole("hrd", "superadmin", "department_manager", "employee");
-  const { data } = await supabaseAdmin.from("training_certificates").select("*").order("created_at", { ascending: false });
+  const { data } = await supabaseAdmin.from("sertifikat_pelatihan").select("*").order("created_at", { ascending: false });
   return (data || []) as Record<string, unknown>[];
 }
 
@@ -597,7 +597,7 @@ export async function issueCertificate(formData: FormData) {
   const completion_date = (formData.get("completion_date") as string || "").trim();
   if (!training_id || !employee_id || !certificate_number) return { error: "Program, karyawan, dan nomor sertifikat wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("training_certificates").insert({
+  const { error } = await supabaseAdmin.from("sertifikat_pelatihan").insert({
     id: "cert-" + crypto.randomUUID(), training_id, employee_id, certificate_number,
     completion_date: completion_date || null, status: "Diterbitkan", created_at: new Date().toISOString(),
   });
@@ -611,7 +611,7 @@ export async function getDeptTrainings(deptName: string) {
   await requireRole("department_manager", "superadmin");
 
   const { data: jobSpecs } = await supabaseAdmin
-    .from("job_specifications")
+    .from("spesifikasi_kerja")
     .select("skills")
     .eq("department", deptName);
 
@@ -625,11 +625,11 @@ export async function getDeptTrainings(deptName: string) {
     }
   }
 
-  let query = supabaseAdmin.from("trainings").select("*").order("date_start", { ascending: false });
+  let query = supabaseAdmin.from("pelatihan").select("*").order("date_start", { ascending: false });
 
   if (skillNames.size > 0) {
     const { data: skills } = await supabaseAdmin
-      .from("skills")
+      .from("master_kompetensi")
       .select("id")
       .in("name", Array.from(skillNames));
     const skillIds = (skills || []).map((s: Record<string, unknown>) => s.id as string);
@@ -640,7 +640,7 @@ export async function getDeptTrainings(deptName: string) {
 
   const { data: trainings } = await query;
 
-  const { data: enrollments } = await supabaseAdmin.from("training_enrollments").select("training_id");
+  const { data: enrollments } = await supabaseAdmin.from("peserta_pelatihan").select("training_id");
   const countMap: Record<string, number> = {};
   for (const e of (enrollments || [])) {
     const tid = (e as Record<string, unknown>).training_id as string;

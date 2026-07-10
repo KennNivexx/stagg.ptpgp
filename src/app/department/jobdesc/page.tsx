@@ -19,7 +19,7 @@ export default async function DeptJobDescPage() {
   let department: string | null = null;
   if (user.role === "department_manager") {
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("department")
       .eq("email", user.email)
       .maybeSingle();
@@ -28,10 +28,10 @@ export default async function DeptJobDescPage() {
 
   const [{ data: descs }, { data: specs }] = await Promise.all([
     department
-      ? supabaseAdmin.from("job_descriptions").select("*").eq("department", department).order("position", { ascending: true })
+      ? supabaseAdmin.from("deskripsi_kerja").select("*").eq("department", department).order("position", { ascending: true })
       : Promise.resolve({ data: [] as JobDescRow[] }),
     department
-      ? supabaseAdmin.from("job_specifications").select("*").eq("department", department)
+      ? supabaseAdmin.from("spesifikasi_kerja").select("*").eq("department", department)
       : Promise.resolve({ data: [] as JobSpecRow[] }),
   ]);
 

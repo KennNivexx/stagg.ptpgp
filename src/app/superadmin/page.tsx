@@ -45,7 +45,7 @@ export default async function SuperadminDashboard() {
   });
 
   const { data: employees, error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, address, email, status");
 
   if (error) {
@@ -68,7 +68,7 @@ export default async function SuperadminDashboard() {
   // credentials-embedded-in-address auth path that current accounts don't
   // use, so counting via parseRole always came out 0.
   const { count: totalHRD } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .select("id", { count: "exact", head: true })
     .eq("role", "hrd");
 
@@ -84,7 +84,7 @@ export default async function SuperadminDashboard() {
   );
 
   const { data: auditLogs7d } = await supabaseAdmin
-    .from("audit_logs")
+    .from("log_audit")
     .select("action, performed_by_email, created_at")
     .gte("created_at", sevenDaysAgo.toISOString())
     .order("created_at", { ascending: false });

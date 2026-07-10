@@ -15,12 +15,12 @@ export default async function DataIndukKaryawan({
   const statusFilter = params.status || "";
 
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .order("full_name", { ascending: true });
 
   const { data: departments } = await supabaseAdmin
-    .from("departments")
+    .from("departemen")
     .select("name")
     .order("name", { ascending: true });
 

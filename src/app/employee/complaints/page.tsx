@@ -8,7 +8,7 @@ export default async function EmployeeComplaints() {
   const user = await requireAuth();
 
   const { data } = await supabaseAdmin
-    .from("complaints")
+    .from("keluhan")
     .select("*")
     .eq("employee_id", user.id)
     .order("created_at", { ascending: false })

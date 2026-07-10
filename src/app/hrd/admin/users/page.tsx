@@ -4,7 +4,7 @@ import UsersClient from "./UsersClient";
 
 export default async function ManajemenUser() {
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .order("full_name");
 

@@ -13,7 +13,7 @@ import { auditLog } from "@/lib/audit";
 export async function purgeExpiredRejectedApplicants(): Promise<number> {
   const now = new Date().toISOString();
   const { data: due, error } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .select("id, email")
     .eq("role", "applicant")
     .not("expires_at", "is", null)
@@ -34,7 +34,7 @@ export async function purgeExpiredRejectedApplicants(): Promise<number> {
       detail: `Akun pelamar ditolak (email: ${email || "-"}), masa tenggat 24 jam terlampaui. Menghapus permanen akun sementara.`,
     });
 
-    const { error: delErr } = await supabaseAdmin.from("users").delete().eq("id", userId);
+    const { error: delErr } = await supabaseAdmin.from("pengguna").delete().eq("id", userId);
     if (!delErr) purged++;
   }
 

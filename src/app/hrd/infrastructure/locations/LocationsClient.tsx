@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { MapPin, Building2, Warehouse, Store, Users, Plus, X, Save, Pencil, Trash2, ChevronDown, ChevronUp, Search } from "lucide-react";
+import { MapPin, Building2, Warehouse, Store, Users, Plus, X, Save, Pencil, Trash2, ChevronDown, ChevronUp, Search, Crosshair, ShieldCheck } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { saveLocation, deleteLocation, assignEmployeeLocation } from "@/app/actions/infrastructure";
 
-type Location = { id: string; name: string; address: string; type: string; status: string };
+type Location = {
+  id: string; name: string; address: string; type: string; status: string;
+  latitude?: number | null; longitude?: number | null; radius_meters?: number;
+};
 type Employee = { id: string; full_name: string; department: string; position: string; location_id: string | null };
+
+const emptyForm = { name: "", address: "", type: "Kantor", status: "Aktif", latitude: "", longitude: "", radius_meters: "200" };
 
 const typeIcon = (type: string) => {
   if (type === "Gudang") return Warehouse;
@@ -25,12 +30,26 @@ export default function LocationsClient({ initialLocations, employees: initialEm
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", address: "", type: "Kantor", status: "Aktif" });
+  const [formData, setFormData] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [reassigning, setReassigning] = useState<string | null>(null);
   const [assignSearch, setAssignSearch] = useState("");
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) { setSaveMsg({ type: "error", text: "GPS tidak didukung di perangkat ini." }); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        setFormData((f) => ({ ...f, latitude: String(pos.coords.latitude), longitude: String(pos.coords.longitude) }));
+      },
+      () => { setLocating(false); setSaveMsg({ type: "error", text: "Gagal mengambil lokasi GPS." }); },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
 
   const employeesByLocation = useMemo(() => {
     const m: Record<string, Employee[]> = {};
@@ -63,21 +82,32 @@ export default function LocationsClient({ initialLocations, employees: initialEm
     const result = await saveLocation(fd);
     setSaving(false);
     if (result?.error) { setSaveMsg({ type: "error", text: result.error }); return; }
+    const savedLoc = {
+      ...formData,
+      latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+      longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+      radius_meters: parseInt(formData.radius_meters) || 200,
+    };
     if (editingId) {
-      setLocations((prev) => prev.map((l) => (l.id === editingId ? { ...l, ...formData } : l)));
+      setLocations((prev) => prev.map((l) => (l.id === editingId ? { ...l, ...savedLoc } : l)));
     } else {
-      setLocations([...locations, { id: "loc-" + Date.now(), ...formData }]);
+      setLocations([...locations, { id: "loc-" + Date.now(), ...savedLoc }]);
     }
     setSaveMsg({ type: "success", text: "Lokasi berhasil disimpan." });
     setShowForm(false);
     setEditingId(null);
-    setFormData({ name: "", address: "", type: "Kantor", status: "Aktif" });
+    setFormData(emptyForm);
     setTimeout(() => setSaveMsg(null), 3000);
   };
 
   const handleEdit = (loc: Location) => {
     setEditingId(loc.id);
-    setFormData({ name: loc.name, address: loc.address, type: loc.type, status: loc.status });
+    setFormData({
+      name: loc.name, address: loc.address, type: loc.type, status: loc.status,
+      latitude: loc.latitude != null ? String(loc.latitude) : "",
+      longitude: loc.longitude != null ? String(loc.longitude) : "",
+      radius_meters: String(loc.radius_meters ?? 200),
+    });
     setShowForm(true);
   };
 
@@ -107,7 +137,7 @@ export default function LocationsClient({ initialLocations, employees: initialEm
           <p className="text-sm text-gray-500 mt-1">Kelola lokasi kerja dan lihat penempatan karyawan di tiap lokasi.</p>
         </div>
         <button
-          onClick={() => { setEditingId(null); setFormData({ name: "", address: "", type: "Kantor", status: "Aktif" }); setShowForm(true); }}
+          onClick={() => { setEditingId(null); setFormData(emptyForm); setShowForm(true); }}
           className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
         >
           <Plus size={14} /> Tambah Lokasi
@@ -206,6 +236,47 @@ export default function LocationsClient({ initialLocations, employees: initialEm
                   </select>
                 </div>
               </div>
+
+              <div className="border-t border-slate-100 pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><ShieldCheck size={13} className="text-emerald-500" /> Geofence Absensi</label>
+                  <button
+                    type="button"
+                    onClick={useCurrentLocation}
+                    disabled={locating}
+                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <Crosshair size={11} /> {locating ? "Mengambil..." : "Gunakan Lokasi Saya"}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mb-2">Isi titik koordinat agar karyawan hanya bisa absen di dalam radius lokasi ini. Kosongkan untuk menonaktifkan geofence.</p>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <input
+                    type="number" step="any"
+                    value={formData.latitude}
+                    onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                    placeholder="Latitude"
+                    className="w-full border border-slate-200 p-2.5 rounded-xl text-sm"
+                  />
+                  <input
+                    type="number" step="any"
+                    value={formData.longitude}
+                    onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                    placeholder="Longitude"
+                    className="w-full border border-slate-200 p-2.5 rounded-xl text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Radius (meter)</label>
+                  <input
+                    type="number" min={10}
+                    value={formData.radius_meters}
+                    onChange={(e) => setFormData({ ...formData, radius_meters: e.target.value })}
+                    className="w-full border border-slate-200 p-2.5 rounded-xl text-sm"
+                  />
+                </div>
+              </div>
+
               <button type="submit" disabled={saving} className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60">
                 <Save size={14} /> {saving ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Simpan Lokasi"}
               </button>
@@ -239,11 +310,18 @@ export default function LocationsClient({ initialLocations, employees: initialEm
                 </div>
                 <h3 className="font-extrabold text-slate-800 text-sm mb-1">{loc.name}</h3>
                 <p className="text-xs text-slate-500 mb-3 line-clamp-2">{loc.address}</p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${typeColor(loc.type)}`}>{loc.type}</span>
                   <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
                     loc.status === "Aktif" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
                   }`}>{loc.status}</span>
+                  {loc.latitude != null && loc.longitude != null ? (
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 flex items-center gap-1">
+                      <ShieldCheck size={10} /> Geofence {loc.radius_meters ?? 200}m
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-50 text-slate-400">Geofence belum diatur</span>
+                  )}
                 </div>
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : loc.id)}

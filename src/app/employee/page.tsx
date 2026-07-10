@@ -32,7 +32,7 @@ export default async function EmployeeDashboard() {
   });
 
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, department, position")
     .eq("email", userEmail)
     .limit(1)
@@ -47,7 +47,7 @@ export default async function EmployeeDashboard() {
   let annualLeaveUsed = 0;
   const annualLeaveTotal = 12;
   const { data: approvedLeaves } = await supabaseAdmin
-    .from("leave_requests")
+    .from("pengajuan_cuti")
     .select("id")
     .eq("employee_id", user.id)
     .eq("type", "Cuti Tahunan")
@@ -57,7 +57,7 @@ export default async function EmployeeDashboard() {
   let lastPayroll: Record<string, unknown> | null = null;
   if (employeeId) {
     const { data } = await supabaseAdmin
-      .from("payroll")
+      .from("penggajian")
       .select("basic_salary, net_salary, period, payment_date")
       .eq("employee_id", employeeId)
       .order("created_at", { ascending: false })
@@ -68,7 +68,7 @@ export default async function EmployeeDashboard() {
   // ── C1: today's check-in status ──────────────────────────────────────────
   const todayStr = new Date().toISOString().split("T")[0];
   const { data: todayAttendanceRow } = await supabaseAdmin
-    .from("attendance")
+    .from("absensi")
     .select("check_in, check_out, status")
     .eq("employee_id", user.id)
     .eq("date", todayStr)
@@ -92,9 +92,9 @@ export default async function EmployeeDashboard() {
     const in7DaysStr = in7Days.toISOString().split("T")[0];
 
     const [{ data: recentAttendance }, { data: recentLeaves }, { data: myEnrollments }] = await Promise.all([
-      supabaseAdmin.from("attendance").select("date, check_in, status").eq("employee_id", user.id).order("date", { ascending: false }).limit(5),
-      supabaseAdmin.from("leave_requests").select("type, start_date, end_date, status, created_at").eq("employee_id", user.id).order("created_at", { ascending: false }).limit(5),
-      supabaseAdmin.from("training_enrollments").select("training_id, status, trainings(title, date_start, date_end)").eq("employee_id", employeeId),
+      supabaseAdmin.from("absensi").select("date, check_in, status").eq("employee_id", user.id).order("date", { ascending: false }).limit(5),
+      supabaseAdmin.from("pengajuan_cuti").select("type, start_date, end_date, status, created_at").eq("employee_id", user.id).order("created_at", { ascending: false }).limit(5),
+      supabaseAdmin.from("peserta_pelatihan").select("training_id, status, pelatihan(title, date_start, date_end)").eq("employee_id", employeeId),
     ]);
 
     (recentAttendance || []).forEach((a) => {
@@ -127,7 +127,7 @@ export default async function EmployeeDashboard() {
     });
 
     (myEnrollments || []).forEach((e) => {
-      const training = e.trainings as unknown as { title: string; date_start: string; date_end: string } | null;
+      const training = e.pelatihan as unknown as { title: string; date_start: string; date_end: string } | null;
       if (!training?.date_start) return;
       if (training.date_start >= todayStr && training.date_start <= in7DaysStr) {
         upcomingEvents.push({

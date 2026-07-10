@@ -36,7 +36,7 @@ interface Request {
   kpi_jabatan?: string; document_urls?: DocumentEntry[];
   finance_required?: boolean; finance_approved?: boolean;
   finance_approved_by?: string; finance_approved_at?: string;
-  recruitment_stage?: string; cancel_reason?: string;
+  recruitment_stage?: string; cancel_reason?: string; required_license?: string;
 }
 
 interface Props {
@@ -53,6 +53,20 @@ const STATUS_OPTS = ["Draft", "Pending", "Menunggu Finance", "Direview Direktur"
 function fmtCurrency(n?: number): string {
   if (!n && n !== 0) return "-";
   return "Rp " + n.toLocaleString("id-ID");
+}
+
+// Sama seperti getRoleLabel di src/app/superadmin/employees/UserTable.tsx — role
+// mentah dari database ("hrd", "department_manager") tidak boleh bocor ke UI.
+function roleLabel(role?: string | null): string {
+  switch (role) {
+    case "superadmin": return "Superadmin";
+    case "hrd": return "HRD";
+    case "director": return "Direktur";
+    case "department_manager": return "Manajer Departemen";
+    case "employee": return "Karyawan";
+    case "system": return "Sistem";
+    default: return role || "";
+  }
 }
 
 function slaInfo(needByDate?: string): { label: string; className: string; daysLeft: number } | null {
@@ -395,26 +409,30 @@ export default function RequestsClient({ departments, positions, userRole, userN
 
       {/* Filter & Search */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
-        <div className="flex items-center gap-2">
-          <Search size={14} className="text-slate-400" />
-          <input
-            value={fSearch}
-            onChange={e => setFSearch(e.target.value)}
-            placeholder="Cari posisi, departemen, pemohon, atau ID..."
-            className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20"
-          />
-          <select value={fDept} onChange={e => setFDept(e.target.value)} className="text-xs border border-slate-200 rounded-xl px-2 py-2">
-            <option value="">Semua Departemen</option>
-            {departments.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select value={fUrgency} onChange={e => setFUrgency(e.target.value)} className="text-xs border border-slate-200 rounded-xl px-2 py-2">
-            <option value="">Semua Urgensi</option>
-            {URGENCY_OPTS.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-          <select value={fType} onChange={e => setFType(e.target.value)} className="text-xs border border-slate-200 rounded-xl px-2 py-2">
-            <option value="">Semua Jenis</option>
-            {REQUEST_TYPE_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Search size={14} className="text-slate-400 shrink-0" />
+            <input
+              value={fSearch}
+              onChange={e => setFSearch(e.target.value)}
+              placeholder="Cari posisi, departemen, pemohon, atau ID..."
+              className="flex-1 min-w-0 text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#CC0000]/20"
+            />
+          </div>
+          <div className="grid grid-cols-3 sm:flex gap-2 shrink-0">
+            <select value={fDept} onChange={e => setFDept(e.target.value)} className="text-xs border border-slate-200 rounded-xl px-2 py-2 min-w-0">
+              <option value="">Semua Departemen</option>
+              {departments.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <select value={fUrgency} onChange={e => setFUrgency(e.target.value)} className="text-xs border border-slate-200 rounded-xl px-2 py-2 min-w-0">
+              <option value="">Semua Urgensi</option>
+              {URGENCY_OPTS.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+            <select value={fType} onChange={e => setFType(e.target.value)} className="text-xs border border-slate-200 rounded-xl px-2 py-2 min-w-0">
+              <option value="">Semua Jenis</option>
+              {REQUEST_TYPE_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {STATUS_OPTS.map(s => (
@@ -569,6 +587,11 @@ export default function RequestsClient({ departments, positions, userRole, userN
                 {detail.request_type && (
                   <span className="px-2 py-1 rounded-lg text-xs font-bold border bg-indigo-50 text-indigo-700 border-indigo-200">
                     {detail.request_type}
+                  </span>
+                )}
+                {detail.required_license && (
+                  <span className="px-2 py-1 rounded-lg text-xs font-bold border bg-cyan-50 text-cyan-700 border-cyan-200">
+                    Butuh {detail.required_license}
                   </span>
                 )}
                 {slaInfo(detail.need_by_date) && (
@@ -828,7 +851,7 @@ export default function RequestsClient({ departments, positions, userRole, userN
                     {history.map(h => (
                       <div key={h.id} className="text-xs text-slate-500 flex items-start gap-2">
                         <span className="font-semibold text-slate-700">{h.action}</span>
-                        <span className="text-slate-400">— ditandatangani oleh {h.actor_name || "-"}{h.actor_role ? ` (${h.actor_role})` : ""}</span>
+                        <span className="text-slate-400">— ditandatangani oleh {h.actor_name || "-"}{h.actor_role ? ` (${roleLabel(h.actor_role)})` : ""}</span>
                         {h.note && <span className="text-slate-400 italic">&ldquo;{h.note}&rdquo;</span>}
                         <span className="text-slate-300 ml-auto shrink-0">{new Date(h.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
@@ -1086,7 +1109,7 @@ export default function RequestsClient({ departments, positions, userRole, userN
                     Kode Grade
                     <span className="ml-1 text-[10px] font-normal text-slate-400">(opsional)</span>
                   </label>
-                  <input name="grade_code" defaultValue={editTarget?.grade_code || ""} placeholder="cth. G3, M2" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/30" />
+                  <input name="grade_code" defaultValue={editTarget?.grade_code || ""} placeholder="cth. 1.1.1.1.0.0" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#CC0000]/30" />
                 </div>
               </div>
 
@@ -1185,6 +1208,22 @@ export default function RequestsClient({ departments, positions, userRole, userN
                 {isHRD && (
                   <input name="budget_approved_by" defaultValue={editTarget?.budget_approved_by || ""} placeholder="Disetujui oleh (nama)" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/30" />
                 )}
+              </div>
+
+              {/* Kebutuhan SIM (untuk posisi supir) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                  Kebutuhan SIM
+                  <span className="ml-1 text-[10px] font-normal text-slate-400">(opsional, khusus posisi supir)</span>
+                </label>
+                <select name="required_license" defaultValue={editTarget?.required_license || ""} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/30">
+                  <option value="">Tidak diperlukan</option>
+                  <option value="SIM A">SIM A</option>
+                  <option value="SIM B1">SIM B1</option>
+                  <option value="SIM B2">SIM B2</option>
+                  <option value="SIM B3">SIM B3</option>
+                  <option value="SIM C">SIM C</option>
+                </select>
               </div>
 
               {/* KPI Jabatan (HRD) */}

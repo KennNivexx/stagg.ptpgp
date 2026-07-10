@@ -22,7 +22,7 @@ interface WorkforceRequest {
   kpi_jabatan?: string; document_urls?: DocumentEntry[];
   finance_required?: boolean; finance_approved?: boolean;
   finance_approved_by?: string; finance_approved_at?: string;
-  recruitment_stage?: string; cancel_reason?: string;
+  recruitment_stage?: string; cancel_reason?: string; required_license?: string;
 }
 
 export interface RequestHistoryEntry {
@@ -36,7 +36,7 @@ async function logHistory(entry: {
   requestId: string; action: string; actorName?: string; actorRole?: string;
   fromStatus?: string | null; toStatus?: string | null; note?: string | null;
 }) {
-  await supabaseAdmin.from("workforce_request_history").insert({
+  await supabaseAdmin.from("riwayat_permintaan_sdm").insert({
     id: historyId(),
     request_id: entry.requestId,
     action: entry.action,
@@ -51,7 +51,7 @@ async function logHistory(entry: {
 async function notify(userEmail: string, title: string, message: string, link: string) {
   if (!userEmail) return;
   try {
-    await supabaseAdmin.from("notifications").insert({
+    await supabaseAdmin.from("notifikasi").insert({
       id: "ntf-" + crypto.randomUUID(),
       user_email: userEmail,
       title,
@@ -64,14 +64,14 @@ async function notify(userEmail: string, title: string, message: string, link: s
 }
 
 async function getRequestOwnerEmail(department: string): Promise<string | null> {
-  const { data } = await supabaseAdmin.from("employees").select("email").eq("department", department).limit(1).maybeSingle();
+  const { data } = await supabaseAdmin.from("karyawan").select("email").eq("department", department).limit(1).maybeSingle();
   return (data as { email?: string } | null)?.email || null;
 }
 
 export async function getRequests(params?: { status?: string; department?: string }): Promise<WorkforceRequest[]> {
   await requireRole("hrd", "superadmin", "director", "department_manager");
 
-  let query = supabaseAdmin.from("workforce_requests").select("*").order("created_at", { ascending: false });
+  let query = supabaseAdmin.from("permintaan_sdm").select("*").order("created_at", { ascending: false });
 
   if (params?.status) {
     query = query.eq("status", params.status);
@@ -87,7 +87,7 @@ export async function getRequests(params?: { status?: string; department?: strin
 export async function getRequestHistory(requestId: string): Promise<RequestHistoryEntry[]> {
   await requireRole("hrd", "superadmin", "director", "department_manager");
   const { data } = await supabaseAdmin
-    .from("workforce_request_history")
+    .from("riwayat_permintaan_sdm")
     .select("*")
     .eq("request_id", requestId)
     .order("created_at", { ascending: true });
@@ -113,6 +113,7 @@ function readRequestFields(formData: FormData) {
     budget_available: formData.get("budget_available") === "on" || formData.get("budget_available") === "true",
     budget_approved_by: (formData.get("budget_approved_by") as string || "").trim() || null,
     kpi_jabatan: (formData.get("kpi_jabatan") as string || "").trim() || null,
+    required_license: (formData.get("required_license") as string || "").trim() || null,
   };
 }
 
@@ -126,7 +127,7 @@ export async function addRequest(formData: FormData, asDraft?: boolean): Promise
   const id = uid();
   const now = new Date().toISOString();
   const status = asDraft ? "Draft" : "Pending";
-  const { error } = await supabaseAdmin.from("workforce_requests").insert({
+  const { error } = await supabaseAdmin.from("permintaan_sdm").insert({
     id, ...f, requested_by, status, created_at: now,
   });
   if (error) {
@@ -150,14 +151,14 @@ export async function addRequest(formData: FormData, asDraft?: boolean): Promise
 export async function editRequest(id: string, formData: FormData, resubmit?: boolean): Promise<{ error: string } | { success: true }> {
   const user = await requireRole("department_manager", "hrd", "superadmin");
 
-  const { data: current } = await supabaseAdmin.from("workforce_requests").select("status, department").eq("id", id).maybeSingle();
+  const { data: current } = await supabaseAdmin.from("permintaan_sdm").select("status, department").eq("id", id).maybeSingle();
   const cur = current as { status?: string; department?: string } | null;
   if (!cur) return { error: "Permintaan tidak ditemukan." };
   if (!["Draft", "Ditolak"].includes(cur.status || "")) {
     return { error: "Hanya permintaan berstatus Draft atau Ditolak yang bisa direvisi." };
   }
   if (user.role === "department_manager") {
-    const { data: emp } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+    const { data: emp } = await supabaseAdmin.from("karyawan").select("department").eq("email", user.email).maybeSingle();
     const myDept = (emp as { department?: string } | null)?.department;
     if (!myDept || myDept !== cur.department) return { error: "Akses ditolak: bukan departemen Anda." };
   }
@@ -166,7 +167,7 @@ export async function editRequest(id: string, formData: FormData, resubmit?: boo
   if (!f.department || !f.position) return { error: "Departemen dan posisi wajib diisi." };
 
   const newStatus = resubmit ? "Pending" : "Draft";
-  const { error } = await supabaseAdmin.from("workforce_requests").update({
+  const { error } = await supabaseAdmin.from("permintaan_sdm").update({
     ...f, status: newStatus, rejection_reason: resubmit ? null : undefined, updated_at: new Date().toISOString(),
   }).eq("id", id);
   if (error) return { error: "Gagal memproses. Silakan coba lagi." };
@@ -187,13 +188,13 @@ export async function editRequest(id: string, formData: FormData, resubmit?: boo
 
 export async function cloneRequest(id: string): Promise<{ error: string } | { success: true; id: string }> {
   const user = await requireRole("department_manager", "hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("workforce_requests").select("*").eq("id", id).maybeSingle();
+  const { data } = await supabaseAdmin.from("permintaan_sdm").select("*").eq("id", id).maybeSingle();
   const src = data as WorkforceRequest | null;
   if (!src) return { error: "Permintaan tidak ditemukan." };
 
   const newId = uid();
   const now = new Date().toISOString();
-  const { error } = await supabaseAdmin.from("workforce_requests").insert({
+  const { error } = await supabaseAdmin.from("permintaan_sdm").insert({
     id: newId, department: src.department, position: src.position, quantity: src.quantity,
     reason: src.reason, urgency: src.urgency, status: "Draft",
     requested_by: user.name || user.email, grade_code: src.grade_code, job_desc: src.job_desc,
@@ -213,13 +214,13 @@ export async function cloneRequest(id: string): Promise<{ error: string } | { su
 
 export async function cancelRequest(id: string, reason: string): Promise<{ error: string } | { success: true }> {
   const user = await requireRole("department_manager", "hrd", "superadmin");
-  const { data: current } = await supabaseAdmin.from("workforce_requests").select("status").eq("id", id).maybeSingle();
+  const { data: current } = await supabaseAdmin.from("permintaan_sdm").select("status").eq("id", id).maybeSingle();
   const status = (current as { status?: string } | null)?.status;
   if (!status || !["Draft", "Pending", "Menunggu Finance", "Direview Direktur"].includes(status)) {
     return { error: "Permintaan ini sudah tidak bisa dibatalkan." };
   }
 
-  const { error } = await supabaseAdmin.from("workforce_requests").update({
+  const { error } = await supabaseAdmin.from("permintaan_sdm").update({
     status: "Dibatalkan", cancel_reason: reason.trim() || null, updated_at: new Date().toISOString(),
   }).eq("id", id);
   if (error) return { error: "Gagal memproses. Silakan coba lagi." };
@@ -233,7 +234,7 @@ export async function cancelRequest(id: string, reason: string): Promise<{ error
 
 export async function setFinanceRequired(id: string, required: boolean): Promise<{ error: string } | { success: true }> {
   const user = await requireRole("hrd", "superadmin");
-  await supabaseAdmin.from("workforce_requests").update({ finance_required: required }).eq("id", id);
+  await supabaseAdmin.from("permintaan_sdm").update({ finance_required: required }).eq("id", id);
   await logHistory({ requestId: id, action: required ? "Approval Finance diaktifkan" : "Approval Finance dinonaktifkan", actorName: user.name || user.email, actorRole: user.role });
   revalidatePath("/hrd/workforce/requests");
   return { success: true };
@@ -244,12 +245,12 @@ export async function approveFinance(id: string, approved: boolean, note?: strin
   if (!approved && !(note || "").trim()) return { error: "Alasan penolakan Finance wajib diisi." };
 
   if (approved) {
-    await supabaseAdmin.from("workforce_requests").update({
+    await supabaseAdmin.from("permintaan_sdm").update({
       finance_approved: true, finance_approved_by: user.name || user.email, finance_approved_at: new Date().toISOString(),
     }).eq("id", id);
     await logHistory({ requestId: id, action: "Finance Disetujui", actorName: user.name || user.email, actorRole: user.role });
   } else {
-    await supabaseAdmin.from("workforce_requests").update({
+    await supabaseAdmin.from("permintaan_sdm").update({
       status: "Ditolak", rejection_reason: (note || "").trim(), updated_at: new Date().toISOString(),
     }).eq("id", id);
     await logHistory({ requestId: id, action: "Ditolak oleh Finance", actorName: user.name || user.email, actorRole: user.role, toStatus: "Ditolak", note: (note || "").trim() });
@@ -262,7 +263,7 @@ export async function advanceRecruitmentStage(id: string, stage: string): Promis
   const user = await requireRole("hrd", "superadmin");
   if (!RECRUITMENT_STAGES.includes(stage)) return { error: "Tahap tidak dikenal." };
 
-  await supabaseAdmin.from("workforce_requests").update({ recruitment_stage: stage, updated_at: new Date().toISOString() }).eq("id", id);
+  await supabaseAdmin.from("permintaan_sdm").update({ recruitment_stage: stage, updated_at: new Date().toISOString() }).eq("id", id);
   await logHistory({ requestId: id, action: `Progres Rekrutmen: ${stage}`, actorName: user.name || user.email, actorRole: user.role });
   revalidatePath("/hrd/workforce/requests");
   return { success: true };
@@ -270,11 +271,11 @@ export async function advanceRecruitmentStage(id: string, stage: string): Promis
 
 export async function addRequestDocument(id: string, doc: { name: string; url: string }): Promise<{ error: string } | { success: true }> {
   const user = await requireRole("department_manager", "hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("workforce_requests").select("document_urls").eq("id", id).maybeSingle();
+  const { data } = await supabaseAdmin.from("permintaan_sdm").select("document_urls").eq("id", id).maybeSingle();
   const existing = ((data as { document_urls?: DocumentEntry[] } | null)?.document_urls) || [];
   const updated = [...existing, { name: doc.name, url: doc.url, uploaded_at: new Date().toISOString() }];
 
-  const { error } = await supabaseAdmin.from("workforce_requests").update({ document_urls: updated }).eq("id", id);
+  const { error } = await supabaseAdmin.from("permintaan_sdm").update({ document_urls: updated }).eq("id", id);
   if (error) return { error: "Gagal mengunggah dokumen." };
   await logHistory({ requestId: id, action: `Dokumen diunggah: ${doc.name}`, actorName: user.name || user.email, actorRole: user.role });
   revalidatePath("/hrd/workforce/requests");
@@ -283,11 +284,11 @@ export async function addRequestDocument(id: string, doc: { name: string; url: s
 
 export async function removeRequestDocument(id: string, url: string): Promise<{ error: string } | { success: true }> {
   const user = await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("workforce_requests").select("document_urls").eq("id", id).maybeSingle();
+  const { data } = await supabaseAdmin.from("permintaan_sdm").select("document_urls").eq("id", id).maybeSingle();
   const existing = ((data as { document_urls?: DocumentEntry[] } | null)?.document_urls) || [];
   const updated = existing.filter(d => d.url !== url);
 
-  await supabaseAdmin.from("workforce_requests").update({ document_urls: updated }).eq("id", id);
+  await supabaseAdmin.from("permintaan_sdm").update({ document_urls: updated }).eq("id", id);
   await logHistory({ requestId: id, action: "Dokumen dihapus", actorName: user.name || user.email, actorRole: user.role });
   revalidatePath("/hrd/workforce/requests");
   return { success: true };
@@ -306,7 +307,7 @@ export async function updateRequestStatus(id: string, status: string, note?: str
   // Guard against double-approval (double-click, network retry, etc.) — without
   // this check, re-approving an already-"Disetujui" request would increment
   // headcount a second time for the same request.
-  const { data: current } = await supabaseAdmin.from("workforce_requests").select("status, finance_required, finance_approved, department").eq("id", id).maybeSingle();
+  const { data: current } = await supabaseAdmin.from("permintaan_sdm").select("status, finance_required, finance_approved, department").eq("id", id).maybeSingle();
   const cur = current as { status?: string; finance_required?: boolean; finance_approved?: boolean; department?: string } | null;
   const previousStatus = cur?.status;
   if (status === "Disetujui" && previousStatus === "Disetujui") {
@@ -319,7 +320,7 @@ export async function updateRequestStatus(id: string, status: string, note?: str
   const updatePayload: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === "Ditolak") updatePayload.rejection_reason = (note || "").trim();
 
-  await supabaseAdmin.from("workforce_requests").update(updatePayload).eq("id", id);
+  await supabaseAdmin.from("permintaan_sdm").update(updatePayload).eq("id", id);
 
   await logHistory({
     requestId: id,
@@ -341,7 +342,7 @@ export async function updateRequestStatus(id: string, status: string, note?: str
   }
 
   if (status === "Disetujui") {
-    const { data: req } = await supabaseAdmin.from("workforce_requests").select("department, quantity").eq("id", id).maybeSingle();
+    const { data: req } = await supabaseAdmin.from("permintaan_sdm").select("department, quantity").eq("id", id).maybeSingle();
     if (req) {
       const dept = req as { department: string; quantity: number };
       // Atomic headcount increment via RPC or raw SQL increment
@@ -356,12 +357,12 @@ export async function updateRequestStatus(id: string, status: string, note?: str
         // approval landed in between, retry once against the fresh value instead
         // of silently dropping one increment.
         for (let attempt = 0; attempt < 2; attempt++) {
-          const { data: deptRow } = await supabaseAdmin.from("departments").select("id, headcount, name").eq("name", dept.department).maybeSingle();
+          const { data: deptRow } = await supabaseAdmin.from("departemen").select("id, headcount, name").eq("name", dept.department).maybeSingle();
           if (!deptRow) break;
           const row = deptRow as { id: string; headcount: number };
           const newHC = (row.headcount || 0) + dept.quantity;
           const { data: updated } = await supabaseAdmin
-            .from("departments")
+            .from("departemen")
             .update({ headcount: newHC })
             .eq("id", row.id)
             .eq("headcount", row.headcount)
@@ -382,7 +383,7 @@ export async function updateRequestStatus(id: string, status: string, note?: str
 
 export async function deleteRequest(id: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("workforce_requests").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("permintaan_sdm").delete().eq("id", id);
   if (error) { console.error("[requests] deleteRequest error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/workforce/requests");
   return { success: true };
@@ -402,7 +403,7 @@ export async function bulkImportRequests(rows: Array<{
     if (!department || !position) { failed++; continue; }
 
     const id = uid();
-    const { error } = await supabaseAdmin.from("workforce_requests").insert({
+    const { error } = await supabaseAdmin.from("permintaan_sdm").insert({
       id, department, position,
       quantity: row.quantity || 1,
       urgency: row.urgency || "Sedang",

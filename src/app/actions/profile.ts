@@ -12,7 +12,7 @@ export async function saveEmployeeProfile(formData: FormData) {
   // Ownership check: employee can only update their own data
   if (user.role === "employee") {
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id")
       .eq("id", employeeId)
       .eq("email", user.email)
@@ -34,7 +34,7 @@ export async function saveEmployeeProfile(formData: FormData) {
   const emergency_phone = (formData.get("emergency_phone") as string || "").trim();
 
   const { error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .update({
       nik,
       birth_place,
@@ -66,7 +66,7 @@ export async function saveContactProfile(formData: FormData) {
   // Ownership check
   if (user.role === "employee") {
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id")
       .eq("id", employeeId)
       .eq("email", user.email)
@@ -85,7 +85,7 @@ export async function saveContactProfile(formData: FormData) {
   // home address inside the JSON under "home_address". Overwriting the column
   // with a plain string would destroy the employee's login credentials.
   const { data: current } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("address")
     .eq("id", employeeId)
     .single();
@@ -100,7 +100,7 @@ export async function saveContactProfile(formData: FormData) {
   } catch { /* address is plain text, safe to overwrite */ }
 
   const { error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .update({ full_name, phone, address: storedAddress })
     .eq("id", employeeId);
 
@@ -118,7 +118,7 @@ export async function saveBasicProfile(formData: FormData) {
 
   if (user.role === "employee") {
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id")
       .eq("id", employeeId)
       .eq("email", user.email)
@@ -137,7 +137,7 @@ export async function saveBasicProfile(formData: FormData) {
   if (!email) return { error: "Email wajib diisi." };
 
   const { data: current } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("address")
     .eq("id", employeeId)
     .single();
@@ -160,7 +160,7 @@ export async function saveBasicProfile(formData: FormData) {
   }
 
   const { error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .update(updateData)
     .eq("id", employeeId);
 

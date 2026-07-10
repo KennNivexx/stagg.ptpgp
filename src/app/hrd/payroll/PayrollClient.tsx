@@ -187,7 +187,7 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {payrolls.map((p) => {
-                  const emp = p.employees as Record<string, string> | undefined;
+                  const emp = p.karyawan as Record<string, string> | undefined;
                   const totalDeductions = (Number(p.tax) || 0) + (Number(p.bpjs_health) || 0) + (Number(p.bpjs_employment) || 0) + (Number(p.deductions) || 0);
                   const busy = actingId === p.id;
                   return (
@@ -307,7 +307,7 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
             </div>
             <div className="p-6 space-y-4">
               <p className="text-xs text-slate-600">
-                <strong>{(showEdit.employees as Record<string, string>)?.full_name}</strong> — {MONTHS[Number(showEdit.month)]} {String(showEdit.year)}
+                <strong>{(showEdit.karyawan as Record<string, string>)?.full_name}</strong> — {MONTHS[Number(showEdit.month)]} {String(showEdit.year)}
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div>

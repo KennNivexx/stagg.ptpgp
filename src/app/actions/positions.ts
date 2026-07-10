@@ -28,7 +28,7 @@ function uid() { return "pos-" + crypto.randomUUID(); }
 export async function getPositions(): Promise<Position[]> {
   await requireRole("hrd", "superadmin");
   const { data } = await supabaseAdmin
-    .from("positions")
+    .from("jabatan")
     .select("*")
     .order("department", { ascending: true })
     .order("level", { ascending: true })
@@ -76,9 +76,9 @@ export async function getPositionsMonitor(): Promise<PositionMonitor[]> {
   await requireRole("hrd", "superadmin");
 
   const [{ data: employees }, { data: orgUnits }, { data: positions }] = await Promise.all([
-    supabaseAdmin.from("employees").select("id, full_name, department, position, email").neq("status", "Inactive"),
-    supabaseAdmin.from("org_units").select("code, name, leader_name, leader_email"),
-    supabaseAdmin.from("positions").select("*"),
+    supabaseAdmin.from("karyawan").select("id, full_name, department, position, email").neq("status", "Inactive"),
+    supabaseAdmin.from("unit_organisasi").select("code, name, leader_name, leader_email"),
+    supabaseAdmin.from("jabatan").select("*"),
   ]);
 
   const empList = (employees || []) as { id: string; full_name: string; department: string | null; position: string | null; email: string }[];
@@ -165,7 +165,7 @@ export async function getPositionsMonitor(): Promise<PositionMonitor[]> {
 
   // Lazily persist newly-discovered positions so future level assignment sticks.
   if (toUpsert.length > 0) {
-    await supabaseAdmin.from("positions").upsert(toUpsert, { onConflict: "code" });
+    await supabaseAdmin.from("jabatan").upsert(toUpsert, { onConflict: "code" });
   }
 
   // Group order follows the ORG HIERARCHY (each department's own org-unit
@@ -193,7 +193,7 @@ export async function addPosition(formData: FormData) {
   if (!/^\d+(\.\d+)+$/.test(code)) return { error: "Format kode tidak valid." };
 
   const { data: existing } = await supabaseAdmin
-    .from("positions")
+    .from("jabatan")
     .select("id")
     .eq("code", code)
     .maybeSingle();
@@ -201,7 +201,7 @@ export async function addPosition(formData: FormData) {
 
   const id = uid();
   const now = new Date().toISOString();
-  const { error } = await supabaseAdmin.from("positions").insert({
+  const { error } = await supabaseAdmin.from("jabatan").insert({
     id, code, name, department, level, created_at: now, updated_at: now,
   });
 
@@ -231,7 +231,7 @@ export async function updatePosition(formData: FormData) {
   if (!/^\d+(\.\d+)+$/.test(code)) return { error: "Format kode tidak valid." };
 
   const { data: duplicate } = await supabaseAdmin
-    .from("positions")
+    .from("jabatan")
     .select("id")
     .eq("code", code)
     .neq("id", id)
@@ -239,12 +239,12 @@ export async function updatePosition(formData: FormData) {
   if (duplicate) return { error: `Kode "${code}" sudah digunakan oleh jabatan lain. Gunakan kode lain.` };
 
   const { data: old } = await supabaseAdmin
-    .from("positions")
+    .from("jabatan")
     .select("name, department")
     .eq("id", id)
     .maybeSingle();
 
-  const { error } = await supabaseAdmin.from("positions").update({
+  const { error } = await supabaseAdmin.from("jabatan").update({
     code, name, department, level, updated_at: new Date().toISOString(),
   }).eq("id", id);
 
@@ -263,7 +263,7 @@ export async function updatePosition(formData: FormData) {
     // unique across departments (uniqueness is by code), so an unscoped
     // update would rename the same-named position's employees in every
     // other department as well.
-    let cascadeQuery = supabaseAdmin.from("employees").update({ position: name }).eq("position", oldName);
+    let cascadeQuery = supabaseAdmin.from("karyawan").update({ position: name }).eq("position", oldName);
     if (oldDepartment) cascadeQuery = cascadeQuery.eq("department", oldDepartment);
     const { error: casErr } = await cascadeQuery;
     if (casErr) console.error("updatePosition cascade error:", casErr);
@@ -280,12 +280,12 @@ export async function deletePosition(positionId: string) {
   if (!positionId) return { error: "ID jabatan wajib diisi." };
 
   const { data: pos } = await supabaseAdmin
-    .from("positions")
+    .from("jabatan")
     .select("name")
     .eq("id", positionId)
     .maybeSingle();
 
-  const { error } = await supabaseAdmin.from("positions").delete().eq("id", positionId);
+  const { error } = await supabaseAdmin.from("jabatan").delete().eq("id", positionId);
   if (error) {
     console.error("deletePosition error:", error);
     return { error: "Gagal menghapus jabatan." };

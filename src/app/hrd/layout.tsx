@@ -19,6 +19,7 @@ const MENU_GROUPS = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
+    color: "blue",
     items: [
       { href: "/hrd", label: "Overview Dashboard" },
       { href: "/hrd/dashboard-kpi", label: "KPI Dashboard" },
@@ -29,6 +30,7 @@ const MENU_GROUPS = [
   {
     label: "Perencanaan Tenaga Kerja",
     icon: BarChart3,
+    color: "violet",
     items: [
       { href: "/hrd/workforce/requests", label: "Permintaan SDM" },
     ],
@@ -36,6 +38,7 @@ const MENU_GROUPS = [
   {
     label: "Rekrutmen",
     icon: Briefcase,
+    color: "emerald",
     items: [
       { href: "/hrd/recruitment", label: "Lowongan Kerja" },
       { href: "/hrd/recruitment/pipeline", label: "Pipeline Kandidat" },
@@ -48,6 +51,7 @@ const MENU_GROUPS = [
   {
     label: "Desain Organisasi",
     icon: Building2,
+    color: "indigo",
     items: [
       { href: "/hrd/workplace/structure", label: "Struktur Organisasi" },
       { href: "/hrd/workplace/departments", label: "Departemen" },
@@ -59,25 +63,34 @@ const MENU_GROUPS = [
   {
     label: "Infrastruktur SDM",
     icon: Server,
+    color: "cyan",
     items: [
       { href: "/hrd/infrastructure/employees", label: "Data Induk Karyawan" },
       { href: "/hrd/infrastructure/contracts", label: "Kontrak Kerja" },
       { href: "/hrd/infrastructure/shifts", label: "Shift Kerja" },
       { href: "/hrd/infrastructure/locations", label: "Lokasi Kerja" },
       { href: "/hrd/infrastructure/documents", label: "Dokumen Perusahaan" },
+      { href: "/hrd/infrastructure/licenses", label: "SIM & Sertifikasi" },
+      { href: "/hrd/infrastructure/vehicles", label: "Armada Kendaraan" },
+      { href: "/hrd/trips", label: "Data Trip Supir" },
+      { href: "/hrd/vehicle-requests", label: "Pengadaan Kendaraan" },
     ],
   },
   {
     label: "Kehadiran & Cuti",
     icon: Clock,
+    color: "amber",
     items: [
       { href: "/hrd/attendance", label: "Absensi" },
       { href: "/hrd/leaves", label: "Cuti & Izin" },
+      { href: "/hrd/business-trips", label: "Perjalanan Dinas" },
+      { href: "/hrd/incidents", label: "Laporan Insiden" },
     ],
   },
   {
     label: "Kompetensi",
     icon: Award,
+    color: "purple",
     items: [
       { href: "/hrd/competency/library", label: "Pustaka Kompetensi" },
       { href: "/hrd/competency/skillmatrix", label: "Matriks Keahlian" },
@@ -88,6 +101,7 @@ const MENU_GROUPS = [
   {
     label: "Pelatihan",
     icon: GraduationCap,
+    color: "teal",
     items: [
       { href: "/hrd/learning/trainings", label: "Training" },
       { href: "/hrd/learning/materials", label: "Materi Kursus" },
@@ -99,6 +113,7 @@ const MENU_GROUPS = [
   {
     label: "Manajemen Pengetahuan",
     icon: BookOpen,
+    color: "sky",
     items: [
       { href: "/hrd/knowledge/sop", label: "SOP dan Instruksi Kerja" },
       { href: "/hrd/knowledge/policies", label: "Kebijakan Perusahaan" },
@@ -109,6 +124,7 @@ const MENU_GROUPS = [
   {
     label: "Penilaian Kinerja",
     icon: TrendingUp,
+    color: "orange",
     items: [
       { href: "/hrd/performance/kpi", label: "Manajemen KPI" },
       { href: "/hrd/performance/okr", label: "Manajemen OKR" },
@@ -120,6 +136,7 @@ const MENU_GROUPS = [
   {
     label: "Reward & Penggajian",
     icon: Gift,
+    color: "green",
     items: [
       { href: "/hrd/rewards/payroll", label: "Payroll" },
       { href: "/hrd/rewards/salary", label: "Komponen Gaji" },
@@ -132,6 +149,7 @@ const MENU_GROUPS = [
   {
     label: "Pengembangan Karir",
     icon: TrendingUp,
+    color: "fuchsia",
     items: [
       { href: "/hrd/career/path", label: "Jalur Karir" },
       { href: "/hrd/career/promotions", label: "Promosi" },
@@ -143,6 +161,7 @@ const MENU_GROUPS = [
   {
     label: "Suksesi",
     icon: GitBranch,
+    color: "rose",
     items: [
       { href: "/hrd/succession/positions", label: "Posisi Kritis" },
       { href: "/hrd/succession/candidates", label: "Kandidat Suksesor" },
@@ -153,6 +172,7 @@ const MENU_GROUPS = [
   {
     label: "Hubungan Karyawan",
     icon: Heart,
+    color: "pink",
     items: [
       { href: "/hrd/relations/complaints", label: "Keluhan" },
       { href: "/hrd/relations/warnings", label: "Surat Peringatan" },
@@ -163,6 +183,7 @@ const MENU_GROUPS = [
   {
     label: "Laporan & Analitik",
     icon: FileText,
+    color: "lime",
     items: [
       { href: "/hrd/reports/recruitment", label: "Laporan Rekrutmen" },
       { href: "/hrd/reports/employees", label: "Laporan Karyawan" },
@@ -175,12 +196,36 @@ const MENU_GROUPS = [
   {
     label: "Admin & Pengaturan",
     icon: Settings,
+    color: "slate",
     items: [
       { href: "/hrd/admin/settings", label: "Pengaturan Perusahaan" },
       { href: "/hrd/admin/audit", label: "Audit Log" },
     ],
   },
 ];
+
+// Warna ikon per grup menu — supaya 16 grup yang sebelumnya tampak identik
+// (semua abu-abu) jadi gampang dibedakan sekilas mata. Status "aktif" tetap
+// pakai merah (warna brand) di atas ini supaya "sedang di halaman ini" tetap
+// jelas terpisah dari sekadar pewarnaan kategori.
+const GROUP_COLOR_CLASSES: Record<string, string> = {
+  blue: "text-blue-400",
+  violet: "text-violet-400",
+  emerald: "text-emerald-400",
+  indigo: "text-indigo-400",
+  cyan: "text-cyan-400",
+  amber: "text-amber-400",
+  purple: "text-purple-400",
+  teal: "text-teal-400",
+  sky: "text-sky-400",
+  orange: "text-orange-400",
+  green: "text-green-400",
+  fuchsia: "text-fuchsia-400",
+  rose: "text-rose-400",
+  pink: "text-pink-400",
+  lime: "text-lime-400",
+  slate: "text-slate-400",
+};
 
 const GROUP_TOOLTIPS: Record<string, string> = {
   "Dashboard": "Ringkasan performa HR dalam satu tampilan",
@@ -205,10 +250,6 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/hrd/dashboard-kpi": "Pantau pencapaian KPI perusahaan",
   "/hrd/dashboard-okr": "Pantau Objectives & Key Results perusahaan",
   "/hrd/dashboard-analytics": "Analisis data HR secara mendalam",
-  "/hrd/strategy/planning": "Rencana strategis jangka panjang SDM",
-  "/hrd/strategy/objectives": "Tujuan dan sasaran departemen HR",
-  "/hrd/strategy/budget": "Anggaran dan alokasi biaya HR",
-  "/hrd/strategy/kpi": "Indikator kinerja utama strategi SDM",
   "/hrd/workforce/requests": "Permintaan penambahan karyawan baru",
   "/hrd/workplace/structure": "Bagan struktur organisasi perusahaan",
   "/hrd/workplace/departments": "Daftar dan kelola departemen",
@@ -220,6 +261,12 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/hrd/infrastructure/shifts": "Atur jadwal shift karyawan",
   "/hrd/infrastructure/locations": "Daftar lokasi dan cabang kerja",
   "/hrd/infrastructure/documents": "Dokumen penting perusahaan",
+  "/hrd/infrastructure/licenses": "Pantau masa berlaku SIM dan sertifikasi karyawan",
+  "/hrd/infrastructure/vehicles": "Kelola armada kendaraan dan penugasan supir",
+  "/hrd/trips": "Data trip, rekap jam mengemudi, dan insentif trip-based",
+  "/hrd/vehicle-requests": "Ajukan pengadaan kendaraan baru untuk persetujuan Direktur",
+  "/hrd/business-trips": "Laporan pengajuan perjalanan dinas karyawan",
+  "/hrd/incidents": "Laporan insiden dan kerusakan seluruh departemen",
   "/hrd/recruitment": "Daftar lowongan yang sedang dibuka",
   "/hrd/recruitment/tests": "Buat dan kelola soal tes rekrutmen online",
   "/hrd/recruitment/negotiations": "Kelola proses negosiasi gaji kandidat",
@@ -264,10 +311,6 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/hrd/relations/warnings": "Surat peringatan dan sanksi",
   "/hrd/relations/resignations": "Proses resign karyawan",
   "/hrd/relations/surveys": "Survei kepuasan dan engagement",
-  "/hrd/change/initiatives": "Daftar inisiatif perubahan organisasi",
-  "/hrd/change/policies": "Riwayat perubahan kebijakan",
-  "/hrd/change/communications": "Rencana komunikasi perubahan",
-  "/hrd/change/monitoring": "Pantau progres perubahan",
   "/hrd/reports/recruitment": "Statistik dan laporan rekrutmen",
   "/hrd/reports/employees": "Data dan statistik karyawan",
   "/hrd/reports/payroll": "Ringkasan dan laporan gaji",
@@ -386,6 +429,28 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
           <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-0.5">Portal Manajemen</p>
         </div>
 
+        {/* Pencarian menu — di header sudah ada tapi disembunyikan di mobile
+            (hidden md:flex), jadi HRD yang buka lewat HP tidak pernah lihatnya.
+            Duplikat ringan di sini, khusus tampil saat sidebar mobile terbuka. */}
+        <div className="p-3 border-b border-slate-800 shrink-0 md:hidden">
+          <div className="flex items-center gap-2 bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-800">
+            <Search size={14} className="text-slate-400 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Cari menu..."
+              className="bg-transparent border-none text-xs focus:outline-none w-full text-slate-200 placeholder:text-slate-500"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} aria-label="Hapus pencarian" className="text-slate-400 hover:text-slate-200 shrink-0">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+
         <nav className="flex-1 overflow-y-auto py-2">
           {filteredGroups.length === 0 && (
             <p className="px-5 py-4 text-xs text-slate-500">Tidak ada menu yang cocok.</p>
@@ -404,7 +469,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
                   aria-expanded={isExpanded}
                   className={`w-full flex items-center gap-2 px-5 py-2.5 text-left ${hasActive ? "text-red-400" : "text-slate-500 hover:text-slate-300"} transition-colors`}
                 >
-                  <GroupIcon size={13} className="shrink-0" />
+                  <GroupIcon size={13} className={`shrink-0 ${hasActive ? "" : GROUP_COLOR_CLASSES[group.color] || ""}`} />
                   <span className="text-[10px] font-bold tracking-widest uppercase">{group.label}</span>
                   {hasGroupUnread && (
                     <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />

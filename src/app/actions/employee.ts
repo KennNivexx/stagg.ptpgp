@@ -8,7 +8,7 @@ export async function getCurrentEmployee() {
   const user = await requireRole("employee", "hrd", "superadmin");
 
   const { data, error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .eq("email", user.email)
     .single();
@@ -40,7 +40,7 @@ export async function submitComplaint(formData: FormData) {
     return { error: "Subjek dan deskripsi keluhan wajib diisi." };
   }
 
-  const { error } = await supabaseAdmin.from("complaints").insert([
+  const { error } = await supabaseAdmin.from("keluhan").insert([
     {
       employee_id: user.id,
       employee_name: user.name,
@@ -73,7 +73,7 @@ export async function submitResignation(formData: FormData) {
     return { error: "Alasan dan tanggal terakhir kerja wajib diisi." };
   }
 
-  const { error } = await supabaseAdmin.from("resignations").insert([
+  const { error } = await supabaseAdmin.from("pengunduran_diri").insert([
     {
       employee_id: user.id,
       employee_name: user.name,
@@ -101,7 +101,7 @@ export async function getEmployeeLeaves(employeeId: string) {
   const targetId = user.role === "employee" ? user.id : employeeId;
 
   const { data, error } = await supabaseAdmin
-    .from("leave_requests")
+    .from("pengajuan_cuti")
     .select("*")
     .eq("employee_id", targetId)
     .order("created_at", { ascending: false });
@@ -115,7 +115,7 @@ export async function getEmployeeComplaints(employeeId: string) {
   const targetId = user.role === "employee" ? user.id : employeeId;
 
   const { data, error } = await supabaseAdmin
-    .from("complaints")
+    .from("keluhan")
     .select("*")
     .eq("employee_id", targetId)
     .order("created_at", { ascending: false });
@@ -129,7 +129,7 @@ export async function getEmployeeResignation(employeeId: string) {
   const targetId = user.role === "employee" ? user.id : employeeId;
 
   const { data, error } = await supabaseAdmin
-    .from("resignations")
+    .from("pengunduran_diri")
     .select("*")
     .eq("employee_id", targetId)
     .order("created_at", { ascending: false })
@@ -144,7 +144,7 @@ export async function getEmployeeWarnings(employeeId: string) {
   const targetId = user.role === "employee" ? user.id : employeeId;
 
   const { data, error } = await supabaseAdmin
-    .from("warnings")
+    .from("surat_peringatan")
     .select("*")
     .eq("employee_id", targetId)
     .order("created_at", { ascending: false });
@@ -167,7 +167,7 @@ export async function issueWarning(formData: FormData) {
     return { error: "Karyawan, level SP, dan alasan wajib diisi." };
   }
 
-  const { error } = await supabaseAdmin.from("warnings").insert([
+  const { error } = await supabaseAdmin.from("surat_peringatan").insert([
     {
       employee_id: employeeId,
       employee_name: employeeName,
@@ -199,7 +199,7 @@ export async function issueWarning(formData: FormData) {
 export async function expireOldWarnings() {
   const today = new Date().toISOString().slice(0, 10);
   const { error } = await supabaseAdmin
-    .from("warnings")
+    .from("surat_peringatan")
     .update({ status: "Kadaluarsa" })
     .eq("status", "Aktif")
     .not("valid_until", "is", null)
@@ -213,7 +213,7 @@ export async function expireOldWarnings() {
 export async function markWarningExpired(id: string) {
   await requireRole("hrd", "superadmin", "department_manager");
   const { error } = await supabaseAdmin
-    .from("warnings")
+    .from("surat_peringatan")
     .update({ status: "Kadaluarsa" })
     .eq("id", id);
 

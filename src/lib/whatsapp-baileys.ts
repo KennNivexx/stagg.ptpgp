@@ -48,9 +48,9 @@ function getGlobalState(): BaileysState {
 }
 
 async function saveBotNumber(number: string): Promise<void> {
-  const { data } = await supabaseAdmin.from("system_settings").select("value").eq("key", "wa_bot_number").maybeSingle();
+  const { data } = await supabaseAdmin.from("pengaturan_sistem").select("value").eq("key", "wa_bot_number").maybeSingle();
   if (data?.value) return;
-  await supabaseAdmin.from("system_settings").upsert({ key: "wa_bot_number", value: number }, { onConflict: "key" });
+  await supabaseAdmin.from("pengaturan_sistem").upsert({ key: "wa_bot_number", value: number }, { onConflict: "key" });
 }
 
 /** Digits-only JID -> "628xxxxxxx" (strips the ":device" suffix and @domain). */

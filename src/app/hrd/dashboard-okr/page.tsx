@@ -10,11 +10,11 @@ export default async function DashboardOKR() {
     { count: totalEmployees },
     { count: totalDepartments },
   ] = await Promise.all([
-    supabaseAdmin.from("okr_objectives").select("*").order("created_at", { ascending: false }),
-    supabaseAdmin.from("employees").select("id, full_name, department, status"),
-    supabaseAdmin.from("departments").select("*"),
-    supabaseAdmin.from("employees").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("departments").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("okr").select("*").order("created_at", { ascending: false }),
+    supabaseAdmin.from("karyawan").select("id, full_name, department, status"),
+    supabaseAdmin.from("departemen").select("*"),
+    supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("departemen").select("*", { count: "exact", head: true }),
   ]);
 
   // okr_objectives may not exist yet in some environments (migration 20260621002) - degrade gracefully.

@@ -37,14 +37,14 @@ export interface RecruitmentTest {
 export async function getAllRecruitmentTests() {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("recruitment_tests")
+    .from("tes_rekrutmen")
     .select("id, job_posting_id, test_type, title, duration_minutes, passing_score, is_active, created_at, department, test_year")
     .order("created_at", { ascending: false });
   if (error?.code === "42P01") return [];
   if (error?.code === "42703") {
     // department/test_year columns not migrated yet — fall back to old shape.
     const { data: fallback } = await supabaseAdmin
-      .from("recruitment_tests")
+      .from("tes_rekrutmen")
       .select("id, job_posting_id, test_type, title, duration_minutes, passing_score, is_active, created_at")
       .order("created_at", { ascending: false });
     return (fallback || []).map((t) => ({ ...t, department: null, test_year: null }));
@@ -57,7 +57,7 @@ export async function getAllRecruitmentTests() {
 export async function getRecruitmentTest(testId: string) {
   await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
-    .from("recruitment_tests")
+    .from("tes_rekrutmen")
     .select("*")
     .eq("id", testId)
     .single();
@@ -84,14 +84,14 @@ export async function saveRecruitmentTest(
   await requireRole("hrd", "superadmin");
   if (testId) {
     const { error } = await supabaseAdmin
-      .from("recruitment_tests")
+      .from("tes_rekrutmen")
       .update(payload)
       .eq("id", testId);
     if (error?.code === "42703") return { error: "Jalankan migrasi 20260709001_workflow_overhaul.sql terlebih dahulu." };
     if (error) return { error: error.message };
   } else {
     const { error } = await supabaseAdmin
-      .from("recruitment_tests")
+      .from("tes_rekrutmen")
       .insert({ id: "test-" + crypto.randomUUID(), ...payload, created_at: new Date().toISOString() });
     if (error?.code === "42P01") return { error: "Jalankan migrasi 20260701001 terlebih dahulu." };
     if (error?.code === "42703") return { error: "Jalankan migrasi 20260709001_workflow_overhaul.sql terlebih dahulu." };
@@ -105,7 +105,7 @@ export async function saveRecruitmentTest(
 export async function deleteRecruitmentTest(testId: string) {
   await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin
-    .from("recruitment_tests")
+    .from("tes_rekrutmen")
     .delete()
     .eq("id", testId);
   if (error) return { error: error.message };
@@ -118,7 +118,7 @@ export async function getApplicantTests() {
   const session = await requireRole("applicant");
 
   const { data: user } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .select("application_id")
     .eq("email", session.email)
     .maybeSingle();
@@ -128,7 +128,7 @@ export async function getApplicantTests() {
 
   if (user?.application_id) {
     const { data } = await supabaseAdmin
-      .from("applications")
+      .from("pelamar")
       .select("id, job_id, status, test_tulis_result, test_psikotes_result")
       .eq("id", user.application_id)
       .maybeSingle();
@@ -138,7 +138,7 @@ export async function getApplicantTests() {
   // Fallback: cari lewat email (untuk akun yang dibuat tanpa application_id)
   if (!application) {
     const { data } = await supabaseAdmin
-      .from("applications")
+      .from("pelamar")
       .select("id, job_id, status, test_tulis_result, test_psikotes_result")
       .eq("email", session.email)
       .order("created_at", { ascending: false })
@@ -149,7 +149,7 @@ export async function getApplicantTests() {
     // Kalau ketemu, update application_id di users supaya berikutnya langsung
     if (application && user) {
       await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .update({ application_id: application.id })
         .eq("email", session.email);
     }
@@ -169,7 +169,7 @@ export async function getApplicantTests() {
   // Ambil tes: yang spesifik ke lowongan ini ATAU template umum (job_posting_id IS NULL)
   const jobId = application.job_id as string | null;
   let testsQuery = supabaseAdmin
-    .from("recruitment_tests")
+    .from("tes_rekrutmen")
     .select("id, test_type, title, instructions, questions, duration_minutes, passing_score")
     .eq("is_active", true);
 
@@ -211,18 +211,18 @@ export async function getApplicantTests() {
 // ── Helper: cari application_id pelamar (lewat users, fallback lewat email) ─
 async function resolveApplicationId(email: string): Promise<string | null> {
   const { data: user } = await supabaseAdmin
-    .from("users").select("application_id").eq("email", email).maybeSingle();
+    .from("pengguna").select("application_id").eq("email", email).maybeSingle();
 
   if (user?.application_id) return user.application_id as string;
 
   // Fallback: cari langsung lewat email di applications
   const { data: app } = await supabaseAdmin
-    .from("applications").select("id").eq("email", email)
+    .from("pelamar").select("id").eq("email", email)
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
 
   if (app?.id) {
     // Simpan supaya lookup berikutnya langsung
-    await supabaseAdmin.from("users").update({ application_id: app.id }).eq("email", email);
+    await supabaseAdmin.from("pengguna").update({ application_id: app.id }).eq("email", email);
     return app.id as string;
   }
   return null;
@@ -236,7 +236,7 @@ export async function submitTulisAnswers(testId: string, answers: Record<string,
   if (!applicationId) return { error: "Lamaran tidak ditemukan." };
 
   const { data: app } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("test_tulis_result")
     .eq("id", applicationId)
     .single();
@@ -245,7 +245,7 @@ export async function submitTulisAnswers(testId: string, answers: Record<string,
 
   // Get test WITH correct answers (server-side only)
   const { data: test } = await supabaseAdmin
-    .from("recruitment_tests")
+    .from("tes_rekrutmen")
     .select("*")
     .eq("id", testId)
     .eq("test_type", "tulis")
@@ -282,7 +282,7 @@ export async function submitTulisAnswers(testId: string, answers: Record<string,
   };
 
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update({ test_tulis_result: result })
     .eq("id", applicationId);
 
@@ -300,7 +300,7 @@ export async function submitPsikotesAnswers(testId: string, answers: Record<stri
   if (!applicationId) return { error: "Lamaran tidak ditemukan." };
 
   const { data: app } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("test_psikotes_result")
     .eq("id", applicationId)
     .single();
@@ -308,7 +308,7 @@ export async function submitPsikotesAnswers(testId: string, answers: Record<stri
   if (app?.test_psikotes_result) return { error: "Psikotes sudah dikerjakan sebelumnya." };
 
   const { data: test } = await supabaseAdmin
-    .from("recruitment_tests")
+    .from("tes_rekrutmen")
     .select("*")
     .eq("id", testId)
     .eq("test_type", "psikotes")
@@ -352,7 +352,7 @@ export async function submitPsikotesAnswers(testId: string, answers: Record<stri
   };
 
   const { error } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .update({ test_psikotes_result: result })
     .eq("id", applicationId);
 

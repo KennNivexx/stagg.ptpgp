@@ -15,8 +15,8 @@ export default async function MonitoringHRD() {
   // Role lives in users.role, not embedded in employees.address — resolve
   // HRD staff by joining users(role='hrd') to employees via email.
   const [{ data: hrdUsers, error }, { data: allEmployees }] = await Promise.all([
-    supabaseAdmin.from("users").select("email").eq("role", "hrd"),
-    supabaseAdmin.from("employees").select("*").order("created_at", { ascending: false }),
+    supabaseAdmin.from("pengguna").select("email").eq("role", "hrd"),
+    supabaseAdmin.from("karyawan").select("*").order("created_at", { ascending: false }),
   ]);
 
   if (error) {

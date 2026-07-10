@@ -8,7 +8,7 @@ export async function getDeptEmployees(deptName: string) {
   await requireRole("department_manager", "superadmin", "hrd");
 
   const { data, error } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, department, position")
     .eq("department", deptName)
     .neq("status", "Inactive")
@@ -22,7 +22,7 @@ export async function getSkills() {
   await requireRole("department_manager", "superadmin", "hrd", "director", "employee");
 
   const { data, error } = await supabaseAdmin
-    .from("skills")
+    .from("master_kompetensi")
     .select("*")
     .order("category")
     .order("name");
@@ -37,7 +37,7 @@ export async function getEmployeeSkills(employeeIds: string[]) {
   await requireRole("department_manager", "superadmin", "hrd");
 
   const { data, error } = await supabaseAdmin
-    .from("employee_skills")
+    .from("kompetensi_karyawan")
     .select("*")
     .in("employee_id", employeeIds);
 
@@ -49,7 +49,7 @@ export async function getPositionSkills() {
   await requireRole("department_manager", "superadmin", "hrd", "director", "employee");
 
   const { data, error } = await supabaseAdmin
-    .from("position_skills")
+    .from("kompetensi_jabatan")
     .select("*");
 
   if (error) return [];
@@ -74,7 +74,7 @@ export async function assessEmployee(
     };
     const managerDept = EMAIL_TO_DEPT[assessor.email] || "";
 
-    const { data: targetEmp } = await supabaseAdmin.from("employees").select("department").eq("id", employeeId).maybeSingle();
+    const { data: targetEmp } = await supabaseAdmin.from("karyawan").select("department").eq("id", employeeId).maybeSingle();
     const targetDept = (targetEmp as { department?: string } | null)?.department;
     
     if (!managerDept || !targetDept || managerDept !== targetDept) {
@@ -87,7 +87,7 @@ export async function assessEmployee(
 
   // Batch: fetch all existing employee skills in ONE query
   const { data: existingSkills } = await supabaseAdmin
-    .from("employee_skills")
+    .from("kompetensi_karyawan")
     .select("id, skill_id")
     .eq("employee_id", employeeId)
     .in("skill_id", skillIds);
@@ -102,11 +102,11 @@ export async function assessEmployee(
     const existingId = existingMap.get(sk.skill_id);
     if (existingId) {
       await supabaseAdmin
-        .from("employee_skills")
+        .from("kompetensi_karyawan")
         .update({ current_level: sk.current_level, assessed_by: assessor.email, updated_at: now })
         .eq("id", existingId);
     } else {
-      await supabaseAdmin.from("employee_skills").insert({
+      await supabaseAdmin.from("kompetensi_karyawan").insert({
         id: "es-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
         employee_id: employeeId,
         skill_id: sk.skill_id,
@@ -119,7 +119,7 @@ export async function assessEmployee(
 
   // Auto-enroll in training when skill gap >= 2 — batch queries
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("position")
     .eq("id", employeeId)
     .maybeSingle();
@@ -127,7 +127,7 @@ export async function assessEmployee(
   if (employee) {
     const posCode = (employee as { position: string }).position;
     const { data: posSkills } = await supabaseAdmin
-      .from("position_skills")
+      .from("kompetensi_jabatan")
       .select("skill_id, required_level")
       .eq("position_code", posCode);
 
@@ -144,7 +144,7 @@ export async function assessEmployee(
       if (gapSkillIds.length > 0) {
         // Batch: fetch all relevant trainings
         const { data: trainings } = await supabaseAdmin
-          .from("trainings")
+          .from("pelatihan")
           .select("id, skill_id")
           .in("skill_id", gapSkillIds)
           .in("status", ["Planned", "Ongoing"]);
@@ -153,7 +153,7 @@ export async function assessEmployee(
           const trainingIds = (trainings as { id: string; skill_id: string }[]).map(t => t.id);
           // Batch: check existing enrollments
           const { data: existingEnrollments } = await supabaseAdmin
-            .from("training_enrollments")
+            .from("peserta_pelatihan")
             .select("training_id")
             .eq("employee_id", employeeId)
             .in("training_id", trainingIds);
@@ -163,7 +163,7 @@ export async function assessEmployee(
           // Insert new enrollments
           for (const t of (trainings as { id: string }[])) {
             if (!enrolledSet.has(t.id)) {
-              await supabaseAdmin.from("training_enrollments").insert({
+              await supabaseAdmin.from("peserta_pelatihan").insert({
                 id: "te-" + crypto.randomUUID(),
                 training_id: t.id,
                 employee_id: employeeId,
@@ -206,13 +206,13 @@ export async function saveSkill(formData: FormData): Promise<{ error: string } |
 
   const now = new Date().toISOString();
   if (id) {
-    const { error } = await supabaseAdmin.from("skills").update({ name, category, department, updated_at: now }).eq("id", id);
+    const { error } = await supabaseAdmin.from("master_kompetensi").update({ name, category, department, updated_at: now }).eq("id", id);
     if (error) return { error: "Gagal mengupdate skill." };
     revalidatePath("/hrd/competency/library");
     return { success: true };
   }
 
-  const { error } = await supabaseAdmin.from("competency_requests").insert({
+  const { error } = await supabaseAdmin.from("usulan_kompetensi").insert({
     id: "creq-" + crypto.randomUUID(),
     name, category, department,
     requested_by: user.name || user.email,
@@ -228,7 +228,7 @@ export async function saveSkill(formData: FormData): Promise<{ error: string } |
 
 export async function getCompetencyRequests(status?: string) {
   await requireRole("hrd", "director", "superadmin");
-  let q = supabaseAdmin.from("competency_requests").select("*").order("created_at", { ascending: false });
+  let q = supabaseAdmin.from("usulan_kompetensi").select("*").order("created_at", { ascending: false });
   if (status) q = q.eq("status", status);
   const { data, error } = await q.limit(100);
   if (error?.code === "42P01") return [];
@@ -238,14 +238,14 @@ export async function getCompetencyRequests(status?: string) {
 export async function reviewCompetencyRequest(id: string, approve: boolean): Promise<{ error: string } | { success: true }> {
   await requireRole("director", "superadmin");
 
-  const { data: reqRow } = await supabaseAdmin.from("competency_requests").select("*").eq("id", id).maybeSingle();
+  const { data: reqRow } = await supabaseAdmin.from("usulan_kompetensi").select("*").eq("id", id).maybeSingle();
   if (!reqRow) return { error: "Usulan tidak ditemukan." };
   const req = reqRow as Record<string, unknown>;
   if (req.status !== "Pending") return { error: `Usulan ini sudah diproses sebelumnya (${req.status}).` };
 
   if (approve) {
     const now = new Date().toISOString();
-    const { error: insertErr } = await supabaseAdmin.from("skills").insert({
+    const { error: insertErr } = await supabaseAdmin.from("master_kompetensi").insert({
       id: suid(),
       name: req.name, category: req.category, department: req.department,
       created_at: now, updated_at: now,
@@ -253,7 +253,7 @@ export async function reviewCompetencyRequest(id: string, approve: boolean): Pro
     if (insertErr) return { error: "Gagal membuat kompetensi." };
   }
 
-  await supabaseAdmin.from("competency_requests").update({
+  await supabaseAdmin.from("usulan_kompetensi").update({
     status: approve ? "Disetujui" : "Ditolak",
     decided_at: new Date().toISOString(),
   }).eq("id", id);
@@ -268,9 +268,9 @@ export async function deleteSkill(id: string) {
 
   if (!id) return { error: "ID skill wajib diisi." };
 
-  await supabaseAdmin.from("position_skills").delete().eq("skill_id", id);
-  await supabaseAdmin.from("employee_skills").delete().eq("skill_id", id);
-  const { error } = await supabaseAdmin.from("skills").delete().eq("id", id);
+  await supabaseAdmin.from("kompetensi_jabatan").delete().eq("skill_id", id);
+  await supabaseAdmin.from("kompetensi_karyawan").delete().eq("skill_id", id);
+  const { error } = await supabaseAdmin.from("master_kompetensi").delete().eq("id", id);
   if (error) return { error: "Gagal menghapus skill." };
 
   revalidatePath("/hrd/competency/library");
@@ -287,20 +287,20 @@ export async function saveRequiredLevel(formData: FormData) {
   if (!position_code || !skill_id) return { error: "Posisi dan skill wajib diisi." };
 
   const { data: existing } = await supabaseAdmin
-    .from("position_skills")
+    .from("kompetensi_jabatan")
     .select("position_code")
     .eq("position_code", position_code)
     .eq("skill_id", skill_id)
     .maybeSingle();
 
   if (existing) {
-    const { error } = await supabaseAdmin.from("position_skills")
+    const { error } = await supabaseAdmin.from("kompetensi_jabatan")
       .update({ required_level })
       .eq("position_code", position_code)
       .eq("skill_id", skill_id);
     if (error) return { error: "Gagal mengupdate level." };
   } else {
-    const { error } = await supabaseAdmin.from("position_skills").insert({
+    const { error } = await supabaseAdmin.from("kompetensi_jabatan").insert({
       position_code, skill_id, required_level,
     });
     if (error) return { error: "Gagal menambah required level." };
@@ -314,7 +314,7 @@ export async function saveRequiredLevel(formData: FormData) {
 export async function getDeptSkillList(dept: string): Promise<string[]> {
   await requireRole("department_manager", "hrd", "superadmin");
   const { data } = await supabaseAdmin
-    .from("position_skills")
+    .from("kompetensi_jabatan")
     .select("skill_id")
     .eq("position_code", "_dept_" + dept);
   return ((data || []) as { skill_id: string }[]).map((r) => r.skill_id);
@@ -340,9 +340,9 @@ export async function saveDeptSkillList(dept: string, skillIds: string[]) {
   }
 
   const prefix = "_dept_" + dept;
-  await supabaseAdmin.from("position_skills").delete().eq("position_code", prefix);
+  await supabaseAdmin.from("kompetensi_jabatan").delete().eq("position_code", prefix);
   if (skillIds.length > 0) {
-    await supabaseAdmin.from("position_skills").insert(
+    await supabaseAdmin.from("kompetensi_jabatan").insert(
       skillIds.map((id) => ({ position_code: prefix, skill_id: id, required_level: 0 }))
     );
   }
@@ -359,14 +359,14 @@ export async function getDeptRequiredSkills(dept: string): Promise<{ id: string;
   if (!dept) return [];
 
   const { data: mappings } = await supabaseAdmin
-    .from("position_skills")
+    .from("kompetensi_jabatan")
     .select("skill_id")
     .eq("position_code", "_dept_" + dept);
   const skillIds = ((mappings || []) as { skill_id: string }[]).map((m) => m.skill_id);
   if (skillIds.length === 0) return [];
 
   const { data: skills } = await supabaseAdmin
-    .from("skills")
+    .from("master_kompetensi")
     .select("id, name, category")
     .in("id", skillIds);
   return (skills || []) as { id: string; name: string; category: string }[];
@@ -378,7 +378,7 @@ export async function removeSkillFromPosition(positionCode: string, skillId: str
   if (!positionCode || !skillId) return { error: "Data tidak lengkap." };
 
   const { error } = await supabaseAdmin
-    .from("position_skills")
+    .from("kompetensi_jabatan")
     .delete()
     .eq("position_code", positionCode)
     .eq("skill_id", skillId);

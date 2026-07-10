@@ -84,7 +84,7 @@ export default function PlansClient({ employees, initialPlans }: Props) {
           {plans.length === 0 ? (
             <EmptyState icon={Clipboard} title="Belum ada rencana pengembangan." />
           ) : plans.map((plan) => {
-            const emp = plan.employees as Record<string, string> | undefined;
+            const emp = plan.karyawan as Record<string, string> | undefined;
             const progress = Number(plan.progress) || 0;
             const id = plan.id as string;
             const isExpanded = expandedId === id;

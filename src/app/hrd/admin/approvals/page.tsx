@@ -12,7 +12,7 @@ export default async function AlurPersetujuan() {
   ];
 
   const { data: managers } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, position")
     .or("position.ilike.%Manager%, position.ilike.%Direktur%, position.ilike.%Head%")
     .neq("status", "Resigned")
@@ -27,9 +27,9 @@ export default async function AlurPersetujuan() {
     { count: approvedCount },
     { count: rejectedCount },
   ] = await Promise.all([
-    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Menunggu"),
-    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Disetujui").gte("updated_at", today),
-    supabaseAdmin.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "Ditolak").gte("updated_at", today),
+    supabaseAdmin.from("pengajuan_cuti").select("*", { count: "exact", head: true }).eq("status", "Menunggu"),
+    supabaseAdmin.from("pengajuan_cuti").select("*", { count: "exact", head: true }).eq("status", "Disetujui").gte("updated_at", today),
+    supabaseAdmin.from("pengajuan_cuti").select("*", { count: "exact", head: true }).eq("status", "Ditolak").gte("updated_at", today),
   ]);
 
   return (

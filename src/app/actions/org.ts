@@ -58,7 +58,7 @@ async function getSettings() {
   // Try new system_settings table first; fall back to legacy employee row if
   // the migration hasn't been applied yet.
   const { data: row, error } = await supabaseAdmin
-    .from("system_settings")
+    .from("pengaturan_sistem")
     .select("value")
     .eq("key", "org_settings")
     .maybeSingle();
@@ -68,7 +68,7 @@ async function getSettings() {
   }
 
   // Legacy fallback
-  const { data } = await supabaseAdmin.from("employees").select("address").eq("email", "__settings__@ptpgp.co.id").maybeSingle();
+  const { data } = await supabaseAdmin.from("karyawan").select("address").eq("email", "__settings__@ptpgp.co.id").maybeSingle();
   if (!data?.address) return {};
   try { return JSON.parse(data.address as string); } catch { return {}; }
 }
@@ -76,12 +76,12 @@ async function getSettings() {
 async function saveSettings(settings: Record<string, unknown>) {
   // Try new table first
   const { error } = await supabaseAdmin
-    .from("system_settings")
+    .from("pengaturan_sistem")
     .upsert({ key: "org_settings", value: settings, updated_at: new Date().toISOString() }, { onConflict: "key" });
 
   if (error) {
     // Legacy fallback if migration not yet applied
-    await supabaseAdmin.from("employees").upsert({
+    await supabaseAdmin.from("karyawan").upsert({
       full_name: "System Settings", email: "__settings__@ptpgp.co.id",
       address: JSON.stringify(settings), department: "System", position: "Settings",
       join_date: "2024-01-01", status: "Tetap"
@@ -95,7 +95,7 @@ interface OrgUnitRow {
 }
 
 async function buildTree(): Promise<OrgUnit[]> {
-  const { data } = await supabaseAdmin.from("org_units").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
+  const { data } = await supabaseAdmin.from("unit_organisasi").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
   if (data && data.length > 0) {
     const rows = data as unknown as OrgUnitRow[];
     const map = new Map<string, OrgUnit>();
@@ -125,7 +125,7 @@ async function buildTree(): Promise<OrgUnit[]> {
     // sequential per department — same scheme hireCandidate() uses) and it's
     // persisted back so the code stays stable instead of showing a raw id.
     const { data: empData } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id, full_name, kode, nik, position, department, email")
       .neq("status", "Inactive")
       .order("full_name");
@@ -286,7 +286,7 @@ async function buildTree(): Promise<OrgUnit[]> {
       }
 
       if (toBackfill.length > 0) {
-        await Promise.all(toBackfill.map(b => supabaseAdmin.from("employees").update({ kode: b.kode }).eq("id", b.id)));
+        await Promise.all(toBackfill.map(b => supabaseAdmin.from("karyawan").update({ kode: b.kode }).eq("id", b.id)));
       }
     }
 
@@ -304,30 +304,30 @@ async function buildTree(): Promise<OrgUnit[]> {
 }
 
 async function countChildren(parentCode: string): Promise<number> {
-  const { count } = await supabaseAdmin.from("org_units").select("*", { count: "exact", head: true }).eq("parent_code", parentCode);
+  const { count } = await supabaseAdmin.from("unit_organisasi").select("*", { count: "exact", head: true }).eq("parent_code", parentCode);
   return count || 0;
 }
 
 async function recalculateDescendants(parentCode: string, newParentCode: string) {
-  const { data: children } = await supabaseAdmin.from("org_units").select("code").eq("parent_code", parentCode).order("sort_order", { ascending: true });
+  const { data: children } = await supabaseAdmin.from("unit_organisasi").select("code").eq("parent_code", parentCode).order("sort_order", { ascending: true });
   if (!children) return;
   for (let i = 0; i < children.length; i++) {
     const child = children[i] as { code: string };
     const newChildCode = generateCode(newParentCode, i);
     const newLevel = codeLevel(newChildCode);
-    await supabaseAdmin.from("org_units").update({ code: newChildCode, level: newLevel, parent_code: newParentCode }).eq("code", child.code);
+    await supabaseAdmin.from("unit_organisasi").update({ code: newChildCode, level: newLevel, parent_code: newParentCode }).eq("code", child.code);
     await recalculateDescendants(child.code, newChildCode);
   }
 }
 
 async function deleteSubtree(code: string) {
-  const { data: children } = await supabaseAdmin.from("org_units").select("code").eq("parent_code", code);
+  const { data: children } = await supabaseAdmin.from("unit_organisasi").select("code").eq("parent_code", code);
   if (children) {
     for (const c of children as { code: string }[]) {
       await deleteSubtree(c.code);
     }
   }
-  await supabaseAdmin.from("org_units").delete().eq("code", code);
+  await supabaseAdmin.from("unit_organisasi").delete().eq("code", code);
 }
 
 async function migrateTreeToOrgUnits(tree: OrgUnit[]) {
@@ -342,7 +342,7 @@ async function migrateTreeToOrgUnits(tree: OrgUnit[]) {
   }
   const flat = flatten(tree, null);
   for (const row of flat) {
-    await supabaseAdmin.from("org_units").upsert(row, { onConflict: "code" });
+    await supabaseAdmin.from("unit_organisasi").upsert(row, { onConflict: "code" });
   }
 }
 
@@ -364,14 +364,14 @@ export async function addOrgUnit(formData: FormData) {
   if (!parent_code || !unit_name) return { error: "Parent dan nama unit wajib diisi." };
   if (!/^\d+(\.\d+)+$/.test(parent_code)) return { error: "Format kode parent tidak valid." };
 
-  const { data: parent } = await supabaseAdmin.from("org_units").select("code").eq("code", parent_code).maybeSingle();
+  const { data: parent } = await supabaseAdmin.from("unit_organisasi").select("code").eq("code", parent_code).maybeSingle();
   if (!parent) return { error: "Parent unit tidak ditemukan." };
 
   const siblingCount = await countChildren(parent_code);
   const newCode = generateCode(parent_code, siblingCount);
   const newLevel = codeLevel(newCode);
 
-  const { error } = await supabaseAdmin.from("org_units").insert({
+  const { error } = await supabaseAdmin.from("unit_organisasi").insert({
     id: uid(), code: newCode, name: unit_name, level: newLevel,
     parent_code: parent_code, leader_name, leader_email, sort_order: siblingCount,
   });
@@ -412,10 +412,10 @@ async function createDepartmentUnit(params: {
     return { error: "Format kode induk tidak valid." };
   }
 
-  const { data: existing } = await supabaseAdmin.from("org_units").select("code").eq("code", code).maybeSingle();
+  const { data: existing } = await supabaseAdmin.from("unit_organisasi").select("code").eq("code", code).maybeSingle();
   if (existing) return { error: `Kode "${code}" sudah digunakan unit lain.` };
 
-  const { data: parent } = await supabaseAdmin.from("org_units").select("code").eq("code", parent_code).maybeSingle();
+  const { data: parent } = await supabaseAdmin.from("unit_organisasi").select("code").eq("code", parent_code).maybeSingle();
   if (!parent) return { error: "Induk (parent) tidak ditemukan." };
 
   // HRD types the code manually, but it must genuinely sit directly under
@@ -427,7 +427,7 @@ async function createDepartmentUnit(params: {
   const newLevel = codeLevel(code);
   const siblingCount = await countChildren(parent_code);
 
-  const { error } = await supabaseAdmin.from("org_units").insert({
+  const { error } = await supabaseAdmin.from("unit_organisasi").insert({
     id: uid(), code, name: unit_name, level: newLevel,
     parent_code, leader_name, leader_email, sort_order: siblingCount,
   });
@@ -467,10 +467,10 @@ export async function addDepartmentManual(formData: FormData) {
   if (!/^\d+(\.\d+)+$/.test(parent_code)) {
     return { error: "Format kode induk tidak valid." };
   }
-  const { data: existing } = await supabaseAdmin.from("org_units").select("code").eq("code", code).maybeSingle();
+  const { data: existing } = await supabaseAdmin.from("unit_organisasi").select("code").eq("code", code).maybeSingle();
   if (existing) return { error: `Kode "${code}" sudah digunakan unit lain.` };
 
-  const { error } = await supabaseAdmin.from("department_requests").insert({
+  const { error } = await supabaseAdmin.from("usulan_departemen").insert({
     id: "dreq-" + crypto.randomUUID(),
     code, parent_code, name: unit_name, leader_name, leader_email,
     requested_by: user.name || user.email,
@@ -486,7 +486,7 @@ export async function addDepartmentManual(formData: FormData) {
 
 export async function getDepartmentRequests(status?: string) {
   await requireRole("hrd", "director", "superadmin");
-  let q = supabaseAdmin.from("department_requests").select("*").order("created_at", { ascending: false });
+  let q = supabaseAdmin.from("usulan_departemen").select("*").order("created_at", { ascending: false });
   if (status) q = q.eq("status", status);
   const { data, error } = await q.limit(100);
   if (error?.code === "42P01") return [];
@@ -496,7 +496,7 @@ export async function getDepartmentRequests(status?: string) {
 export async function reviewDepartmentRequest(id: string, approve: boolean): Promise<{ error: string } | { success: true }> {
   const user = await requireRole("director", "superadmin");
 
-  const { data: reqRow } = await supabaseAdmin.from("department_requests").select("*").eq("id", id).maybeSingle();
+  const { data: reqRow } = await supabaseAdmin.from("usulan_departemen").select("*").eq("id", id).maybeSingle();
   if (!reqRow) return { error: "Usulan tidak ditemukan." };
   const req = reqRow as Record<string, unknown>;
   if (req.status !== "Pending") return { error: `Usulan ini sudah diproses sebelumnya (${req.status}).` };
@@ -513,7 +513,7 @@ export async function reviewDepartmentRequest(id: string, approve: boolean): Pro
     auditLog({ action: "org.add_department", targetId: result.code, targetName: req.name as string, performedBy: user, detail: `Induk: ${req.parent_code}, disetujui Direktur` });
   }
 
-  await supabaseAdmin.from("department_requests").update({
+  await supabaseAdmin.from("usulan_departemen").update({
     status: approve ? "Disetujui" : "Ditolak",
     decided_at: new Date().toISOString(),
   }).eq("id", id);
@@ -535,7 +535,7 @@ export async function updateOrgUnit(formData: FormData) {
 
   if (!unit_code) return { error: "Kode unit wajib diisi." };
 
-  const { data: unit } = await supabaseAdmin.from("org_units").select("*").eq("code", unit_code).maybeSingle();
+  const { data: unit } = await supabaseAdmin.from("unit_organisasi").select("*").eq("code", unit_code).maybeSingle();
   if (!unit) return { error: "Unit tidak ditemukan." };
 
   // Validate new code first
@@ -543,11 +543,11 @@ export async function updateOrgUnit(formData: FormData) {
     if (!/^\d+(\.\d+)+$/.test(new_code)) {
       return { error: "Format kode tidak valid. Gunakan format: 1.2.3.0.0.0.0" };
     }
-    const { data: dup } = await supabaseAdmin.from("org_units").select("code").eq("code", new_code).maybeSingle();
+    const { data: dup } = await supabaseAdmin.from("unit_organisasi").select("code").eq("code", new_code).maybeSingle();
     if (dup) return { error: `Kode "${new_code}" sudah digunakan unit lain.` };
     const npc = getParentCode(new_code);
     if (npc) {
-      const { data: np } = await supabaseAdmin.from("org_units").select("code").eq("code", npc).maybeSingle();
+      const { data: np } = await supabaseAdmin.from("unit_organisasi").select("code").eq("code", npc).maybeSingle();
       if (!np) return { error: `Parent "${npc}" tidak ditemukan.` };
       if (isDescendantOf(npc, unit_code)) return { error: "Tidak bisa memindahkan ke anaknya sendiri." };
     }
@@ -567,10 +567,10 @@ export async function updateOrgUnit(formData: FormData) {
     if (npc && npc !== oldParent) {
       updates.parent_code = npc;
     }
-    await supabaseAdmin.from("org_units").update(updates).eq("code", unit_code);
+    await supabaseAdmin.from("unit_organisasi").update(updates).eq("code", unit_code);
     await recalculateDescendants(unit_code, new_code);
   } else {
-    await supabaseAdmin.from("org_units").update(updates).eq("code", unit_code);
+    await supabaseAdmin.from("unit_organisasi").update(updates).eq("code", unit_code);
   }
 
   // Sync JSON backup
@@ -593,7 +593,7 @@ export async function deleteOrgUnit(unitCode: string) {
   const user = await requireRole("hrd", "superadmin");
   if (!unitCode) return { error: "Kode unit wajib diisi." };
 
-  const { data: unit } = await supabaseAdmin.from("org_units").select("name, code").eq("code", unitCode).maybeSingle();
+  const { data: unit } = await supabaseAdmin.from("unit_organisasi").select("name, code").eq("code", unitCode).maybeSingle();
   if (!unit) return { error: "Unit tidak ditemukan." };
 
   await deleteSubtree(unitCode);
@@ -619,10 +619,10 @@ export async function moveOrgUnit(unitCode: string, newParentCode: string) {
   if (!unitCode || !newParentCode) return { error: "Kode unit dan parent wajib diisi." };
   if (unitCode === newParentCode) return { error: "Tidak bisa memindahkan ke dirinya sendiri." };
 
-  const { data: unit } = await supabaseAdmin.from("org_units").select("code, name").eq("code", unitCode).maybeSingle();
+  const { data: unit } = await supabaseAdmin.from("unit_organisasi").select("code, name").eq("code", unitCode).maybeSingle();
   if (!unit) return { error: "Unit tidak ditemukan." };
 
-  const { data: newParent } = await supabaseAdmin.from("org_units").select("code").eq("code", newParentCode).maybeSingle();
+  const { data: newParent } = await supabaseAdmin.from("unit_organisasi").select("code").eq("code", newParentCode).maybeSingle();
   if (!newParent) return { error: "Parent tujuan tidak ditemukan." };
   if (isDescendantOf(newParentCode, unitCode)) return { error: "Tidak bisa memindahkan ke anaknya sendiri." };
 
@@ -630,7 +630,7 @@ export async function moveOrgUnit(unitCode: string, newParentCode: string) {
   const newCode = generateCode(newParentCode, siblingCount);
   const newLevel = codeLevel(newCode);
 
-  await supabaseAdmin.from("org_units").update({
+  await supabaseAdmin.from("unit_organisasi").update({
     code: newCode, level: newLevel, parent_code: newParentCode,
     sort_order: siblingCount,
   }).eq("code", unitCode);
@@ -655,7 +655,7 @@ export async function moveOrgUnit(unitCode: string, newParentCode: string) {
 /* ─────── departments sync ─────── */
 
 async function syncOrgToDepartments() {
-  let { data } = await supabaseAdmin.from("org_units").select("*").order("level").order("sort_order").order("name");
+  let { data } = await supabaseAdmin.from("unit_organisasi").select("*").order("level").order("sort_order").order("name");
 
   // If org_units empty, migrate from JSON first
   if (!data || data.length === 0) {
@@ -663,7 +663,7 @@ async function syncOrgToDepartments() {
     const tree = (settings.org_structure as OrgUnit[]) || [];
     if (tree.length > 0) {
       await migrateTreeToOrgUnits(tree);
-      const retry = await supabaseAdmin.from("org_units").select("*").order("level").order("sort_order").order("name");
+      const retry = await supabaseAdmin.from("unit_organisasi").select("*").order("level").order("sort_order").order("name");
       data = retry.data;
     }
   }
@@ -685,20 +685,20 @@ async function syncOrgToDepartments() {
     }
   }
   const treeCodes = flat.map(f => f.code);
-  const { error: upErr } = await supabaseAdmin.from("departments").upsert(flat, { onConflict: "code" });
+  const { error: upErr } = await supabaseAdmin.from("departemen").upsert(flat, { onConflict: "code" });
   if (upErr) { console.error("syncToDepartments upsert error:", upErr); return; }
-  const { data: existing } = await supabaseAdmin.from("departments").select("code");
+  const { data: existing } = await supabaseAdmin.from("departemen").select("code");
   if (existing) {
     const toDelete = (existing as { code: string }[]).filter(d => !treeCodes.includes(d.code)).map(d => d.code);
-    if (toDelete.length > 0) await supabaseAdmin.from("departments").delete().in("code", toDelete);
+    if (toDelete.length > 0) await supabaseAdmin.from("departemen").delete().in("code", toDelete);
   }
 }
 
 export async function getDepartments(): Promise<FlatDept[]> {
-  let { data } = await supabaseAdmin.from("departments").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
+  let { data } = await supabaseAdmin.from("departemen").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
   if (!data || data.length === 0) {
     await syncOrgToDepartments();
-    const retry = await supabaseAdmin.from("departments").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
+    const retry = await supabaseAdmin.from("departemen").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
     data = retry.data;
   }
   return (data as FlatDept[]) || [];
@@ -728,7 +728,7 @@ export async function migrateJsonToOrgUnits() {
 
   const flat = flatten(tree);
   for (const row of flat) {
-    await supabaseAdmin.from("org_units").upsert(row, { onConflict: "code" });
+    await supabaseAdmin.from("unit_organisasi").upsert(row, { onConflict: "code" });
   }
   await syncOrgToDepartments();
   return { success: true, count: flat.length };

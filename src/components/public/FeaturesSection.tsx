@@ -98,7 +98,8 @@ export default function FeaturesSection({
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.5, delay: index * 0.08 }}
-                className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group"
+                whileHover={{ y: -6, transition: { duration: 0.2, delay: 0 } }}
+                className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow group"
               >
                 <div className="w-14 h-14 bg-red-50 text-pgp-red rounded-xl flex items-center justify-center mb-6 group-hover:bg-pgp-red group-hover:text-white transition-colors">
                   {IconComponent ? <IconComponent size={24} /> : <Truck size={24} />}

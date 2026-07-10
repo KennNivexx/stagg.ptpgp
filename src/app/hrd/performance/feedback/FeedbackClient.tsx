@@ -6,7 +6,7 @@ import { saveFeedback } from "@/app/actions/performance-hrd";
 import EmptyState from "@/components/EmptyState";
 
 interface Employee { id: string; full_name: string; kode?: string; department: string; }
-interface FeedbackEntry { id: string; employee_id: string; reviewer_name: string; category: string; rating: number; comment: string; created_at: string; employees?: { full_name: string; kode?: string; department: string; position?: string; }; }
+interface FeedbackEntry { id: string; employee_id: string; reviewer_name: string; category: string; rating: number; comment: string; created_at: string; karyawan?: { full_name: string; kode?: string; department: string; position?: string; }; }
 
 const CATEGORIES = ["Kinerja", "Kerjasama Tim", "Kepemimpinan", "Komunikasi", "Kehadiran", "Inisiatif", "Teknis"];
 
@@ -51,7 +51,7 @@ export default function FeedbackClient({
       reviewer_name: reviewerName.trim() || "Saya",
       category, rating, comment,
       created_at: new Date().toISOString(),
-      employees: emp ? { full_name: emp.full_name, kode: emp.kode, department: emp.department } : undefined,
+      karyawan: emp ? { full_name: emp.full_name, kode: emp.kode, department: emp.department } : undefined,
     };
     setHistory(prev => [newEntry, ...prev]);
     setEmpId(""); setReviewerName(""); setCategory(""); setRating(0); setComment("");
@@ -152,7 +152,7 @@ export default function FeedbackClient({
           ) : (
             <div className="divide-y divide-slate-50">
               {history.map(fb => {
-                const emp = fb.employees;
+                const emp = fb.karyawan;
                 return (
                   <div key={fb.id} className="p-6 hover:bg-slate-50/30 transition-colors">
                     <div className="flex items-start justify-between">

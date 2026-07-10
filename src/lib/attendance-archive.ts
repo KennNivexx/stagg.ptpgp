@@ -13,20 +13,20 @@ export async function archiveYesterdayAttendance(): Promise<{ archived: number; 
   const dateStr = yesterday.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
 
   const { data: existing } = await supabaseAdmin
-    .from("attendance_archives")
+    .from("arsip_absensi")
     .select("id")
     .eq("archive_date", dateStr)
     .maybeSingle();
   if (existing) return { skipped: true, date: dateStr };
 
-  const { data: rows, error } = await supabaseAdmin.from("attendance").select("*").eq("date", dateStr);
+  const { data: rows, error } = await supabaseAdmin.from("absensi").select("*").eq("date", dateStr);
   if (error) {
     console.error("[attendance-archive] fetch error:", error.message);
     return { skipped: true, date: dateStr };
   }
   if (!rows || rows.length === 0) return { archived: 0, date: dateStr };
 
-  const { error: insertErr } = await supabaseAdmin.from("attendance_archives").insert({
+  const { error: insertErr } = await supabaseAdmin.from("arsip_absensi").insert({
     id: "att-arch-" + dateStr,
     archive_date: dateStr,
     record_count: rows.length,
@@ -38,7 +38,7 @@ export async function archiveYesterdayAttendance(): Promise<{ archived: number; 
   }
 
   const ids = rows.map((r: { id: string }) => r.id);
-  const { error: deleteErr } = await supabaseAdmin.from("attendance").delete().in("id", ids);
+  const { error: deleteErr } = await supabaseAdmin.from("absensi").delete().in("id", ids);
   if (deleteErr) {
     console.error("[attendance-archive] delete error:", deleteErr.message);
   }

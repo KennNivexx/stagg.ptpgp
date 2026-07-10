@@ -14,7 +14,7 @@ export default async function EmployeeDocuments() {
   }
 
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, department, position")
     .eq("email", userEmail)
     .limit(1)
@@ -23,7 +23,7 @@ export default async function EmployeeDocuments() {
   let allDocs: Record<string, unknown>[] = [];
   if (employee?.id) {
     const { data, error } = await supabaseAdmin
-      .from("documents")
+      .from("dokumen_perusahaan")
       .select("*")
       .eq("visible_to_employee", true)
       .order("created_at", { ascending: false })

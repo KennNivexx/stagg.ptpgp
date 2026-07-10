@@ -22,7 +22,7 @@ export interface BotEmployee {
 
 export async function getEmployeeByWaNumber(waNumber: string): Promise<(BotEmployee & { wa_opted_out: boolean }) | null> {
   const { data } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, email, wa_opted_out, wa_connected_at")
     .eq("wa_number", waNumber)
     .maybeSingle();
@@ -36,7 +36,7 @@ export async function findEmployeeByDetails(name: string, position: string): Pro
   const nameLower = name.toLowerCase().trim();
   const posLower = position.toLowerCase().trim();
   const { data } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, email, wa_opted_out, wa_connected_at, position")
     .ilike("full_name", `%${nameLower}%`)
     .limit(10);
@@ -55,7 +55,7 @@ export async function findEmployeeByDetails(name: string, position: string): Pro
 /** Link a WA number to an employee after successful verification. */
 export async function linkWaNumber(employeeId: string, waNumber: string): Promise<{ success: true } | { error: string }> {
   const { data: conflict } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name")
     .eq("wa_number", waNumber)
     .neq("id", employeeId)
@@ -63,7 +63,7 @@ export async function linkWaNumber(employeeId: string, waNumber: string): Promis
   if (conflict) {
     return { error: `Nomor WA ini sudah terhubung ke akun ${conflict.full_name || "lain"}. Hubungi HRD.` };
   }
-  const { error } = await supabaseAdmin.from("employees")
+  const { error } = await supabaseAdmin.from("karyawan")
     .update({ wa_number: waNumber, wa_connected_at: new Date().toISOString(), wa_opted_out: false })
     .eq("id", employeeId);
   if (error) {
@@ -77,12 +77,12 @@ export async function linkWaNumber(employeeId: string, waNumber: string): Promis
  * arrives — this IS the activation step in the employee-initiates-first
  * flow (no template send to confirm it any other way). */
 export async function markWaConnected(employeeId: string): Promise<void> {
-  await supabaseAdmin.from("employees").update({ wa_connected_at: new Date().toISOString() }).eq("id", employeeId);
+  await supabaseAdmin.from("karyawan").update({ wa_connected_at: new Date().toISOString() }).eq("id", employeeId);
 }
 
 export async function getEmployeeProfileText(employeeId: string): Promise<string> {
   const { data: emp } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("full_name, email, phone, department, position, join_date, status")
     .eq("id", employeeId)
     .maybeSingle();
@@ -104,7 +104,7 @@ export async function getEmployeeProfileText(employeeId: string): Promise<string
  * employee's personal chat history. */
 export async function getMyPayslipsSummaryText(employeeId: string): Promise<string> {
   const { data } = await supabaseAdmin
-    .from("payroll")
+    .from("penggajian")
     .select("month, year, status, net_salary")
     .eq("employee_id", employeeId)
     .in("status", ["Approved", "Paid"])
@@ -120,7 +120,7 @@ export async function getMyPayslipsSummaryText(employeeId: string): Promise<stri
 
 export async function getMyTrainingsText(employeeId: string): Promise<string> {
   const { data: enrollments } = await supabaseAdmin
-    .from("training_enrollments")
+    .from("peserta_pelatihan")
     .select("training_id, status, enrolled_at")
     .eq("employee_id", employeeId)
     .order("enrolled_at", { ascending: false })
@@ -129,10 +129,10 @@ export async function getMyTrainingsText(employeeId: string): Promise<string> {
 
   const rows = enrollments as Array<Record<string, unknown>>;
   const trainingIds = [...new Set(rows.map((e) => e.training_id as string))];
-  const { data: trainings } = await supabaseAdmin.from("trainings").select("id, title").in("id", trainingIds);
+  const { data: trainings } = await supabaseAdmin.from("pelatihan").select("id, title").in("id", trainingIds);
   const titleMap = Object.fromEntries((trainings || []).map((t: Record<string, unknown>) => [t.id, t.title]));
   const { data: certs } = await supabaseAdmin
-    .from("training_certificates")
+    .from("sertifikat_pelatihan")
     .select("training_id, status")
     .eq("employee_id", employeeId)
     .in("training_id", trainingIds);
@@ -148,7 +148,7 @@ export async function getMyTrainingsText(employeeId: string): Promise<string> {
 
 export async function getMyLatestKpiText(employeeId: string): Promise<string> {
   const { data } = await supabaseAdmin
-    .from("kpi_evaluations")
+    .from("evaluasi_kpi")
     .select("period, score, status")
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false })
@@ -159,11 +159,11 @@ export async function getMyLatestKpiText(employeeId: string): Promise<string> {
 }
 
 export async function getMyJobDescText(employeeId: string): Promise<string> {
-  const { data: emp } = await supabaseAdmin.from("employees").select("position").eq("id", employeeId).maybeSingle();
+  const { data: emp } = await supabaseAdmin.from("karyawan").select("position").eq("id", employeeId).maybeSingle();
   const position = emp?.position as string | undefined;
   if (!position) return "Posisi Anda belum tercatat, hubungi HRD.";
 
-  const { data } = await supabaseAdmin.from("job_descriptions").select("*").eq("position", position);
+  const { data } = await supabaseAdmin.from("deskripsi_kerja").select("*").eq("position", position);
   if (!data || data.length === 0) return `Belum ada deskripsi kerja untuk posisi ${position}.`;
 
   const jd = data[0] as Record<string, unknown>;
@@ -177,7 +177,7 @@ export async function getMyJobDescText(employeeId: string): Promise<string> {
 
 export async function getMyWarningsText(employeeId: string): Promise<string> {
   const { data } = await supabaseAdmin
-    .from("warnings")
+    .from("surat_peringatan")
     .select("sp_level, reason, status, created_at")
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false })
@@ -202,6 +202,6 @@ export async function clockInViaBot(employeeId: string, employeeEmail: string, e
   return clockInForEmployee({ employeeId, employeeEmail, employeeName, photoBase64 });
 }
 
-export async function clockOutViaBot(employeeId: string, photoBase64?: string) {
-  return clockOutForEmployee({ employeeId, photoBase64 });
+export async function clockOutViaBot(employeeId: string, employeeEmail: string, photoBase64?: string) {
+  return clockOutForEmployee({ employeeId, employeeEmail, photoBase64 });
 }

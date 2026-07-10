@@ -37,7 +37,7 @@ export async function getMyDept(): Promise<{ dept: string | null }> {
   if (user.role === "superadmin") return { dept: null };
 
   const { data: emp } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("department")
     .eq("email", user.email)
     .maybeSingle();
@@ -52,7 +52,7 @@ export async function getDeptData(deptName: string) {
   // from the client so it must be validated against the server-side session.
   if (user.role === "department_manager") {
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("department")
       .eq("email", user.email)
       .maybeSingle();
@@ -68,10 +68,10 @@ export async function getDeptData(deptName: string) {
     { data: departments },
     { data: mainUnit },
   ] = await Promise.all([
-    supabaseAdmin.from("employees").select("*").eq("department", deptName).order("full_name"),
-    supabaseAdmin.from("workforce_requests").select("*").eq("department", deptName).order("created_at", { ascending: false }),
-    supabaseAdmin.from("departments").select("*").eq("name", deptName).maybeSingle(),
-    supabaseAdmin.from("org_units").select("id, code, name, level, leader_name").eq("name", deptName).maybeSingle(),
+    supabaseAdmin.from("karyawan").select("*").eq("department", deptName).order("full_name"),
+    supabaseAdmin.from("permintaan_sdm").select("*").eq("department", deptName).order("created_at", { ascending: false }),
+    supabaseAdmin.from("departemen").select("*").eq("name", deptName).maybeSingle(),
+    supabaseAdmin.from("unit_organisasi").select("id, code, name, level, leader_name").eq("name", deptName).maybeSingle(),
   ]);
 
   const headcount = (departments as DeptRow | null)?.headcount ?? 0;
@@ -89,7 +89,7 @@ export async function getDeptData(deptName: string) {
     });
     const prefix = nonZeroParts.join(".");
     const { data: units } = await supabaseAdmin
-      .from("org_units")
+      .from("unit_organisasi")
       .select("id, code, name, level, leader_name")
       .like("code", `${prefix}%`)
       .order("level")
@@ -116,7 +116,7 @@ export async function submitRequest(formData: FormData, asDraft?: boolean) {
   // Validate that a department_manager is only submitting for their own dept
   if (user.role === "department_manager") {
     const { data: emp } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("department")
       .eq("email", user.email)
       .maybeSingle();
@@ -145,7 +145,7 @@ export async function submitRequest(formData: FormData, asDraft?: boolean) {
   const id = uid();
   const now = new Date().toISOString();
   const status = asDraft ? "Draft" : "Pending";
-  const { error } = await supabaseAdmin.from("workforce_requests").insert({
+  const { error } = await supabaseAdmin.from("permintaan_sdm").insert({
     id, department, position, quantity, reason, urgency, status,
     requested_by, grade_code, job_desc, request_type, need_by_date,
     site_location, cost_center, salary_range_min, salary_range_max,
@@ -156,7 +156,7 @@ export async function submitRequest(formData: FormData, asDraft?: boolean) {
     return { error: "Gagal memproses. Silakan coba lagi." };
   }
 
-  await supabaseAdmin.from("workforce_request_history").insert({
+  await supabaseAdmin.from("riwayat_permintaan_sdm").insert({
     id: "wrh-" + crypto.randomUUID(),
     request_id: id,
     action: asDraft ? "Disimpan sebagai Draft" : "Diajukan",
@@ -177,13 +177,13 @@ export async function getOrgBreadcrumb(deptName: string): Promise<string[]> {
   await requireRole("department_manager", "hrd", "director", "superadmin");
 
   const { data: mainUnit } = await supabaseAdmin
-    .from("org_units").select("id, code, name, level").eq("name", deptName).maybeSingle();
+    .from("unit_organisasi").select("id, code, name, level").eq("name", deptName).maybeSingle();
   const mu = mainUnit as { code?: string; name?: string } | null;
   if (!mu?.code) return mu?.name ? [mu.name] : [];
 
   // Ambil semua org_units lalu susun path dari root ke node saat ini dengan
   // menaiki parent_code — lebih andal daripada menebak dari prefix code.
-  const { data: allUnits } = await supabaseAdmin.from("org_units").select("code, name, parent_code");
+  const { data: allUnits } = await supabaseAdmin.from("unit_organisasi").select("code, name, parent_code");
   const units = (allUnits as { code: string; name: string; parent_code: string | null }[]) || [];
   const byCode = new Map(units.map(u => [u.code, u]));
 

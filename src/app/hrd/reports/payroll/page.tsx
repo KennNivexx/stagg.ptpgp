@@ -7,14 +7,14 @@ export const dynamic = "force-dynamic";
 
 export default async function LaporanPayroll() {
   const { data: payrolls } = await supabaseAdmin
-    .from("payroll")
-    .select("*, employees!inner(full_name, department)")
+    .from("penggajian")
+    .select("*, karyawan!inner(full_name, department)")
     .order("year", { ascending: false })
     .order("month", { ascending: false })
     .limit(50);
 
   const { count: totalPayrollRecords } = await supabaseAdmin
-    .from("payroll")
+    .from("penggajian")
     .select("*", { count: "exact", head: true });
 
   const totalCost = (payrolls || []).reduce((sum: number, p: Record<string, unknown>) => sum + (Number(p.net_salary) || 0), 0);
@@ -23,7 +23,7 @@ export default async function LaporanPayroll() {
   const deptCosts: Record<string, number> = {};
   const deptCounts: Record<string, number> = {};
   (payrolls || []).forEach((p: Record<string, unknown>) => {
-    const emp = p.employees as Record<string, string> | undefined;
+    const emp = p.karyawan as Record<string, string> | undefined;
     const dept = emp?.department || "Tidak Diketahui";
     deptCosts[dept] = (deptCosts[dept] || 0) + (Number(p.net_salary) || 0);
     deptCounts[dept] = (deptCounts[dept] || 0) + 1;
@@ -32,7 +32,7 @@ export default async function LaporanPayroll() {
   const monthNames = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
   const rows = (payrolls || []).map((p: Record<string, unknown>) => {
-    const emp = p.employees as Record<string, string> | undefined;
+    const emp = p.karyawan as Record<string, string> | undefined;
     return {
       Karyawan: emp?.full_name || "-",
       Departemen: emp?.department || "-",
@@ -130,7 +130,7 @@ export default async function LaporanPayroll() {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {(payrolls || []).map((p: Record<string, unknown>) => {
-                    const emp = p.employees as Record<string, string> | undefined;
+                    const emp = p.karyawan as Record<string, string> | undefined;
                     return (
                       <tr key={p.id as string} className="hover:bg-slate-50/30 transition-colors">
                         <td className="px-6 py-4">

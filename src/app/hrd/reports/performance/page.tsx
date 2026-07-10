@@ -21,8 +21,8 @@ function gradeLabel(score: number) {
 
 export default async function PerformanceReportsPage() {
   const { data: evaluations } = await supabaseAdmin
-    .from("kpi_evaluations")
-    .select("*, employees!inner(full_name, department, position)")
+    .from("evaluasi_kpi")
+    .select("*, karyawan!inner(full_name, department, position)")
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -34,7 +34,7 @@ export default async function PerformanceReportsPage() {
 
   const byDept: Record<string, { total: number; sum: number }> = {};
   evals.forEach((e) => {
-    const emp = e.employees as Record<string, string> | undefined;
+    const emp = e.karyawan as Record<string, string> | undefined;
     const dept = emp?.department || "—";
     if (!byDept[dept]) byDept[dept] = { total: 0, sum: 0 };
     byDept[dept].total++;
@@ -45,7 +45,7 @@ export default async function PerformanceReportsPage() {
     .sort((a, b) => b.avg - a.avg);
 
   const rows = evals.map((ev) => {
-    const emp = ev.employees as Record<string, string> | undefined;
+    const emp = ev.karyawan as Record<string, string> | undefined;
     const score = Number(ev.score) || 0;
     return {
       Karyawan: emp?.full_name || "Unknown",
@@ -138,7 +138,7 @@ export default async function PerformanceReportsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {evals.map((ev) => {
-                    const emp = ev.employees as Record<string, string> | undefined;
+                    const emp = ev.karyawan as Record<string, string> | undefined;
                     const score = Number(ev.score) || 0;
                     return (
                       <tr key={ev.id as string} className="hover:bg-slate-50/30 transition-colors">

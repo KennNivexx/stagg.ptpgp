@@ -13,7 +13,7 @@ export interface JobSpec {
 
 export async function getJobSpecs(): Promise<JobSpec[]> {
   await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("job_specifications").select("*").order("department", { ascending: true }).order("position", { ascending: true });
+  const { data } = await supabaseAdmin.from("spesifikasi_kerja").select("*").order("department", { ascending: true }).order("position", { ascending: true });
   return ((data || []) as JobSpec[]).map(d => ({ ...d, title: d.title || "", kode: d.kode || "" }));
 }
 
@@ -22,7 +22,7 @@ export async function getJobSpecs(): Promise<JobSpec[]> {
 export async function getJobSpecsForDepartment(department: string): Promise<JobSpec[]> {
   await requireAuth();
   if (!department) return [];
-  const { data } = await supabaseAdmin.from("job_specifications").select("*").eq("department", department);
+  const { data } = await supabaseAdmin.from("spesifikasi_kerja").select("*").eq("department", department);
   return ((data || []) as JobSpec[]).map(d => ({ ...d, title: d.title || "", kode: d.kode || "" }));
 }
 
@@ -44,7 +44,7 @@ export async function saveJobSpec(formData: FormData) {
 
   const now = new Date().toISOString();
   if (id) {
-    const { error } = await supabaseAdmin.from("job_specifications").update({
+    const { error } = await supabaseAdmin.from("spesifikasi_kerja").update({
       title, position, department, kode, education, experience, skills, certifications, updated_at: now,
     }).eq("id", id);
     if (error) {
@@ -53,7 +53,7 @@ export async function saveJobSpec(formData: FormData) {
     }
   } else {
     const newId = uid();
-    const { error } = await supabaseAdmin.from("job_specifications").insert({
+    const { error } = await supabaseAdmin.from("spesifikasi_kerja").insert({
       id: newId, title, position, department, kode, education, experience, skills, certifications, created_at: now, updated_at: now,
     });
     if (error) {
@@ -68,7 +68,7 @@ export async function saveJobSpec(formData: FormData) {
 
 export async function deleteJobSpec(id: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("job_specifications").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("spesifikasi_kerja").delete().eq("id", id);
   if (error) { console.error("[jobspec] deleteJobSpec error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/workplace/jobspec");
   return { success: true };

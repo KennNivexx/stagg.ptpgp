@@ -7,24 +7,24 @@ export const dynamic = "force-dynamic";
 
 export default async function LaporanRekrutmen() {
   const { data: jobs, error: jobsError } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .select("*")
     .order("created_at", { ascending: false });
 
   const { data: applications } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("*");
 
   const { count: totalJobs } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .select("*", { count: "exact", head: true });
 
   const { count: totalApplications } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("*", { count: "exact", head: true });
 
   const { count: openJobs } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .select("*", { count: "exact", head: true })
     .eq("status", "Open");
 

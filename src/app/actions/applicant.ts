@@ -8,7 +8,7 @@ export async function getMyApplicationData() {
 
   // Ambil data user (untuk account info + application_id)
   const { data: userRecord } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .select("is_temporary, expires_at, application_id")
     .eq("email", user.email)
     .maybeSingle();
@@ -20,7 +20,7 @@ export async function getMyApplicationData() {
 
   if (ur?.application_id) {
     const { data } = await supabaseAdmin
-      .from("applications")
+      .from("pelamar")
       .select("*")
       .eq("id", ur.application_id as string)
       .maybeSingle();
@@ -30,7 +30,7 @@ export async function getMyApplicationData() {
   // Fallback: cari lewat email (normalized)
   if (!application) {
     const { data } = await supabaseAdmin
-      .from("applications")
+      .from("pelamar")
       .select("*")
       .eq("email", user.email)
       .order("created_at", { ascending: false })
@@ -41,7 +41,7 @@ export async function getMyApplicationData() {
     // Kalau ketemu, simpan application_id ke users agar berikutnya langsung
     if (application && ur) {
       await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .update({ application_id: application.id })
         .eq("email", user.email);
     }
@@ -50,7 +50,7 @@ export async function getMyApplicationData() {
   // Last-resort: cari via email case-insensitive (ilike) jika belum ketemu
   if (!application) {
     const { data } = await supabaseAdmin
-      .from("applications")
+      .from("pelamar")
       .select("*")
       .ilike("email", user.email)
       .order("created_at", { ascending: false })
@@ -65,7 +65,7 @@ export async function getMyApplicationData() {
 
   // Get job details — gunakan select("*") agar aman meski ada kolom yang belum ada
   const { data: job } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .select("id, position, department, location, requirements, education, experience, description, title")
     .eq("id", app.job_id as string)
     .maybeSingle();
@@ -112,21 +112,21 @@ export async function getAllMyApplications() {
 
   // Coba email dulu, fallback ke application_id
   let { data: applications } = await supabaseAdmin
-    .from("applications")
+    .from("pelamar")
     .select("id, job_id, status, applied_at, created_at")
     .eq("email", user.email)
     .order("created_at", { ascending: false });
 
   if (!applications || applications.length === 0) {
     const { data: userRecord } = await supabaseAdmin
-      .from("users")
+      .from("pengguna")
       .select("application_id")
       .eq("email", user.email)
       .maybeSingle();
     const ur = userRecord as Record<string, unknown> | null;
     if (ur?.application_id) {
       const { data } = await supabaseAdmin
-        .from("applications")
+        .from("pelamar")
         .select("id, job_id, status, applied_at, created_at")
         .eq("id", ur.application_id as string)
         .limit(1);
@@ -138,7 +138,7 @@ export async function getAllMyApplications() {
 
   const jobIds = [...new Set((applications as Record<string, unknown>[]).map(a => a.job_id as string))];
   const { data: jobs } = await supabaseAdmin
-    .from("job_postings")
+    .from("lowongan_kerja")
     .select("id, position, department")
     .in("id", jobIds);
 
@@ -160,8 +160,8 @@ export async function getHrdApplications() {
   await requireRole("hrd", "superadmin");
 
   const [{ data: apps }, { data: jbs }] = await Promise.all([
-    supabaseAdmin.from("applications").select("*").order("applied_at", { ascending: false }).limit(100),
-    supabaseAdmin.from("job_postings").select("id, position, department").order("position", { ascending: true }),
+    supabaseAdmin.from("pelamar").select("*").order("applied_at", { ascending: false }).limit(100),
+    supabaseAdmin.from("lowongan_kerja").select("id, position, department").order("position", { ascending: true }),
   ]);
 
   const jobMap = new Map((jbs || []).map((j: Record<string, unknown>) => [j.id as string, j]));

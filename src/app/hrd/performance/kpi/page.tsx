@@ -5,12 +5,12 @@ import KpiForm from "./KpiForm";
 export default async function KPIPage() {
   const [{ data: evaluations }, { data: employees }] = await Promise.all([
     supabaseAdmin
-      .from("kpi_evaluations")
-      .select("*, employees!inner(full_name, department, position)")
+      .from("evaluasi_kpi")
+      .select("*, karyawan!inner(full_name, department, position)")
       .order("created_at", { ascending: false })
       .limit(50),
     supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("id, full_name, kode, department, position")
       .neq("email", "superadmin@ptpgp.co.id")
       .limit(100),

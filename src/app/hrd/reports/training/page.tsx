@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 
 export default async function LaporanPelatihan() {
   const [{ data: trainings }, { data: enrollments }, { data: roiRows }] = await Promise.all([
-    supabaseAdmin.from("trainings").select("*").order("date_start", { ascending: false }),
-    supabaseAdmin.from("training_enrollments").select("training_id, status"),
-    supabaseAdmin.from("training_roi").select("training_id, cost").then((r) => r.error ? { data: [] } : r),
+    supabaseAdmin.from("pelatihan").select("*").order("date_start", { ascending: false }),
+    supabaseAdmin.from("peserta_pelatihan").select("training_id, status"),
+    supabaseAdmin.from("roi_pelatihan").select("training_id, cost").then((r) => r.error ? { data: [] } : r),
   ]);
 
   const allTrainings = (trainings || []) as Array<Record<string, unknown>>;

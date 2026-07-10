@@ -6,7 +6,7 @@ import { saveKpiEvaluation } from "@/app/actions/performance-hrd";
 import EmptyState from "@/components/EmptyState";
 
 interface Employee { id: string; full_name: string; department: string; position: string; }
-interface Evaluation { id: string; employee_id: string; period: string; score: number; status: string; employees?: { full_name: string; department: string; position: string; }; }
+interface Evaluation { id: string; employee_id: string; period: string; score: number; status: string; karyawan?: { full_name: string; department: string; position: string; }; }
 
 interface Props {
   evaluations: Evaluation[];
@@ -107,7 +107,7 @@ export default function KPIClient({ evaluations, employees, avgScore }: Props) {
           ) : (
             <div className="divide-y divide-slate-50">
               {evaluations.map((ev) => {
-                const emp = ev.employees;
+                const emp = ev.karyawan;
                 const sc = Number(ev.score) || 0;
                 return (
                   <div key={ev.id} className="p-6 hover:bg-slate-50/30 transition-colors flex items-center justify-between">
@@ -189,11 +189,11 @@ export default function KPIClient({ evaluations, employees, avgScore }: Props) {
             <div className="p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                  {detailEv.employees?.full_name?.charAt(0)?.toUpperCase() || "?"}
+                  {detailEv.karyawan?.full_name?.charAt(0)?.toUpperCase() || "?"}
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-800">{detailEv.employees?.full_name || "Unknown"}</p>
-                  <p className="text-[10px] text-slate-400">{detailEv.employees?.department} · {detailEv.employees?.position}</p>
+                  <p className="text-sm font-bold text-slate-800">{detailEv.karyawan?.full_name || "Unknown"}</p>
+                  <p className="text-[10px] text-slate-400">{detailEv.karyawan?.department} · {detailEv.karyawan?.position}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

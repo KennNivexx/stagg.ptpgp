@@ -9,7 +9,7 @@ import { requireRole } from "@/lib/auth-guard";
 export async function getComplaints() {
   await requireRole("hrd", "superadmin");
   const { data } = await supabaseAdmin
-    .from("complaints")
+    .from("keluhan")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(100);
@@ -18,7 +18,7 @@ export async function getComplaints() {
 
 export async function updateComplaintStatus(id: string, status: string, notes = "") {
   const user = await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("complaints").update({
+  const { error } = await supabaseAdmin.from("keluhan").update({
     status, notes, resolved_by: user.name || user.email,
     resolved_at: status === "Selesai" ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
@@ -33,7 +33,7 @@ export async function updateComplaintStatus(id: string, status: string, notes = 
 export async function getResignations() {
   await requireRole("hrd", "superadmin");
   const { data } = await supabaseAdmin
-    .from("resignations")
+    .from("pengunduran_diri")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(100);
@@ -54,7 +54,7 @@ const SURVEY_MISSING_TABLE = (code?: string) => code === "42P01" || code === "PG
 
 export async function getSurveys() {
   await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("employee_surveys").select("*").order("created_at", { ascending: false }).limit(50);
+  const { data } = await supabaseAdmin.from("survei_karyawan").select("*").order("created_at", { ascending: false }).limit(50);
   return (data || []) as Array<Record<string, unknown>>;
 }
 
@@ -76,7 +76,7 @@ export async function createSurvey(formData: FormData) {
   if (!Array.isArray(questions) || questions.length === 0) return { error: "Minimal satu pertanyaan wajib diisi." };
   if (questions.some((q) => !q.label?.trim())) return { error: "Setiap pertanyaan wajib memiliki teks pertanyaan." };
 
-  const { error } = await supabaseAdmin.from("employee_surveys").insert({
+  const { error } = await supabaseAdmin.from("survei_karyawan").insert({
     id: "srv-" + crypto.randomUUID(), title, survey_type: surveyType,
     questions: questions.map((q) => q.label).join(" | "),
     questions_json: questions,
@@ -92,7 +92,7 @@ export async function createSurvey(formData: FormData) {
 
 export async function closeSurvey(id: string) {
   await requireRole("hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("employee_surveys").update({ status: "Ditutup" }).eq("id", id);
+  const { error } = await supabaseAdmin.from("survei_karyawan").update({ status: "Ditutup" }).eq("id", id);
   if (error) { console.error("[relations] closeSurvey error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/relations/surveys");
   return { success: true };
@@ -100,10 +100,10 @@ export async function closeSurvey(id: string) {
 
 export async function getSurveyResults(surveyId: string) {
   await requireRole("hrd", "superadmin");
-  const { data: survey } = await supabaseAdmin.from("employee_surveys").select("*").eq("id", surveyId).maybeSingle();
+  const { data: survey } = await supabaseAdmin.from("survei_karyawan").select("*").eq("id", surveyId).maybeSingle();
   if (!survey) return null;
   const { data: responses, error } = await supabaseAdmin
-    .from("survey_responses").select("*").eq("survey_id", surveyId).order("submitted_at", { ascending: false });
+    .from("jawaban_survei").select("*").eq("survey_id", surveyId).order("submitted_at", { ascending: false });
   if (SURVEY_MISSING_TABLE(error?.code)) return { survey, responses: [] as Array<Record<string, unknown>> };
   return { survey: survey as Record<string, unknown>, responses: (responses || []) as Array<Record<string, unknown>> };
 }
@@ -113,20 +113,20 @@ export async function getSurveyResults(surveyId: string) {
 export async function getActiveSurveysForEmployee() {
   const user = await requireRole("employee", "department_manager", "hrd", "superadmin");
   const { data: surveys, error } = await supabaseAdmin
-    .from("employee_surveys").select("*").order("created_at", { ascending: false });
+    .from("survei_karyawan").select("*").order("created_at", { ascending: false });
   if (error) return [];
   const { data: mine } = await supabaseAdmin
-    .from("survey_responses").select("survey_id").eq("employee_id", user.id);
+    .from("jawaban_survei").select("survey_id").eq("employee_id", user.id);
   const answeredIds = new Set((mine || []).map((r: Record<string, unknown>) => r.survey_id as string));
   return (surveys || []).map((s: Record<string, unknown>) => ({ ...s, _answered: answeredIds.has(s.id as string) }));
 }
 
 export async function getSurveyForTaking(surveyId: string) {
   const user = await requireRole("employee", "department_manager", "hrd", "superadmin");
-  const { data: survey } = await supabaseAdmin.from("employee_surveys").select("*").eq("id", surveyId).maybeSingle();
+  const { data: survey } = await supabaseAdmin.from("survei_karyawan").select("*").eq("id", surveyId).maybeSingle();
   if (!survey) return null;
   const { data: existing } = await supabaseAdmin
-    .from("survey_responses").select("*").eq("survey_id", surveyId).eq("employee_id", user.id).maybeSingle();
+    .from("jawaban_survei").select("*").eq("survey_id", surveyId).eq("employee_id", user.id).maybeSingle();
   return { survey: survey as Record<string, unknown>, existingResponse: (existing as Record<string, unknown>) || null };
 }
 
@@ -141,7 +141,7 @@ export async function submitSurveyResponse(formData: FormData) {
   } catch {
     return { error: "Format jawaban tidak valid." };
   }
-  const { error } = await supabaseAdmin.from("survey_responses").insert({
+  const { error } = await supabaseAdmin.from("jawaban_survei").insert({
     id: "resp-" + crypto.randomUUID(), survey_id: surveyId,
     employee_id: user.id, employee_name: user.name || user.email,
     answers, submitted_at: new Date().toISOString(),
@@ -164,23 +164,23 @@ export async function updateResignationStatus(id: string, status: string) {
     // resignations.employee_id stores the submitter's users.id, not
     // employees.id — those are different ids for the same person, so the
     // employees row must be resolved via employee_email instead.
-    const { data: res } = await supabaseAdmin.from("resignations").select("employee_email, last_day").eq("id", id).maybeSingle();
+    const { data: res } = await supabaseAdmin.from("pengunduran_diri").select("employee_email, last_day").eq("id", id).maybeSingle();
     if (res) {
       const r = res as Record<string, unknown>;
       if (r.employee_email) {
-        await supabaseAdmin.from("employees").update({ status: "Resigned" }).eq("email", r.employee_email as string);
+        await supabaseAdmin.from("karyawan").update({ status: "Resigned" }).eq("email", r.employee_email as string);
       }
     }
     // Schedule permanent account deletion 24 hours from approval.
     updateData.delete_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   }
-  let { error } = await supabaseAdmin.from("resignations").update(updateData).eq("id", id);
+  let { error } = await supabaseAdmin.from("pengunduran_diri").update(updateData).eq("id", id);
   // Resilience: if the delete_at column hasn't been migrated yet, approve anyway
   // (without scheduling deletion) so the HRD flow is never blocked.
   if (error && updateData.delete_at && /delete_at|column/i.test(error.message)) {
     console.warn("[relations] resignations.delete_at missing — run migration 20260626_resignation_delete_at.sql to enable auto-delete");
     delete updateData.delete_at;
-    ({ error } = await supabaseAdmin.from("resignations").update(updateData).eq("id", id));
+    ({ error } = await supabaseAdmin.from("pengunduran_diri").update(updateData).eq("id", id));
   }
   if (error) { console.error("[relations] updateResignationStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/relations/resignations");

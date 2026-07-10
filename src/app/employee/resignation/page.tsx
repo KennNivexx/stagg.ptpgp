@@ -9,14 +9,14 @@ export default async function EmployeeResignation() {
   const userName = user.name || "Karyawan";
 
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, department, position, join_date")
     .eq("email", userEmail)
     .limit(1)
     .single();
 
   const { data: resignationRows } = await supabaseAdmin
-    .from("resignations")
+    .from("pengunduran_diri")
     .select("*")
     .eq("employee_id", user.id)
     .order("created_at", { ascending: false })

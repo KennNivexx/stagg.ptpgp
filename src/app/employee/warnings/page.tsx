@@ -7,7 +7,7 @@ export default async function EmployeeWarnings() {
   const userEmail = user.email;
 
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id")
     .eq("email", userEmail)
     .limit(1)
@@ -16,7 +16,7 @@ export default async function EmployeeWarnings() {
   let warnings: Record<string, unknown>[] = [];
   if (employee?.id) {
     const { data } = await supabaseAdmin
-      .from("warnings")
+      .from("surat_peringatan")
       .select("*")
       .eq("employee_id", employee.id)
       .order("created_at", { ascending: false })

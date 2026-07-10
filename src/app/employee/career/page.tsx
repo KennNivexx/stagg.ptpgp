@@ -16,7 +16,7 @@ export default async function EmployeeCareer() {
   }
 
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, department, position, join_date")
     .eq("email", userEmail)
     .limit(1)
@@ -24,7 +24,7 @@ export default async function EmployeeCareer() {
 
   // Fetch department positions from database for career path and promotion opportunities
   const { data: deptPositions } = await supabaseAdmin
-    .from("positions")
+    .from("jabatan")
     .select("id, name, department, level, code")
     .eq("department", employee?.department || "")
     .order("level", { ascending: true });
@@ -69,7 +69,7 @@ export default async function EmployeeCareer() {
 
   // Fetch active trainings for development plan
   const { data: activeTrainings } = await supabaseAdmin
-    .from("trainings")
+    .from("pelatihan")
     .select("id, title, date_start, date_end")
     .in("status", ["Planned", "Ongoing"])
     .order("date_start", { ascending: true })

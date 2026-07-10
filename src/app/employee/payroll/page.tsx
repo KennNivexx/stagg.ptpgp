@@ -10,7 +10,7 @@ export default async function EmployeePayroll() {
   const userName = user.name || "";
 
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, department, position")
     .eq("email", userEmail)
     .limit(1)
@@ -19,7 +19,7 @@ export default async function EmployeePayroll() {
   const employeeId = employee?.id;
 
   const { data: payslips } = employeeId ? await supabaseAdmin
-    .from("payroll")
+    .from("penggajian")
     .select("*")
     .eq("employee_id", employeeId)
     .in("status", ["Approved", "Paid"])

@@ -34,7 +34,7 @@ export async function saveAllSkillLevelGuides(formData: FormData) {
   }
 
   const { error } = await supabaseAdmin
-    .from("skill_level_guides")
+    .from("panduan_level_kompetensi")
     .upsert(records, { onConflict: "skill_id,department,level" });
 
   if (error) {
@@ -55,7 +55,7 @@ export async function getSkillGuidesMap(skillId: string): Promise<Record<number,
   await requireRole("hrd", "superadmin", "department_manager", "employee");
 
   const { data } = await supabaseAdmin
-    .from("skill_level_guides")
+    .from("panduan_level_kompetensi")
     .select("*")
     .eq("skill_id", skillId)
     .order("level");
@@ -75,7 +75,7 @@ export async function getAllSkillGuidesMap(
   if (skillIds.length === 0) return {};
 
   const { data } = await supabaseAdmin
-    .from("skill_level_guides")
+    .from("panduan_level_kompetensi")
     .select("*")
     .in("skill_id", skillIds)
     .order("level");
@@ -108,7 +108,7 @@ export async function addDeptSkill(formData: FormData) {
   if (!name) return { error: "Nama kompetensi wajib diisi." };
 
   const { data: existing } = await supabaseAdmin
-    .from("skills")
+    .from("master_kompetensi")
     .select("id")
     .eq("name", name)
     .eq("department", dept)
@@ -117,7 +117,7 @@ export async function addDeptSkill(formData: FormData) {
   if (existing) return { error: "Kompetensi dengan nama ini sudah ada untuk departemen ini." };
 
   const { error } = await supabaseAdmin
-    .from("skills")
+    .from("master_kompetensi")
     .insert({ id: crypto.randomUUID(), name, category, department: dept });
 
   if (error) { console.error("[competency-guides] addDeptSkill error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }

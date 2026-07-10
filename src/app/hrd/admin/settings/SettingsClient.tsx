@@ -48,7 +48,7 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
   const waRef = useRef<HTMLFormElement>(null);
   const [showWaToken, setShowWaToken] = useState(false);
   const [showWaSecret, setShowWaSecret] = useState(false);
-  const [waProvider, setWaProviderState] = useState<WaProvider>(s.wa_provider === "meta" ? "meta" : "baileys");
+  const [waProvider, setWaProviderState] = useState<WaProvider>(s.wa_provider === "meta" ? "meta" : s.wa_provider === "fonnte" ? "fonnte" : "baileys");
   const [waProviderSaving, setWaProviderSaving] = useState(false);
   const [baileysStatus, setBaileysStatus] = useState<{ status: BaileysStatus; qrDataUrl: string | null; number: string | null; lastError: string | null }>({ status: "disconnected", qrDataUrl: null, number: null, lastError: null });
   const [baileysBusy, setBaileysBusy] = useState(false);
@@ -276,19 +276,23 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
         </Section>
       </div>
 
-      {/* WhatsApp Bot — hidden until needed */}
-      {false && (
+      {/* WhatsApp Bot */}
       <div className="lg:col-span-2">
         <Section title="Bot WhatsApp" icon={MessageCircle} color="bg-emerald-50 text-emerald-600"
           onSave={() => save("wa", waRef)} loading={!!loadingMap.wa} msg={msgMap.wa || null}>
-          <div className="space-y-4">
+          <form ref={waRef} className="space-y-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Mode Bot WhatsApp</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <button type="button" disabled={waProviderSaving} onClick={() => handleWaProviderChange("baileys")}
                   className={`text-left p-3 rounded-xl border-2 transition-colors ${waProvider === "baileys" ? "border-emerald-500 bg-emerald-50" : "border-slate-200 hover:border-slate-300"}`}>
                   <p className="text-xs font-bold text-slate-800">Demo (QR Code)</p>
                   <p className="text-[10px] text-slate-500 mt-0.5">Pakai nomor WA biasa, scan QR seperti WhatsApp Web. Gratis, tanpa approval Meta — cocok untuk demo sekarang.</p>
+                </button>
+                <button type="button" disabled={waProviderSaving} onClick={() => handleWaProviderChange("fonnte")}
+                  className={`text-left p-3 rounded-xl border-2 transition-colors ${waProvider === "fonnte" ? "border-emerald-500 bg-emerald-50" : "border-slate-200 hover:border-slate-300"}`}>
+                  <p className="text-xs font-bold text-slate-800">Fonnte</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Gateway WA pihak ketiga, scan QR di dashboard Fonnte. Tanpa approval Meta, lebih cepat aktif dari mode Resmi.</p>
                 </button>
                 <button type="button" disabled={waProviderSaving} onClick={() => handleWaProviderChange("meta")}
                   className={`text-left p-3 rounded-xl border-2 transition-colors ${waProvider === "meta" ? "border-emerald-500 bg-emerald-50" : "border-slate-200 hover:border-slate-300"}`}>
@@ -346,11 +350,44 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
                 </div>
               </div>
             )}
-          </div>
 
-          <form ref={waRef} className="space-y-4">
+            {waProvider === "fonnte" && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-800 leading-relaxed">
+                  <strong>Cara setup Fonnte:</strong><br />
+                  1. Daftar &amp; login di <strong>fonnte.com</strong>, tambah device baru, scan QR dengan nomor WA bot<br />
+                  2. Salin <strong>Device Token</strong> dari dashboard Fonnte, tempel di bawah<br />
+                  3. Di dashboard Fonnte, buka menu Webhook, isi URL webhook di bawah ini<br />
+                  4. (Opsional tapi disarankan) Isi juga Secret Webhook di bawah, lalu tambahkan <code>?secret=isian_anda</code> di akhir URL webhook yang didaftarkan ke Fonnte — Fonnte sendiri tidak menandatangani request webhook-nya, jadi secret ini satu-satunya cara memverifikasi bahwa yang mengirim benar Fonnte
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Device Token Fonnte</label>
+                  <input name="fonnte_token" type={showWaToken ? "text" : "password"} defaultValue={s.wa_fonnte_token ?? ""}
+                    placeholder="xxxxxxxxxxxxxxxxxxxx"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">URL Webhook (daftarkan ini di Fonnte)</label>
+                  <input readOnly value={typeof window !== "undefined" ? `${window.location.origin}/api/wa/webhook-fonnte` : "/api/wa/webhook-fonnte"}
+                    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-slate-500 font-mono" />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Secret Webhook (opsional)</label>
+                  <input name="fonnte_webhook_secret" type="text" defaultValue={s.wa_fonnte_webhook_secret ?? ""}
+                    placeholder="Bebas, isi string apapun"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 focus:border-[#CC0000] outline-none font-mono" />
+                  <p className="text-[10px] text-slate-400 mt-1">Kalau diisi, tambahkan <code>?secret=...</code> yang sama di URL webhook yang didaftarkan ke Fonnte. Kalau dikosongkan, webhook tetap jalan tanpa verifikasi tambahan.</p>
+                </div>
+              </div>
+            )}
+
+          {waProvider === "meta" && (
+          <div className="space-y-4">
             <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-800 leading-relaxed">
-              <strong>Cara setup WhatsApp Cloud API (Meta) — hanya berlaku jika mode di atas = &quot;Resmi&quot;:</strong><br />
+              <strong>Cara setup WhatsApp Cloud API (Meta):</strong><br />
               1. Buat aplikasi di <strong>developers.facebook.com</strong>, tambahkan produk WhatsApp<br />
               2. Salin <strong>Phone Number ID</strong>, <strong>Access Token</strong> (permanen/System User), dan <strong>App Secret</strong> dari dashboard aplikasi<br />
               3. Daftarkan URL webhook di bawah pada Meta, isi Verify Token yang sama persis dengan yang Anda isi di sini<br />
@@ -438,10 +475,11 @@ export default function SettingsClient({ initialSettings = {} }: { initialSettin
                 </div>
               </div>
             </div>
+          </div>
+          )}
           </form>
         </Section>
       </div>
-      )}
     </div>
   );
 }

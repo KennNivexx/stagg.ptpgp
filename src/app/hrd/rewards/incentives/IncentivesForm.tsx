@@ -169,7 +169,7 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
                   <EmptyState icon={Gift} title="Belum ada riwayat pembayaran insentif." />
                 </td></tr>
               ) : payments.map((p) => {
-                const emp = p.employees as Record<string, string> | undefined;
+                const emp = p.karyawan as Record<string, string> | undefined;
                 const status = (p.status as string) || "Pending";
                 return (
                   <tr key={p.id as string} className="hover:bg-slate-50/30 transition-colors">

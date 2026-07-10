@@ -8,13 +8,13 @@ export const dynamic = "force-dynamic";
 
 export default async function Jabatan() {
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, email, department, position")
     .neq("status", "Inactive")
     .order("full_name");
 
   const { data: departments } = await supabaseAdmin
-    .from("departments")
+    .from("departemen")
     .select("name")
     .order("name");
   const deptList = (departments || []).map((d: Record<string, unknown>) => d.name as string);

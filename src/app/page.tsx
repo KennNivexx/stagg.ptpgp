@@ -23,11 +23,12 @@ import ContactSection from "@/components/public/ContactSection";
 import TeaserSection from "@/components/public/TeaserSection";
 import ClickSparkWrapper from "@/components/public/ClickSparkWrapper";
 import FloatingWhatsApp from "@/components/public/FloatingWhatsApp";
+import SplashScreen from "@/components/public/SplashScreen";
 
 async function getSettings() {
   try {
     const { data } = await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("address")
       .eq("email", "__settings__@ptpgp.co.id")
       .single();
@@ -62,6 +63,8 @@ export default async function Home() {
   const teaser = settings?.teaser || {};
 
   return (
+    <>
+    <SplashScreen />
     <ClickSparkWrapper>
     <main className="min-h-screen font-sans bg-[#FCF9F6]">
       <ThemeStyle
@@ -97,5 +100,6 @@ export default async function Home() {
       <FloatingWhatsApp phoneNumber={(cta.whatsapp_number as string) || (info.company_phone as string)} />
     </main>
     </ClickSparkWrapper>
+    </>
   );
 }

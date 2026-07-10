@@ -5,12 +5,12 @@ import EmptyState from "@/components/EmptyState";
 
 export default async function CareerPathPage() {
   const { data: departments } = await supabaseAdmin
-    .from("departments")
+    .from("departemen")
     .select("name")
     .order("name");
 
   const { data: positions } = await supabaseAdmin
-    .from("positions")
+    .from("jabatan")
     .select("name, department, level")
     .order("level")
     .order("name");

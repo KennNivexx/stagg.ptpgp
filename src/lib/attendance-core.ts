@@ -8,6 +8,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { euclideanDistance } from "@/lib/face-recognition";
 import { decryptDescriptor } from "@/lib/face-encryption";
+import { checkGeofenceForEmployee } from "@/lib/geofence";
 
 const uid = () => crypto.randomUUID();
 
@@ -53,8 +54,11 @@ export async function clockInForEmployee(params: {
   }
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
-  const { data: existing } = await supabaseAdmin.from("attendance").select("id").eq("employee_id", employeeId).eq("date", today).maybeSingle();
+  const { data: existing } = await supabaseAdmin.from("absensi").select("id").eq("employee_id", employeeId).eq("date", today).maybeSingle();
   if (existing) return { error: "Sudah clock-in hari ini." };
+
+  const geofence = await checkGeofenceForEmployee({ employeeId, employeeEmail, latitude, longitude });
+  if (geofence.blocked) return { error: geofence.error };
 
   // Face recognition verification — only runs if a descriptor was supplied
   // (the browser/app flow captures one via face-api.js; a plain WhatsApp
@@ -68,7 +72,7 @@ export async function clockInForEmployee(params: {
         ? "encrypted_descriptor, encrypted_descriptors"
         : "descriptor, descriptors";
       let { data: faceData } = await supabaseAdmin
-        .from("employee_faces")
+        .from("data_wajah_karyawan")
         .select(verifyCols)
         .eq("employee_id", employeeId)
         .maybeSingle() as { data: Record<string, unknown> | null };
@@ -76,10 +80,10 @@ export async function clockInForEmployee(params: {
         // Not found under the caller's own id (users.id, for self clock-in) —
         // a face registered by HRD is keyed by employees.id instead, so fall
         // back to that id space via email before concluding no face exists.
-        const { data: emp } = await supabaseAdmin.from("employees").select("id").eq("email", employeeEmail).maybeSingle();
+        const { data: emp } = await supabaseAdmin.from("karyawan").select("id").eq("email", employeeEmail).maybeSingle();
         if (emp?.id) {
           const fallback = await supabaseAdmin
-            .from("employee_faces")
+            .from("data_wajah_karyawan")
             .select(verifyCols)
             .eq("employee_id", emp.id)
             .maybeSingle() as { data: Record<string, unknown> | null };
@@ -137,11 +141,11 @@ export async function clockInForEmployee(params: {
     }
   }
 
-  const { data: emp } = await supabaseAdmin.from("employees").select("full_name, department").eq("email", employeeEmail).maybeSingle();
+  const { data: emp } = await supabaseAdmin.from("karyawan").select("full_name, department").eq("email", employeeEmail).maybeSingle();
   const now = new Date().toISOString();
   const attendanceId = uid();
 
-  const { error } = await supabaseAdmin.from("attendance").upsert({
+  const { error } = await supabaseAdmin.from("absensi").upsert({
     id: attendanceId,
     employee_id: employeeId,
     employee_name: emp?.full_name || employeeName,
@@ -154,6 +158,9 @@ export async function clockInForEmployee(params: {
     latitude: latitude ? parseFloat(latitude) : null,
     longitude: longitude ? parseFloat(longitude) : null,
     location_name: locationName || null,
+    distance_meters: geofence.isBusinessTrip ? null : geofence.distanceMeters,
+    within_geofence: geofence.isBusinessTrip ? null : geofence.withinGeofence,
+    is_business_trip: geofence.isBusinessTrip,
   }, { onConflict: "employee_id,date" });
   if (error) {
     console.error("[clockInForEmployee] Insert failed:", error.message);
@@ -162,7 +169,7 @@ export async function clockInForEmployee(params: {
 
   if (storedPhotoUrl) {
     const empName = emp?.full_name || employeeName;
-    await supabaseAdmin.from("notifications").insert({
+    await supabaseAdmin.from("notifikasi").insert({
       id: uid(),
       user_email: "hrd@ptpgp.co.id",
       type: "attendance_photo",
@@ -178,18 +185,22 @@ export async function clockInForEmployee(params: {
 
 export async function clockOutForEmployee(params: {
   employeeId: string;
+  employeeEmail: string;
   photoBase64?: string;
   latitude?: string;
   longitude?: string;
   locationName?: string;
 }): Promise<{ error: string } | { success: true; time: string }> {
-  const { employeeId } = params;
+  const { employeeId, employeeEmail } = params;
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
   const now = new Date().toISOString();
 
-  const { data: existing } = await supabaseAdmin.from("attendance").select("id, check_out").eq("employee_id", employeeId).eq("date", today).maybeSingle();
+  const { data: existing } = await supabaseAdmin.from("absensi").select("id, check_out").eq("employee_id", employeeId).eq("date", today).maybeSingle();
   if (!existing) return { error: "Belum clock-in hari ini." };
   if ((existing as Record<string, unknown>).check_out) return { error: "Anda sudah clock-out hari ini." };
+
+  const geofence = await checkGeofenceForEmployee({ employeeId, employeeEmail, latitude: params.latitude, longitude: params.longitude });
+  if (geofence.blocked) return { error: geofence.error };
 
   let checkoutPhotoUrl: string | null = null;
   let latitude: string | null = null;
@@ -204,11 +215,15 @@ export async function clockOutForEmployee(params: {
   longitude = params.longitude || null;
   locationName = params.locationName || null;
 
-  const updateData: Record<string, unknown> = { check_out: now };
+  const updateData: Record<string, unknown> = {
+    check_out: now,
+    checkout_distance_meters: geofence.isBusinessTrip ? null : geofence.distanceMeters,
+    checkout_within_geofence: geofence.isBusinessTrip ? null : geofence.withinGeofence,
+  };
   if (checkoutPhotoUrl) Object.assign(updateData, { checkout_photo_url: checkoutPhotoUrl, checkout_latitude: latitude, checkout_longitude: longitude, checkout_location_name: locationName });
   else if (latitude) Object.assign(updateData, { checkout_latitude: latitude, checkout_longitude: longitude, checkout_location_name: locationName });
 
-  const { error } = await supabaseAdmin.from("attendance").update(updateData).eq("id", (existing as Record<string, unknown>).id as string);
+  const { error } = await supabaseAdmin.from("absensi").update(updateData).eq("id", (existing as Record<string, unknown>).id as string);
   if (error) {
     console.error("[clockOutForEmployee] error:", error.message);
     return { error: "Gagal memproses. Silakan coba lagi." };

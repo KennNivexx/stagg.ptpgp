@@ -14,7 +14,7 @@ export default async function EmployeeKPI() {
   }
 
   const { data: employee } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id")
     .eq("email", userEmail)
     .limit(1)
@@ -23,7 +23,7 @@ export default async function EmployeeKPI() {
   const employeeId = employee?.id;
 
   const { data: evaluations } = employeeId ? await supabaseAdmin
-    .from("kpi_evaluations")
+    .from("evaluasi_kpi")
     .select("*")
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false })

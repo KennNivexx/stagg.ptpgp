@@ -44,11 +44,11 @@ export async function GET(request: NextRequest) {
   try {
     if (role === "hrd") {
       const [{ data: applicants }, { data: decidedLeaves }, { data: expiringContracts }, { data: newEmployees }, { data: pendingPayroll }] = await Promise.all([
-        supabaseAdmin.from("applications").select("id, full_name, job_id, applied_at").eq("status", "Menunggu Review").order("applied_at", { ascending: false }).limit(5),
-        supabaseAdmin.from("leave_requests").select("id, employee_name, type, start_date, end_date, status").in("status", ["Disetujui", "Ditolak"]).order("updated_at", { ascending: false }).limit(5),
-        supabaseAdmin.from("employees").select("id, full_name, status").order("created_at", { ascending: false }).limit(50),
-        supabaseAdmin.from("employees").select("id, full_name, join_date").order("created_at", { ascending: false }).limit(5),
-        supabaseAdmin.from("payroll").select("id, month, year").eq("status", "Draft").limit(5),
+        supabaseAdmin.from("pelamar").select("id, full_name, job_id, applied_at").eq("status", "Menunggu Review").order("applied_at", { ascending: false }).limit(5),
+        supabaseAdmin.from("pengajuan_cuti").select("id, employee_name, type, start_date, end_date, status").in("status", ["Disetujui", "Ditolak"]).order("updated_at", { ascending: false }).limit(5),
+        supabaseAdmin.from("karyawan").select("id, full_name, status").order("created_at", { ascending: false }).limit(50),
+        supabaseAdmin.from("karyawan").select("id, full_name, join_date").order("created_at", { ascending: false }).limit(5),
+        supabaseAdmin.from("penggajian").select("id, month, year").eq("status", "Draft").limit(5),
       ]);
 
       if (applicants?.length) {
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       // know so they can either create the job posting (Disetujui) or inform
       // the requesting department (Ditolak).
       const { data: decidedRequests } = await supabaseAdmin
-        .from("workforce_requests")
+        .from("permintaan_sdm")
         .select("id, department, position, status")
         .in("status", ["Disetujui", "Ditolak"])
         .order("updated_at", { ascending: false })
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
       // Query by email (resignation may be stored under a different id source)
       // and select * so a not-yet-migrated delete_at column can't break the feed.
       const { data: myResign } = await supabaseAdmin
-        .from("resignations")
+        .from("pengunduran_diri")
         .select("*")
         .eq("employee_email", userEmail)
         .order("created_at", { ascending: false })
@@ -188,14 +188,14 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const { data: employee } = await supabaseAdmin.from("employees").select("id").eq("email", userEmail).limit(1).maybeSingle();
+      const { data: employee } = await supabaseAdmin.from("karyawan").select("id").eq("email", userEmail).limit(1).maybeSingle();
       const empId = employee?.id;
 
       if (empId) {
         const [{ data: myLeaves }, { data: myPayroll }, { data: myKPI }] = await Promise.all([
-          supabaseAdmin.from("leave_requests").select("id, type, status, start_date").eq("employee_id", empId).order("created_at", { ascending: false }).limit(5),
-          supabaseAdmin.from("payroll").select("id, month, year, status, net_salary").eq("employee_id", empId).order("year", { ascending: false }).order("month", { ascending: false }).limit(3),
-          supabaseAdmin.from("kpi_evaluations").select("id, period, score, status").eq("employee_id", empId).order("created_at", { ascending: false }).limit(3),
+          supabaseAdmin.from("pengajuan_cuti").select("id, type, status, start_date").eq("employee_id", empId).order("created_at", { ascending: false }).limit(5),
+          supabaseAdmin.from("penggajian").select("id, month, year, status, net_salary").eq("employee_id", empId).order("year", { ascending: false }).order("month", { ascending: false }).limit(3),
+          supabaseAdmin.from("evaluasi_kpi").select("id, period, score, status").eq("employee_id", empId).order("created_at", { ascending: false }).limit(3),
         ]);
 
         if (myLeaves?.length) {
@@ -267,13 +267,13 @@ export async function GET(request: NextRequest) {
         // Gap-based training whose Director budget approval just came through —
         // this is the actual "wajib mengikuti training" notice to the employee.
         const { data: myEnrollments } = await supabaseAdmin
-          .from("training_enrollments")
-          .select("id, training_id, status, trainings!inner(title, budget_status)")
+          .from("peserta_pelatihan")
+          .select("id, training_id, status, pelatihan!inner(title, budget_status)")
           .eq("employee_id", empId)
           .neq("status", "Completed")
           .limit(10);
         const dueTrainings = (myEnrollments || []).filter((e: Record<string, unknown>) => {
-          const t = e.trainings as { budget_status?: string } | { budget_status?: string }[];
+          const t = e.pelatihan as { budget_status?: string } | { budget_status?: string }[];
           const tr = Array.isArray(t) ? t[0] : t;
           return tr?.budget_status === "Disetujui";
         });
@@ -293,7 +293,7 @@ export async function GET(request: NextRequest) {
 
     if (role === "director") {
       const { data: pendingRequests } = await supabaseAdmin
-        .from("workforce_requests")
+        .from("permintaan_sdm")
         .select("id, position, department")
         .eq("status", "Pending")
         .order("created_at", { ascending: false })
@@ -314,7 +314,7 @@ export async function GET(request: NextRequest) {
 
     if (role === "department") {
       const { data: employeeRow } = await supabaseAdmin
-        .from("employees")
+        .from("karyawan")
         .select("department")
         .eq("email", session.email || "")
         .maybeSingle();
@@ -322,7 +322,7 @@ export async function GET(request: NextRequest) {
 
       if (deptName) {
         const { data: decided } = await supabaseAdmin
-          .from("workforce_requests")
+          .from("permintaan_sdm")
           .select("id, position, status")
           .eq("department", deptName)
           .in("status", ["Disetujui", "Ditolak"])
@@ -356,7 +356,7 @@ export async function GET(request: NextRequest) {
         }
 
         const { data: pendingLeaves } = await supabaseAdmin
-          .from("leave_requests")
+          .from("pengajuan_cuti")
           .select("id")
           .eq("department", deptName)
           .eq("status", "Pending")
@@ -378,7 +378,7 @@ export async function GET(request: NextRequest) {
     if (role === "applicant") {
       const userEmail = session.email || "";
       const { data: apps } = await supabaseAdmin
-        .from("applications")
+        .from("pelamar")
         .select("id, status, interview_date, interview_time, interview_location, interview_online_link")
         .eq("email", userEmail)
         .order("created_at", { ascending: false })

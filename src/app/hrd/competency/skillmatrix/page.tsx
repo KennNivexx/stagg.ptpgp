@@ -28,10 +28,10 @@ type PositionSkill = {
 
 export default async function SkillMatrixPage() {
   const [empRes, skillRes, empSkillRes, posSkillRes] = await Promise.all([
-    supabaseAdmin.from("employees").select("id, full_name, department, position").neq("status", "Inactive").order("full_name", { ascending: true }),
-    supabaseAdmin.from("skills").select("id, name, category").order("name", { ascending: true }),
-    supabaseAdmin.from("employee_skills").select("employee_id, skill_id, current_level"),
-    supabaseAdmin.from("position_skills").select("position_code, skill_id, required_level"),
+    supabaseAdmin.from("karyawan").select("id, full_name, department, position").neq("status", "Inactive").order("full_name", { ascending: true }),
+    supabaseAdmin.from("master_kompetensi").select("id, name, category").order("name", { ascending: true }),
+    supabaseAdmin.from("kompetensi_karyawan").select("employee_id, skill_id, current_level"),
+    supabaseAdmin.from("kompetensi_jabatan").select("position_code, skill_id, required_level"),
   ]);
 
   const employees: Employee[] = (empRes.data as Employee[]) || [];

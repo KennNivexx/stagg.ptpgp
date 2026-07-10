@@ -32,8 +32,8 @@ export default async function MonitoringEmployees({
   const { q } = await searchParams;
 
   const [{ data: allEmployees, error }, { data: allUsers }] = await Promise.all([
-    supabaseAdmin.from("employees").select("*").order("created_at", { ascending: false }),
-    supabaseAdmin.from("users").select("email, role"),
+    supabaseAdmin.from("karyawan").select("*").order("created_at", { ascending: false }),
+    supabaseAdmin.from("pengguna").select("email, role"),
   ]);
 
   if (error) {

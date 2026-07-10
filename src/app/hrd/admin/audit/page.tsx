@@ -49,7 +49,7 @@ function getActionLabel(action: string): string {
 
 export default async function AuditLog() {
   const { data: logs } = await supabaseAdmin
-    .from("audit_logs")
+    .from("log_audit")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(50);

@@ -42,7 +42,7 @@ function getRedirectPath(role: string): string {
 
 async function tryEmployeesAuth(email: string, password: string) {
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, email, address")
     .eq("email", email)
     .limit(1);
@@ -74,7 +74,7 @@ async function tryEmployeesAuth(email: string, password: string) {
 
 async function tryUsersTableAuth(email: string, password: string) {
   const { data: users, error } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .select("id, email, password_hash, role, full_name, is_temporary, expires_at")
     .eq("email", email)
     .limit(1);
@@ -88,7 +88,7 @@ async function tryUsersTableAuth(email: string, password: string) {
     const expiresAt = new Date(u.expires_at as string);
     if (expiresAt < new Date()) {
       await supabaseAdmin
-        .from("users")
+        .from("pengguna")
         .delete()
         .eq("id", u.id);
       return null;
@@ -163,7 +163,7 @@ export async function loginWithToken(token: string) {
 
   // Find user with this token
   const { data: user } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .select("id, email, role, full_name, one_time_token_expires")
     .eq("one_time_token", token)
     .maybeSingle();
@@ -173,12 +173,12 @@ export async function loginWithToken(token: string) {
   const expiresAt = new Date(user.one_time_token_expires as string);
   if (expiresAt < new Date()) {
     // Clear expired token
-    await supabaseAdmin.from("users").update({ one_time_token: null, one_time_token_expires: null }).eq("id", user.id);
+    await supabaseAdmin.from("pengguna").update({ one_time_token: null, one_time_token_expires: null }).eq("id", user.id);
     return { error: "Token sudah kedaluwarsa." };
   }
 
   // Consume token (one-time use)
-  await supabaseAdmin.from("users").update({ one_time_token: null, one_time_token_expires: null }).eq("id", user.id);
+  await supabaseAdmin.from("pengguna").update({ one_time_token: null, one_time_token_expires: null }).eq("id", user.id);
 
   await setLoginCookies({
     id: user.id as string,

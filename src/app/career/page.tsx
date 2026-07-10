@@ -9,7 +9,7 @@ export default async function CareerPage(props: { searchParams: Promise<{ filter
   const searchParams = await props.searchParams;
   const filter = searchParams.filter;
 
-  let query = supabaseAdmin.from('job_postings').select('*').eq('status', 'Open').order('created_at', { ascending: false });
+  let query = supabaseAdmin.from('lowongan_kerja').select('*').eq('status', 'Open').order('created_at', { ascending: false });
   if (filter && filter !== 'All') {
     query = query.eq('department', filter);
   }

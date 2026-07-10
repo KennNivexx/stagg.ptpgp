@@ -32,25 +32,25 @@ export default async function DirectorDashboard() {
     { count: approvedThisMonth },
   ] = await Promise.all([
     supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .select("*", { count: "exact", head: true })
       .neq("status", "Inactive"),
     supabaseAdmin
-      .from("departments")
+      .from("departemen")
       .select("*", { count: "exact", head: true }),
     supabaseAdmin
-      .from("workforce_requests")
+      .from("permintaan_sdm")
       .select("*")
       .eq("status", "Direview Direktur")
       .order("created_at", { ascending: false }),
     supabaseAdmin
-      .from("workforce_requests")
+      .from("permintaan_sdm")
       .select("*")
       .eq("status", "Disetujui")
       .order("created_at", { ascending: false })
       .limit(5),
     supabaseAdmin
-      .from("workforce_requests")
+      .from("permintaan_sdm")
       .select("*", { count: "exact", head: true })
       .eq("status", "Disetujui")
       .gte("created_at", thisMonth),

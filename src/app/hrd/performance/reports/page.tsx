@@ -12,8 +12,8 @@ async function fetchAllKpiEvaluations(): Promise<Record<string, unknown>[]> {
   let from = 0;
   for (;;) {
     const { data, error } = await supabaseAdmin
-      .from("kpi_evaluations")
-      .select("*, employees!inner(full_name, department, position)")
+      .from("evaluasi_kpi")
+      .select("*, karyawan!inner(full_name, department, position)")
       .order("created_at", { ascending: false })
       .range(from, from + pageSize - 1);
     if (error) {
@@ -43,7 +43,7 @@ export default async function PerformanceReportsPage() {
 
   const deptAcc: Record<string, { count: number; total: number; employees: Set<string> }> = {};
   rows.forEach((ev) => {
-    const emp = ev.employees as Record<string, string> | undefined;
+    const emp = ev.karyawan as Record<string, string> | undefined;
     const dept = emp?.department || "Lainnya";
     if (!deptAcc[dept]) deptAcc[dept] = { count: 0, total: 0, employees: new Set() };
     deptAcc[dept].count++;

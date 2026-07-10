@@ -4,13 +4,13 @@ import EmptyState from "@/components/EmptyState";
 
 export default async function HRDPerformance() {
   const { data: evaluations, error } = await supabaseAdmin
-    .from("kpi_evaluations")
-    .select("*, employees!inner(full_name, department, position)")
+    .from("evaluasi_kpi")
+    .select("*, karyawan!inner(full_name, department, position)")
     .order("created_at", { ascending: false })
     .limit(30);
 
   const { count: totalEmployees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*", { count: "exact", head: true });
 
   const avgScore = evaluations && evaluations.length > 0
@@ -105,7 +105,7 @@ export default async function HRDPerformance() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {(evaluations as Record<string, unknown>[]).map((ev) => {
-                  const emp = ev.employees as Record<string, string> | undefined;
+                  const emp = ev.karyawan as Record<string, string> | undefined;
                   const score = Number(ev.score) || 0;
                   return (
                     <tr key={ev.id as string} className="hover:bg-slate-50/30 transition-colors">

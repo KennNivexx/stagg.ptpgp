@@ -7,7 +7,7 @@ const MISSING_CAREER_REQUESTS_TABLE = "Fitur ini belum aktif. Hubungi admin untu
 
 export async function submitInternalApplication(jobTitle: string, jobDept: string) {
   const user = await requireRole("employee", "hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("career_requests").insert({
+  const { error } = await supabaseAdmin.from("permintaan_karir").insert({
     id: crypto.randomUUID(),
     employee_email: user.email,
     employee_name: user.name || user.email,
@@ -26,7 +26,7 @@ export async function submitInternalApplication(jobTitle: string, jobDept: strin
 
 export async function requestCareerConsultation() {
   const user = await requireRole("employee", "hrd", "superadmin");
-  const { error } = await supabaseAdmin.from("career_requests").insert({
+  const { error } = await supabaseAdmin.from("permintaan_karir").insert({
     id: crypto.randomUUID(),
     employee_email: user.email,
     employee_name: user.name || user.email,

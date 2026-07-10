@@ -5,9 +5,9 @@ import EmptyState from "@/components/EmptyState";
 
 export default async function HRDWorkplace() {
   const [{ data: locations }, { data: employees }, { data: shifts }] = await Promise.all([
-    supabaseAdmin.from("work_locations").select("*").order("name"),
-    supabaseAdmin.from("employees").select("department, position").neq("status", "Resigned"),
-    supabaseAdmin.from("work_shifts").select("*").order("name"),
+    supabaseAdmin.from("lokasi_kerja").select("*").order("name"),
+    supabaseAdmin.from("karyawan").select("department, position").neq("status", "Resigned"),
+    supabaseAdmin.from("shift_kerja").select("*").order("name"),
   ]);
 
   const locationList = (locations || []) as Record<string, unknown>[];

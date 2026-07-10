@@ -32,6 +32,7 @@ export async function clockOut(formData?: FormData) {
   const user = await requireRole("hrd", "superadmin", "employee");
   const result = await clockOutForEmployee({
     employeeId: user.id,
+    employeeEmail: user.email,
     photoBase64: (formData?.get("photo_url") as string || "").trim() || undefined,
     latitude: (formData?.get("latitude") as string || "").trim() || undefined,
     longitude: (formData?.get("longitude") as string || "").trim() || undefined,
@@ -47,7 +48,7 @@ export async function clockOut(formData?: FormData) {
 export async function getTodayAttendance() {
   const user = await requireRole("hrd", "superadmin", "employee");
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
-  const { data } = await supabaseAdmin.from("attendance").select("*").eq("employee_id", user.id).eq("date", today).maybeSingle();
+  const { data } = await supabaseAdmin.from("absensi").select("*").eq("employee_id", user.id).eq("date", today).maybeSingle();
   return data || null;
 }
 
@@ -58,13 +59,13 @@ async function attachKode(rows: Record<string, unknown>[]): Promise<Record<strin
   const userIds = [...new Set(rows.map((r) => r.employee_id as string).filter(Boolean))];
   const kodeMap: Record<string, string> = {};
   if (userIds.length > 0) {
-    const { data: users } = await supabaseAdmin.from("users").select("id, email").in("id", userIds);
+    const { data: users } = await supabaseAdmin.from("pengguna").select("id, email").in("id", userIds);
     const emailByUserId: Record<string, string> = {};
     (users || []).forEach((u: { id: string; email?: string }) => { if (u.email) emailByUserId[u.id] = u.email; });
 
     const emails = [...new Set(Object.values(emailByUserId))];
     if (emails.length > 0) {
-      const { data: emps } = await supabaseAdmin.from("employees").select("email, kode").in("email", emails);
+      const { data: emps } = await supabaseAdmin.from("karyawan").select("email, kode").in("email", emails);
       const kodeByEmail: Record<string, string> = {};
       (emps || []).forEach((e: { email: string; kode?: string }) => { if (e.kode) kodeByEmail[e.email] = e.kode; });
       Object.entries(emailByUserId).forEach(([userId, email]) => {
@@ -77,7 +78,7 @@ async function attachKode(rows: Record<string, unknown>[]): Promise<Record<strin
 
 export async function getAllAttendance(params?: { date?: string; department?: string; search?: string }) {
   await requireRole("hrd", "superadmin");
-  let q = supabaseAdmin.from("attendance").select("*").order("date", { ascending: false }).order("employee_name");
+  let q = supabaseAdmin.from("absensi").select("*").order("date", { ascending: false }).order("employee_name");
   if (params?.date) q = q.eq("date", params.date);
   if (params?.department) q = q.eq("department", params.department);
   if (params?.search) q = q.ilike("employee_name", `%${params.search}%`);
@@ -91,11 +92,11 @@ export async function getAllAttendance(params?: { date?: string; department?: st
  * calling this with someone else's department. */
 export async function getAttendanceForDept(params?: { date?: string }) {
   const user = await requireRole("department_manager", "superadmin");
-  const { data: emp } = await supabaseAdmin.from("employees").select("department").eq("email", user.email).maybeSingle();
+  const { data: emp } = await supabaseAdmin.from("karyawan").select("department").eq("email", user.email).maybeSingle();
   const myDept = (emp as { department?: string } | null)?.department;
   if (!myDept) return [];
 
-  let q = supabaseAdmin.from("attendance").select("*").eq("department", myDept).order("date", { ascending: false }).order("employee_name");
+  let q = supabaseAdmin.from("absensi").select("*").eq("department", myDept).order("date", { ascending: false }).order("employee_name");
   if (params?.date) q = q.eq("date", params.date);
   const { data } = await q.limit(200);
   return attachKode(data || []);
@@ -111,7 +112,7 @@ export async function getAttendanceForExport(): Promise<Record<string, unknown>[
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabaseAdmin
-      .from("attendance")
+      .from("absensi")
       .select("date, employee_name, department, check_in, check_out, status, location_name, notes")
       .order("date", { ascending: false })
       .order("employee_name")
@@ -138,7 +139,7 @@ export async function registerFace(formData: FormData) {
     // Employees can only register their OWN face, first time only
     employeeId = user.id;
     const { data: existing } = await supabaseAdmin
-      .from("employee_faces").select("id").eq("employee_id", employeeId).maybeSingle();
+      .from("data_wajah_karyawan").select("id").eq("employee_id", employeeId).maybeSingle();
     if (existing) {
       return { error: "Wajah sudah terdaftar. Ajukan permohonan perubahan ke HRD." };
     }
@@ -164,8 +165,8 @@ export async function registerFace(formData: FormData) {
   // For self-registration, employeeId is user.id (not employees.id — different
   // id spaces for the same person), so that path must look up by email instead.
   const { data: emp } = user.role === "employee"
-    ? await supabaseAdmin.from("employees").select("full_name").eq("email", user.email).maybeSingle()
-    : await supabaseAdmin.from("employees").select("full_name").eq("id", employeeId).maybeSingle();
+    ? await supabaseAdmin.from("karyawan").select("full_name").eq("email", user.email).maybeSingle()
+    : await supabaseAdmin.from("karyawan").select("full_name").eq("id", employeeId).maybeSingle();
 
   const averaged = averageDescriptors(descriptors);
   if (averaged.length === 0) {
@@ -187,7 +188,7 @@ export async function registerFace(formData: FormData) {
     upsertData.encrypted_descriptors = descriptors.map((d) => encryptDescriptor(d));
   }
 
-  const { error } = await supabaseAdmin.from("employee_faces").upsert(upsertData, { onConflict: "employee_id" });
+  const { error } = await supabaseAdmin.from("data_wajah_karyawan").upsert(upsertData, { onConflict: "employee_id" });
 
   if (error) {
     console.error("[attendance] registerFace error:", error.message);
@@ -210,7 +211,7 @@ export async function removeFaceData(employeeId: string) {
   const user = await requireRole("hrd", "superadmin");
 
   const { error } = await supabaseAdmin
-    .from("employee_faces")
+    .from("data_wajah_karyawan")
     .delete()
     .eq("employee_id", employeeId);
 
@@ -238,7 +239,7 @@ export async function getAllFaceDescriptors() {
     ? "employee_id, employee_name, encrypted_descriptors"
     : "employee_id, employee_name, descriptors";
   const { data: faces, error } = await supabaseAdmin
-    .from("employee_faces")
+    .from("data_wajah_karyawan")
     .select(allCols) as {
       data: Record<string, unknown>[] | null;
       error: unknown;
@@ -286,7 +287,7 @@ export async function getEmployeeFaceStatus(employeeId: string) {
   const targetId = user.role === "employee" ? user.id : employeeId;
 
   const { data } = await supabaseAdmin
-    .from("employee_faces")
+    .from("data_wajah_karyawan")
     .select("id, photo_count, created_at, updated_at, photo_url")
     .eq("employee_id", targetId)
     .maybeSingle();
@@ -297,7 +298,7 @@ export async function getEmployeeFaceStatus(employeeId: string) {
 export async function getMyFaceStatus() {
   const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
   const { data } = await supabaseAdmin
-    .from("employee_faces")
+    .from("data_wajah_karyawan")
     .select("id, photo_count, created_at, updated_at")
     .eq("employee_id", user.id)
     .maybeSingle();
@@ -313,7 +314,7 @@ export async function getMyFaceDescriptors(): Promise<{ employeeId: string; empl
     ? "encrypted_descriptor, encrypted_descriptors"
     : "descriptor, descriptors";
   const { data } = await supabaseAdmin
-    .from("employee_faces")
+    .from("data_wajah_karyawan")
     .select(cols)
     .eq("employee_id", user.id)
     .maybeSingle() as { data: Record<string, unknown> | null };
@@ -356,7 +357,7 @@ export async function getAllEmployeeFaceStatuses() {
   await requireRole("hrd", "superadmin");
 
   const { data } = await supabaseAdmin
-    .from("employee_faces")
+    .from("data_wajah_karyawan")
     .select("employee_id");
 
   return new Set((data || []).map((f) => f.employee_id));
@@ -374,14 +375,14 @@ export async function submitFaceChangeRequest(formData: FormData) {
 
   // Must already have a registered face to request a change
   const { data: existing } = await supabaseAdmin
-    .from("employee_faces").select("id").eq("employee_id", user.id).maybeSingle();
+    .from("data_wajah_karyawan").select("id").eq("employee_id", user.id).maybeSingle();
   if (!existing) {
     return { error: "Belum ada data wajah. Gunakan fitur Daftarkan Wajah terlebih dahulu." };
   }
 
   // Block duplicate pending requests
   const { data: pending } = await supabaseAdmin
-    .from("face_change_requests")
+    .from("permintaan_ubah_wajah")
     .select("id")
     .eq("employee_id", user.id)
     .eq("status", "Pending")
@@ -402,14 +403,14 @@ export async function submitFaceChangeRequest(formData: FormData) {
 
   // user.id here is users.id, not employees.id — look up by email instead.
   const { data: emp } = await supabaseAdmin
-    .from("employees").select("full_name").eq("email", user.email).maybeSingle();
+    .from("karyawan").select("full_name").eq("email", user.email).maybeSingle();
 
   const averaged = averageDescriptors(descriptors);
   if (averaged.length === 0) {
     return { error: "Data wajah tidak valid (deskriptor rusak). Silakan ambil ulang foto wajah." };
   }
 
-  const { error } = await supabaseAdmin.from("face_change_requests").insert({
+  const { error } = await supabaseAdmin.from("permintaan_ubah_wajah").insert({
     employee_id: user.id,
     employee_name: emp?.full_name || user.name,
     descriptors,
@@ -439,7 +440,7 @@ export async function submitFaceChangeRequest(formData: FormData) {
 export async function getMyFaceChangeRequest() {
   const user = await requireRole("employee", "department_manager", "hrd", "superadmin");
   const { data } = await supabaseAdmin
-    .from("face_change_requests")
+    .from("permintaan_ubah_wajah")
     .select("id, status, requested_at, reviewed_at, notes")
     .eq("employee_id", user.id)
     .order("requested_at", { ascending: false })
@@ -451,7 +452,7 @@ export async function getMyFaceChangeRequest() {
 export async function getFaceChangeRequests() {
   await requireRole("hrd", "superadmin");
   const { data } = await supabaseAdmin
-    .from("face_change_requests")
+    .from("permintaan_ubah_wajah")
     .select("*")
     .order("requested_at", { ascending: false })
     .limit(100);
@@ -462,7 +463,7 @@ export async function reviewFaceChangeRequest(id: string, status: "Disetujui" | 
   const user = await requireRole("hrd", "superadmin");
 
   const { data: req } = await supabaseAdmin
-    .from("face_change_requests").select("*").eq("id", id).maybeSingle();
+    .from("permintaan_ubah_wajah").select("*").eq("id", id).maybeSingle();
   if (!req) return { error: "Pengajuan tidak ditemukan." };
   if (req.status !== "Pending") return { error: "Pengajuan ini sudah diproses." };
 
@@ -485,13 +486,13 @@ export async function reviewFaceChangeRequest(id: string, status: "Disetujui" | 
       upsertData.encrypted_descriptors = allDescs.map((d: number[]) => encryptDescriptor(d));
     }
 
-    const { error: upsertErr } = await supabaseAdmin.from("employee_faces").upsert(upsertData, { onConflict: "employee_id" });
+    const { error: upsertErr } = await supabaseAdmin.from("data_wajah_karyawan").upsert(upsertData, { onConflict: "employee_id" });
     if (upsertErr) return { error: `Gagal memperbarui data wajah: ${upsertErr.message}` };
     console.log("[reviewFaceChangeRequest] Upserted face data for:", req.employee_id, "avgDesc len:", avgDesc?.length, "allDescs count:", allDescs?.length);
   }
 
   const { error } = await supabaseAdmin
-    .from("face_change_requests")
+    .from("permintaan_ubah_wajah")
     .update({ status, reviewed_by: user.name || user.email, reviewed_at: new Date().toISOString(), notes: notes || null })
     .eq("id", id);
 

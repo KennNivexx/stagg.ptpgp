@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PenilaianKesiapan() {
   const { data: candidates } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("*")
     .neq("status", "Resigned")
     .order("full_name");
@@ -93,7 +93,7 @@ export default async function PenilaianKesiapan() {
             {assessments.length > 0 ? (
               <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto">
                 {assessments.slice(0, 8).map((a) => {
-                  const emp = a.employees as Record<string, string> | null;
+                  const emp = a.karyawan as Record<string, string> | null;
                   const score = Number(a.total_score) || 0;
                   return (
                     <div key={a.id as string} className="px-6 py-4 hover:bg-slate-50/30 transition-colors">

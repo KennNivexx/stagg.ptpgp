@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       quantity_filled: 0,
     };
 
-    const { error } = await supabaseAdmin.from("job_postings").insert(payload);
+    const { error } = await supabaseAdmin.from("lowongan_kerja").insert(payload);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ success: true, id: payload.id });
   } catch {

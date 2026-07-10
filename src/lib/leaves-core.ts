@@ -23,15 +23,15 @@ export async function submitLeaveForEmployee(params: {
   if (!type || !start_date || !end_date) return { error: "Tipe cuti, mulai, dan selesai wajib diisi." };
   if (new Date(end_date) < new Date(start_date)) return { error: "Tanggal selesai harus setelah tanggal mulai." };
 
-  const { data: emp } = await supabaseAdmin.from("employees").select("full_name, department").eq("email", employeeEmail).maybeSingle();
+  const { data: emp } = await supabaseAdmin.from("karyawan").select("full_name, department").eq("email", employeeEmail).maybeSingle();
 
-  const { error } = await supabaseAdmin.from("leave_requests").insert({
+  const { error } = await supabaseAdmin.from("pengajuan_cuti").insert({
     id: uid(), employee_id: employeeId, employee_name: emp?.full_name || employeeName,
     department: emp?.department || "", type, start_date, end_date, reason, status: "Pending",
   });
   if (error) return { error: "Gagal mengajukan cuti." };
 
-  await supabaseAdmin.from("notifications").insert({
+  await supabaseAdmin.from("notifikasi").insert({
     id: uid(), user_email: "hrd@ptpgp.co.id",
     title: "Pengajuan Cuti Baru",
     message: `${emp?.full_name || employeeName} mengajukan ${type} (${start_date} - ${end_date})`,

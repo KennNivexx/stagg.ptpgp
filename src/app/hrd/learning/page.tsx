@@ -5,8 +5,8 @@ import EmptyState from "@/components/EmptyState";
 
 export default async function HRDLearning() {
   const [{ data: trainings }, { data: enrollments }] = await Promise.all([
-    supabaseAdmin.from("trainings").select("*").order("date_start", { ascending: false }),
-    supabaseAdmin.from("training_enrollments").select("training_id, status"),
+    supabaseAdmin.from("pelatihan").select("*").order("date_start", { ascending: false }),
+    supabaseAdmin.from("peserta_pelatihan").select("training_id, status"),
   ]);
 
   const trainingList = (trainings || []) as Record<string, unknown>[];

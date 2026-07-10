@@ -15,7 +15,7 @@ export default async function ApplicantLayout({ children }: { children: React.Re
 
   // Verify account hasn't expired (rejected applicants past 24h grace)
   const { data: userRecord } = await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .select("expires_at, is_temporary")
     .eq("email", session.email)
     .maybeSingle();
@@ -23,7 +23,7 @@ export default async function ApplicantLayout({ children }: { children: React.Re
   if (userRecord && (userRecord as Record<string, unknown>).is_temporary) {
     const expiresAt = (userRecord as Record<string, unknown>).expires_at as string | null;
     if (expiresAt && new Date(expiresAt) < new Date()) {
-      await supabaseAdmin.from("users").delete().eq("email", session.email).eq("role", "applicant");
+      await supabaseAdmin.from("pengguna").delete().eq("email", session.email).eq("role", "applicant");
       redirect("/login");
     }
   }
@@ -35,6 +35,7 @@ export default async function ApplicantLayout({ children }: { children: React.Re
     <div className="min-h-screen bg-slate-50 flex">
       <ApplicantSidebar userName={userName} userEmail={userEmail} />
       <main className="flex-1 min-w-0 min-h-screen overflow-x-auto">
+        <div className="h-14 lg:hidden" aria-hidden="true" />
         {children}
       </main>
     </div>

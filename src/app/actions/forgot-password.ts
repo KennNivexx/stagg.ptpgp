@@ -31,8 +31,8 @@ function newId(): string {
  */
 async function resolveFaceIdentity(email: string): Promise<{ ids: string[]; name: string }> {
   const [{ data: emp }, { data: usr }] = await Promise.all([
-    supabaseAdmin.from("employees").select("id, full_name").eq("email", email).maybeSingle(),
-    supabaseAdmin.from("users").select("id, full_name").eq("email", email).maybeSingle(),
+    supabaseAdmin.from("karyawan").select("id, full_name").eq("email", email).maybeSingle(),
+    supabaseAdmin.from("pengguna").select("id, full_name").eq("email", email).maybeSingle(),
   ]);
   const ids: string[] = [];
   const e = emp as Record<string, unknown> | null;
@@ -54,8 +54,8 @@ export async function sendPasswordResetOTP(email: string) {
   }
 
   const [{ data: empRow }, { data: userRow }] = await Promise.all([
-    supabaseAdmin.from("employees").select("id, full_name").eq("email", normalizedEmail).maybeSingle(),
-    supabaseAdmin.from("users").select("id, full_name").eq("email", normalizedEmail).maybeSingle(),
+    supabaseAdmin.from("karyawan").select("id, full_name").eq("email", normalizedEmail).maybeSingle(),
+    supabaseAdmin.from("pengguna").select("id, full_name").eq("email", normalizedEmail).maybeSingle(),
   ]);
 
   const displayName =
@@ -64,7 +64,7 @@ export async function sendPasswordResetOTP(email: string) {
     "Pengguna";
 
   // Delete stale OTPs first
-  await supabaseAdmin.from("password_reset_otps").delete().eq("email", normalizedEmail);
+  await supabaseAdmin.from("otp_reset_password").delete().eq("email", normalizedEmail);
 
   if (!empRow && !userRow) {
     // Don't reveal whether email exists — fake success
@@ -74,7 +74,7 @@ export async function sendPasswordResetOTP(email: string) {
   const otp = generateOTP();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  await supabaseAdmin.from("password_reset_otps").insert({
+  await supabaseAdmin.from("otp_reset_password").insert({
     id: newId(),
     email: normalizedEmail,
     code: hashOtp(otp),
@@ -107,7 +107,7 @@ export async function verifyPasswordResetOTP(email: string, code: string) {
   }
 
   const { data: row } = await supabaseAdmin
-    .from("password_reset_otps")
+    .from("otp_reset_password")
     .select("*")
     .eq("email", normalizedEmail)
     .eq("code", hashOtp(code.trim()))
@@ -123,7 +123,7 @@ export async function verifyPasswordResetOTP(email: string, code: string) {
   }
 
   await supabaseAdmin
-    .from("password_reset_otps")
+    .from("otp_reset_password")
     .update({ step: "otp_verified" })
     .eq("email", normalizedEmail);
 
@@ -141,7 +141,7 @@ export async function verifyPasswordResetOTP(email: string, code: string) {
       ? "encrypted_descriptor, encrypted_descriptors"
       : "descriptor, descriptors";
     const { data: faces } = await supabaseAdmin
-      .from("employee_faces")
+      .from("data_wajah_karyawan")
       .select(cols)
       .in("employee_id", ids) as { data: Record<string, unknown>[] | null };
     hasFaceData = (faces || []).some((face) => {
@@ -166,7 +166,7 @@ export async function verifyFaceForReset(email: string, descriptor: number[]) {
 
   // Must have passed OTP step
   const { data: otpRow } = await supabaseAdmin
-    .from("password_reset_otps")
+    .from("otp_reset_password")
     .select("step, expires_at")
     .eq("email", normalizedEmail)
     .maybeSingle();
@@ -189,7 +189,7 @@ export async function verifyFaceForReset(email: string, descriptor: number[]) {
     ? "encrypted_descriptor, encrypted_descriptors"
     : "descriptor, descriptors";
   const { data: faces } = await supabaseAdmin
-    .from("employee_faces")
+    .from("data_wajah_karyawan")
     .select(cols)
     .in("employee_id", ids) as { data: Record<string, unknown>[] | null };
 
@@ -236,7 +236,7 @@ export async function verifyFaceForReset(email: string, descriptor: number[]) {
   }
 
   await supabaseAdmin
-    .from("password_reset_otps")
+    .from("otp_reset_password")
     .update({ step: "face_verified" })
     .eq("email", normalizedEmail);
 
@@ -261,7 +261,7 @@ export async function resetForgotPassword(email: string, newPassword: string) {
 
   // Must have passed face step
   const { data: otpRow } = await supabaseAdmin
-    .from("password_reset_otps")
+    .from("otp_reset_password")
     .select("step, expires_at")
     .eq("email", normalizedEmail)
     .maybeSingle();
@@ -275,7 +275,7 @@ export async function resetForgotPassword(email: string, newPassword: string) {
 
   // Update employees.address auth JSON
   const { data: emp } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, address")
     .eq("email", normalizedEmail)
     .maybeSingle();
@@ -289,20 +289,20 @@ export async function resetForgotPassword(email: string, newPassword: string) {
     addressObj.__auth__ = auth;
 
     await supabaseAdmin
-      .from("employees")
+      .from("karyawan")
       .update({ address: JSON.stringify(addressObj) })
       .eq("id", e.id as string);
   }
 
   // Update users table if exists
   await supabaseAdmin
-    .from("users")
+    .from("pengguna")
     .update({ password_hash: passwordHash })
     .eq("email", normalizedEmail);
 
   // Mark OTP as used
   await supabaseAdmin
-    .from("password_reset_otps")
+    .from("otp_reset_password")
     .update({ step: "used" })
     .eq("email", normalizedEmail);
 
@@ -314,7 +314,7 @@ export async function skipFaceVerification(email: string) {
   const normalizedEmail = email.toLowerCase().trim();
 
   const { data: otpRow } = await supabaseAdmin
-    .from("password_reset_otps")
+    .from("otp_reset_password")
     .select("step, expires_at")
     .eq("email", normalizedEmail)
     .maybeSingle();
@@ -326,7 +326,7 @@ export async function skipFaceVerification(email: string) {
 
   // Only allow skip for users table entries (non-employee roles)
   const { data: emp } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id")
     .eq("email", normalizedEmail)
     .maybeSingle();
@@ -336,7 +336,7 @@ export async function skipFaceVerification(email: string) {
   }
 
   await supabaseAdmin
-    .from("password_reset_otps")
+    .from("otp_reset_password")
     .update({ step: "face_verified" })
     .eq("email", normalizedEmail);
 

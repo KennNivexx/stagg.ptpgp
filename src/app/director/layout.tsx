@@ -16,6 +16,7 @@ const MENU_GROUPS = [
     icon: LayoutDashboard,
     items: [
       { href: "/director", label: "Overview" },
+      { href: "/director/fleet", label: "Armada & Kepatuhan" },
     ],
   },
   {
@@ -26,6 +27,7 @@ const MENU_GROUPS = [
       { href: "/director/departments", label: "Usulan Departemen" },
       { href: "/director/competency", label: "Usulan Kompetensi" },
       { href: "/director/trainings", label: "Anggaran Pelatihan" },
+      { href: "/director/vehicle-requests", label: "Pengadaan Kendaraan" },
     ],
   },
   {
@@ -136,7 +138,10 @@ export default function DirectorLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 lg:h-screen lg:overflow-hidden">
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC]">{children}</main>
+        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC]">
+          <div className="h-14 lg:hidden" aria-hidden="true" />
+          {children}
+        </main>
       </div>
     </div>
   );

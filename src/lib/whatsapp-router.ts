@@ -72,7 +72,7 @@ function logIfReal(err: unknown, label: string): void {
 async function updateConversation(id: string, patch: Record<string, unknown>): Promise<void> {
   try {
     await supabaseAdmin
-      .from("wa_conversations")
+      .from("percakapan_wa")
       .update({ ...patch, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq("id", id);
   } catch (e) { logIfReal(e, "updateConversation"); }
@@ -83,7 +83,7 @@ async function resetToIdle(conversation: WaConversation): Promise<void> {
 }
 
 async function optOut(employee: BotEmployee, conversation: WaConversation): Promise<void> {
-  await supabaseAdmin.from("employees").update({ wa_opted_out: true }).eq("id", employee.id);
+  await supabaseAdmin.from("karyawan").update({ wa_opted_out: true }).eq("id", employee.id);
   await sendTextMessage(conversation.wa_number, "Anda telah berhenti berlangganan Bot WA HRIS. Daftarkan kembali kapan saja di Profil Saya pada website.");
 }
 
@@ -288,7 +288,7 @@ async function handleClockInFlow(employee: BotEmployee, conversation: WaConversa
   }
 
   if (inResult.error === "Sudah clock-in hari ini.") {
-    const outResult = await clockOutViaBot(employee.id, message.imageDataUrl);
+    const outResult = await clockOutViaBot(employee.id, employee.email, message.imageDataUrl);
     await resetToIdle(conversation);
     if ("success" in outResult) {
       await sendTextMessage(to, `Clock-out berhasil pada ${new Date(outResult.time).toLocaleTimeString("id-ID")}.`);
@@ -314,7 +314,7 @@ interface WaVerification {
 async function getVerification(waNumber: string): Promise<WaVerification | null> {
   try {
     const { data } = await supabaseAdmin
-      .from("wa_verifications")
+      .from("verifikasi_wa")
       .select("*")
       .eq("wa_number", waNumber)
       .maybeSingle();
@@ -324,20 +324,20 @@ async function getVerification(waNumber: string): Promise<WaVerification | null>
 
 async function upsertVerification(waNumber: string, patch: { step: string; name?: string; position?: string }): Promise<void> {
   try {
-    await supabaseAdmin.from("wa_verifications").upsert({ wa_number: waNumber, ...patch }, { onConflict: "wa_number" });
+    await supabaseAdmin.from("verifikasi_wa").upsert({ wa_number: waNumber, ...patch }, { onConflict: "wa_number" });
   } catch (e) { logIfReal(e, "upsertVerification"); }
 }
 
 async function deleteVerification(waNumber: string): Promise<void> {
   try {
-    await supabaseAdmin.from("wa_verifications").delete().eq("wa_number", waNumber);
+    await supabaseAdmin.from("verifikasi_wa").delete().eq("wa_number", waNumber);
   } catch (e) { logIfReal(e, "deleteVerification"); }
 }
 
 export async function handleVerificationFlow(waNumber: string, text: string): Promise<BotEmployee | null> {
   // Clean up verification entries older than 10 minutes before processing
   try {
-    await supabaseAdmin.from("wa_verifications").delete().lt("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
+    await supabaseAdmin.from("verifikasi_wa").delete().lt("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
   } catch { /* non-critical cleanup */ }
 
   const v = await getVerification(waNumber);

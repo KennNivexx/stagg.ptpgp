@@ -18,15 +18,15 @@ export async function GET(
   if (!session?.role) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: slip } = await supabaseAdmin
-    .from("payroll")
-    .select("*, employees!inner(full_name, email, department, position, employee_code)")
+    .from("penggajian")
+    .select("*, karyawan!inner(full_name, email, department, position, employee_code)")
     .eq("id", id)
     .single();
 
   if (!slip) return NextResponse.json({ error: "Slip tidak ditemukan." }, { status: 404 });
 
   const s = slip as Record<string, unknown>;
-  const emp = s.employees as Record<string, unknown>;
+  const emp = s.karyawan as Record<string, unknown>;
 
   // Authorization: HRD/superadmin (payroll admins) may view any payslip; an
   // employee may view ONLY their own. Every other role — applicant,

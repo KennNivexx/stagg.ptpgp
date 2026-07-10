@@ -10,7 +10,7 @@ export default async function SuratPeringatan() {
   await expireOldWarnings();
 
   const { data: employees } = await supabaseAdmin
-    .from("employees")
+    .from("karyawan")
     .select("id, full_name, email, kode, department, position")
     .neq("email", "superadmin@ptpgp.co.id")
     .neq("status", "Resigned")
@@ -18,7 +18,7 @@ export default async function SuratPeringatan() {
 
   let warnings: Record<string, unknown>[] = [];
   const { data: allWarnings, error: warnError } = await supabaseAdmin
-    .from("warnings")
+    .from("surat_peringatan")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(200);

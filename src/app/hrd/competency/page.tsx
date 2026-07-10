@@ -4,10 +4,10 @@ import EmptyState from "@/components/EmptyState";
 
 export default async function HRDCompetency() {
   const [skillsRes, posSkillsRes, empSkillsRes, employeesRes] = await Promise.all([
-    supabaseAdmin.from("skills").select("id, name, category").order("category"),
-    supabaseAdmin.from("position_skills").select("position_code, skill_id"),
-    supabaseAdmin.from("employee_skills").select("employee_id, current_level"),
-    supabaseAdmin.from("employees").select("id, full_name, department, position, status").order("full_name", { ascending: true }),
+    supabaseAdmin.from("master_kompetensi").select("id, name, category").order("category"),
+    supabaseAdmin.from("kompetensi_jabatan").select("position_code, skill_id"),
+    supabaseAdmin.from("kompetensi_karyawan").select("employee_id, current_level"),
+    supabaseAdmin.from("karyawan").select("id, full_name, department, position, status").order("full_name", { ascending: true }),
   ]);
 
   const skills = skillsRes.data || [];

@@ -99,7 +99,7 @@ export default function PromotionsClient({ employees, initialPromotions }: Props
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {promotions.map((p) => {
-                    const emp = p.employees as Record<string, string> | undefined;
+                    const emp = p.karyawan as Record<string, string> | undefined;
                     return (
                       <tr key={p.id as string} className="hover:bg-slate-50/30 transition-colors">
                         <td className="px-6 py-4">
