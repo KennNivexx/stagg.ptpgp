@@ -113,9 +113,18 @@ export default function SplashScreen() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-[#1A2A6C] font-black tracking-wide text-2xl sm:text-4xl text-center"
+              className="bg-gradient-to-r from-[#c2410c] via-pgp-red to-[#c2410c] bg-clip-text text-transparent font-black tracking-wide text-2xl sm:text-4xl text-center"
             >
               Pratama Galuh Perkasa
+            </motion.p>
+
+            <motion.p
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+              className="text-[#1A2A6C]/70 tracking-wide text-xs sm:text-sm text-center mt-2"
+            >
+              Solusi Transportasi & Freight Forwarding Terpercaya
             </motion.p>
           </div>
 
