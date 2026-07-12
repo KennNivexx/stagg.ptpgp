@@ -8,7 +8,7 @@ const uid = () => "jd-" + crypto.randomUUID();
 
 export interface JobDesc {
   id: string; title: string; position: string; department: string; kode: string;
-  responsibilities: string[]; requirements: string[];
+  responsibilities: string[]; requirements: string[]; jabatan_id?: string | null;
 }
 
 export async function getJobDescs(): Promise<JobDesc[]> {
@@ -40,6 +40,7 @@ export async function saveJobDesc(formData: FormData) {
   const position = (formData.get("position") as string || "").trim();
   const department = (formData.get("department") as string || "").trim();
   const kode = (formData.get("kode") as string || "").trim();
+  const jabatan_id = (formData.get("jabatan_id") as string || "").trim() || null;
   const responsibilities = (JSON.parse((formData.get("responsibilities") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
   const requirements = (JSON.parse((formData.get("requirements") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
 
@@ -50,7 +51,7 @@ export async function saveJobDesc(formData: FormData) {
   const now = new Date().toISOString();
   if (id) {
     const { error } = await supabaseAdmin.from("deskripsi_kerja").update({
-      title, position, department, kode, responsibilities, requirements, updated_at: now,
+      title, position, department, kode, jabatan_id, responsibilities, requirements, updated_at: now,
     }).eq("id", id);
     if (error) {
       console.error("[jobdesc] saveJobDesc error:", error.message);
@@ -59,7 +60,7 @@ export async function saveJobDesc(formData: FormData) {
   } else {
     const newId = uid();
     const { error } = await supabaseAdmin.from("deskripsi_kerja").insert({
-      id: newId, title, position, department, kode, responsibilities, requirements, created_at: now, updated_at: now,
+      id: newId, title, position, department, kode, jabatan_id, responsibilities, requirements, created_at: now, updated_at: now,
     });
     if (error) {
       console.error("[jobdesc] addJobDesc error:", error.message);

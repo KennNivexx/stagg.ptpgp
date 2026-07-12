@@ -1,0 +1,443 @@
+[
+  {
+    "id": "pos-36ed6554-d376-48e4-81a7-37cad63c353a",
+    "code": "1.1.2.2.1.6.0",
+    "name": "Department Manager",
+    "department": "Finance",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.474+00:00",
+    "updated_at": "2026-07-03T05:06:40.474+00:00"
+  },
+  {
+    "id": "pos-231d8a56-623f-4452-93bf-4463056afb57",
+    "code": "1.1.2.2.1.7.0",
+    "name": "Finance",
+    "department": "Finance",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.474+00:00",
+    "updated_at": "2026-07-03T05:06:40.474+00:00"
+  },
+  {
+    "id": "pos-e0a549ca-ca96-45a6-84ba-86dc8f4e5e5e",
+    "code": "1.1.6.11.0.0.0",
+    "name": "Department Manager",
+    "department": "Operational Division",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.474+00:00",
+    "updated_at": "2026-07-03T05:06:40.474+00:00"
+  },
+  {
+    "id": "pos-22cb3c27-27e0-457c-b00f-0419ea125d9b",
+    "code": "1.1.3.3.0.0.0",
+    "name": "Department Manager",
+    "department": "Procurement Division",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.474+00:00",
+    "updated_at": "2026-07-03T05:06:40.474+00:00"
+  },
+  {
+    "id": "pos-2fb08def-e5b6-4fe2-8290-a009178b8d5b",
+    "code": "1.1.4.7.0.0.0",
+    "name": "Department Manager",
+    "department": "Project Appraisal",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.474+00:00",
+    "updated_at": "2026-07-03T05:06:40.474+00:00"
+  },
+  {
+    "id": "pos-4b791a3b-52db-49a9-a96c-ab2776d17196",
+    "code": "1.1.5.2.0.0.0",
+    "name": "Department Manager",
+    "department": "Management Representative",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.474+00:00",
+    "updated_at": "2026-07-03T05:06:40.474+00:00"
+  },
+  {
+    "id": "pos-45b32746-8254-4390-b589-f0de939dd835",
+    "code": "1.1.7.3.0.0.0",
+    "name": "Department Manager",
+    "department": "Health, Safety & Environment",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.474+00:00",
+    "updated_at": "2026-07-03T05:06:40.474+00:00"
+  },
+  {
+    "id": "pos-f162e7fa-c070-4541-bcfb-fec115244651",
+    "code": "1.1.2.1.9.0.0",
+    "name": "Department Manager",
+    "department": "HR & GA",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.474+00:00",
+    "updated_at": "2026-07-03T05:06:40.474+00:00"
+  },
+  {
+    "id": "pos-0c1f0ab2-4d4e-45c7-ba68-57471292a7ed",
+    "code": "1.1.2.1.10.0.0",
+    "name": "HRD Administrator",
+    "department": "HR & GA",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.474+00:00",
+    "updated_at": "2026-07-03T05:06:40.474+00:00"
+  },
+  {
+    "id": "pos-1cfaea5a-84df-4a53-87a5-f812967ee027",
+    "code": "1.1.2.1.11.0.0",
+    "name": "Staff",
+    "department": "HR & GA",
+    "level": "",
+    "created_at": "2026-07-03T05:06:40.475+00:00",
+    "updated_at": "2026-07-03T05:06:40.475+00:00"
+  },
+  {
+    "id": "pos-72503cdd-ccf5-4d79-9ef1-ea2b1217c7fb",
+    "code": "0.0.0.0.0.0.1",
+    "name": "Finance",
+    "department": "Operasional",
+    "level": "",
+    "created_at": "2026-07-12T03:33:36.898+00:00",
+    "updated_at": "2026-07-12T03:33:36.898+00:00"
+  },
+  {
+    "id": "72fb7da7-816d-4fc8-83b6-5e82040421ae",
+    "code": "COMM",
+    "name": "Commissioner",
+    "department": "COMMISSIONER",
+    "level": "Komisaris",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "b6cad6e4-066a-4585-b02d-7a4e3d57cb5d",
+    "code": "DIR",
+    "name": "Director",
+    "department": "Director",
+    "level": "Direktur",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "83c6c26d-e8a6-44e3-8f1d-09d48911a050",
+    "code": "INT-AUD",
+    "name": "Internal Auditor",
+    "department": "Internal Audit",
+    "level": "Direktur",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "616a03f4-6a81-4440-b07b-594c06612a13",
+    "code": "DEP-DIR",
+    "name": "Deputy Director",
+    "department": "Deputy Director",
+    "level": "Wakil Direktur",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "d0f7979b-a036-4592-a05e-cbfe7d90724d",
+    "code": "HR-MGR",
+    "name": "HR Manager",
+    "department": "HR & GA",
+    "level": "Manager",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "d52d3478-111d-4f70-9fee-e073333ea06b",
+    "code": "HR-OFF",
+    "name": "HR Officer",
+    "department": "HR & GA",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "682d86a2-10b0-4020-b3e8-be50b0caaffd",
+    "code": "REC-STF",
+    "name": "Recruitment Staff",
+    "department": "HR & GA",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "73e4e525-5a1a-4d8e-a294-c7534667d4a9",
+    "code": "PAY-STF",
+    "name": "Payroll Staff",
+    "department": "HR & GA",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "c10c059a-3f20-411e-8c13-9cdd6f6e5999",
+    "code": "GA-STF",
+    "name": "General Affair Staff",
+    "department": "HR & GA",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "371f5295-4fb1-4a92-b717-134785e8a00c",
+    "code": "IT-SUP",
+    "name": "IT Support",
+    "department": "HR & GA",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "2273c1c1-980e-490a-8988-5c0b21089331",
+    "code": "SEC-OFF",
+    "name": "Security Officer",
+    "department": "HR & GA",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "f79307f7-39a5-4548-bfa1-7361194e14c8",
+    "code": "OB",
+    "name": "Office Boy",
+    "department": "HR & GA",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "62be38a3-fbb4-428c-8ee9-48df0e14fb2c",
+    "code": "FIN-MGR",
+    "name": "Finance Manager",
+    "department": "Finance",
+    "level": "Manager",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "1b662d96-715f-4edc-a88e-7048b9f02cf4",
+    "code": "SR-ACC",
+    "name": "Senior Accountant",
+    "department": "Finance",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "52ff34bd-3ffb-4243-97f8-8bdcc1854059",
+    "code": "AP-STF",
+    "name": "Account Payable Staff",
+    "department": "Finance",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "f01b72fe-9a25-465c-82bc-f0b410075320",
+    "code": "AR-STF",
+    "name": "Account Receivable Staff",
+    "department": "Finance",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "ea4cddb5-4503-45c6-b5a0-65df295c36f1",
+    "code": "CSH",
+    "name": "Cashier",
+    "department": "Finance",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "422397e3-6afb-4faf-8bf8-71feb4a27dbe",
+    "code": "OPS-MGR",
+    "name": "Operations Manager",
+    "department": "Operational Division",
+    "level": "Manager",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "7bd193ee-ad51-4adb-8ad4-f3d372dd5b20",
+    "code": "VOP-SPV",
+    "name": "Vehicle Operations Supervisor",
+    "department": "Operational Division",
+    "level": "Supervisor",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "e3c512b6-cf57-4820-b97b-d0716035c99c",
+    "code": "DRV",
+    "name": "Driver",
+    "department": "Operational Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "22775d6d-a10f-423d-9cd9-63155c1cb17d",
+    "code": "HE-OPR",
+    "name": "Heavy Equipment Operator",
+    "department": "Operational Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "422c589e-0b25-447e-b577-fe96c0123aec",
+    "code": "RIG",
+    "name": "Rigger",
+    "department": "Operational Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "95b020a6-f614-47ba-9cf4-92b947c95b8b",
+    "code": "QC-STF",
+    "name": "Quality Control Staff",
+    "department": "Operational Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "f43fadea-b904-44c2-a797-3d45271dfec4",
+    "code": "TS-STF",
+    "name": "Traffic System Staff",
+    "department": "Operational Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "025e7a37-0e8b-422a-b955-438ec8aea483",
+    "code": "SVC-ADV",
+    "name": "Service Advisor",
+    "department": "Operational Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "a39f7cf9-5a6a-444f-8fa7-64cfc0249dbf",
+    "code": "VEH-REG",
+    "name": "Vehicle Registration Staff",
+    "department": "Operational Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "e03cc92d-1141-4a94-a718-2ea9b1fc4c93",
+    "code": "EQ-CTRL",
+    "name": "Equipment Control Staff",
+    "department": "Operational Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "6806afce-639a-4f1d-bd46-3af6ab3fed9b",
+    "code": "PRC-OFF",
+    "name": "Procurement Officer",
+    "department": "Procurement Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "05e5e422-cdf1-4b69-aec2-5f95561413ce",
+    "code": "PRC-STF",
+    "name": "Procurement Staff",
+    "department": "Procurement Division",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "7a501a56-094c-4eca-9472-751306fcb929",
+    "code": "PA-MGR",
+    "name": "Project Appraisal Manager",
+    "department": "Project Appraisal",
+    "level": "Manager",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "7e71ccd7-b4c0-477e-8e2c-4f54c9d1c234",
+    "code": "SLS-EXEC",
+    "name": "Sales Executive",
+    "department": "Project Appraisal",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "cd03243c-2a58-4baa-8e05-17c481ede31a",
+    "code": "MED-PROM",
+    "name": "Media & Promotion Staff",
+    "department": "Project Appraisal",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "6af20035-25af-4f87-9254-23f4cbf175d9",
+    "code": "REG-STF",
+    "name": "Regional Staff",
+    "department": "Project Appraisal",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "1ea81996-52f2-4447-a9f9-7b0e7282128c",
+    "code": "FWD-STF",
+    "name": "Forwarder Staff",
+    "department": "Project Appraisal",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "1d473506-b6f7-473c-b4f2-89ca26586362",
+    "code": "WH-STF",
+    "name": "Warehouse Staff",
+    "department": "Project Appraisal",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "3526cb7b-6d8e-47bf-9092-5d61175bb389",
+    "code": "MR-OFF",
+    "name": "MR Officer",
+    "department": "Management Representative",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "028967d8-02b8-4d12-8726-b86bb1dbac9e",
+    "code": "HSE-OFF",
+    "name": "HSE Officer",
+    "department": "Health, Safety & Environment",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  },
+  {
+    "id": "a67cc1a8-22ca-4e22-a8d8-1c2e16beead2",
+    "code": "DOC-CTRL",
+    "name": "Document Control Staff",
+    "department": "Health, Safety & Environment",
+    "level": "Staff",
+    "created_at": "2026-06-18T10:33:22.405839+00:00",
+    "updated_at": "2026-06-18T10:33:22.405839+00:00"
+  }
+]

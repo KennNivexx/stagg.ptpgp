@@ -1,0 +1,102 @@
+[
+  {
+    "id": "sched-d22a7f38-3644-4bac-b39f-1a84bd0fd49b-2026-07-11",
+    "employee_id": "d22a7f38-3644-4bac-b39f-1a84bd0fd49b",
+    "shift_id": "shift-pagi",
+    "shift_date": "2026-07-11",
+    "has_bonus": true,
+    "bonus_amount": 50000,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  },
+  {
+    "id": "sched-d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9-2026-07-11",
+    "employee_id": "d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9",
+    "shift_id": "shift-siang",
+    "shift_date": "2026-07-11",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  },
+  {
+    "id": "sched-d22a7f38-3644-4bac-b39f-1a84bd0fd49b-2026-07-10",
+    "employee_id": "d22a7f38-3644-4bac-b39f-1a84bd0fd49b",
+    "shift_id": "shift-siang",
+    "shift_date": "2026-07-10",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  },
+  {
+    "id": "sched-d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9-2026-07-10",
+    "employee_id": "d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9",
+    "shift_id": "shift-malam",
+    "shift_date": "2026-07-10",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  },
+  {
+    "id": "sched-d22a7f38-3644-4bac-b39f-1a84bd0fd49b-2026-07-09",
+    "employee_id": "d22a7f38-3644-4bac-b39f-1a84bd0fd49b",
+    "shift_id": "shift-malam",
+    "shift_date": "2026-07-09",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  },
+  {
+    "id": "sched-d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9-2026-07-09",
+    "employee_id": "d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9",
+    "shift_id": "shift-pagi",
+    "shift_date": "2026-07-09",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  },
+  {
+    "id": "sched-d22a7f38-3644-4bac-b39f-1a84bd0fd49b-2026-07-08",
+    "employee_id": "d22a7f38-3644-4bac-b39f-1a84bd0fd49b",
+    "shift_id": "shift-pagi",
+    "shift_date": "2026-07-08",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  },
+  {
+    "id": "sched-d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9-2026-07-08",
+    "employee_id": "d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9",
+    "shift_id": "shift-siang",
+    "shift_date": "2026-07-08",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  },
+  {
+    "id": "sched-d22a7f38-3644-4bac-b39f-1a84bd0fd49b-2026-07-07",
+    "employee_id": "d22a7f38-3644-4bac-b39f-1a84bd0fd49b",
+    "shift_id": "shift-siang",
+    "shift_date": "2026-07-07",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  },
+  {
+    "id": "sched-d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9-2026-07-07",
+    "employee_id": "d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9",
+    "shift_id": "shift-malam",
+    "shift_date": "2026-07-07",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "notes": "",
+    "created_at": "2026-07-11T10:59:27.654559+00:00"
+  }
+]

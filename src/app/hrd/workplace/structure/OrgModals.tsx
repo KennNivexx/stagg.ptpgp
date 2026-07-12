@@ -132,10 +132,18 @@ function InfoRow({ icon, label, value, color }: { icon: React.ReactNode; label: 
 
 /* ─────────────────── EditModal ─────────────────────────────────────────── */
 
+export interface UnitDesignFields {
+  jenis_unit: string; singkatan: string; deskripsi: string; jumlah_formasi: string;
+  budget_cost_center: string; kode_cost_center: string; business_unit: string;
+  lokasi_kerja: string; tanggal_berlaku: string; tanggal_berakhir: string; status: string;
+}
+
+export const JENIS_UNIT_OPTIONS = ["Holding", "Direktorat", "Divisi", "Departemen", "Section", "Sub Section", "Unit", "Tim", "Project", "Cabang"];
+
 export function EditModal({
   mounted, modal, sel, fName, setFName, fCode, setFCode, fLevel, setFLevel,
-  lQ, setLQ, lSel, setLSel, showDrop, setShowDrop, fErr, fLoading,
-  filtLeaders, onClose, onSave,
+  design, setDesign, fErr, fLoading,
+  onClose, onSave,
 }: {
   mounted: boolean;
   modal: "edit" | "add";
@@ -143,14 +151,12 @@ export function EditModal({
   fName: string; setFName: (v: string) => void;
   fCode: string; setFCode: (v: string) => void;
   fLevel: number; setFLevel: (v: number) => void;
-  lQ: string; setLQ: (v: string) => void;
-  lSel: Employee | null; setLSel: (v: Employee | null) => void;
-  showDrop: boolean; setShowDrop: (v: boolean) => void;
+  design: UnitDesignFields; setDesign: (v: UnitDesignFields) => void;
   fErr: string; fLoading: boolean;
-  filtLeaders: Employee[];
   onClose: () => void;
   onSave: () => void;
 }) {
+  const set = (k: keyof UnitDesignFields) => (v: string) => setDesign({ ...design, [k]: v });
   const isAdd = modal === "add";
   return (
     <Portal mounted={mounted}>
@@ -201,38 +207,71 @@ export function EditModal({
                 </select>
               </div>
               )}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Pimpinan Unit</label>
-                <div className="relative">
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-sky-400/30 focus-within:border-sky-400 transition-all">
-                    <User className="w-4 h-4 text-slate-400 shrink-0" />
-                    <input type="text" value={lQ} onChange={e => { setLQ(e.target.value); setLSel(null); setShowDrop(true); }} onFocus={() => setShowDrop(true)}
-                      placeholder="Ketik nama atau email karyawan..."
-                      className="flex-1 bg-transparent text-sm text-slate-800 font-medium focus:outline-none placeholder:text-slate-400" />
-                    {lSel && <button onClick={() => { setLSel(null); setLQ(""); }}>
-                      <X className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
-                    </button>}
-                  </div>
-                  <AnimatePresence>
-                    {showDrop && filtLeaders.length > 0 && (
-                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                        className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
-                        {filtLeaders.map(e => (
-                          <button key={e.id} onClick={() => { setLSel(e); setLQ(e.full_name); setShowDrop(false); }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-sky-50 transition-colors text-left">
-                            <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">{e.full_name[0]}</div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-800 truncate">{e.full_name}</p>
-                              <p className="text-[10px] text-slate-400 truncate">{e.position} · {e.department}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Jenis Unit</label>
+                  <select value={design.jenis_unit} onChange={e => set("jenis_unit")(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all">
+                    {JENIS_UNIT_OPTIONS.map(j => <option key={j} value={j}>{j}</option>)}
+                  </select>
                 </div>
-                {lSel && <p className="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block" />{lSel.email}</p>}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Singkatan</label>
+                  <input type="text" value={design.singkatan} onChange={e => set("singkatan")(e.target.value)} placeholder="Contoh: HRD"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                </div>
               </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Deskripsi</label>
+                <textarea value={design.deskripsi} onChange={e => set("deskripsi")(e.target.value)} rows={2}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Jumlah Formasi</label>
+                  <input type="number" min={0} value={design.jumlah_formasi} onChange={e => set("jumlah_formasi")(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Business Unit</label>
+                  <input type="text" value={design.business_unit} onChange={e => set("business_unit")(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kode Cost Center</label>
+                  <input type="text" value={design.kode_cost_center} onChange={e => set("kode_cost_center")(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Budget Cost Center</label>
+                  <input type="number" min={0} value={design.budget_cost_center} onChange={e => set("budget_cost_center")(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Lokasi Kerja</label>
+                  <input type="text" value={design.lokasi_kerja} onChange={e => set("lokasi_kerja")(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+                  <select value={design.status} onChange={e => set("status")(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all">
+                    <option value="Aktif">Aktif</option>
+                    <option value="Nonaktif">Nonaktif</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tanggal Berlaku</label>
+                  <input type="date" value={design.tanggal_berlaku} onChange={e => set("tanggal_berlaku")(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tanggal Berakhir</label>
+                  <input type="date" value={design.tanggal_berakhir} onChange={e => set("tanggal_berakhir")(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 flex items-center gap-1"><User className="w-3 h-3" />Pimpinan unit tidak lagi diisi di sini — ditentukan otomatis dari Position Management (Formasi).</p>
               {fErr && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5"><AlertTriangle className="w-4 h-4 text-red-500 shrink-0" /><p className="text-red-600 text-sm">{fErr}</p></div>}
               <div className="flex gap-3">
                 <button onClick={onClose} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors">Batal</button>

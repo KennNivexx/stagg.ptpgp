@@ -1,0 +1,48 @@
+[
+  {
+    "id": "jd-eb5e60d4-c5e2-446d-89c6-505319618095",
+    "position": "Department Manager",
+    "department": "Delivery Route",
+    "responsibilities": [
+      "Mlakukan"
+    ],
+    "requirements": [
+      "- Status"
+    ],
+    "created_at": "2026-07-02T15:25:48.715+00:00",
+    "updated_at": "2026-07-02T15:25:48.715+00:00",
+    "title": ""
+  },
+  {
+    "id": "jd-5d7423f5-8d98-4a83-ad17-2db9d0fd5037",
+    "position": "Staff",
+    "department": "Driver",
+    "responsibilities": [
+      "tes"
+    ],
+    "requirements": [
+      "s1\r"
+    ],
+    "created_at": "2026-07-02T15:26:14.612+00:00",
+    "updated_at": "2026-07-02T15:26:14.612+00:00",
+    "title": ""
+  },
+  {
+    "id": "jd-e1c10562-9d1c-4a49-b7b0-e81fb6633a4d",
+    "position": "Department Manager",
+    "department": "Account Receivable",
+    "responsibilities": [
+      "tes\r",
+      "tes\r",
+      "tes"
+    ],
+    "requirements": [
+      "tes\r",
+      "tes\r",
+      "tes"
+    ],
+    "created_at": "2026-07-02T15:29:58.807+00:00",
+    "updated_at": "2026-07-02T15:29:58.807+00:00",
+    "title": ""
+  }
+]

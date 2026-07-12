@@ -1,7 +1,8 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { GraduationCap, BookOpen, Users, Calendar, Clock, CheckCircle2, Play, BarChart3 } from "lucide-react";
+import { GraduationCap, BookOpen, Users, Clock, CheckCircle2, Play, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
+import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDLearning() {
   const [{ data: trainings }, { data: enrollments }] = await Promise.all([
@@ -30,13 +31,6 @@ export default async function HRDLearning() {
   const formatDate = (d: unknown) =>
     d ? new Date(d as string).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-";
 
-  const subMenus = [
-    { label: "Program Pelatihan", href: "/hrd/learning/programs", icon: BookOpen, desc: "Kelola katalog program", color: "bg-blue-50 text-blue-600" },
-    { label: "Jadwal Pelatihan", href: "/hrd/learning/schedule", icon: Calendar, desc: "Atur jadwal & sesi", color: "bg-purple-50 text-purple-600" },
-    { label: "Materi & Konten", href: "/hrd/learning/materials", icon: Play, desc: "Upload materi belajar", color: "bg-emerald-50 text-emerald-600" },
-    { label: "Sertifikasi", href: "/hrd/learning/certificates", icon: CheckCircle2, desc: "Rekap sertifikat", color: "bg-amber-50 text-amber-600" },
-  ];
-
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div className="flex items-center justify-between">
@@ -44,7 +38,7 @@ export default async function HRDLearning() {
           <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Learning Management</h1>
           <p className="text-sm text-gray-500">Manajemen pelatihan dan pengembangan kompetensi karyawan</p>
         </div>
-        <Link href="/hrd/learning/programs"
+        <Link href="/hrd/learning/trainings"
           className="px-4 py-2 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
           <GraduationCap size={14} /> Kelola Program
         </Link>
@@ -69,16 +63,7 @@ export default async function HRDLearning() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {subMenus.map((m) => (
-          <Link key={m.href} href={m.href}
-            className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all group">
-            <div className={`p-2.5 rounded-xl ${m.color} w-fit mb-3`}><m.icon size={18} /></div>
-            <p className="font-extrabold text-slate-800 text-sm group-hover:text-[#CC0000] transition-colors">{m.label}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">{m.desc}</p>
-          </Link>
-        ))}
-      </div>
+      <SectionQuickLinks groupLabel="Pelatihan" excludeHref="/hrd/learning" />
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">

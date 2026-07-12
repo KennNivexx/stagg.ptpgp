@@ -38,7 +38,24 @@ export type AuditAction =
   | "face.change_request"
   | "face.verify"
   | "account.purge_resigned"
-  | "account.purge_rejected_applicant";
+  | "account.purge_rejected_applicant"
+  | "orgsk.create"
+  | "orgsk.update"
+  | "orgsk.submit"
+  | "orgsk.approve"
+  | "orgsk.archive"
+  | "jabatan.create"
+  | "jabatan.update"
+  | "jabatan.delete"
+  | "grade.save"
+  | "grade.delete"
+  | "formasi.create"
+  | "formasi.update"
+  | "formasi.delete"
+  | "formasi.assign"
+  | "formasi.unassign"
+  | "careerpath.save"
+  | "careerpath.delete";
 
 export async function auditLog(params: {
   action: AuditAction;

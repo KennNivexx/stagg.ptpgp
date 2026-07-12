@@ -65,8 +65,6 @@ export default function DepartmentsPage() {
   const [parentCode, setParentCode] = useState("");
   const [code, setCode] = useState("");
   const [unitName, setUnitName] = useState("");
-  const [leaderName, setLeaderName] = useState("");
-  const [leaderEmail, setLeaderEmail] = useState("");
   const [adding, setAdding] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<FlatUnit | null>(null);
@@ -122,13 +120,11 @@ export default function DepartmentsPage() {
     fd.append("parent_code", parentCode);
     fd.append("code", code);
     fd.append("unit_name", unitName);
-    fd.append("leader_name", leaderName);
-    fd.append("leader_email", leaderEmail);
     const res = await addDepartmentManual(fd);
     if (res.error) {
       setError(res.error);
     } else {
-      setParentCode(""); setCode(""); setUnitName(""); setLeaderName(""); setLeaderEmail("");
+      setParentCode(""); setCode(""); setUnitName("");
       showSuccess("Usulan departemen terkirim ke Direktur untuk disetujui.");
       await fetchOrg();
     }
@@ -164,7 +160,7 @@ export default function DepartmentsPage() {
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Departemen</h1>
         <p className="text-sm text-gray-500">
           Buat departemen/unit baru dalam struktur organisasi. Kode diisi manual, namun harus mengacu ke sebuah induk (parent) yang sudah ada.
-          Untuk mengedit pimpinan, level, atau memindahkan unit, gunakan halaman <span className="font-semibold">Struktur Organisasi</span>.
+          Untuk mengedit detail unit atau memindahkannya, gunakan halaman <span className="font-semibold">Unit Organisasi</span>.
         </p>
       </div>
 
@@ -208,20 +204,7 @@ export default function DepartmentsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nama Pejabat / Pimpinan</label>
-              <input type="text" value={leaderName} onChange={(e) => setLeaderName(e.target.value)}
-                className="w-full border border-gray-200 p-3 rounded-xl text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000]/20 outline-none"
-                placeholder="Cth: Radian, S.Sos." />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email Pejabat / Pimpinan</label>
-              <input type="email" value={leaderEmail} onChange={(e) => setLeaderEmail(e.target.value)}
-                className="w-full border border-gray-200 p-3 rounded-xl text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000]/20 outline-none"
-                placeholder="email@ptpgp.co.id" />
-            </div>
-          </div>
+          <p className="text-[11px] text-slate-400">Pimpinan unit tidak lagi diisi di sini — ditentukan otomatis dari Position Management (Formasi) setelah karyawan ditempatkan.</p>
 
           <div className="flex justify-end pt-4 border-t border-slate-100">
             <button type="submit" disabled={adding}

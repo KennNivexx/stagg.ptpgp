@@ -1,0 +1,32 @@
+[
+  {
+    "id": "shift-pagi",
+    "name": "Pagi",
+    "start_time": "06:00",
+    "end_time": "14:00",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "color": "amber",
+    "created_at": "2026-07-03T05:39:50.139698+00:00"
+  },
+  {
+    "id": "shift-siang",
+    "name": "Siang",
+    "start_time": "14:00",
+    "end_time": "22:00",
+    "has_bonus": false,
+    "bonus_amount": 0,
+    "color": "orange",
+    "created_at": "2026-07-03T05:39:50.139698+00:00"
+  },
+  {
+    "id": "shift-malam",
+    "name": "Malam",
+    "start_time": "22:00",
+    "end_time": "06:00",
+    "has_bonus": true,
+    "bonus_amount": 50000,
+    "color": "indigo",
+    "created_at": "2026-07-03T05:39:50.139698+00:00"
+  }
+]

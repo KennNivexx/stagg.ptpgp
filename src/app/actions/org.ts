@@ -4,7 +4,27 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { auditLog } from "@/lib/audit";
+import { getKepalaUnitMap } from "@/lib/org-helpers";
 import type { OrgUnit, FlatDept } from "@/types/org";
+
+/** Fields the "Unit Organisasi" form (Menu 2 of the enterprise org-design
+ * spec) now collects instead of leader_name/leader_email — organizational
+ * design describes the unit, not who currently sits in it. */
+function readUnitDesignFields(formData: FormData) {
+  return {
+    jenis_unit: (formData.get("jenis_unit") as string || "Departemen").trim(),
+    singkatan: (formData.get("singkatan") as string || "").trim() || null,
+    deskripsi: (formData.get("deskripsi") as string || "").trim() || null,
+    jumlah_formasi: parseInt((formData.get("jumlah_formasi") as string) || "0", 10) || 0,
+    budget_cost_center: formData.get("budget_cost_center") ? Number(formData.get("budget_cost_center")) : null,
+    kode_cost_center: (formData.get("kode_cost_center") as string || "").trim() || null,
+    business_unit: (formData.get("business_unit") as string || "").trim() || null,
+    lokasi_kerja: (formData.get("lokasi_kerja") as string || "").trim() || null,
+    tanggal_berlaku: (formData.get("tanggal_berlaku") as string || "").trim() || null,
+    tanggal_berakhir: (formData.get("tanggal_berakhir") as string || "").trim() || null,
+    status: (formData.get("status") as string || "Aktif").trim(),
+  };
+}
 
 /* ─────── helpers ─────── */
 
@@ -92,19 +112,34 @@ async function saveSettings(settings: Record<string, unknown>) {
 interface OrgUnitRow {
   id: string; code: string; name: string; parent_code: string | null;
   level: number; leader_name: string | null; leader_email: string | null; sort_order: number;
+  jenis_unit?: string | null; singkatan?: string | null; deskripsi?: string | null;
+  jumlah_formasi?: number | null; budget_cost_center?: number | null; kode_cost_center?: string | null;
+  business_unit?: string | null; lokasi_kerja?: string | null; tanggal_berlaku?: string | null;
+  tanggal_berakhir?: string | null; status?: string | null;
 }
 
 async function buildTree(): Promise<OrgUnit[]> {
   const { data } = await supabaseAdmin.from("unit_organisasi").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
   if (data && data.length > 0) {
     const rows = data as unknown as OrgUnitRow[];
+    // "Leader" is derived from who currently holds a Position Number flagged
+    // is_kepala_unit in that unit (Employee Assignment), never a stored field
+    // on the unit itself — see getKepalaUnitMap in org-helpers.ts.
+    const kepalaMap = await getKepalaUnitMap(rows.map(r => r.id));
     const map = new Map<string, OrgUnit>();
     const roots: OrgUnit[] = [];
     for (const row of rows) {
+      const kepala = kepalaMap.get(row.id);
       map.set(row.code, {
         id: row.id, code: row.code, name: row.name, level: row.level,
-        leader_name: row.leader_name || "", leader_email: row.leader_email || "",
+        leader_name: kepala?.name || "", leader_email: kepala?.email || "",
         children: [],
+        jenis_unit: row.jenis_unit || "Departemen", singkatan: row.singkatan || null,
+        deskripsi: row.deskripsi || null, jumlah_formasi: row.jumlah_formasi || 0,
+        budget_cost_center: row.budget_cost_center ?? null, kode_cost_center: row.kode_cost_center || null,
+        business_unit: row.business_unit || null, lokasi_kerja: row.lokasi_kerja || null,
+        tanggal_berlaku: row.tanggal_berlaku || null, tanggal_berakhir: row.tanggal_berakhir || null,
+        status: row.status || "Aktif",
       });
     }
     for (const row of rows) {
@@ -358,8 +393,7 @@ export async function addOrgUnit(formData: FormData) {
 
   const parent_code = (formData.get("parent_code") as string || "").trim();
   const unit_name = (formData.get("unit_name") as string || "").trim();
-  const leader_name = (formData.get("leader_name") as string || "").trim();
-  const leader_email = (formData.get("leader_email") as string || "").trim();
+  const designFields = readUnitDesignFields(formData);
 
   if (!parent_code || !unit_name) return { error: "Parent dan nama unit wajib diisi." };
   if (!/^\d+(\.\d+)+$/.test(parent_code)) return { error: "Format kode parent tidak valid." };
@@ -373,7 +407,7 @@ export async function addOrgUnit(formData: FormData) {
 
   const { error } = await supabaseAdmin.from("unit_organisasi").insert({
     id: uid(), code: newCode, name: unit_name, level: newLevel,
-    parent_code: parent_code, leader_name, leader_email, sort_order: siblingCount,
+    parent_code: parent_code, sort_order: siblingCount, ...designFields,
   });
   if (error) {
     console.error("addOrgUnit error:", error);
@@ -398,9 +432,9 @@ export async function addOrgUnit(formData: FormData) {
  * Direktur approves — kept separate from addDepartmentManual so the actual
  * org_units row is only ever created post-approval. */
 async function createDepartmentUnit(params: {
-  code: string; parent_code: string; unit_name: string; leader_name: string; leader_email: string;
+  code: string; parent_code: string; unit_name: string;
 }): Promise<{ error: string } | { success: true; code: string }> {
-  const { code, parent_code, unit_name, leader_name, leader_email } = params;
+  const { code, parent_code, unit_name } = params;
 
   if (!code || !parent_code || !unit_name) {
     return { error: "Kode, induk (parent), dan nama departemen wajib diisi." };
@@ -429,7 +463,7 @@ async function createDepartmentUnit(params: {
 
   const { error } = await supabaseAdmin.from("unit_organisasi").insert({
     id: uid(), code, name: unit_name, level: newLevel,
-    parent_code, leader_name, leader_email, sort_order: siblingCount,
+    parent_code, sort_order: siblingCount,
   });
   if (error) {
     console.error("createDepartmentUnit error:", error);
@@ -455,8 +489,6 @@ export async function addDepartmentManual(formData: FormData) {
   const code = (formData.get("code") as string || "").trim();
   const parent_code = (formData.get("parent_code") as string || "").trim();
   const unit_name = (formData.get("unit_name") as string || "").trim();
-  const leader_name = (formData.get("leader_name") as string || "").trim();
-  const leader_email = (formData.get("leader_email") as string || "").trim();
 
   if (!code || !parent_code || !unit_name) {
     return { error: "Kode, induk (parent), dan nama departemen wajib diisi." };
@@ -472,7 +504,7 @@ export async function addDepartmentManual(formData: FormData) {
 
   const { error } = await supabaseAdmin.from("usulan_departemen").insert({
     id: "dreq-" + crypto.randomUUID(),
-    code, parent_code, name: unit_name, leader_name, leader_email,
+    code, parent_code, name: unit_name,
     requested_by: user.name || user.email,
     status: "Pending",
     created_at: new Date().toISOString(),
@@ -506,8 +538,6 @@ export async function reviewDepartmentRequest(id: string, approve: boolean): Pro
       code: req.code as string,
       parent_code: req.parent_code as string,
       unit_name: req.name as string,
-      leader_name: (req.leader_name as string) || "",
-      leader_email: (req.leader_email as string) || "",
     });
     if ("error" in result) return result;
     auditLog({ action: "org.add_department", targetId: result.code, targetName: req.name as string, performedBy: user, detail: `Induk: ${req.parent_code}, disetujui Direktur` });
@@ -528,10 +558,9 @@ export async function updateOrgUnit(formData: FormData) {
 
   const unit_code = (formData.get("unit_code") as string || "").trim();
   const unit_name = (formData.get("unit_name") as string || "").trim();
-  const leader_name = formData.get("leader_name") as string || "";
-  const leader_email = formData.get("leader_email") as string || "";
   const level = parseInt((formData.get("level") as string) || "0");
   const new_code = (formData.get("new_code") as string || "").trim();
+  const designFields = readUnitDesignFields(formData);
 
   if (!unit_code) return { error: "Kode unit wajib diisi." };
 
@@ -553,9 +582,8 @@ export async function updateOrgUnit(formData: FormData) {
     }
   }
 
-  const updates: Record<string, unknown> = {};
+  const updates: Record<string, unknown> = { ...designFields };
   if (unit_name) updates.name = unit_name;
-  if (leader_name.trim()) { updates.leader_name = leader_name.trim(); updates.leader_email = leader_email.trim(); }
   updates.level = level;
 
   if (new_code && new_code !== unit_code) {

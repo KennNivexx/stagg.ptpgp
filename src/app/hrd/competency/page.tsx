@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { Users, Award, Star, Search, Target } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDCompetency() {
   const [skillsRes, posSkillsRes, empSkillsRes, employeesRes] = await Promise.all([
@@ -60,6 +61,8 @@ export default async function HRDCompetency() {
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Competency Management</h1>
         <p className="text-sm text-gray-500">Pengelolaan kompetensi dan standar keahlian karyawan</p>
       </div>
+
+      <SectionQuickLinks groupLabel="Kompetensi" excludeHref="/hrd/competency" />
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">

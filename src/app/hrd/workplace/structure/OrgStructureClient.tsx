@@ -10,7 +10,7 @@ import {
 import { addOrgUnit, updateOrgUnit, deleteOrgUnit } from "@/app/actions/org";
 import TreeView from "@/components/org/TreeView";
 import TableView from "@/components/org/TableView";
-import { InfoModal, EditModal, DelModal, DeptIcon } from "./OrgModals";
+import { InfoModal, EditModal, DelModal, DeptIcon, type UnitDesignFields } from "./OrgModals";
 import type { OrgUnit, Employee } from "@/types/org";
 
 interface Props { orgData: OrgUnit[]; employees: Employee[]; }
@@ -64,22 +64,19 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
     window.print();
   };
 
+  const EMPTY_DESIGN: UnitDesignFields = {
+    jenis_unit: "Departemen", singkatan: "", deskripsi: "", jumlah_formasi: "0",
+    budget_cost_center: "", kode_cost_center: "", business_unit: "",
+    lokasi_kerja: "", tanggal_berlaku: "", tanggal_berakhir: "", status: "Aktif",
+  };
   const [fName, setFName] = useState("");
   const [fCode, setFCode] = useState("");
   const [fLevel, setFLevel] = useState<number>(0);
-  const [lQ, setLQ] = useState("");
-  const [lSel, setLSel] = useState<Employee | null>(null);
-  const [showDrop, setShowDrop] = useState(false);
+  const [design, setDesign] = useState<UnitDesignFields>(EMPTY_DESIGN);
   const [fLoading, setFLoading] = useState(false);
   const [fErr, setFErr] = useState("");
 
   const selEmp = useMemo(() => sel?.leader_email ? employees.find(e => e.email === sel.leader_email) ?? null : null, [sel, employees]);
-
-  const filtLeaders = useMemo(() => {
-    const s = lQ.toLowerCase().trim();
-    if (!s) return employees.slice(0, 6);
-    return employees.filter(e => e.full_name.toLowerCase().includes(s) || e.email.toLowerCase().includes(s) || e.position.toLowerCase().includes(s)).slice(0, 8);
-  }, [employees, lQ]);
 
   const deptMap = useMemo(() => {
     const m: Record<string, Employee[]> = {};
@@ -100,19 +97,36 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
     return flat.filter(i => i.name.toLowerCase().includes(s) || i.leader.toLowerCase().includes(s) || i.email.toLowerCase().includes(s));
   }, [q, flat]);
 
+  const designFromUnit = (n: OrgUnit): UnitDesignFields => ({
+    jenis_unit: n.jenis_unit || "Departemen", singkatan: n.singkatan || "", deskripsi: n.deskripsi || "",
+    jumlah_formasi: String(n.jumlah_formasi ?? 0), budget_cost_center: n.budget_cost_center != null ? String(n.budget_cost_center) : "",
+    kode_cost_center: n.kode_cost_center || "", business_unit: n.business_unit || "",
+    lokasi_kerja: n.lokasi_kerja || "", tanggal_berlaku: n.tanggal_berlaku || "",
+    tanggal_berakhir: n.tanggal_berakhir || "", status: n.status || "Aktif",
+  });
+
   const clickNode = (n: OrgUnit) => { setSel(n); setModal("info"); };
-  const openEd = (n: OrgUnit) => { setSel(n); setFName(n.name); setFCode(n.code); setFLevel(n.level); const e = n.leader_email ? employees.find(x => x.email === n.leader_email) ?? null : null; setLSel(e); setLQ(n.leader_name || ""); setFErr(""); setModal("edit"); };
-  const openAd = (n: OrgUnit) => { setSel(n); setFName(""); setFCode(""); setFLevel(n.level + 1); setLSel(null); setLQ(""); setFErr(""); setModal("add"); };
+  const openEd = (n: OrgUnit) => { setSel(n); setFName(n.name); setFCode(n.code); setFLevel(n.level); setDesign(designFromUnit(n)); setFErr(""); setModal("edit"); };
+  const openAd = (n: OrgUnit) => { setSel(n); setFName(""); setFCode(""); setFLevel(n.level + 1); setDesign(EMPTY_DESIGN); setFErr(""); setModal("add"); };
   const openDl = (n: OrgUnit) => { setSel(n); setFErr(""); setModal("del"); };
   const closeM = () => { setModal(null); setSel(null); };
+
+  const appendDesign = (fd: FormData) => {
+    fd.append("jenis_unit", design.jenis_unit); fd.append("singkatan", design.singkatan);
+    fd.append("deskripsi", design.deskripsi); fd.append("jumlah_formasi", design.jumlah_formasi);
+    fd.append("budget_cost_center", design.budget_cost_center); fd.append("kode_cost_center", design.kode_cost_center);
+    fd.append("business_unit", design.business_unit); fd.append("lokasi_kerja", design.lokasi_kerja);
+    fd.append("tanggal_berlaku", design.tanggal_berlaku); fd.append("tanggal_berakhir", design.tanggal_berakhir);
+    fd.append("status", design.status);
+  };
 
   const doEdit = async () => {
     if (!sel || !fName.trim()) { setFErr("Nama wajib diisi."); return; }
     setFLoading(true); setFErr("");
     const fd = new FormData();
     fd.append("unit_code", sel.code); fd.append("unit_name", fName.trim());
-    fd.append("leader_name", lSel?.full_name || lQ); fd.append("leader_email", lSel?.email || "");
     fd.append("level", String(fLevel));
+    appendDesign(fd);
     if (fCode.trim() && fCode.trim() !== sel.code) fd.append("new_code", fCode.trim());
     const r = await updateOrgUnit(fd); setFLoading(false);
     if (r.error) { setFErr(r.error); return; } closeM(); router.refresh();
@@ -122,7 +136,7 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
     setFLoading(true); setFErr("");
     const fd = new FormData();
     fd.append("parent_code", sel.code); fd.append("unit_name", fName.trim());
-    fd.append("leader_name", lSel?.full_name || lQ); fd.append("leader_email", lSel?.email || "");
+    appendDesign(fd);
     const r = await addOrgUnit(fd); setFLoading(false);
     if (r.error) { setFErr(r.error); return; } closeM(); router.refresh();
   };
@@ -137,9 +151,7 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
     setFName(unit.name);
     setFCode(unit.code);
     setFLevel(unit.level);
-    const e = unit.leader_email ? employees.find(x => x.email === unit.leader_email) ?? null : null;
-    setLSel(e);
-    setLQ(unit.leader_name || "");
+    setDesign(designFromUnit(unit));
     setFErr("");
     setModal("edit");
   };
@@ -256,11 +268,8 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
           fName={fName} setFName={setFName}
           fCode={fCode} setFCode={setFCode}
           fLevel={fLevel} setFLevel={setFLevel}
-          lQ={lQ} setLQ={setLQ}
-          lSel={lSel} setLSel={setLSel}
-          showDrop={showDrop} setShowDrop={setShowDrop}
+          design={design} setDesign={setDesign}
           fErr={fErr} fLoading={fLoading}
-          filtLeaders={filtLeaders}
           onClose={closeM}
           onSave={modal === "add" ? doAdd : doEdit}
         />

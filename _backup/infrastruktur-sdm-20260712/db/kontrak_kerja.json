@@ -1,0 +1,110 @@
+[
+  {
+    "id": "ctr-f2770e6d-68ad-4abe-a226-7b7038f65c8c",
+    "employee_id": "782403c6-20e9-47ca-a4c1-13f02832b60d",
+    "contract_type": "Tetap",
+    "start_date": "2025-07-11",
+    "end_date": null,
+    "notes": "Karyawan tetap",
+    "created_at": "2026-07-11T10:59:26.052+00:00"
+  },
+  {
+    "id": "ctr-53368f49-b92e-4f64-b25f-bb49f1c1cc09",
+    "employee_id": "9f56097a-b981-4709-bbb3-aaa66c5bd2b5",
+    "contract_type": "Kontrak",
+    "start_date": "2025-06-21",
+    "end_date": "2027-01-02",
+    "notes": "Kontrak tahun berjalan, evaluasi perpanjangan H-30",
+    "created_at": "2026-07-11T10:59:26.052+00:00"
+  },
+  {
+    "id": "ctr-9fd82ea3-89a2-4238-b2b1-26254fb9418d",
+    "employee_id": "e83514b9-3e83-4f4f-80a2-ffc44dc8158f",
+    "contract_type": "Kontrak",
+    "start_date": "2025-06-01",
+    "end_date": "2026-12-28",
+    "notes": "Kontrak tahun berjalan, evaluasi perpanjangan H-30",
+    "created_at": "2026-07-11T10:59:26.052+00:00"
+  },
+  {
+    "id": "ctr-a93a4fee-1855-425e-b3ec-4ac096a20ec4",
+    "employee_id": "ac5982d6-e190-4487-9be3-2b0794c3ab9d",
+    "contract_type": "Tetap",
+    "start_date": "2025-05-12",
+    "end_date": null,
+    "notes": "Karyawan tetap",
+    "created_at": "2026-07-11T10:59:26.052+00:00"
+  },
+  {
+    "id": "ctr-cd88a704-f0de-437a-82a7-7f69d1c41f3a",
+    "employee_id": "96f63150-e365-4943-9e6d-a0be1791045f",
+    "contract_type": "Kontrak",
+    "start_date": "2025-04-22",
+    "end_date": "2026-12-18",
+    "notes": "Kontrak tahun berjalan, evaluasi perpanjangan H-30",
+    "created_at": "2026-07-11T10:59:26.052+00:00"
+  },
+  {
+    "id": "ctr-19701411-1739-4fa4-86cc-f2145b3834fd",
+    "employee_id": "85d41765-36b2-49a0-aec3-50b4425bc2b6",
+    "contract_type": "Kontrak",
+    "start_date": "2025-04-02",
+    "end_date": "2026-12-13",
+    "notes": "Kontrak tahun berjalan, evaluasi perpanjangan H-30",
+    "created_at": "2026-07-11T10:59:26.052+00:00"
+  },
+  {
+    "id": "ctr-bff5cf45-fcdc-4de6-ad0f-ff1a6a97bb5a",
+    "employee_id": "5791d008-65bd-44c4-83a3-a79f2d4786a1",
+    "contract_type": "Tetap",
+    "start_date": "2025-03-13",
+    "end_date": null,
+    "notes": "Karyawan tetap",
+    "created_at": "2026-07-11T10:59:26.053+00:00"
+  },
+  {
+    "id": "ctr-c53be05f-1e1a-4c04-a6d0-c1c8a5c5f00a",
+    "employee_id": "de794cf0-2c4e-4d6e-9638-b6c9666d528f",
+    "contract_type": "Kontrak",
+    "start_date": "2025-02-21",
+    "end_date": "2026-12-03",
+    "notes": "Kontrak tahun berjalan, evaluasi perpanjangan H-30",
+    "created_at": "2026-07-11T10:59:26.053+00:00"
+  },
+  {
+    "id": "ctr-3e1d54a9-be8f-48d3-8315-7f6f45e5b7b7",
+    "employee_id": "6b61689a-3c2e-4d77-aa2a-3b4d9576f8d6",
+    "contract_type": "Kontrak",
+    "start_date": "2025-02-01",
+    "end_date": "2026-11-28",
+    "notes": "Kontrak tahun berjalan, evaluasi perpanjangan H-30",
+    "created_at": "2026-07-11T10:59:26.053+00:00"
+  },
+  {
+    "id": "ctr-34c2c68f-ebcb-4ff1-ad2f-8a17368ed009",
+    "employee_id": "d22a7f38-3644-4bac-b39f-1a84bd0fd49b",
+    "contract_type": "Tetap",
+    "start_date": "2025-01-12",
+    "end_date": null,
+    "notes": "Karyawan tetap",
+    "created_at": "2026-07-11T10:59:26.053+00:00"
+  },
+  {
+    "id": "ctr-28b956cf-a178-43da-9e11-2b0f70aee41f",
+    "employee_id": "d835963f-b80c-4335-b117-bfb73c4864c4",
+    "contract_type": "Kontrak",
+    "start_date": "2024-12-23",
+    "end_date": "2026-11-18",
+    "notes": "Kontrak tahun berjalan, evaluasi perpanjangan H-30",
+    "created_at": "2026-07-11T10:59:26.053+00:00"
+  },
+  {
+    "id": "ctr-d530809f-4afe-41bf-a33e-a55c9204644a",
+    "employee_id": "235a8254-d9e3-40c2-bafe-2344c01594df",
+    "contract_type": "Kontrak",
+    "start_date": "2024-12-03",
+    "end_date": "2026-11-13",
+    "notes": "Kontrak tahun berjalan, evaluasi perpanjangan H-30",
+    "created_at": "2026-07-11T10:59:26.053+00:00"
+  }
+]

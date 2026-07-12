@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { DollarSign, Download, Gift, FileText, Users } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDRewards() {
   const { data: payrolls, error } = await supabaseAdmin
@@ -26,6 +27,8 @@ export default async function HRDRewards() {
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Rewards & Recognition</h1>
         <p className="text-sm text-gray-500">Kompensasi, benefit, payroll, dan penghargaan karyawan</p>
       </div>
+
+      <SectionQuickLinks groupLabel="Reward & Penggajian" excludeHref="/hrd/rewards" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">

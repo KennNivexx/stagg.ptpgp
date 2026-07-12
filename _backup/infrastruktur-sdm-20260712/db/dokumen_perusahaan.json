@@ -1,0 +1,54 @@
+[
+  {
+    "id": "doc-1704a2b8-3c57-4bb4-b97b-ed861fcbc439",
+    "title": "Akta Pendirian Perusahaan",
+    "category": "Legal",
+    "status": "Aktif",
+    "url": "https://example.com/docs/akta-pendirian.pdf",
+    "size": null,
+    "type": "PDF",
+    "visible_to_employee": false,
+    "visible_to_department_head": false,
+    "created_at": "2025-06-06T10:59:27.87+00:00",
+    "updated_at": "2025-06-06T10:59:27.87+00:00"
+  },
+  {
+    "id": "doc-e44775f5-fbd9-4ded-bb70-f546d0a9aa8d",
+    "title": "Peraturan Perusahaan 2026",
+    "category": "Kebijakan",
+    "status": "Aktif",
+    "url": "https://example.com/docs/peraturan-perusahaan-2026.pdf",
+    "size": null,
+    "type": "PDF",
+    "visible_to_employee": true,
+    "visible_to_department_head": true,
+    "created_at": "2026-05-12T10:59:27.87+00:00",
+    "updated_at": "2026-05-12T10:59:27.87+00:00"
+  },
+  {
+    "id": "doc-a1cc1d66-9e54-4de5-a293-ae3db66ae36d",
+    "title": "Izin Usaha Jasa Pengurusan Transportasi (JPT)",
+    "category": "Legal",
+    "status": "Aktif",
+    "url": "https://example.com/docs/izin-jpt.pdf",
+    "size": null,
+    "type": "PDF",
+    "visible_to_employee": false,
+    "visible_to_department_head": true,
+    "created_at": "2025-09-14T10:59:27.87+00:00",
+    "updated_at": "2025-09-14T10:59:27.87+00:00"
+  },
+  {
+    "id": "doc-b73bdbdd-a0a3-4a0a-b4cf-c767a7f3b709",
+    "title": "SOP Keselamatan Kerja di Lapangan",
+    "category": "SOP",
+    "status": "Aktif",
+    "url": "https://example.com/docs/sop-k3.pdf",
+    "size": null,
+    "type": "PDF",
+    "visible_to_employee": true,
+    "visible_to_department_head": true,
+    "created_at": "2026-04-12T10:59:27.871+00:00",
+    "updated_at": "2026-04-12T10:59:27.871+00:00"
+  }
+]

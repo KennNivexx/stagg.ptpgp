@@ -1,0 +1,57 @@
+[
+  {
+    "id": "loc-pusat",
+    "name": "Kantor Pusat",
+    "address": "Jl. Sudirman No. 123, Jakarta Pusat",
+    "type": "Kantor",
+    "status": "Aktif",
+    "created_at": "2026-07-03T05:39:50.139698+00:00",
+    "latitude": null,
+    "longitude": null,
+    "radius_meters": 200
+  },
+  {
+    "id": "loc-gudang",
+    "name": "Gudang Utama",
+    "address": "Jl. Industri Raya No. 45, Bekasi",
+    "type": "Gudang",
+    "status": "Aktif",
+    "created_at": "2026-07-03T05:39:50.139698+00:00",
+    "latitude": null,
+    "longitude": null,
+    "radius_meters": 200
+  },
+  {
+    "id": "loc-bandung",
+    "name": "Kantor Cabang Bandung",
+    "address": "Jl. Asia Afrika No. 78, Bandung",
+    "type": "Cabang",
+    "status": "Aktif",
+    "created_at": "2026-07-03T05:39:50.139698+00:00",
+    "latitude": null,
+    "longitude": null,
+    "radius_meters": 200
+  },
+  {
+    "id": "loc-surabaya",
+    "name": "Kantor Cabang Surabaya",
+    "address": "Jl. Tunjungan No. 56, Surabaya",
+    "type": "Cabang",
+    "status": "Aktif",
+    "created_at": "2026-07-03T05:39:50.139698+00:00",
+    "latitude": null,
+    "longitude": null,
+    "radius_meters": 200
+  },
+  {
+    "id": "loc-semarang",
+    "name": "Gudang Regional",
+    "address": "Jl. Raya Semarang No. 90, Semarang",
+    "type": "Gudang",
+    "status": "Aktif",
+    "created_at": "2026-07-03T05:39:50.139698+00:00",
+    "latitude": null,
+    "longitude": null,
+    "radius_meters": 200
+  }
+]

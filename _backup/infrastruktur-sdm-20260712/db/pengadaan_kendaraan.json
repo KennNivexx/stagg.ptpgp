@@ -1,0 +1,28 @@
+[
+  {
+    "id": "proc-0c229695-b5a6-4281-b917-b2236b8f1581",
+    "requested_by": "bambang.sutrisno@ptpgp.co.id",
+    "vehicle_type": "Truk Tronton",
+    "quantity": 1,
+    "estimated_cost": 850000000,
+    "reason": "Penambahan armada untuk trayek baru Surabaya",
+    "status": "Pending",
+    "approved_by": "",
+    "rejection_reason": "",
+    "created_at": "2026-07-11T10:59:29.433983+00:00",
+    "updated_at": "2026-07-11T10:59:29.433983+00:00"
+  },
+  {
+    "id": "proc-2ddd8bb8-a13b-4834-9852-894650ba4160",
+    "requested_by": "bambang.sutrisno@ptpgp.co.id",
+    "vehicle_type": "Pickup",
+    "quantity": 2,
+    "estimated_cost": 450000000,
+    "reason": "Kendaraan operasional cabang",
+    "status": "Disetujui",
+    "approved_by": "",
+    "rejection_reason": "",
+    "created_at": "2026-07-11T10:59:29.433983+00:00",
+    "updated_at": "2026-07-11T10:59:29.433983+00:00"
+  }
+]

@@ -1,208 +1,18 @@
 "use client";
 
-import { ReactNode, useState, useMemo, useEffect } from "react";
+import { ReactNode, useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard, BarChart3, Building2, Server,
-  Briefcase, Award, GraduationCap, BookOpen, TrendingUp,
-  Gift, GitBranch, Heart, FileText,
+  LayoutDashboard, Briefcase,
   LogOut, Search, Menu, X, ChevronRight, ChevronDown, Clock,
-  Users, LayoutGrid, Settings,
+  Users, LayoutGrid,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
-
-const MENU_GROUPS = [
-  {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    color: "blue",
-    items: [
-      { href: "/hrd", label: "Overview Dashboard" },
-      { href: "/hrd/dashboard-kpi", label: "KPI Dashboard" },
-      { href: "/hrd/dashboard-okr", label: "OKR Dashboard" },
-      { href: "/hrd/dashboard-analytics", label: "Analytics" },
-    ],
-  },
-  {
-    label: "Perencanaan Tenaga Kerja",
-    icon: BarChart3,
-    color: "violet",
-    items: [
-      { href: "/hrd/workforce/requests", label: "Permintaan SDM" },
-    ],
-  },
-  {
-    label: "Rekrutmen",
-    icon: Briefcase,
-    color: "emerald",
-    items: [
-      { href: "/hrd/recruitment", label: "Lowongan Kerja" },
-      { href: "/hrd/recruitment/pipeline", label: "Pipeline Kandidat" },
-      { href: "/hrd/recruitment/tests", label: "Tes Rekrutmen" },
-      { href: "/hrd/recruitment/interviews", label: "Interview" },
-      { href: "/hrd/recruitment/decisions", label: "Keputusan Hiring" },
-      { href: "/hrd/recruitment/talentpool", label: "Talent Pool" },
-    ],
-  },
-  {
-    label: "Desain Organisasi",
-    icon: Building2,
-    color: "indigo",
-    items: [
-      { href: "/hrd/workplace/structure", label: "Struktur Organisasi" },
-      { href: "/hrd/workplace/departments", label: "Departemen" },
-      { href: "/hrd/workplace/positions", label: "Jabatan" },
-      { href: "/hrd/workplace/jobdesc", label: "Deskripsi Kerja" },
-      { href: "/hrd/workplace/jobspec", label: "Spesifikasi Kerja" },
-    ],
-  },
-  {
-    label: "Infrastruktur SDM",
-    icon: Server,
-    color: "cyan",
-    items: [
-      { href: "/hrd/infrastructure/employees", label: "Data Induk Karyawan" },
-      { href: "/hrd/infrastructure/contracts", label: "Kontrak Kerja" },
-      { href: "/hrd/infrastructure/shifts", label: "Shift Kerja" },
-      { href: "/hrd/infrastructure/locations", label: "Lokasi Kerja" },
-      { href: "/hrd/infrastructure/documents", label: "Dokumen Perusahaan" },
-      { href: "/hrd/infrastructure/licenses", label: "SIM & Sertifikasi" },
-      { href: "/hrd/infrastructure/vehicles", label: "Armada Kendaraan" },
-      { href: "/hrd/trips", label: "Data Trip Supir" },
-      { href: "/hrd/vehicle-requests", label: "Pengadaan Kendaraan" },
-    ],
-  },
-  {
-    label: "Kehadiran & Cuti",
-    icon: Clock,
-    color: "amber",
-    items: [
-      { href: "/hrd/attendance", label: "Absensi" },
-      { href: "/hrd/leaves", label: "Cuti & Izin" },
-      { href: "/hrd/business-trips", label: "Perjalanan Dinas" },
-      { href: "/hrd/incidents", label: "Laporan Insiden" },
-    ],
-  },
-  {
-    label: "Kompetensi",
-    icon: Award,
-    color: "purple",
-    items: [
-      { href: "/hrd/competency/library", label: "Pustaka Kompetensi" },
-      { href: "/hrd/competency/skillmatrix", label: "Matriks Keahlian" },
-      { href: "/hrd/competency/assessment", label: "Asesmen Kompetensi" },
-      { href: "/hrd/competency/gap", label: "Analisis Kesenjangan" },
-    ],
-  },
-  {
-    label: "Pelatihan",
-    icon: GraduationCap,
-    color: "teal",
-    items: [
-      { href: "/hrd/learning/trainings", label: "Training" },
-      { href: "/hrd/learning/materials", label: "Materi Kursus" },
-      { href: "/hrd/learning/quizzes", label: "Kuis & Ujian" },
-      { href: "/hrd/learning/certificates", label: "Sertifikat" },
-      { href: "/hrd/learning/roi", label: "Analisa Dampak ROTI" },
-    ],
-  },
-  {
-    label: "Manajemen Pengetahuan",
-    icon: BookOpen,
-    color: "sky",
-    items: [
-      { href: "/hrd/knowledge/sop", label: "SOP dan Instruksi Kerja" },
-      { href: "/hrd/knowledge/policies", label: "Kebijakan Perusahaan" },
-      { href: "/hrd/knowledge/base", label: "Basis Pengetahuan" },
-      { href: "/hrd/knowledge/videos", label: "Video Tutorial" },
-    ],
-  },
-  {
-    label: "Penilaian Kinerja",
-    icon: TrendingUp,
-    color: "orange",
-    items: [
-      { href: "/hrd/performance/kpi", label: "Manajemen KPI" },
-      { href: "/hrd/performance/okr", label: "Manajemen OKR" },
-      { href: "/hrd/performance/reviews", label: "Review Kinerja" },
-      { href: "/hrd/performance/feedback", label: "Umpan Balik" },
-      { href: "/hrd/performance/reports", label: "Laporan Kinerja" },
-    ],
-  },
-  {
-    label: "Reward & Penggajian",
-    icon: Gift,
-    color: "green",
-    items: [
-      { href: "/hrd/rewards/payroll", label: "Payroll" },
-      { href: "/hrd/rewards/salary", label: "Komponen Gaji" },
-      { href: "/hrd/rewards/bonuses", label: "Bonus" },
-      { href: "/hrd/rewards/incentives", label: "Insentif" },
-      { href: "/hrd/rewards/awards", label: "Penghargaan" },
-      { href: "/hrd/rewards/tax", label: "Konfigurasi PPh 21" },
-    ],
-  },
-  {
-    label: "Pengembangan Karir",
-    icon: TrendingUp,
-    color: "fuchsia",
-    items: [
-      { href: "/hrd/career/path", label: "Jalur Karir" },
-      { href: "/hrd/career/promotions", label: "Promosi" },
-      { href: "/hrd/career/mutations", label: "Mutasi" },
-      { href: "/hrd/career/plans", label: "Rencana Pengembangan" },
-      { href: "/hrd/career/requests", label: "Permintaan Karir" },
-    ],
-  },
-  {
-    label: "Suksesi",
-    icon: GitBranch,
-    color: "rose",
-    items: [
-      { href: "/hrd/succession/positions", label: "Posisi Kritis" },
-      { href: "/hrd/succession/candidates", label: "Kandidat Suksesor" },
-      { href: "/hrd/succession/talentpool", label: "Pool Suksesi" },
-      { href: "/hrd/succession/readiness", label: "Penilaian Kesiapan" },
-    ],
-  },
-  {
-    label: "Hubungan Karyawan",
-    icon: Heart,
-    color: "pink",
-    items: [
-      { href: "/hrd/relations/complaints", label: "Keluhan" },
-      { href: "/hrd/relations/warnings", label: "Surat Peringatan" },
-      { href: "/hrd/relations/resignations", label: "Pengunduran Diri" },
-      { href: "/hrd/relations/surveys", label: "Survei Karyawan" },
-    ],
-  },
-  {
-    label: "Laporan & Analitik",
-    icon: FileText,
-    color: "lime",
-    items: [
-      { href: "/hrd/reports/recruitment", label: "Laporan Rekrutmen" },
-      { href: "/hrd/reports/employees", label: "Laporan Karyawan" },
-      { href: "/hrd/reports/payroll", label: "Laporan Payroll" },
-      { href: "/hrd/reports/training", label: "Laporan Training" },
-      { href: "/hrd/reports/performance", label: "Laporan Kinerja" },
-      { href: "/hrd/reports/turnover", label: "Laporan Turnover" },
-    ],
-  },
-  {
-    label: "Admin & Pengaturan",
-    icon: Settings,
-    color: "slate",
-    items: [
-      { href: "/hrd/admin/settings", label: "Pengaturan Perusahaan" },
-      { href: "/hrd/admin/audit", label: "Audit Log" },
-    ],
-  },
-];
+import { MENU_GROUPS, isHrdItemActive } from "@/lib/hrd-menu";
 
 // Warna ikon per grup menu — supaya 16 grup yang sebelumnya tampak identik
 // (semua abu-abu) jadi gampang dibedakan sekilas mata. Status "aktif" tetap
@@ -227,11 +37,33 @@ const GROUP_COLOR_CLASSES: Record<string, string> = {
   slate: "text-slate-400",
 };
 
+// Same palette, tuned for a white top bar instead of the dark sidebar
+// (the -400 shades above read fine on #0F172A but wash out on white).
+const GROUP_COLOR_CLASSES_LIGHT: Record<string, string> = {
+  blue: "text-blue-500",
+  violet: "text-violet-500",
+  emerald: "text-emerald-500",
+  indigo: "text-indigo-500",
+  cyan: "text-cyan-500",
+  amber: "text-amber-500",
+  purple: "text-purple-500",
+  teal: "text-teal-500",
+  sky: "text-sky-500",
+  orange: "text-orange-500",
+  green: "text-green-500",
+  fuchsia: "text-fuchsia-500",
+  rose: "text-rose-500",
+  pink: "text-pink-500",
+  lime: "text-lime-600",
+  slate: "text-slate-500",
+};
+
 const GROUP_TOOLTIPS: Record<string, string> = {
   "Dashboard": "Ringkasan performa HR dalam satu tampilan",
   "Perencanaan Tenaga Kerja": "Hitung dan proyeksikan kebutuhan karyawan",
   "Desain Organisasi": "Atur struktur, departemen, dan jabatan perusahaan",
-  "Infrastruktur SDM": "Kelola data induk, kontrak, shift, dan lokasi kerja",
+  "Employee 360°": "Profil terpadu karyawan — data personal hingga kepegawaian",
+  "Aset & Fasilitas": "Kendaraan, trip, lokasi kerja, shift, dan dokumen perusahaan",
   "Rekrutmen": "Cari, seleksi, dan terima karyawan baru",
   "Kompetensi": "Kelola standar keahlian dan asesmen karyawan",
   "Pelatihan": "Program training, materi, dan sertifikasi",
@@ -328,12 +160,6 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/hrd/admin/audit": "Log aktivitas dan perubahan sistem",
 };
 
-// "/hrd" is the root — every HRD route starts with "/hrd/", so a plain prefix
-// match would make the Dashboard group/link look active on every single page.
-function isItemActive(pathname: string, href: string): boolean {
-  return pathname === href || (href !== "/hrd" && pathname.startsWith(href));
-}
-
 const BOTTOM_NAV = [
   { href: "/hrd", label: "Dashboard", icon: LayoutDashboard },
   { href: "/hrd/infrastructure/employees", label: "Karyawan", icon: Users },
@@ -346,11 +172,17 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["Dashboard"]));
+  const [openTopGroup, setOpenTopGroup] = useState<string | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useSession();
   const clientUserName = user?.name || "HRD";
   const clientUserEmail = user?.email || "hrd@ptpgp.co.id";
   const { hasUnreadForHref } = useNotifications("hrd");
+  const topNavRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const toggleGroup = (label: string) => {
     setExpandedGroups((prev) => {
@@ -366,13 +198,36 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
   // group, which is otherwise always "active") actually sticks.
   useEffect(() => {
     const activeGroup = MENU_GROUPS.find((group) =>
-      group.items.some((item) => isItemActive(pathname, item.href))
+      group.items.some((item) => isHrdItemActive(pathname, item.href))
     );
     if (activeGroup) {
       setExpandedGroups((prev) => (prev.has(activeGroup.label) ? prev : new Set(prev).add(activeGroup.label)));
     }
+    setOpenTopGroup(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  // Close the desktop dropdown / profile menu when clicking anywhere outside
+  // their respective containers. The dropdown panel itself is rendered as a
+  // position:fixed sibling of topNavRef (it has to escape the pills row's
+  // overflow-x-auto, which otherwise clips it — see the render below), so a
+  // click inside the dropdown must also be excluded here or it'd be treated
+  // as "outside" and close before the Link's own onClick ever fires.
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      const insideTopNav = topNavRef.current?.contains(target);
+      const insideDropdown = dropdownRef.current?.contains(target);
+      if (!insideTopNav && !insideDropdown) {
+        setOpenTopGroup(null);
+      }
+      if (profileRef.current && !profileRef.current.contains(target)) {
+        setIsProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const query = searchQuery.trim().toLowerCase();
   const isSearching = query.length > 0;
@@ -399,40 +254,38 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-800">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-slate-900 focus:text-white focus:rounded-lg focus:text-sm focus:font-bold">
         Lewati ke konten utama
       </a>
-      <div className="lg:hidden fixed top-4 left-4 z-[51]">
-        <button
-          aria-label={isSidebarOpen ? "Tutup sidebar" : "Buka sidebar"}
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-2 bg-[#1E293B] text-white rounded-lg shadow-md hover:bg-slate-800 transition-colors"
-        >
-          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </div>
 
+      {/* Mobile drawer overlay + panel — desktop uses the top nav below instead */}
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="lg:hidden fixed inset-0 bg-black/40"
+          className="lg:hidden fixed inset-0 bg-black/40 z-40"
         />
       )}
 
-      <aside className={`w-72 bg-[#0F172A] text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300 border-r border-slate-800 lg:translate-x-0 lg:static lg:h-screen lg:pointer-events-auto ${isSidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"}`}>
-        <div className="p-5 border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse shrink-0"></span>
-            <span className="font-extrabold text-base tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">PTPGP HRIS</span>
+      <aside className={`lg:hidden w-72 bg-[#0F172A] text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300 border-r border-slate-800 ${isSidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"}`}>
+        <div className="p-5 border-b border-slate-800 shrink-0 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse shrink-0"></span>
+              <span className="font-extrabold text-base tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">PTPGP HRIS</span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-0.5">Portal Manajemen</p>
           </div>
-          <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-0.5">Portal Manajemen</p>
+          <button
+            aria-label="Tutup menu"
+            onClick={() => setIsSidebarOpen(false)}
+            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Pencarian menu — di header sudah ada tapi disembunyikan di mobile
-            (hidden md:flex), jadi HRD yang buka lewat HP tidak pernah lihatnya.
-            Duplikat ringan di sini, khusus tampil saat sidebar mobile terbuka. */}
-        <div className="p-3 border-b border-slate-800 shrink-0 md:hidden">
+        <div className="p-3 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2 bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-800">
             <Search size={14} className="text-slate-400 shrink-0" />
             <input
@@ -457,7 +310,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
           )}
           {filteredGroups.map((group) => {
             const GroupIcon = group.icon;
-            const hasActive = group.items.some(item => isItemActive(pathname, item.href));
+            const hasActive = group.items.some(item => isHrdItemActive(pathname, item.href));
             const hasGroupUnread = group.items.some(item => hasUnreadForHref(item.href, "/hrd"));
             const isExpanded = isSearching || expandedGroups.has(group.label);
             return (
@@ -484,7 +337,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
                   style={{ maxHeight: isExpanded ? "600px" : "0px" }}
                 >
                   {group.items.map((item) => {
-                    const isActive = isItemActive(pathname, item.href);
+                    const isActive = isHrdItemActive(pathname, item.href);
                     const hasUnread = hasUnreadForHref(item.href, "/hrd");
                     return (
                       <Link
@@ -530,46 +383,169 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 lg:h-screen lg:overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 lg:px-8 z-30 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200 w-64 lg:w-80">
-              <Search size={16} className="text-slate-400 shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearchKeyDown}
-                placeholder="Cari menu..."
-                className="bg-transparent border-none text-xs focus:outline-none w-full text-slate-600"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} aria-label="Hapus pencarian" className="text-slate-400 hover:text-slate-600">
-                  <X size={13} />
-                </button>
+      {/* Top bar — row 1: brand, search, notifications, profile */}
+      <header className="bg-white border-b border-slate-200 z-30 shrink-0 sticky top-0">
+        <div className="h-16 flex items-center gap-4 px-4 lg:px-6">
+          <button
+            aria-label={isSidebarOpen ? "Tutup menu" : "Buka menu"}
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="lg:hidden p-2 -ml-1 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+          >
+            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse shrink-0"></span>
+            <span className="font-extrabold text-sm tracking-wider text-slate-800 hidden sm:inline">PTPGP HRIS</span>
+          </div>
+
+          <div className="hidden md:flex items-center gap-2 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200 w-64 lg:w-80 ml-2">
+            <Search size={16} className="text-slate-400 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Cari menu..."
+              className="bg-transparent border-none text-xs focus:outline-none w-full text-slate-600"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} aria-label="Hapus pencarian" className="text-slate-400 hover:text-slate-600">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 ml-auto">
+            <NotificationBell role="hrd" />
+            <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
+
+            <div className="relative" ref={profileRef}>
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen((v) => !v)}
+                aria-expanded={isProfileOpen}
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-red-600 to-amber-500 flex items-center justify-center text-white font-bold text-xs shadow-inner shrink-0">
+                  {clientUserName.charAt(0).toUpperCase()}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <p className="text-xs font-semibold text-slate-800 leading-tight">{clientUserName}</p>
+                  <p className="text-[10px] text-emerald-600 font-medium leading-tight">Online</p>
+                </div>
+                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isProfileOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {isProfileOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-slate-200 shadow-lg py-2 z-50">
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <p className="text-xs font-semibold text-slate-800 truncate">{clientUserName}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{clientUserEmail}</p>
+                  </div>
+                  <form action={logoutAction} className="px-2 pt-2">
+                    <button title="Keluar dari Sistem" className="flex items-center gap-2 px-2.5 py-2 w-full rounded-lg hover:bg-red-50 text-red-500 hover:text-red-600 transition-all text-xs font-semibold">
+                      <LogOut size={14} className="shrink-0" /> Keluar dari Sistem
+                    </button>
+                  </form>
+                </div>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-4 ml-auto">
-            <NotificationBell role="hrd" />
-            <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
-            <div className="flex items-center gap-2">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-semibold text-slate-800">PT PGP Utama</p>
-                <p className="text-[10px] text-emerald-600 font-medium">Online</p>
-              </div>
-              <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-            </div>
-          </div>
-        </header>
+        </div>
 
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC] pb-16 lg:pb-0">{children}</main>
-      </div>
+        {/* Top bar — row 2: horizontally scrollable group nav with dropdowns (desktop only) */}
+        <div className="hidden lg:block border-t border-slate-100 bg-slate-50/60">
+          <div
+            ref={topNavRef}
+            className="flex flex-wrap items-center justify-center gap-1 px-4 py-1"
+          >
+            {MENU_GROUPS.map((group) => {
+              const GroupIcon = group.icon;
+              const hasActive = group.items.some((item) => isHrdItemActive(pathname, item.href));
+              const hasGroupUnread = group.items.some((item) => hasUnreadForHref(item.href, "/hrd"));
+              const isOpen = openTopGroup === group.label;
+              return (
+                <div key={group.label} className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      if (openTopGroup === group.label) {
+                        setOpenTopGroup(null);
+                        return;
+                      }
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setDropdownPos({ top: rect.bottom, left: rect.left });
+                      setOpenTopGroup(group.label);
+                    }}
+                    title={GROUP_TOOLTIPS[group.label]}
+                    aria-expanded={isOpen}
+                    className={`relative flex items-center gap-1.5 px-3 py-2.5 my-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                      hasActive
+                        ? "bg-red-600 text-white shadow-sm"
+                        : isOpen
+                        ? "bg-white text-slate-800 shadow-sm"
+                        : "text-slate-600 hover:bg-white hover:text-slate-800"
+                    }`}
+                  >
+                    <GroupIcon size={14} className={`shrink-0 ${hasActive ? "text-white" : GROUP_COLOR_CLASSES_LIGHT[group.color] || ""}`} />
+                    {group.label}
+                    {hasGroupUnread && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </header>
+
+      {/* Dropdown panel for the open top-nav group — rendered as position:fixed
+          and OUTSIDE the pills row above, so it isn't clipped by any ancestor
+          with non-visible overflow (the pills row used to have overflow-x-auto
+          for horizontal scrolling, which forced this; it now wraps instead,
+          but position:fixed here remains the simplest way to render above
+          everything without being clipped by later layout changes). */}
+      {openTopGroup && dropdownPos && (() => {
+        const group = MENU_GROUPS.find((g) => g.label === openTopGroup);
+        if (!group) return null;
+        return (
+          <div
+            ref={dropdownRef}
+            style={{ top: dropdownPos.top + 4, left: dropdownPos.left }}
+            className="hidden lg:block fixed w-64 bg-white rounded-xl border border-slate-200 shadow-lg py-2 z-50"
+          >
+            {group.items.map((item) => {
+              const isActive = isHrdItemActive(pathname, item.href);
+              const hasUnread = hasUnreadForHref(item.href, "/hrd");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpenTopGroup(null)}
+                  title={ITEM_TOOLTIPS[item.href] || item.label}
+                  className={`flex items-center gap-2 px-3.5 py-2 text-xs font-medium transition-colors ${
+                    isActive ? "bg-red-50 text-red-600" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  <span className="truncate">{item.label}</span>
+                  {hasUnread && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC] pb-16 lg:pb-0">{children}</main>
 
       {/* Mobile bottom navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 w-full h-16 bg-[#0F172A] border-t border-slate-800 z-30 flex items-stretch">
         {BOTTOM_NAV.map((item) => {
-          const isActive = isItemActive(pathname, item.href);
+          const isActive = isHrdItemActive(pathname, item.href);
           const hasUnread = hasUnreadForHref(item.href, "/hrd");
           const Icon = item.icon;
           return (

@@ -1,4 +1,5 @@
 import { Heart, Users, MessageCircle, Shield, Smile } from "lucide-react";
+import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDRelations() {
   const pillars = [
@@ -41,6 +42,8 @@ export default async function HRDRelations() {
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Employee Relations</h1>
         <p className="text-sm text-gray-500">Hubungan industrial dan kesejahteraan karyawan</p>
       </div>
+
+      <SectionQuickLinks groupLabel="Hubungan Karyawan" excludeHref="/hrd/relations" />
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 md:p-12 text-center">
         <div className="mx-auto w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mb-6">

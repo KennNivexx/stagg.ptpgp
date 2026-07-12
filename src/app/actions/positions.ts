@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { auditLog } from "@/lib/audit";
+import { getKepalaUnitMap } from "@/lib/org-helpers";
 
 interface Position {
   id: string;
@@ -13,6 +14,19 @@ interface Position {
   level: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface MasterJabatan {
+  id: string;
+  code: string;
+  name: string;
+  department: string;
+  level: string;
+  grade_id: string | null;
+  grade_name: string | null;
+  is_kepala_unit: boolean;
+  status: string;
+  is_master: boolean;
 }
 
 export interface PositionMonitor extends Position {
@@ -77,13 +91,21 @@ export async function getPositionsMonitor(): Promise<PositionMonitor[]> {
 
   const [{ data: employees }, { data: orgUnits }, { data: positions }] = await Promise.all([
     supabaseAdmin.from("karyawan").select("id, full_name, department, position, email").neq("status", "Inactive"),
-    supabaseAdmin.from("unit_organisasi").select("code, name, leader_name, leader_email"),
+    supabaseAdmin.from("unit_organisasi").select("id, code, name"),
     supabaseAdmin.from("jabatan").select("*"),
   ]);
 
   const empList = (employees || []) as { id: string; full_name: string; department: string | null; position: string | null; email: string }[];
-  const unitList = (orgUnits || []) as { code: string; name: string; leader_name: string | null; leader_email: string | null }[];
+  const unitRows = (orgUnits || []) as { id: string; code: string; name: string }[];
   const posList = (positions || []) as Position[];
+
+  // Deptartment "head" here is the same derived Position-Assignment concept
+  // used across Desain Organisasi (see org-helpers.ts) — not a stored field.
+  const kepalaMap = await getKepalaUnitMap(unitRows.map(u => u.id));
+  const unitList = unitRows.map(u => {
+    const k = kepalaMap.get(u.id);
+    return { code: u.code, name: u.name, leader_name: k?.name || null, leader_email: k?.email || null };
+  });
 
   const unitByName = new Map(unitList.map(u => [u.name, u]));
   const posByKey = new Map(posList.map(p => [`${p.name}::${p.department}`, p]));
@@ -181,6 +203,28 @@ export async function getPositionsMonitor(): Promise<PositionMonitor[]> {
   return result;
 }
 
+/**
+ * Master Jabatan (enterprise redesign): the actual CRUD list HR manages,
+ * distinct from getPositionsMonitor()'s legacy live-derived cache — both
+ * read/write the same `jabatan` table, `is_master` just flags which rows
+ * were created intentionally through this screen.
+ */
+export async function getMasterJabatan(): Promise<MasterJabatan[]> {
+  await requireRole("hrd", "superadmin");
+  const [{ data: jabatanRows }, { data: gradeRows }] = await Promise.all([
+    supabaseAdmin.from("jabatan").select("*").order("code"),
+    supabaseAdmin.from("grade_jabatan").select("id, nama"),
+  ]);
+  const gradeById = new Map(((gradeRows || []) as { id: string; nama: string }[]).map(g => [g.id, g.nama]));
+  return ((jabatanRows || []) as Record<string, unknown>[]).map(r => ({
+    id: r.id as string, code: r.code as string, name: r.name as string,
+    department: (r.department as string) || "", level: (r.level as string) || "",
+    grade_id: (r.grade_id as string) || null, grade_name: r.grade_id ? gradeById.get(r.grade_id as string) || null : null,
+    is_kepala_unit: !!r.is_kepala_unit, status: (r.status as string) || "Aktif",
+    is_master: !!r.is_master,
+  }));
+}
+
 export async function addPosition(formData: FormData) {
   const user = await requireRole("hrd", "superadmin");
 
@@ -188,6 +232,9 @@ export async function addPosition(formData: FormData) {
   const name = (formData.get("name") as string || "").trim();
   const department = (formData.get("department") as string || "").trim();
   const level = (formData.get("level") as string || "").trim();
+  const grade_id = (formData.get("grade_id") as string || "").trim() || null;
+  const is_kepala_unit = formData.get("is_kepala_unit") === "on" || formData.get("is_kepala_unit") === "true";
+  const status = (formData.get("status") as string || "Aktif").trim();
 
   if (!code || !name) return { error: "Kode dan nama jabatan wajib diisi." };
   if (!/^\d+(\.\d+)+$/.test(code)) return { error: "Format kode tidak valid." };
@@ -202,7 +249,8 @@ export async function addPosition(formData: FormData) {
   const id = uid();
   const now = new Date().toISOString();
   const { error } = await supabaseAdmin.from("jabatan").insert({
-    id, code, name, department, level, created_at: now, updated_at: now,
+    id, code, name, department, level, grade_id, is_kepala_unit, status,
+    is_master: true, created_at: now, updated_at: now,
   });
 
   if (error) {
@@ -214,7 +262,7 @@ export async function addPosition(formData: FormData) {
   }
 
   revalidatePath("/hrd/workplace/positions");
-  auditLog({ action: "position.add", targetId: id, targetName: name, performedBy: user, detail: `Kode: ${code}, Dept: ${department}` });
+  auditLog({ action: "jabatan.create", targetId: id, targetName: name, performedBy: user, detail: `Kode: ${code}, Dept: ${department}` });
   return { success: true };
 }
 
@@ -226,6 +274,9 @@ export async function updatePosition(formData: FormData) {
   const name = (formData.get("name") as string || "").trim();
   const department = (formData.get("department") as string || "").trim();
   const level = (formData.get("level") as string || "").trim();
+  const grade_id = (formData.get("grade_id") as string || "").trim() || null;
+  const is_kepala_unit = formData.get("is_kepala_unit") === "on" || formData.get("is_kepala_unit") === "true";
+  const status = (formData.get("status") as string || "Aktif").trim();
 
   if (!id || !code || !name) return { error: "ID, kode, dan nama jabatan wajib diisi." };
   if (!/^\d+(\.\d+)+$/.test(code)) return { error: "Format kode tidak valid." };
@@ -245,7 +296,8 @@ export async function updatePosition(formData: FormData) {
     .maybeSingle();
 
   const { error } = await supabaseAdmin.from("jabatan").update({
-    code, name, department, level, updated_at: new Date().toISOString(),
+    code, name, department, level, grade_id, is_kepala_unit, status,
+    is_master: true, updated_at: new Date().toISOString(),
   }).eq("id", id);
 
   if (error) {
@@ -270,7 +322,7 @@ export async function updatePosition(formData: FormData) {
   }
 
   revalidatePath("/hrd/workplace/positions");
-  auditLog({ action: "position.update", targetId: id, targetName: name, performedBy: user, detail: `Kode: ${code}, Dept: ${department}` });
+  auditLog({ action: "jabatan.update", targetId: id, targetName: name, performedBy: user, detail: `Kode: ${code}, Dept: ${department}` });
   return { success: true };
 }
 
@@ -285,6 +337,14 @@ export async function deletePosition(positionId: string) {
     .eq("id", positionId)
     .maybeSingle();
 
+  const { count } = await supabaseAdmin
+    .from("formasi_jabatan")
+    .select("*", { count: "exact", head: true })
+    .eq("jabatan_id", positionId);
+  if (count && count > 0) {
+    return { error: "Jabatan ini masih dipakai oleh Position Number (Formasi). Hapus formasinya terlebih dahulu." };
+  }
+
   const { error } = await supabaseAdmin.from("jabatan").delete().eq("id", positionId);
   if (error) {
     console.error("deletePosition error:", error);
@@ -292,6 +352,6 @@ export async function deletePosition(positionId: string) {
   }
 
   revalidatePath("/hrd/workplace/positions");
-  auditLog({ action: "position.delete", targetId: positionId, targetName: (pos as Position)?.name || positionId, performedBy: user });
+  auditLog({ action: "jabatan.delete", targetId: positionId, targetName: (pos as Position)?.name || positionId, performedBy: user });
   return { success: true };
 }

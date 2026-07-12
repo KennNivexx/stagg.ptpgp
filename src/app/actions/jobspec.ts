@@ -8,7 +8,7 @@ const uid = () => "js-" + crypto.randomUUID();
 
 export interface JobSpec {
   id: string; title: string; position: string; department: string; kode: string;
-  education: string; experience: string; skills: string[]; certifications: string[];
+  education: string; experience: string; skills: string[]; certifications: string[]; jabatan_id?: string | null;
 }
 
 export async function getJobSpecs(): Promise<JobSpec[]> {
@@ -35,6 +35,7 @@ export async function saveJobSpec(formData: FormData) {
   const kode = (formData.get("kode") as string || "").trim();
   const education = (formData.get("education") as string || "").trim();
   const experience = (formData.get("experience") as string || "").trim();
+  const jabatan_id = (formData.get("jabatan_id") as string || "").trim() || null;
   const skills = (JSON.parse((formData.get("skills") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
   const certifications = (JSON.parse((formData.get("certifications") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
 
@@ -45,7 +46,7 @@ export async function saveJobSpec(formData: FormData) {
   const now = new Date().toISOString();
   if (id) {
     const { error } = await supabaseAdmin.from("spesifikasi_kerja").update({
-      title, position, department, kode, education, experience, skills, certifications, updated_at: now,
+      title, position, department, kode, jabatan_id, education, experience, skills, certifications, updated_at: now,
     }).eq("id", id);
     if (error) {
       console.error("[jobspec] saveJobSpec error:", error.message);
@@ -54,7 +55,7 @@ export async function saveJobSpec(formData: FormData) {
   } else {
     const newId = uid();
     const { error } = await supabaseAdmin.from("spesifikasi_kerja").insert({
-      id: newId, title, position, department, kode, education, experience, skills, certifications, created_at: now, updated_at: now,
+      id: newId, title, position, department, kode, jabatan_id, education, experience, skills, certifications, created_at: now, updated_at: now,
     });
     if (error) {
       console.error("[jobspec] addJobSpec error:", error.message);

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { Target, TrendingUp, Star, Award, Users, Eye } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDPerformance() {
   const { data: evaluations, error } = await supabaseAdmin
@@ -35,6 +36,8 @@ export default async function HRDPerformance() {
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Performance Appraisal</h1>
         <p className="text-sm text-gray-500">Penilaian kinerja dan evaluasi karyawan</p>
       </div>
+
+      <SectionQuickLinks groupLabel="Penilaian Kinerja" excludeHref="/hrd/performance" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">

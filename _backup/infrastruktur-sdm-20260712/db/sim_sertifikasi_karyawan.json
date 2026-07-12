@@ -1,0 +1,58 @@
+[
+  {
+    "id": "lic-f7fd54c5-1685-4555-9599-aeaee2a25e1a",
+    "employee_id": "d22a7f38-3644-4bac-b39f-1a84bd0fd49b",
+    "employee_name": "Supriyanto",
+    "category": "SIM",
+    "license_type": "SIM B2 Umum",
+    "license_number": "B2U-1000-2024",
+    "issued_date": "2025-09-14",
+    "expiry_date": "2026-07-31",
+    "document_url": "",
+    "notes": "",
+    "created_at": "2026-07-11T10:59:28.539648+00:00",
+    "updated_at": "2026-07-11T10:59:28.312+00:00"
+  },
+  {
+    "id": "lic-0086d323-5ed4-403c-bcac-8535eb1bacb9",
+    "employee_id": "d6a8d8f9-e601-4ddc-ba3b-ccff9d9574d9",
+    "employee_name": "Agus Salim",
+    "category": "SIM",
+    "license_type": "SIM B2 Umum",
+    "license_number": "B2U-1001-2024",
+    "issued_date": "2025-09-14",
+    "expiry_date": "2027-09-14",
+    "document_url": "",
+    "notes": "",
+    "created_at": "2026-07-11T10:59:28.539648+00:00",
+    "updated_at": "2026-07-11T10:59:28.312+00:00"
+  },
+  {
+    "id": "lic-d66e2631-6bbf-413b-a840-3e31b8503bac",
+    "employee_id": "129123a7-9311-4d27-90c4-88580a050f32",
+    "employee_name": "Yanto Hermawan",
+    "category": "SIM",
+    "license_type": "SIM B2 Umum",
+    "license_number": "B2U-1002-2024",
+    "issued_date": "2025-09-14",
+    "expiry_date": "2027-10-14",
+    "document_url": "",
+    "notes": "",
+    "created_at": "2026-07-11T10:59:28.539648+00:00",
+    "updated_at": "2026-07-11T10:59:28.312+00:00"
+  },
+  {
+    "id": "lic-a683226f-43f9-4868-99d1-78da81f48e8b",
+    "employee_id": "0a20f44d-26bf-439f-8ea1-469230f42255",
+    "employee_name": "Joko Widodo",
+    "category": "SIM",
+    "license_type": "SIM B2 Umum",
+    "license_number": "B2U-1003-2024",
+    "issued_date": "2025-09-14",
+    "expiry_date": "2027-11-13",
+    "document_url": "",
+    "notes": "",
+    "created_at": "2026-07-11T10:59:28.539648+00:00",
+    "updated_at": "2026-07-11T10:59:28.312+00:00"
+  }
+]

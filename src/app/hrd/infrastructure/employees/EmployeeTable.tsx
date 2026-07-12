@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FileSpreadsheet, Eye } from "lucide-react";
+import Link from "next/link";
+import { FileSpreadsheet, Eye, UserCircle2 } from "lucide-react";
 
 type Emp = Record<string, unknown>;
 
@@ -136,6 +137,7 @@ export default function EmployeeTable({ employees }: { employees: Emp[] }) {
               <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kontak Darurat Nama</th>
               <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kontak Darurat Telepon</th>
               <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Alamat KTP</th>
+              <th className="text-left px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">360°</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -183,6 +185,12 @@ export default function EmployeeTable({ employees }: { employees: Emp[] }) {
                 <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{(emp.emergency_name as string) || "-"}</td>
                 <td className="px-4 py-4 text-xs text-slate-600 whitespace-nowrap">{(emp.emergency_phone as string) || "-"}</td>
                 <td className="px-4 py-4 text-xs text-slate-600 max-w-[240px] truncate" title={(emp.ktp_address as string) || "-"}>{(emp.ktp_address as string) || "-"}</td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <Link href={`/hrd/infrastructure/employees/${emp.id}`}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-bold transition-colors w-fit">
+                    <UserCircle2 size={13} /> Profil
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>
