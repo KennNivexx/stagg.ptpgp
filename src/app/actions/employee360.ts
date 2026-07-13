@@ -63,6 +63,8 @@ export async function getEmployee360(karyawanId: string) {
     { data: catPayroll },
     { data: catAbsensi }, { data: catCuti },
     { data: catMedical },
+    { data: catSafety },
+    { data: catEnvironment },
     { data: catSurvei }, { data: catKeluhan },
     { data: catResign },
   ] = await Promise.all([
@@ -111,8 +113,10 @@ export async function getEmployee360(karyawanId: string) {
     // catatan_karyawan — Attendance
     email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "absensi").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "cuti").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
-    // catatan_karyawan — Health & Safety
+    // catatan_karyawan — Health, Safety & Environment
     email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "medical").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "safety").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "environment").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     // catatan_karyawan — Employee Experience
     email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "survei").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "keluhan").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
@@ -132,7 +136,7 @@ export async function getEmployee360(karyawanId: string) {
     performance: { kpi: kpi || [], feedback: feedback || [], rencana: rencana || [], kompetensi: kompetensi || [], penghargaan: penghargaan || [], peringatan: peringatan || [], kandidatSuksesor: kandidatSuksesor || null, poolSuksesi: poolSuksesi || null, catKpi: catKpi || [], catKompetensi: catKompetensi || [], catReward: catReward || [], catDisiplin: catDisiplin || [], catTalent: catTalent || [] },
     compensation: { penggajian: penggajianRows || [], strukturGaji: strukturGaji || null, catPayroll: catPayroll || [] },
     attendance: { absensi: absensiRes.data || [], cuti: cutiRes.data || [], catAbsensi: catAbsensi || [], catCuti: catCuti || [] },
-    health: { insiden: insidenRes.data || [], catMedical: catMedical || [] },
+    health: { insiden: insidenRes.data || [], catMedical: catMedical || [], catSafety: catSafety || [], catEnvironment: catEnvironment || [] },
     asset: { aset: aset || [] },
     document: { dokumen: dokumen || [] },
     experience: { survei: surveiRes.data || [], keluhan: keluhanRes.data || [], catSurvei: catSurvei || [], catKeluhan: catKeluhan || [] },
@@ -181,10 +185,11 @@ export async function addCompanyAsset(formData: FormData) {
   const kategori = (formData.get("kategori") as string || "").trim() || null;
   const nomor_seri = (formData.get("nomor_seri") as string || "").trim() || null;
   const tanggal_serah = (formData.get("tanggal_serah") as string || "").trim() || null;
+  const foto_url = (formData.get("foto_url") as string || "").trim() || null;
   if (!karyawan_id || !nama_aset) return { error: "Nama aset wajib diisi." };
 
   const { error } = await supabaseAdmin.from("aset_karyawan").insert({
-    id: uid("aset"), karyawan_id, nama_aset, kategori, nomor_seri, tanggal_serah, status: "Dipegang",
+    id: uid("aset"), karyawan_id, nama_aset, kategori, nomor_seri, tanggal_serah, status: "Dipegang", foto_url
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi 20260712002_employee360.sql terlebih dahulu." };
   if (error) return { error: "Gagal menyimpan aset." };

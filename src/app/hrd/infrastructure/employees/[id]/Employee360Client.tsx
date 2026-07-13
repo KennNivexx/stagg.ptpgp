@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import {
   User, GraduationCap, Briefcase, TrendingUp, Wallet, Clock, HeartPulse,
   Package, FolderOpen, Sparkles, LogOut, Plus, Trash2, ExternalLink,
+  ShieldCheck, Leaf
 } from "lucide-react";
+import DocumentUploadField from "@/components/DocumentUploadField";
 import {
   addProjectExperience, deleteProjectExperience, addCompanyAsset, updateAssetStatus,
   deleteCompanyAsset, addPersonalDocument, deletePersonalDocument, saveBpjsInfo,
@@ -26,7 +28,9 @@ const TABS = [
   { key: "performance", label: "Performance", icon: TrendingUp },
   { key: "compensation", label: "Compensation & Benefit", icon: Wallet },
   { key: "attendance", label: "Attendance", icon: Clock },
-  { key: "health", label: "Health & Safety", icon: HeartPulse },
+  { key: "health", label: "Health (Medical)", icon: HeartPulse },
+  { key: "safety", label: "Safety", icon: ShieldCheck },
+  { key: "environment", label: "Environment", icon: Leaf },
   { key: "asset", label: "Asset Management", icon: Package },
   { key: "document", label: "Document Center", icon: FolderOpen },
   { key: "experience", label: "Employee Experience", icon: Sparkles },
@@ -70,6 +74,8 @@ export default function Employee360Client({ data }: { data: Data }) {
   const dp = data.personal.dataPribadi as Record<string, unknown> | null;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [newAssetFotoUrl, setNewAssetFotoUrl] = useState("");
+  const [newDocumentUrl, setNewDocumentUrl] = useState("");
 
   const runAction = async (fn: (fd: FormData) => Promise<{ error?: string; success?: boolean }>, fd: FormData, formEl?: HTMLFormElement) => {
     setBusy(true); setError("");
@@ -459,8 +465,8 @@ export default function Employee360Client({ data }: { data: Data }) {
       )}
 
       {tab === "health" && (
-        <Card title="Medical & HSE" action={<span className="text-[10px] text-slate-400">{data.health.catMedical.length} catatan</span>}>
-          {data.health.catMedical.length === 0 ? <Empty text="Tidak ada catatan medical/HSE." /> : data.health.catMedical.map(c => (
+        <Card title="Health (Medical)" action={<span className="text-[10px] text-slate-400">{data.health.catMedical.length} catatan</span>}>
+          {data.health.catMedical.length === 0 ? <Empty text="Tidak ada catatan health." /> : data.health.catMedical.map(c => (
             <Row key={c.id}>
               <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
               <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
@@ -469,10 +475,68 @@ export default function Employee360Client({ data }: { data: Data }) {
           <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
             <input type="hidden" name="email" value={email} />
             <input type="hidden" name="kategori" value="medical" />
-            <input name="judul" placeholder="Judul (MCU/Insiden/Vaksin/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+            <input name="judul" placeholder="Judul (MCU/Vaksin/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
             <input name="subjudul" placeholder="Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
             <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
-            <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+            <select name="status" defaultValue="" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2 bg-white" required>
+              <option value="" disabled>Pilih Status</option>
+              <option value="Fit">Fit</option>
+              <option value="Fit with Restriction">Fit with Restriction</option>
+              <option value="Unfit">Unfit</option>
+              <option value="Follow Up">Follow Up</option>
+            </select>
+            <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+          </form>
+        </Card>
+      )}
+
+      {tab === "safety" && (
+        <Card title="Safety" action={<span className="text-[10px] text-slate-400">{data.health.catSafety.length} catatan</span>}>
+          {data.health.catSafety.length === 0 ? <Empty text="Tidak ada catatan safety." /> : data.health.catSafety.map(c => (
+            <Row key={c.id}>
+              <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+              <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+            </Row>
+          ))}
+          <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+            <input type="hidden" name="email" value={email} />
+            <input type="hidden" name="kategori" value="safety" />
+            <input name="judul" placeholder="Judul (Insiden/Inspeksi/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+            <input name="subjudul" placeholder="Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+            <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+            <select name="status" defaultValue="" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2 bg-white" required>
+              <option value="" disabled>Pilih Status</option>
+              <option value="Open">Open</option>
+              <option value="Investigating">Investigating</option>
+              <option value="Action Required">Action Required</option>
+              <option value="Closed">Closed</option>
+            </select>
+            <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+          </form>
+        </Card>
+      )}
+
+      {tab === "environment" && (
+        <Card title="Environment" action={<span className="text-[10px] text-slate-400">{data.health.catEnvironment.length} catatan</span>}>
+          {data.health.catEnvironment.length === 0 ? <Empty text="Tidak ada catatan environment." /> : data.health.catEnvironment.map(c => (
+            <Row key={c.id}>
+              <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+              <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+            </Row>
+          ))}
+          <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+            <input type="hidden" name="email" value={email} />
+            <input type="hidden" name="kategori" value="environment" />
+            <input name="judul" placeholder="Judul (Audit/Limbah/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+            <input name="subjudul" placeholder="Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+            <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+            <select name="status" defaultValue="" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2 bg-white" required>
+              <option value="" disabled>Pilih Status</option>
+              <option value="Compliant">Compliant</option>
+              <option value="Non-Compliant">Non-Compliant</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Resolved">Resolved</option>
+            </select>
             <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
           </form>
         </Card>
@@ -482,7 +546,10 @@ export default function Employee360Client({ data }: { data: Data }) {
         <Card title="Aset Perusahaan" action={<span className="text-[10px] text-slate-400">{data.asset.aset.length} item</span>}>
           {data.asset.aset.length === 0 ? <Empty text="Belum ada aset yang dipegang." /> : data.asset.aset.map(a => (
             <Row key={a.id as string}>
-              <div><p className="font-semibold text-slate-800">{a.nama_aset as string}</p><p className="text-[11px] text-slate-400">{(a.kategori as string) || ""} {a.nomor_seri ? `· SN: ${a.nomor_seri}` : ""}</p></div>
+              <div className="flex gap-3">
+                {a.foto_url ? <img src={a.foto_url as string} alt={a.nama_aset as string} className="w-10 h-10 rounded bg-slate-100 object-cover" /> : null}
+                <div><p className="font-semibold text-slate-800">{a.nama_aset as string}</p><p className="text-[11px] text-slate-400">{(a.kategori as string) || ""} {a.nomor_seri ? `· SN: ${a.nomor_seri}` : ""}</p></div>
+              </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${a.status === "Dipegang" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>{a.status as string}</span>
                 {a.status === "Dipegang" && <button onClick={() => runAction(async () => updateAssetStatus(a.id as string, karyawanId, "Dikembalikan"), new FormData())} className="text-[10px] font-bold text-slate-500 hover:text-slate-800">Kembalikan</button>}
@@ -490,8 +557,15 @@ export default function Employee360Client({ data }: { data: Data }) {
               </div>
             </Row>
           ))}
-          <form action={fd => runAction(addCompanyAsset, fd)} className="mt-3 grid grid-cols-2 gap-2">
+          <form action={async fd => {
+            await runAction(addCompanyAsset, fd);
+            setNewAssetFotoUrl("");
+          }} className="mt-3 grid grid-cols-2 gap-2">
             <input type="hidden" name="karyawan_id" value={karyawanId} />
+            <input type="hidden" name="foto_url" value={newAssetFotoUrl} />
+            <div className="col-span-2">
+              <DocumentUploadField label="Foto Aset" folder="assets" bucket="hrd-files" value={newAssetFotoUrl} onChange={setNewAssetFotoUrl} hint="Unggah foto aset (opsional)" />
+            </div>
             <input name="nama_aset" placeholder="Nama Aset" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
             <input name="kategori" placeholder="Kategori" className="border border-gray-200 p-2 rounded-lg text-xs" />
             <input name="nomor_seri" placeholder="Nomor Seri" className="border border-gray-200 p-2 rounded-lg text-xs" />
@@ -504,11 +578,23 @@ export default function Employee360Client({ data }: { data: Data }) {
         <Card title="Dokumen Digital" action={<span className="text-[10px] text-slate-400">{data.document.dokumen.length} dokumen</span>}>
           {data.document.dokumen.length === 0 ? <Empty text="Belum ada dokumen pribadi." /> : data.document.dokumen.map(d => (
             <Row key={d.id as string}>
-              <div><p className="font-semibold text-slate-800">{d.judul as string}</p><p className="text-[11px] text-slate-400">{d.jenis as string} {d.catatan ? `· ${d.catatan}` : ""}</p></div>
+              <div className="flex flex-col">
+                <p className="font-semibold text-slate-800">{d.judul as string}</p>
+                <p className="text-[11px] text-slate-400">{d.jenis as string} {d.catatan ? `· ${d.catatan}` : ""}</p>
+                {d.file_url && <a href={d.file_url as string} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 hover:underline mt-0.5">Lihat Dokumen</a>}
+              </div>
               <button onClick={() => runDelete(deletePersonalDocument, d.id as string)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
             </Row>
           ))}
-          <form action={fd => runAction(addPersonalDocument, fd)} className="mt-3 grid grid-cols-2 gap-2">
+          <form action={async fd => {
+            await runAction(addPersonalDocument, fd);
+            setNewDocumentUrl("");
+          }} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="karyawan_id" value={karyawanId} />
+              <input type="hidden" name="file_url" value={newDocumentUrl} />
+              <div className="col-span-2">
+                <DocumentUploadField label="File Dokumen" folder="documents" bucket="hrd-files" value={newDocumentUrl} onChange={setNewDocumentUrl} hint="Unggah dokumen (PDF, Gambar)" />
+              </div>
               <input name="jenis" placeholder="Jenis (KTP/Ijazah/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs" />
               <input name="judul" placeholder="Judul Dokumen" required className="border border-gray-200 p-2 rounded-lg text-xs" />
               <input name="catatan" placeholder="Catatan (opsional)" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
