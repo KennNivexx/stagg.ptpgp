@@ -35,6 +35,7 @@ export async function getEmployee360(karyawanId: string) {
     { data: pendidikan }, { data: keluarga },
     // Education & Recruitment
     { data: pelamar }, { data: sertifikat }, { data: peserta },
+    { data: catSertifikasi }, { data: catPelatihan }, { data: catRekrutmen },
     // Employment
     { data: kontrak }, { data: riwayatPosisi }, { data: proyek },
     // Performance
@@ -56,12 +57,23 @@ export async function getEmployee360(karyawanId: string) {
     // Reward / Disiplin / Talent (Employment + Performance groups)
     { data: penghargaan }, { data: peringatan }, { data: kandidatSuksesor }, { data: poolSuksesi },
     { data: mutasi }, { data: promosi }, { data: kompetensi },
+    // catatan_karyawan — new standalone cards
+    { data: catKontrak }, { data: catMutasiPromosi },
+    { data: catKpi }, { data: catKompetensi }, { data: catReward }, { data: catDisiplin }, { data: catTalent },
+    { data: catPayroll },
+    { data: catAbsensi }, { data: catCuti },
+    { data: catMedical },
+    { data: catSurvei }, { data: catKeluhan },
+    { data: catResign },
   ] = await Promise.all([
-    supabaseAdmin.from("pendidikan_karyawan").select("*").eq("karyawan_id", karyawanId).order("created_at", { ascending: false }),
-    supabaseAdmin.from("keluarga_karyawan").select("*").eq("karyawan_id", karyawanId).order("created_at", { ascending: false }),
+    email ? supabaseAdmin.from("pendidikan_karyawan").select("*").eq("karyawan_email", email.toLowerCase()).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("keluarga_karyawan").select("*").eq("karyawan_email", email.toLowerCase()).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     email ? supabaseAdmin.from("pelamar").select("*").ilike("email", email).maybeSingle() : Promise.resolve({ data: null }),
     supabaseAdmin.from("sertifikat_pelatihan").select("*").eq("employee_id", karyawanId),
     supabaseAdmin.from("peserta_pelatihan").select("*").eq("employee_id", karyawanId),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "sertifikasi").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "pelatihan").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "rekrutmen").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     supabaseAdmin.from("kontrak_kerja").select("*").eq("employee_id", karyawanId).order("created_at", { ascending: false }),
     supabaseAdmin.from("riwayat_posisi_karyawan").select("*").eq("karyawan_id", karyawanId).order("tanggal_mulai", { ascending: false }),
     supabaseAdmin.from("pengalaman_proyek_karyawan").select("*").eq("karyawan_id", karyawanId).order("created_at", { ascending: false }),
@@ -85,71 +97,53 @@ export async function getEmployee360(karyawanId: string) {
     supabaseAdmin.from("mutasi_karir").select("*").eq("employee_id", karyawanId).order("created_at", { ascending: false }),
     supabaseAdmin.from("promosi_karir").select("*").eq("employee_id", karyawanId).order("created_at", { ascending: false }),
     supabaseAdmin.from("kompetensi_karyawan").select("*").eq("employee_id", karyawanId),
+    // catatan_karyawan — Employment
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "kontrak").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "mutasi_promosi").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    // catatan_karyawan — Performance
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "kpi").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "kompetensi").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "reward").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "disiplin").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "talent").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    // catatan_karyawan — Compensation
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "payroll").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    // catatan_karyawan — Attendance
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "absensi").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "cuti").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    // catatan_karyawan — Health & Safety
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "medical").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    // catatan_karyawan — Employee Experience
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "survei").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "keluhan").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    // catatan_karyawan — Offboarding
+    email ? supabaseAdmin.from("catatan_karyawan").select("*").eq("email", email.toLowerCase()).eq("kategori", "resign").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
   ]);
+
+  const { data: dataPribadi } = email
+    ? await supabaseAdmin.from("data_pribadi_karyawan").select("*").eq("email", email.toLowerCase()).maybeSingle()
+    : { data: null };
 
   return {
     karyawan: k,
-    personal: { pendidikan: pendidikan || [], keluarga: keluarga || [] },
-    recruitment: { pelamar: pelamar || null, sertifikat: sertifikat || [], peserta: peserta || [] },
-    employment: { kontrak: kontrak || [], riwayatPosisi: riwayatPosisi || [], proyek: proyek || [], mutasi: mutasi || [], promosi: promosi || [] },
-    performance: { kpi: kpi || [], feedback: feedback || [], rencana: rencana || [], kompetensi: kompetensi || [], penghargaan: penghargaan || [], peringatan: peringatan || [], kandidatSuksesor: kandidatSuksesor || null, poolSuksesi: poolSuksesi || null },
-    compensation: { penggajian: penggajianRows || [], strukturGaji: strukturGaji || null },
-    attendance: { absensi: absensiRes.data || [], cuti: cutiRes.data || [] },
-    health: { insiden: insidenRes.data || [] },
+    personal: { pendidikan: pendidikan || [], keluarga: keluarga || [], dataPribadi: dataPribadi || null },
+    recruitment: { pelamar: pelamar || null, sertifikat: sertifikat || [], peserta: peserta || [], catSertifikasi: catSertifikasi || [], catPelatihan: catPelatihan || [], catRekrutmen: catRekrutmen || [] },
+    employment: { kontrak: kontrak || [], riwayatPosisi: riwayatPosisi || [], proyek: proyek || [], mutasi: mutasi || [], promosi: promosi || [], catKontrak: catKontrak || [], catMutasiPromosi: catMutasiPromosi || [] },
+    performance: { kpi: kpi || [], feedback: feedback || [], rencana: rencana || [], kompetensi: kompetensi || [], penghargaan: penghargaan || [], peringatan: peringatan || [], kandidatSuksesor: kandidatSuksesor || null, poolSuksesi: poolSuksesi || null, catKpi: catKpi || [], catKompetensi: catKompetensi || [], catReward: catReward || [], catDisiplin: catDisiplin || [], catTalent: catTalent || [] },
+    compensation: { penggajian: penggajianRows || [], strukturGaji: strukturGaji || null, catPayroll: catPayroll || [] },
+    attendance: { absensi: absensiRes.data || [], cuti: cutiRes.data || [], catAbsensi: catAbsensi || [], catCuti: catCuti || [] },
+    health: { insiden: insidenRes.data || [], catMedical: catMedical || [] },
     asset: { aset: aset || [] },
     document: { dokumen: dokumen || [] },
-    experience: { survei: surveiRes.data || [], keluhan: keluhanRes.data || [] },
-    offboarding: { resign: resignRes.data || [] },
+    experience: { survei: surveiRes.data || [], keluhan: keluhanRes.data || [], catSurvei: catSurvei || [], catKeluhan: catKeluhan || [] },
+    offboarding: { resign: resignRes.data || [], catResign: catResign || [] },
   };
 }
 
-/* ─────── Personal: Pendidikan ─────── */
-export async function addEducation(formData: FormData) {
-  await requireRole("hrd", "superadmin");
-  const karyawan_id = (formData.get("karyawan_id") as string || "").trim();
-  const jenjang = (formData.get("jenjang") as string || "").trim();
-  const institusi = (formData.get("institusi") as string || "").trim();
-  const jurusan = (formData.get("jurusan") as string || "").trim() || null;
-  const tahun_lulus = (formData.get("tahun_lulus") as string || "").trim() || null;
-  if (!karyawan_id || !jenjang || !institusi) return { error: "Jenjang dan institusi wajib diisi." };
-
-  const { error } = await supabaseAdmin.from("pendidikan_karyawan").insert({ id: uid("edu"), karyawan_id, jenjang, institusi, jurusan, tahun_lulus });
-  if (error?.code === "42P01") return { error: "Jalankan migrasi 20260712002_employee360.sql terlebih dahulu." };
-  if (error) return { error: "Gagal menyimpan pendidikan." };
-  revalidateProfile(karyawan_id);
-  return { success: true };
-}
-
-export async function deleteEducation(id: string, karyawanId: string) {
-  await requireRole("hrd", "superadmin");
-  await supabaseAdmin.from("pendidikan_karyawan").delete().eq("id", id);
-  revalidateProfile(karyawanId);
-  return { success: true };
-}
-
-/* ─────── Personal: Keluarga ─────── */
-export async function addFamilyMember(formData: FormData) {
-  await requireRole("hrd", "superadmin");
-  const karyawan_id = (formData.get("karyawan_id") as string || "").trim();
-  const nama = (formData.get("nama") as string || "").trim();
-  const hubungan = (formData.get("hubungan") as string || "").trim();
-  const tanggal_lahir = (formData.get("tanggal_lahir") as string || "").trim() || null;
-  const pekerjaan = (formData.get("pekerjaan") as string || "").trim() || null;
-  if (!karyawan_id || !nama || !hubungan) return { error: "Nama dan hubungan wajib diisi." };
-
-  const { error } = await supabaseAdmin.from("keluarga_karyawan").insert({ id: uid("fam"), karyawan_id, nama, hubungan, tanggal_lahir, pekerjaan });
-  if (error?.code === "42P01") return { error: "Jalankan migrasi 20260712002_employee360.sql terlebih dahulu." };
-  if (error) return { error: "Gagal menyimpan data keluarga." };
-  revalidateProfile(karyawan_id);
-  return { success: true };
-}
-
-export async function deleteFamilyMember(id: string, karyawanId: string) {
-  await requireRole("hrd", "superadmin");
-  await supabaseAdmin.from("keluarga_karyawan").delete().eq("id", id);
-  revalidateProfile(karyawanId);
-  return { success: true };
-}
+// Pendidikan/Keluarga CRUD now lives in data-pribadi.ts (addEducationByEmail,
+// addFamilyMemberByEmail, ...) — keyed by email instead of karyawan_id, since
+// keluarga_karyawan/pendidikan_karyawan were decoupled from karyawan in
+// 20260713001_data_pribadi_standalone.sql.
 
 /* ─────── Employment: Project Experience ─────── */
 export async function addProjectExperience(formData: FormData) {

@@ -26,7 +26,31 @@ export async function getCurrentEmployee() {
     if (parsed.__auth__) displayAddress = parsed.home_address || "";
   } catch { /* plain address, already correct */ }
 
-  return { ...emp, address: displayAddress };
+  // "Data Pribadi (KK)" fields moved to the standalone data_pribadi_karyawan
+  // table (keyed by email, no FK) — merge them in here, falling back to the
+  // old karyawan columns for anyone who filled this in before the migration
+  // and hasn't re-saved since, so nothing appears blank.
+  const { data: pribadi } = await supabaseAdmin
+    .from("data_pribadi_karyawan")
+    .select("*")
+    .eq("email", (user.email || "").toLowerCase())
+    .maybeSingle();
+  const p = (pribadi as Record<string, unknown> | null) || {};
+  const pick = (key: string) => (p[key] ?? emp[key]) as unknown;
+
+  return {
+    ...emp,
+    // phone/address now come from data_pribadi_karyawan too (falling back to
+    // the legacy-blob-aware karyawan value for anyone who hasn't re-saved
+    // since the migration) — see saveBasicProfile/saveContactProfile.
+    phone: (p.phone as string) || (emp.phone as string) || "",
+    address: (p.address as string) || displayAddress,
+    nik: pick("nik"), birth_place: pick("birth_place"), birth_date: pick("birth_date"),
+    religion: pick("religion"), blood_type: pick("blood_type"), marital_status: pick("marital_status"),
+    spouse_name: pick("spouse_name"), children_count: pick("children_count"),
+    ktp_address: pick("ktp_address"), last_education: pick("last_education"),
+    emergency_name: pick("emergency_name"), emergency_phone: pick("emergency_phone"),
+  };
 }
 
 export async function submitComplaint(formData: FormData) {

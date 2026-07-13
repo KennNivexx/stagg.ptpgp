@@ -10,50 +10,48 @@ export async function saveEmployeeProfile(formData: FormData) {
   if (!employeeId) return { error: "ID karyawan tidak ditemukan." };
 
   // Ownership check: employee can only update their own data
-  if (user.role === "employee") {
-    const { data: emp } = await supabaseAdmin
-      .from("karyawan")
-      .select("id")
-      .eq("id", employeeId)
-      .eq("email", user.email)
-      .maybeSingle();
-    if (!emp) return { error: "Akses ditolak: data bukan milik Anda." };
-  }
-
-  const nik = (formData.get("nik") as string || "").trim();
-  const birth_place = (formData.get("birth_place") as string || "").trim();
-  const birth_date = formData.get("birth_date") as string || null;
-  const religion = formData.get("religion") as string || null;
-  const blood_type = formData.get("blood_type") as string || null;
-  const marital_status = formData.get("marital_status") as string || null;
-  const spouse_name = (formData.get("spouse_name") as string || "").trim();
-  const children_count = formData.get("children_count") as string;
-  const ktp_address = (formData.get("ktp_address") as string || "").trim();
-  const last_education = formData.get("last_education") as string || null;
-  const emergency_name = (formData.get("emergency_name") as string || "").trim();
-  const emergency_phone = (formData.get("emergency_phone") as string || "").trim();
-
-  const { error } = await supabaseAdmin
+  const { data: emp } = await supabaseAdmin
     .from("karyawan")
-    .update({
-      nik,
-      birth_place,
-      birth_date: birth_date || null,
-      religion,
-      blood_type,
-      marital_status,
-      spouse_name,
-      children_count: children_count ? parseInt(children_count) : null,
-      ktp_address,
-      last_education,
-      emergency_name,
-      emergency_phone,
-    })
-    .eq("id", employeeId);
+    .select("id, email")
+    .eq("id", employeeId)
+    .maybeSingle();
+  if (!emp) return { error: "Karyawan tidak ditemukan." };
+  if (user.role === "employee" && (emp as { email: string }).email !== user.email) {
+    return { error: "Akses ditolak: data bukan milik Anda." };
+  }
+  const email = (emp as { email: string }).email.toLowerCase();
 
+  const nik = (formData.get("nik") as string || "").trim() || null;
+  const birth_place = (formData.get("birth_place") as string || "").trim() || null;
+  const birth_date = (formData.get("birth_date") as string || "").trim() || null;
+  const religion = (formData.get("religion") as string || "").trim() || null;
+  const blood_type = (formData.get("blood_type") as string || "").trim() || null;
+  const marital_status = (formData.get("marital_status") as string || "").trim() || null;
+  const spouse_name = (formData.get("spouse_name") as string || "").trim() || null;
+  const children_countRaw = formData.get("children_count") as string;
+  const children_count = children_countRaw ? parseInt(children_countRaw, 10) : null;
+  const ktp_address = (formData.get("ktp_address") as string || "").trim() || null;
+  const last_education = (formData.get("last_education") as string || "").trim() || null;
+  const emergency_name = (formData.get("emergency_name") as string || "").trim() || null;
+  const emergency_phone = (formData.get("emergency_phone") as string || "").trim() || null;
+
+  // Moved to the standalone data_pribadi_karyawan table (keyed by email, no
+  // FK) so HRD's Employee 360° profile and this self-service form read/write
+  // the exact same rows — see supabase/migrations/20260713001_data_pribadi_standalone.sql.
+  const { data: existing } = await supabaseAdmin.from("data_pribadi_karyawan").select("id").eq("email", email).maybeSingle();
+  const id = (existing as { id: string } | null)?.id || ("dpk-" + crypto.randomUUID());
+
+  const { error } = await supabaseAdmin.from("data_pribadi_karyawan").upsert({
+    id, email, nik, birth_place, birth_date, religion, blood_type, marital_status,
+    spouse_name, children_count, ktp_address, last_education, emergency_name, emergency_phone,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "email" });
+
+  if (error?.code === "42P01") return { error: "Jalankan migrasi 20260713001_data_pribadi_standalone.sql terlebih dahulu." };
   if (error) { console.error("[profile] saveEmployeeProfile error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
 
   revalidatePath("/employee/profile");
+  revalidatePath("/hrd/infrastructure/employees");
   return { success: true };
 }
 
@@ -75,38 +73,31 @@ export async function saveContactProfile(formData: FormData) {
   }
 
   const full_name = (formData.get("full_name") as string || "").trim();
-  const phone = (formData.get("phone") as string || "").trim();
-  const address = (formData.get("address") as string || "").trim();
+  const phone = (formData.get("phone") as string || "").trim() || null;
+  const address = (formData.get("address") as string || "").trim() || null;
 
   if (!full_name) return { error: "Nama lengkap wajib diisi." };
 
-  // If the current address column contains the legacy auth JSON (used when the
-  // users table doesn't exist), preserve the __auth__ data and store the actual
-  // home address inside the JSON under "home_address". Overwriting the column
-  // with a plain string would destroy the employee's login credentials.
-  const { data: current } = await supabaseAdmin
-    .from("karyawan")
-    .select("address")
-    .eq("id", employeeId)
-    .single();
+  const { data: karyawanRow } = await supabaseAdmin.from("karyawan").select("email").eq("id", employeeId).single();
+  const email = ((karyawanRow as { email: string } | null)?.email || "").toLowerCase();
 
-  let storedAddress = address;
-  try {
-    const parsed = JSON.parse(current?.address as string || "{}");
-    if (parsed.__auth__) {
-      parsed.home_address = address;
-      storedAddress = JSON.stringify(parsed);
-    }
-  } catch { /* address is plain text, safe to overwrite */ }
+  const { error: nameErr } = await supabaseAdmin.from("karyawan").update({ full_name }).eq("id", employeeId);
+  if (nameErr) { console.error("[profile] saveContactProfile name error:", nameErr.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
 
-  const { error } = await supabaseAdmin
-    .from("karyawan")
-    .update({ full_name, phone, address: storedAddress })
-    .eq("id", employeeId);
+  // phone/address live in data_pribadi_karyawan now (see saveEmployeeProfile) —
+  // karyawan.address is left untouched here so any legacy __auth__ JSON blob
+  // it might still hold is never at risk of being overwritten by this form.
+  const { data: existing } = await supabaseAdmin.from("data_pribadi_karyawan").select("id").eq("email", email).maybeSingle();
+  const id = (existing as { id: string } | null)?.id || ("dpk-" + crypto.randomUUID());
+  const { error } = await supabaseAdmin.from("data_pribadi_karyawan").upsert({
+    id, email, phone, address, updated_at: new Date().toISOString(),
+  }, { onConflict: "email" });
 
+  if (error?.code === "42P01") return { error: "Jalankan migrasi 20260713001_data_pribadi_standalone.sql terlebih dahulu." };
   if (error) { console.error("[profile] saveContactProfile error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
 
   revalidatePath("/employee/profile");
+  revalidatePath("/hrd/infrastructure/employees");
   return { success: true };
 }
 
@@ -128,30 +119,15 @@ export async function saveBasicProfile(formData: FormData) {
 
   const full_name = (formData.get("full_name") as string || "").trim();
   const email = (formData.get("email") as string || "").trim();
-  const phone = (formData.get("phone") as string || "").trim();
-  const address = (formData.get("address") as string || "").trim();
+  const phone = (formData.get("phone") as string || "").trim() || null;
+  const address = (formData.get("address") as string || "").trim() || null;
   const department = (formData.get("department") as string || "").trim();
   const position = (formData.get("position") as string || "").trim();
 
   if (!full_name) return { error: "Nama lengkap wajib diisi." };
   if (!email) return { error: "Email wajib diisi." };
 
-  const { data: current } = await supabaseAdmin
-    .from("karyawan")
-    .select("address")
-    .eq("id", employeeId)
-    .single();
-
-  let storedAddress = address;
-  try {
-    const parsed = JSON.parse(current?.address as string || "{}");
-    if (parsed.__auth__) {
-      parsed.home_address = address;
-      storedAddress = JSON.stringify(parsed);
-    }
-  } catch { /* address is plain text, safe to overwrite */ }
-
-  const updateData: Record<string, unknown> = { full_name, email, phone, address: storedAddress, department: department || null, position: position || null };
+  const updateData: Record<string, unknown> = { full_name, email, department: department || null, position: position || null };
 
   // Employees cannot change their own department or position
   if (user.role === "employee") {
@@ -166,6 +142,17 @@ export async function saveBasicProfile(formData: FormData) {
 
   if (error) { console.error("[profile] saveBasicProfile error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
 
+  // phone/address live in data_pribadi_karyawan now (keyed by the NEW email,
+  // since this form can also change the email itself) — see saveEmployeeProfile.
+  const dpEmail = email.toLowerCase();
+  const { data: existing } = await supabaseAdmin.from("data_pribadi_karyawan").select("id").eq("email", dpEmail).maybeSingle();
+  const dpId = (existing as { id: string } | null)?.id || ("dpk-" + crypto.randomUUID());
+  const { error: dpErr } = await supabaseAdmin.from("data_pribadi_karyawan").upsert({
+    id: dpId, email: dpEmail, phone, address, updated_at: new Date().toISOString(),
+  }, { onConflict: "email" });
+  if (dpErr && dpErr.code !== "42P01") console.error("[profile] saveBasicProfile data_pribadi error:", dpErr.message);
+
   revalidatePath("/employee/profile");
+  revalidatePath("/hrd/infrastructure/employees");
   return { success: true };
 }

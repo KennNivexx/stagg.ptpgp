@@ -8,11 +8,14 @@ import {
   Package, FolderOpen, Sparkles, LogOut, Plus, Trash2, ExternalLink,
 } from "lucide-react";
 import {
-  addEducation, deleteEducation, addFamilyMember, deleteFamilyMember,
   addProjectExperience, deleteProjectExperience, addCompanyAsset, updateAssetStatus,
   deleteCompanyAsset, addPersonalDocument, deletePersonalDocument, saveBpjsInfo,
   type getEmployee360,
 } from "@/app/actions/employee360";
+import {
+  saveDataPribadi, addFamilyMemberByEmail, deleteFamilyMemberByEmail,
+  addEducationByEmail, deleteEducationByEmail, addCatatan, deleteCatatan,
+} from "@/app/actions/data-pribadi";
 
 type Data = NonNullable<Awaited<ReturnType<typeof getEmployee360>>>;
 
@@ -63,6 +66,8 @@ export default function Employee360Client({ data }: { data: Data }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("personal");
   const k = data.karyawan as Record<string, unknown>;
   const karyawanId = k.id as string;
+  const email = (k.email as string) || "";
+  const dp = data.personal.dataPribadi as Record<string, unknown> | null;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -78,6 +83,13 @@ export default function Employee360Client({ data }: { data: Data }) {
   const runDelete = async (fn: (id: string, karyawanId: string) => Promise<{ error?: string; success?: boolean }>, id: string) => {
     setError("");
     const res = await fn(id, karyawanId);
+    if (res.error) { setError(res.error); return; }
+    router.refresh();
+  };
+
+  const runDeleteByEmail = async (fn: (id: string, email: string) => Promise<{ error?: string; success?: boolean }>, id: string) => {
+    setError("");
+    const res = await fn(id, email);
     if (res.error) { setError(res.error); return; }
     router.refresh();
   };
@@ -110,34 +122,33 @@ export default function Employee360Client({ data }: { data: Data }) {
 
       {tab === "personal" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card title="Data Master & Kependudukan">
-            <div className="grid grid-cols-2 gap-y-1 text-xs">
-              <span className="text-slate-400">NIK</span><span className="font-semibold text-slate-700">{(k.nik as string) || "—"}</span>
-              <span className="text-slate-400">Tempat/Tgl Lahir</span><span className="font-semibold text-slate-700">{(k.birth_place as string) || "—"}, {(k.birth_date as string) || "—"}</span>
-              <span className="text-slate-400">Agama</span><span className="font-semibold text-slate-700">{(k.religion as string) || "—"}</span>
-              <span className="text-slate-400">Gol. Darah</span><span className="font-semibold text-slate-700">{(k.blood_type as string) || "—"}</span>
-              <span className="text-slate-400">Status Nikah</span><span className="font-semibold text-slate-700">{(k.marital_status as string) || "—"}</span>
-              <span className="text-slate-400">Alamat KTP</span><span className="font-semibold text-slate-700">{(k.ktp_address as string) || "—"}</span>
-            </div>
-          </Card>
-          <Card title="Kontak & Kontak Darurat">
-            <div className="grid grid-cols-2 gap-y-1 text-xs">
-              <span className="text-slate-400">Telepon</span><span className="font-semibold text-slate-700">{(k.phone as string) || "—"}</span>
-              <span className="text-slate-400">Alamat</span><span className="font-semibold text-slate-700">{(k.address as string) || "—"}</span>
-              <span className="text-slate-400">Kontak Darurat</span><span className="font-semibold text-slate-700">{(k.emergency_name as string) || "—"}</span>
-              <span className="text-slate-400">No. Darurat</span><span className="font-semibold text-slate-700">{(k.emergency_phone as string) || "—"}</span>
-            </div>
+          <Card title="Data Master, Kependudukan & Kontak" action={<span className="text-[10px] text-slate-400">Bisa diisi HRD maupun karyawan sendiri</span>}>
+            <form action={fd => runAction(saveDataPribadi, fd)} className="grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input name="nik" placeholder="NIK" defaultValue={(dp?.nik as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="birth_place" placeholder="Tempat Lahir" defaultValue={(dp?.birth_place as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="birth_date" type="date" placeholder="Tgl Lahir" defaultValue={(dp?.birth_date as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="religion" placeholder="Agama" defaultValue={(dp?.religion as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="blood_type" placeholder="Gol. Darah" defaultValue={(dp?.blood_type as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="marital_status" placeholder="Status Nikah" defaultValue={(dp?.marital_status as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="ktp_address" placeholder="Alamat KTP" defaultValue={(dp?.ktp_address as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="phone" placeholder="Telepon" defaultValue={(dp?.phone as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="address" placeholder="Alamat" defaultValue={(dp?.address as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="emergency_name" placeholder="Kontak Darurat (Nama)" defaultValue={(dp?.emergency_name as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="emergency_phone" placeholder="No. Darurat" defaultValue={(dp?.emergency_phone as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <button type="submit" disabled={busy} className="col-span-2 mt-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50">Simpan</button>
+            </form>
           </Card>
 
           <Card title="Data Keluarga" action={<span className="text-[10px] text-slate-400">{data.personal.keluarga.length} anggota</span>}>
             {data.personal.keluarga.length === 0 ? <Empty text="Belum ada data keluarga." /> : data.personal.keluarga.map(f => (
               <Row key={f.id as string}>
                 <div><p className="font-semibold text-slate-800">{f.nama as string}</p><p className="text-[11px] text-slate-400">{f.hubungan as string} {f.pekerjaan ? `· ${f.pekerjaan}` : ""}</p></div>
-                <button onClick={() => runDelete(deleteFamilyMember, f.id as string)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+                <button onClick={() => runDeleteByEmail(deleteFamilyMemberByEmail, f.id as string)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
               </Row>
             ))}
-            <form action={fd => runAction(addFamilyMember, fd)} className="mt-3 grid grid-cols-2 gap-2">
-              <input type="hidden" name="karyawan_id" value={karyawanId} />
+            <form action={fd => runAction(addFamilyMemberByEmail, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
               <input name="nama" placeholder="Nama" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
               <input name="hubungan" placeholder="Hubungan (Istri/Anak/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs" />
               <input name="pekerjaan" placeholder="Pekerjaan" className="border border-gray-200 p-2 rounded-lg text-xs" />
@@ -149,11 +160,11 @@ export default function Employee360Client({ data }: { data: Data }) {
             {data.personal.pendidikan.length === 0 ? <Empty text="Belum ada riwayat pendidikan." /> : data.personal.pendidikan.map(e => (
               <Row key={e.id as string}>
                 <div><p className="font-semibold text-slate-800">{e.jenjang as string} — {e.institusi as string}</p><p className="text-[11px] text-slate-400">{(e.jurusan as string) || ""} {e.tahun_lulus ? `· Lulus ${e.tahun_lulus}` : ""}</p></div>
-                <button onClick={() => runDelete(deleteEducation, e.id as string)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+                <button onClick={() => runDeleteByEmail(deleteEducationByEmail, e.id as string)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
               </Row>
             ))}
-            <form action={fd => runAction(addEducation, fd)} className="mt-3 grid grid-cols-2 gap-2">
-              <input type="hidden" name="karyawan_id" value={karyawanId} />
+            <form action={fd => runAction(addEducationByEmail, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
               <input name="jenjang" placeholder="Jenjang (S1/SMA/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs" />
               <input name="tahun_lulus" placeholder="Tahun Lulus" className="border border-gray-200 p-2 rounded-lg text-xs" />
               <input name="institusi" placeholder="Institusi" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
@@ -166,46 +177,104 @@ export default function Employee360Client({ data }: { data: Data }) {
 
       {tab === "recruitment" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card title="Data Rekrutmen">
-            {data.recruitment.pelamar ? (
-              <div className="grid grid-cols-2 gap-y-1 text-xs">
+          <Card title="Data Rekrutmen" action={<span className="text-[10px] text-slate-400">{data.recruitment.catRekrutmen.length} catatan</span>}>
+            {data.recruitment.pelamar && (
+              <div className="grid grid-cols-2 gap-y-1 text-xs mb-3 pb-3 border-b border-slate-50">
                 <span className="text-slate-400">Posisi Dilamar</span><span className="font-semibold text-slate-700">{(data.recruitment.pelamar as Record<string, unknown>).position as string || "—"}</span>
                 <span className="text-slate-400">Status</span><span className="font-semibold text-slate-700">{(data.recruitment.pelamar as Record<string, unknown>).status as string || "—"}</span>
               </div>
-            ) : <Empty text="Tidak ditemukan riwayat lamaran (kemungkinan direkrut manual)." />}
-            <div className="mt-3"><ModuleLink href="/hrd/recruitment/pipeline" label="Kelola di Rekrutmen" /></div>
-          </Card>
-          <Card title="Sertifikasi" action={<ModuleLink href="/hrd/learning/certificates" label="Kelola di Pelatihan" />}>
-            {data.recruitment.sertifikat.length === 0 ? <Empty text="Belum ada sertifikat." /> : data.recruitment.sertifikat.map(s => (
-              <Row key={s.id as string}><span className="font-semibold text-slate-700">{(s.certificate_number as string) || s.id as string}</span><span className="text-[11px] text-slate-400">{(s.status as string) || ""}</span></Row>
+            )}
+            {data.recruitment.catRekrutmen.length === 0 ? <Empty text="Belum ada catatan rekrutmen." /> : data.recruitment.catRekrutmen.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
             ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="rekrutmen" />
+              <input name="judul" placeholder="Catatan Rekrutmen" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
-          <Card title="Pelatihan Diikuti" action={<ModuleLink href="/hrd/learning/trainings" label="Kelola di Pelatihan" />}>
-            {data.recruitment.peserta.length === 0 ? <Empty text="Belum mengikuti pelatihan." /> : data.recruitment.peserta.map(p => (
-              <Row key={p.id as string}><span className="font-semibold text-slate-700">Training #{(p.training_id as string)?.slice(0, 8)}</span><span className="text-[11px] text-slate-400">{(p.status as string) || ""}</span></Row>
+          <Card title="Sertifikasi" action={<span className="text-[10px] text-slate-400">{data.recruitment.catSertifikasi.length} catatan</span>}>
+            {data.recruitment.catSertifikasi.length === 0 ? <Empty text="Belum ada sertifikasi." /> : data.recruitment.catSertifikasi.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
             ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="sertifikasi" />
+              <input name="judul" placeholder="Nama Sertifikasi" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Penerbit" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal (cth: 2026-01-10)" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
+          </Card>
+          <Card title="Pelatihan Diikuti" action={<span className="text-[10px] text-slate-400">{data.recruitment.catPelatihan.length} catatan</span>}>
+            {data.recruitment.catPelatihan.length === 0 ? <Empty text="Belum ada pelatihan." /> : data.recruitment.catPelatihan.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
+            ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="pelatihan" />
+              <input name="judul" placeholder="Nama Pelatihan" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Penyelenggara" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
         </div>
       )}
 
       {tab === "employment" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card title="Data Kepegawaian (Kontrak)" action={<ModuleLink href="/hrd/infrastructure/contracts" label="Kelola di Kontrak Kerja" />}>
-            {data.employment.kontrak.length === 0 ? <Empty text="Belum ada kontrak." /> : data.employment.kontrak.map(c => (
-              <Row key={c.id as string}><span className="font-semibold text-slate-700">{(c.contract_type as string) || (c.type as string) || "Kontrak"}</span><span className="text-[11px] text-slate-400">{(c.status as string) || ""}</span></Row>
+          <Card title="Data Kepegawaian (Kontrak)" action={<span className="text-[10px] text-slate-400">{data.employment.catKontrak.length} catatan</span>}>
+            {data.employment.catKontrak.length === 0 ? <Empty text="Belum ada catatan kontrak." /> : data.employment.catKontrak.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
             ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="kontrak" />
+              <input name="judul" placeholder="Jenis Kontrak" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Nomor / Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tgl Mulai (cth: 2026-01-01)" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="status" placeholder="Status (Aktif/Berakhir)" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
-          <Card title="Riwayat Jabatan & Organisasi" action={<ModuleLink href="/hrd/workplace/formasi" label="Kelola di Position Management" />}>
+          <Card title="Riwayat Jabatan & Organisasi">
             {data.employment.riwayatPosisi.length === 0 ? <Empty text="Belum ada riwayat penempatan." /> : data.employment.riwayatPosisi.map(r => (
               <Row key={r.id as string}><span className="font-semibold text-slate-700">{r.jenis_perubahan as string}</span><span className="text-[11px] text-slate-400">{r.tanggal_mulai as string}{r.tanggal_selesai ? ` – ${r.tanggal_selesai}` : " (aktif)"}</span></Row>
             ))}
           </Card>
-          <Card title="Mutasi & Promosi" action={<ModuleLink href="/hrd/career" label="Kelola di Pengembangan Karir" />}>
-            {[...data.employment.mutasi.map(m => ({ ...m, _type: "Mutasi" })), ...data.employment.promosi.map(p => ({ ...p, _type: "Promosi" }))].length === 0
-              ? <Empty text="Belum ada mutasi/promosi." />
-              : [...data.employment.mutasi.map(m => ({ ...m, _type: "Mutasi" })), ...data.employment.promosi.map(p => ({ ...p, _type: "Promosi" }))].map((m, i) => (
-                <Row key={i}><span className="font-semibold text-slate-700">{m._type} — {(m.to_position as string) || (m.to_department as string) || ""}</span><span className="text-[11px] text-slate-400">{(m.status as string) || ""}</span></Row>
-              ))}
+          <Card title="Mutasi & Promosi" action={<span className="text-[10px] text-slate-400">{data.employment.catMutasiPromosi.length} catatan</span>}>
+            {data.employment.catMutasiPromosi.length === 0 ? <Empty text="Belum ada catatan mutasi/promosi." /> : data.employment.catMutasiPromosi.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
+            ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="mutasi_promosi" />
+              <input name="judul" placeholder="Jenis (Mutasi/Promosi)" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Jabatan/Departemen Tujuan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
           <Card title="Project Experience">
             {data.employment.proyek.length === 0 ? <Empty text="Belum ada pengalaman proyek." /> : data.employment.proyek.map(p => (
@@ -227,44 +296,110 @@ export default function Employee360Client({ data }: { data: Data }) {
 
       {tab === "performance" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card title="KPI & Performance" action={<ModuleLink href="/hrd/performance/kpi" label="Kelola di Penilaian Kinerja" />}>
-            {data.performance.kpi.length === 0 ? <Empty text="Belum ada evaluasi KPI." /> : data.performance.kpi.map(p => (
-              <Row key={p.id as string}><span className="font-semibold text-slate-700">{(p.period as string) || ""}</span><span className="text-[11px] text-slate-400">Skor: {(p.score as number) ?? (p.actual_score as number) ?? "—"}</span></Row>
+          <Card title="KPI & Performance" action={<span className="text-[10px] text-slate-400">{data.performance.catKpi.length} catatan</span>}>
+            {data.performance.catKpi.length === 0 ? <Empty text="Belum ada catatan KPI." /> : data.performance.catKpi.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
             ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="kpi" />
+              <input name="judul" placeholder="Periode / Nama KPI" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Skor / Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
-          <Card title="Kompetensi" action={<ModuleLink href="/hrd/competency/assessment" label="Kelola di Kompetensi" />}>
-            {data.performance.kompetensi.length === 0 ? <Empty text="Belum ada asesmen kompetensi." /> : data.performance.kompetensi.map(c => (
-              <Row key={c.id as string}><span className="font-semibold text-slate-700">Skill #{(c.skill_id as string)?.slice(0, 10)}</span><span className="text-[11px] text-slate-400">Level {(c.current_level as number) ?? "—"}</span></Row>
+          <Card title="Kompetensi" action={<span className="text-[10px] text-slate-400">{data.performance.catKompetensi.length} catatan</span>}>
+            {data.performance.catKompetensi.length === 0 ? <Empty text="Belum ada catatan kompetensi." /> : data.performance.catKompetensi.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
             ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="kompetensi" />
+              <input name="judul" placeholder="Nama Kompetensi" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Level / Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal Asesmen" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
-          <Card title="Reward & Recognition" action={<ModuleLink href="/hrd/rewards/awards" label="Kelola di Reward" />}>
-            {data.performance.penghargaan.length === 0 ? <Empty text="Belum ada penghargaan." /> : data.performance.penghargaan.map(p => (
-              <Row key={p.id as string}><span className="font-semibold text-slate-700">{p.category as string}</span><span className="text-[11px] text-slate-400">{p.award_date as string}</span></Row>
+          <Card title="Reward & Recognition" action={<span className="text-[10px] text-slate-400">{data.performance.catReward.length} catatan</span>}>
+            {data.performance.catReward.length === 0 ? <Empty text="Belum ada catatan reward." /> : data.performance.catReward.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
             ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="reward" />
+              <input name="judul" placeholder="Nama Penghargaan" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Kategori / Pemberi" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
-          <Card title="Disiplin" action={<ModuleLink href="/hrd/relations/warnings" label="Kelola di Hubungan Karyawan" />}>
-            {data.performance.peringatan.length === 0 ? <Empty text="Tidak ada surat peringatan." /> : data.performance.peringatan.map(p => (
-              <Row key={p.id as string}><span className="font-semibold text-slate-700">{(p.type as string) || (p.level as string) || "SP"}</span><span className="text-[11px] text-slate-400">{p.created_at ? String(p.created_at).slice(0, 10) : ""}</span></Row>
+          <Card title="Disiplin" action={<span className="text-[10px] text-slate-400">{data.performance.catDisiplin.length} catatan</span>}>
+            {data.performance.catDisiplin.length === 0 ? <Empty text="Tidak ada catatan disiplin." /> : data.performance.catDisiplin.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
             ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="disiplin" />
+              <input name="judul" placeholder="Jenis Pelanggaran / SP" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
-          <Card title="Talent Management" action={<ModuleLink href="/hrd/succession" label="Kelola di Suksesi" />}>
-            <div className="text-xs space-y-1.5">
-              <p><span className="text-slate-400">Pool Suksesi:</span> <span className="font-semibold text-slate-700">{data.performance.poolSuksesi ? (data.performance.poolSuksesi as Record<string, unknown>).potential_rating as string : "Belum masuk pool"}</span></p>
-              <p><span className="text-slate-400">Kandidat Suksesor:</span> <span className="font-semibold text-slate-700">{data.performance.kandidatSuksesor ? "Ya" : "Belum"}</span></p>
-            </div>
+          <Card title="Talent Management" action={<span className="text-[10px] text-slate-400">{data.performance.catTalent.length} catatan</span>}>
+            {data.performance.catTalent.length === 0 ? <Empty text="Belum ada catatan talent." /> : data.performance.catTalent.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
+            ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="talent" />
+              <input name="judul" placeholder="Pool / Program Talent" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Potensi / Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
         </div>
       )}
 
       {tab === "compensation" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card title="Payroll & Compensation" action={<ModuleLink href="/hrd/rewards/payroll" label="Kelola di Payroll" />}>
-            {data.compensation.strukturGaji ? (
-              <div className="grid grid-cols-2 gap-y-1 text-xs">
-                <span className="text-slate-400">Gaji Pokok</span><span className="font-semibold text-slate-700">Rp {Number((data.compensation.strukturGaji as Record<string, unknown>).basic_salary || 0).toLocaleString("id-ID")}</span>
-                <span className="text-slate-400">PTKP</span><span className="font-semibold text-slate-700">{(data.compensation.strukturGaji as Record<string, unknown>).ptkp_status as string || "—"}</span>
-              </div>
-            ) : <Empty text="Belum ada struktur gaji." />}
+          <Card title="Payroll & Compensation" action={<span className="text-[10px] text-slate-400">{data.compensation.catPayroll.length} catatan</span>}>
+            {data.compensation.catPayroll.length === 0 ? <Empty text="Belum ada catatan payroll." /> : data.compensation.catPayroll.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
+            ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="payroll" />
+              <input name="judul" placeholder="Periode / Komponen" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Nominal / Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
           <Card title="Riwayat Gaji">
             {data.compensation.penggajian.length === 0 ? <Empty text="Belum ada riwayat payroll." /> : data.compensation.penggajian.slice(0, 6).map(p => (
@@ -286,24 +421,60 @@ export default function Employee360Client({ data }: { data: Data }) {
 
       {tab === "attendance" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card title="Absensi (30 terakhir)" action={<ModuleLink href="/hrd/attendance" label="Kelola di Absensi" />}>
-            {data.attendance.absensi.length === 0 ? <Empty text="Belum ada data absensi." /> : data.attendance.absensi.slice(0, 10).map(a => (
-              <Row key={a.id as string}><span className="font-semibold text-slate-700">{a.created_at ? String(a.created_at).slice(0, 10) : ""}</span><span className="text-[11px] text-slate-400">{(a.status as string) || (a.type as string) || ""}</span></Row>
+          <Card title="Absensi" action={<span className="text-[10px] text-slate-400">{data.attendance.catAbsensi.length} catatan</span>}>
+            {data.attendance.catAbsensi.length === 0 ? <Empty text="Belum ada catatan absensi." /> : data.attendance.catAbsensi.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
             ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="absensi" />
+              <input name="judul" placeholder="Keterangan Absensi" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Jenis (Hadir/Izin/Sakit/dst)" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
-          <Card title="Cuti" action={<ModuleLink href="/hrd/leaves" label="Kelola di Cuti" />}>
-            {data.attendance.cuti.length === 0 ? <Empty text="Belum ada pengajuan cuti." /> : data.attendance.cuti.map(c => (
-              <Row key={c.id as string}><span className="font-semibold text-slate-700">{(c.leave_type as string) || (c.type as string) || "Cuti"}</span><span className="text-[11px] text-slate-400">{(c.status as string) || ""}</span></Row>
+          <Card title="Cuti" action={<span className="text-[10px] text-slate-400">{data.attendance.catCuti.length} catatan</span>}>
+            {data.attendance.catCuti.length === 0 ? <Empty text="Belum ada catatan cuti." /> : data.attendance.catCuti.map(c => (
+              <Row key={c.id}>
+                <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+              </Row>
             ))}
+            <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="kategori" value="cuti" />
+              <input name="judul" placeholder="Jenis Cuti" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="subjudul" placeholder="Alasan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="tanggal" placeholder="Tanggal Mulai" className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="status" placeholder="Status (Disetujui/Ditolak)" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+            </form>
           </Card>
         </div>
       )}
 
       {tab === "health" && (
-        <Card title="Medical & HSE" action={<ModuleLink href="/hrd/incidents" label="Kelola di Laporan Insiden" />}>
-          {data.health.insiden.length === 0 ? <Empty text="Tidak ada laporan insiden/kesehatan." /> : data.health.insiden.map(i => (
-            <Row key={i.id as string}><span className="font-semibold text-slate-700">{(i.category as string) || (i.type as string) || "Insiden"}</span><span className="text-[11px] text-slate-400">{i.created_at ? String(i.created_at).slice(0, 10) : ""}</span></Row>
+        <Card title="Medical & HSE" action={<span className="text-[10px] text-slate-400">{data.health.catMedical.length} catatan</span>}>
+          {data.health.catMedical.length === 0 ? <Empty text="Tidak ada catatan medical/HSE." /> : data.health.catMedical.map(c => (
+            <Row key={c.id}>
+              <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+              <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+            </Row>
           ))}
+          <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+            <input type="hidden" name="email" value={email} />
+            <input type="hidden" name="kategori" value="medical" />
+            <input name="judul" placeholder="Judul (MCU/Insiden/Vaksin/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+            <input name="subjudul" placeholder="Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+            <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+            <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+            <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+          </form>
         </Card>
       )}
 
@@ -338,35 +509,69 @@ export default function Employee360Client({ data }: { data: Data }) {
             </Row>
           ))}
           <form action={fd => runAction(addPersonalDocument, fd)} className="mt-3 grid grid-cols-2 gap-2">
-            <input type="hidden" name="karyawan_id" value={karyawanId} />
-            <input name="jenis" placeholder="Jenis (KTP/Ijazah/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs" />
-            <input name="judul" placeholder="Judul Dokumen" required className="border border-gray-200 p-2 rounded-lg text-xs" />
-            <input name="catatan" placeholder="Catatan (opsional)" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
-            <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah Dokumen</button>
-          </form>
-        </Card>
-      )}
+              <input name="jenis" placeholder="Jenis (KTP/Ijazah/dst)" required className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="judul" placeholder="Judul Dokumen" required className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="catatan" placeholder="Catatan (opsional)" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah Dokumen</button>
+            </form>
+          </Card>
+        )}
 
-      {tab === "experience" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card title="Survei Keterlibatan" action={<ModuleLink href="/hrd/relations/surveys" label="Kelola di Survei Karyawan" />}>
-            {data.experience.survei.length === 0 ? <Empty text="Belum mengisi survei." /> : data.experience.survei.map(s => (
-              <Row key={s.id as string}><span className="font-semibold text-slate-700">Survei #{(s.survey_id as string)?.slice(0, 8)}</span><span className="text-[11px] text-slate-400">{s.submitted_at ? String(s.submitted_at).slice(0, 10) : ""}</span></Row>
-            ))}
-          </Card>
-          <Card title="Keluhan" action={<ModuleLink href="/hrd/relations/complaints" label="Kelola di Hubungan Karyawan" />}>
-            {data.experience.keluhan.length === 0 ? <Empty text="Tidak ada keluhan." /> : data.experience.keluhan.map(kl => (
-              <Row key={kl.id as string}><span className="font-semibold text-slate-700">{(kl.category as string) || "Keluhan"}</span><span className="text-[11px] text-slate-400">{(kl.status as string) || ""}</span></Row>
-            ))}
-          </Card>
-        </div>
-      )}
+        {tab === "experience" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card title="Survei Keterlibatan" action={<span className="text-[10px] text-slate-400">{data.experience.catSurvei.length} catatan</span>}>
+              {data.experience.catSurvei.length === 0 ? <Empty text="Belum ada catatan survei." /> : data.experience.catSurvei.map(c => (
+                <Row key={c.id}>
+                  <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                  <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+                </Row>
+              ))}
+              <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+                <input type="hidden" name="email" value={email} />
+                <input type="hidden" name="kategori" value="survei" />
+                <input name="judul" placeholder="Nama Survei" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+                <input name="subjudul" placeholder="Skor / Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+                <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+                <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+              </form>
+            </Card>
+            <Card title="Keluhan" action={<span className="text-[10px] text-slate-400">{data.experience.catKeluhan.length} catatan</span>}>
+              {data.experience.catKeluhan.length === 0 ? <Empty text="Tidak ada catatan keluhan." /> : data.experience.catKeluhan.map(c => (
+                <Row key={c.id}>
+                  <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+                  <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+                </Row>
+              ))}
+              <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+                <input type="hidden" name="email" value={email} />
+                <input type="hidden" name="kategori" value="keluhan" />
+                <input name="judul" placeholder="Judul Keluhan" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+                <input name="subjudul" placeholder="Kategori / Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+                <input name="tanggal" placeholder="Tanggal" className="border border-gray-200 p-2 rounded-lg text-xs" />
+                <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+                <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+              </form>
+            </Card>
+          </div>
+        )}
 
       {tab === "offboarding" && (
-        <Card title="Terminasi / Pengunduran Diri" action={<ModuleLink href="/hrd/relations/resignations" label="Kelola di Hubungan Karyawan" />}>
-          {data.offboarding.resign.length === 0 ? <Empty text="Tidak ada proses offboarding." /> : data.offboarding.resign.map(r => (
-            <Row key={r.id as string}><span className="font-semibold text-slate-700">{(r.reason as string) || "Pengunduran Diri"}</span><span className="text-[11px] text-slate-400">{(r.status as string) || ""}</span></Row>
+        <Card title="Terminasi / Pengunduran Diri" action={<span className="text-[10px] text-slate-400">{data.offboarding.catResign.length} catatan</span>}>
+          {data.offboarding.catResign.length === 0 ? <Empty text="Tidak ada catatan offboarding." /> : data.offboarding.catResign.map(c => (
+            <Row key={c.id}>
+              <div><p className="font-semibold text-slate-800">{c.judul}</p><p className="text-[11px] text-slate-400">{c.subjudul || ""} {c.tanggal ? `· ${c.tanggal}` : ""} {c.status ? `· ${c.status}` : ""}</p></div>
+              <button onClick={() => runDeleteByEmail(deleteCatatan, c.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
+            </Row>
           ))}
+          <form action={fd => runAction(addCatatan, fd)} className="mt-3 grid grid-cols-2 gap-2">
+            <input type="hidden" name="email" value={email} />
+            <input type="hidden" name="kategori" value="resign" />
+            <input name="judul" placeholder="Jenis (Resign/Terminasi/Pensiun)" required className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+            <input name="subjudul" placeholder="Alasan / Keterangan" className="border border-gray-200 p-2 rounded-lg text-xs" />
+            <input name="tanggal" placeholder="Tanggal Efektif" className="border border-gray-200 p-2 rounded-lg text-xs" />
+            <input name="status" placeholder="Status" className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+            <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
+          </form>
         </Card>
       )}
     </div>
