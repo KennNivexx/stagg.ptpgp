@@ -171,15 +171,49 @@ export async function createDevelopmentPlan(formData: FormData) {
   const trainings = (formData.get("trainings") as string || "").trim() || null;
   const timeline = (formData.get("timeline") as string || "").trim() || null;
   const mentor = (formData.get("mentor") as string || "").trim() || null;
+  // Optional: links this IDP to a specific competency gap (see Gap Analysis
+  // "Buat IDP") instead of being purely freeform.
+  const skillId = (formData.get("skill_id") as string || "").trim() || null;
+  const jenisAksi = (formData.get("jenis_aksi") as string || "Training").trim();
+  const gapValueRaw = formData.get("gap_value") as string;
+  const gapValue = gapValueRaw ? parseInt(gapValueRaw, 10) : null;
   if (!employeeId || !goals) return { error: "Karyawan dan tujuan pengembangan wajib diisi." };
   const { error } = await supabaseAdmin.from("rencana_pengembangan").insert({
     id: "dp-" + crypto.randomUUID(), employee_id: employeeId,
     goals, trainings, timeline, mentor, progress: 0, status: "Aktif",
+    skill_id: skillId, jenis_aksi: jenisAksi, gap_value: gapValue,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
   if (error) { console.error("[career-hrd] createDevelopmentPlan error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/plans");
+  return { success: true };
+}
+
+/** Creates an IDP directly from one Gap Analysis row (Employee 360°'s "Buat
+ * IDP" button) — same table as createDevelopmentPlan above, just pre-filled
+ * from the gap instead of a manual form, and linked via skill_id/gap_value
+ * so the plan traces back to the specific competency shortfall that caused it. */
+export async function createIdpFromGap(karyawanId: string, skillId: string, gapValue: number): Promise<{ error: string } | { success: true }> {
+  await requireRole("hrd", "superadmin");
+  if (!karyawanId || !skillId) return { error: "Karyawan dan kompetensi wajib diisi." };
+
+  const { data: skill } = await supabaseAdmin.from("master_kompetensi").select("name").eq("id", skillId).maybeSingle();
+  const skillName = (skill as { name: string } | null)?.name || "kompetensi ini";
+
+  const now = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("rencana_pengembangan").insert({
+    id: "dp-" + crypto.randomUUID(), employee_id: karyawanId,
+    goals: `Menutup kesenjangan kompetensi "${skillName}" (gap ${gapValue}).`,
+    trainings: skillName, timeline: null, mentor: null, progress: 0, status: "Aktif",
+    skill_id: skillId, jenis_aksi: "Training", gap_value: gapValue,
+    created_at: now, updated_at: now,
+  });
+  if (error?.code === "42P01" || error?.code === "PGRST204") return { error: "Jalankan migrasi 20260714001_competency_position_link.sql terlebih dahulu." };
+  if (error) { console.error("[career-hrd] createIdpFromGap error:", error.message); return { error: "Gagal membuat IDP." }; }
+
+  revalidatePath("/hrd/career/plans");
+  revalidatePath("/hrd/competency/gap");
   return { success: true };
 }
 

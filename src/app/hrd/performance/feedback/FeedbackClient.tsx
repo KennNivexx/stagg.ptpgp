@@ -6,16 +6,20 @@ import { saveFeedback } from "@/app/actions/performance-hrd";
 import EmptyState from "@/components/EmptyState";
 
 interface Employee { id: string; full_name: string; kode?: string; department: string; }
-interface FeedbackEntry { id: string; employee_id: string; reviewer_name: string; category: string; rating: number; comment: string; created_at: string; karyawan?: { full_name: string; kode?: string; department: string; position?: string; }; }
+interface Budaya { id: string; nama: string; }
+interface FeedbackEntry { id: string; employee_id: string; reviewer_name: string; category: string; rating: number; comment: string; created_at: string; budaya_id?: string | null; reviewer_role?: string | null; period?: string | null; karyawan?: { full_name: string; kode?: string; department: string; position?: string; }; }
 
 const CATEGORIES = ["Kinerja", "Kerjasama Tim", "Kepemimpinan", "Komunikasi", "Kehadiran", "Inisiatif", "Teknis"];
+const REVIEWER_ROLES = [{ value: "self", label: "Self" }, { value: "supervisor", label: "Supervisor" }, { value: "peer", label: "Peer" }];
 
 export default function FeedbackClient({
   employees,
   initialHistory,
+  budayaList,
 }: {
   employees: Employee[];
   initialHistory: FeedbackEntry[];
+  budayaList: Budaya[];
 }) {
   const [empId, setEmpId] = useState("");
   const [reviewerName, setReviewerName] = useState("");
@@ -23,6 +27,9 @@ export default function FeedbackClient({
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
+  const [budayaId, setBudayaId] = useState("");
+  const [reviewerRole, setReviewerRole] = useState("");
+  const [period, setPeriod] = useState("");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [history, setHistory] = useState<FeedbackEntry[]>(initialHistory);
@@ -40,6 +47,9 @@ export default function FeedbackClient({
     fd.append("category", category);
     fd.append("rating", rating.toString());
     fd.append("comment", comment);
+    if (budayaId) fd.append("budaya_id", budayaId);
+    if (reviewerRole) fd.append("reviewer_role", reviewerRole);
+    if (period) fd.append("period", period);
     const result = await saveFeedback(fd);
     setSaving(false);
     if (result?.error) { showToast(result.error); return; }
@@ -50,11 +60,13 @@ export default function FeedbackClient({
       employee_id: empId,
       reviewer_name: reviewerName.trim() || "Saya",
       category, rating, comment,
+      budaya_id: budayaId || null, reviewer_role: reviewerRole || null, period: period || null,
       created_at: new Date().toISOString(),
       karyawan: emp ? { full_name: emp.full_name, kode: emp.kode, department: emp.department } : undefined,
     };
     setHistory(prev => [newEntry, ...prev]);
     setEmpId(""); setReviewerName(""); setCategory(""); setRating(0); setComment("");
+    setBudayaId(""); setReviewerRole(""); setPeriod("");
   };
 
   return (
@@ -118,6 +130,29 @@ export default function FeedbackClient({
                   </button>
                 ))}
                 {rating > 0 && <span className="text-xs text-slate-500 ml-1">{rating}/5</span>}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Core Value (opsional — untuk Culture Score)</label>
+              <select value={budayaId} onChange={e => setBudayaId(e.target.value)}
+                className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
+                <option value="">Umpan balik umum (tanpa Core Value)</option>
+                {budayaList.map(b => <option key={b.id} value={b.id}>{b.nama}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Peran Reviewer</label>
+                <select value={reviewerRole} onChange={e => setReviewerRole(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
+                  <option value="">-</option>
+                  {REVIEWER_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Periode</label>
+                <input type="text" value={period} onChange={e => setPeriod(e.target.value)} placeholder="Q1 2026"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]" />
               </div>
             </div>
             <div className="md:col-span-2 space-y-1.5">
@@ -211,6 +246,31 @@ export default function FeedbackClient({
             })}
           </div>
         </div>
+
+        {budayaList.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <h3 className="font-extrabold text-slate-800 text-sm mb-4">Skor Culture per Value</h3>
+            <div className="space-y-3">
+              {budayaList.map(b => {
+                const budayaFeedback = history.filter(fb => fb.budaya_id === b.id);
+                const avg = budayaFeedback.length > 0
+                  ? (budayaFeedback.reduce((sum, fb) => sum + (Number(fb.rating) || 0), 0) / budayaFeedback.length)
+                  : 0;
+                return (
+                  <div key={b.id}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-semibold text-slate-700">{b.nama}</span>
+                      <span className="text-slate-400">{budayaFeedback.length > 0 ? avg.toFixed(1) : "—"}</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-indigo-500" style={{ width: `${(avg / 5) * 100}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

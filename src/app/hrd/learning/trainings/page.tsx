@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  GraduationCap, Calendar, Users, X, Save, Pencil, Trash2,
+  GraduationCap, Calendar, Users, X, Save, Pencil, Trash2, Plus,
   AlertTriangle, CheckCircle2, Clock, Inbox, ThumbsUp, ThumbsDown, Building2,
 } from "lucide-react";
 import {
@@ -32,6 +32,13 @@ type Training = {
   source_request_id?: string | null;
   created_at?: string;
   updated_at?: string;
+  category?: string | null;
+  method?: string | null;
+  provider?: string | null;
+  instruktur?: string | null;
+  jenis_instruktur?: string | null;
+  lokasi?: string | null;
+  durasi_jam?: number | null;
 };
 
 type Enrollment = {
@@ -74,10 +81,12 @@ export default function TrainingsPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
 
-  const [modal, setModal] = useState<null | "edit" | "del">(null);
-  const [formData, setFormData] = useState({
+  const [modal, setModal] = useState<null | "add" | "edit" | "del">(null);
+  const EMPTY_FORM = {
     id: "", title: "", skill_id: "", description: "", date_start: "", date_end: "", status: "Planned",
-  });
+    category: "", method: "Offline", provider: "", instruktur: "", jenis_instruktur: "Internal", lokasi: "", durasi_jam: "",
+  };
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [formErr, setFormErr] = useState("");
   const [formLoading, setFormLoading] = useState(false);
 
@@ -171,11 +180,20 @@ export default function TrainingsPage() {
     return map;
   }, [skills]);
 
+  const openAdd = () => {
+    setFormData(EMPTY_FORM);
+    setFormErr("");
+    setModal("add");
+  };
+
   const openEdit = (t: Training) => {
     setFormData({
       id: t.id, title: t.title, skill_id: t.skill_id || "",
       description: t.description || "", date_start: t.date_start || "",
       date_end: t.date_end || "", status: t.status || "Planned",
+      category: t.category || "", method: t.method || "Offline", provider: t.provider || "",
+      instruktur: t.instruktur || "", jenis_instruktur: t.jenis_instruktur || "Internal",
+      lokasi: t.lokasi || "", durasi_jam: t.durasi_jam != null ? String(t.durasi_jam) : "",
     });
     setFormErr("");
     setModal("edit");
@@ -189,7 +207,7 @@ export default function TrainingsPage() {
 
   const closeModal = () => {
     setModal(null);
-    setFormData({ id: "", title: "", skill_id: "", description: "", date_start: "", date_end: "", status: "Planned" });
+    setFormData(EMPTY_FORM);
     setFormErr("");
   };
 
@@ -212,6 +230,13 @@ export default function TrainingsPage() {
     fd.append("date_start", formData.date_start);
     fd.append("date_end", formData.date_end);
     fd.append("status", formData.status);
+    fd.append("category", formData.category);
+    fd.append("method", formData.method);
+    fd.append("provider", formData.provider);
+    fd.append("instruktur", formData.instruktur);
+    fd.append("jenis_instruktur", formData.jenis_instruktur);
+    fd.append("lokasi", formData.lokasi);
+    fd.append("durasi_jam", formData.durasi_jam);
 
     const r = await saveTraining(fd);
     setFormLoading(false);
@@ -261,12 +286,17 @@ export default function TrainingsPage() {
         </div>
       )}
 
-      <div>
-        <h1 className="text-2xl font-bold text-[#1A2530]">Daftar Training</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Kelola pelatihan, jadwal, dan peserta training perusahaan. Program baru hanya dibuat dengan menyetujui
-          <span className="font-semibold"> Permintaan Training</span> yang diajukan Kepala Departemen berdasarkan Analisis Kesenjangan Kompetensi.
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1A2530]">Daftar Training</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Kelola pelatihan, jadwal, dan peserta training perusahaan. Bisa dibuat manual, atau otomatis lewat
+            <span className="font-semibold"> Permintaan Training</span>/<span className="font-semibold">Training Need Analysis</span>.
+          </p>
+        </div>
+        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 bg-[#CC0000] hover:bg-[#aa0000] text-white text-sm font-bold rounded-xl transition-colors shrink-0">
+          <Plus size={16} /> Tambah Training Baru
+        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -538,9 +568,11 @@ export default function TrainingsPage() {
           <div className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className={`px-5 py-4 flex items-center justify-between ${modal === "del" ? "bg-red-500" : "bg-slate-900"}`}>
               <div className="flex items-center gap-2.5">
+                {modal === "add" && <Plus size={18} className="text-emerald-400" />}
                 {modal === "edit" && <Pencil size={18} className="text-sky-400" />}
                 {modal === "del" && <Trash2 size={18} className="text-white" />}
                 <h3 className="text-white font-bold text-sm">
+                  {modal === "add" && "Tambah Training Baru"}
                   {modal === "edit" && `Edit: ${formData.title}`}
                   {modal === "del" && "Hapus Training?"}
                 </h3>
@@ -635,19 +667,63 @@ export default function TrainingsPage() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all"
-                  >
-                    <option value="Planned">Planned</option>
-                    <option value="Ongoing">Ongoing</option>
-                    <option value="Completed">Completed</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kategori</label>
+                    <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      placeholder="Cth: Leadership, Teknis"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Metode</label>
+                    <select value={formData.method} onChange={(e) => setFormData({ ...formData, method: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all">
+                      <option value="Offline">Offline</option>
+                      <option value="Online">Online</option>
+                      <option value="Blended">Blended</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Provider</label>
+                    <input type="text" value={formData.provider} onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Lokasi</label>
+                    <input type="text" value={formData.lokasi} onChange={(e) => setFormData({ ...formData, lokasi: e.target.value })}
+                      placeholder="Ruang training / link online"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Instruktur</label>
+                    <input type="text" value={formData.instruktur} onChange={(e) => setFormData({ ...formData, instruktur: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Jenis Instruktur</label>
+                    <select value={formData.jenis_instruktur} onChange={(e) => setFormData({ ...formData, jenis_instruktur: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all">
+                      <option value="Internal">Internal</option>
+                      <option value="Eksternal">Eksternal</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Durasi (jam)</label>
+                    <input type="number" min="0" step="0.5" value={formData.durasi_jam} onChange={(e) => setFormData({ ...formData, durasi_jam: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all"
+                    >
+                      <option value="Planned">Planned</option>
+                      <option value="Ongoing">Ongoing</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                  </div>
                 </div>
                 {formErr && (
                   <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">

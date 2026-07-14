@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { Target, TrendingUp, Star, Award, Users, Eye } from "lucide-react";
+import { Target, TrendingUp, Star, Award, Users, Eye, Sparkles } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
@@ -30,6 +30,12 @@ export default async function HRDPerformance() {
 
   const pendingEvals = (evaluations || []).filter((e: Record<string, unknown>) => e.status === "Pending" || e.status === "Draft").length;
 
+  const cultureScores = (evaluations || [])
+    .map((e: Record<string, unknown>) => e.culture_score)
+    .filter((v): v is number => v != null)
+    .map((v) => Number(v));
+  const avgCultureScore = cultureScores.length > 0 ? cultureScores.reduce((s, n) => s + n, 0) / cultureScores.length : 0;
+
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div>
@@ -37,9 +43,9 @@ export default async function HRDPerformance() {
         <p className="text-sm text-gray-500">Penilaian kinerja dan evaluasi karyawan</p>
       </div>
 
-      <SectionQuickLinks groupLabel="Penilaian Kinerja" excludeHref="/hrd/performance" />
+      <SectionQuickLinks groupLabel="Performance Management" excludeHref="/hrd/performance" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Target size={18} /></div>
@@ -77,6 +83,15 @@ export default async function HRDPerformance() {
             </div>
           </div>
         </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Sparkles size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Rata-rata Culture Score</p>
+              <p className="text-xl font-extrabold text-slate-800">{cultureScores.length > 0 ? avgCultureScore.toFixed(1) : "-"}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
@@ -102,6 +117,7 @@ export default async function HRDPerformance() {
                   <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Periode</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Skor</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nilai</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Skor Akhir</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="text-right px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</th>
                 </tr>
@@ -144,6 +160,11 @@ export default async function HRDPerformance() {
                         }`}>
                           {score >= 80 ? "A" : score >= 60 ? "B" : score >= 40 ? "C" : "D"}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {ev.final_score != null ? (
+                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700">{Number(ev.final_score).toFixed(0)}</span>
+                        ) : <span className="text-[10px] text-slate-300">-</span>}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${

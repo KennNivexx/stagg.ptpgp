@@ -1,20 +1,55 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { Users, Award, Star, Search, Target } from "lucide-react";
+import { Users, Award, Star, Search, Target, AlertTriangle, ShieldAlert } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDCompetency() {
-  const [skillsRes, posSkillsRes, empSkillsRes, employeesRes] = await Promise.all([
+  const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [skillsRes, posSkillsRes, empSkillsRes, employeesRes, expiringLicensesRes] = await Promise.all([
     supabaseAdmin.from("master_kompetensi").select("id, name, category").order("category"),
-    supabaseAdmin.from("kompetensi_jabatan").select("position_code, skill_id"),
-    supabaseAdmin.from("kompetensi_karyawan").select("employee_id, current_level"),
+    supabaseAdmin.from("kompetensi_jabatan").select("position_code, skill_id, required_level"),
+    supabaseAdmin.from("kompetensi_karyawan").select("employee_id, skill_id, current_level"),
     supabaseAdmin.from("karyawan").select("id, full_name, department, position, status").order("full_name", { ascending: true }),
+    // Sertifikasi mendekati kedaluwarsa (30 hari ke depan) — tabel sudah ada
+    // dari Infrastruktur/Employee 360°, bukan tabel baru.
+    supabaseAdmin.from("sim_sertifikasi_karyawan").select("id, expiry_date").gte("expiry_date", today).lte("expiry_date", in30Days),
   ]);
 
   const skills = skillsRes.data || [];
   const posSkills = posSkillsRes.data || [];
   const empSkills = empSkillsRes.data || [];
   const employees = employeesRes.data || [];
+  const expiringLicenses = expiringLicensesRes.data || [];
+
+  // Kompetensi Kritis: skill dengan jumlah karyawan ber-gap-negatif
+  // terbanyak (perkiraan cepat via position_code == karyawan.position,
+  // sama seperti perhitungan lama di gap/page.tsx — Gap Analysis penuh di
+  // halamannya sendiri sudah pakai rantai Employee Assignment yang benar).
+  const posReqMap: Record<string, Record<string, number>> = {};
+  for (const ps of posSkills as { position_code: string; skill_id: string; required_level: number }[]) {
+    if (!posReqMap[ps.position_code]) posReqMap[ps.position_code] = {};
+    posReqMap[ps.position_code][ps.skill_id] = ps.required_level;
+  }
+  const empCurrentMap: Record<string, Record<string, number>> = {};
+  for (const es of empSkills as { employee_id: string; skill_id: string; current_level: number }[]) {
+    if (!empCurrentMap[es.employee_id]) empCurrentMap[es.employee_id] = {};
+    empCurrentMap[es.employee_id][es.skill_id] = es.current_level;
+  }
+  const criticalCount: Record<string, number> = {};
+  for (const emp of employees as { id: string; position: string }[]) {
+    const req = posReqMap[emp.position];
+    if (!req) continue;
+    for (const [skillId, reqLevel] of Object.entries(req)) {
+      const current = empCurrentMap[emp.id]?.[skillId] ?? 0;
+      if (current - reqLevel < 0) criticalCount[skillId] = (criticalCount[skillId] || 0) + 1;
+    }
+  }
+  const skillNameById = new Map((skills as { id: string; name: string }[]).map(s => [s.id, s.name]));
+  const topCritical = Object.entries(criticalCount).sort((a, b) => b[1] - a[1])[0];
+  const criticalSkillName = topCritical ? skillNameById.get(topCritical[0]) || "—" : null;
+  const criticalSkillCount = topCritical ? topCritical[1] : 0;
 
   const totalSkills = skills.length;
   const totalEmployees = employees.length;
@@ -64,7 +99,7 @@ export default async function HRDCompetency() {
 
       <SectionQuickLinks groupLabel="Kompetensi" excludeHref="/hrd/competency" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Users size={18} /></div>
@@ -98,6 +133,26 @@ export default async function HRDCompetency() {
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Karyawan Dinilai</p>
               <p className="text-xl font-extrabold text-slate-800">{assessedEmployees.size}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-red-50 text-red-600 rounded-xl"><AlertTriangle size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Kompetensi Kritis</p>
+              <p className="text-sm font-extrabold text-slate-800 truncate max-w-[140px]" title={criticalSkillName || undefined}>{criticalSkillName || "—"}</p>
+              {topCritical && <p className="text-[9px] text-red-500 font-semibold">{criticalSkillCount} karyawan bergap</p>}
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-orange-50 text-orange-600 rounded-xl"><ShieldAlert size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Sertifikasi Kedaluwarsa</p>
+              <p className="text-xl font-extrabold text-slate-800">{expiringLicenses.length}</p>
+              <p className="text-[9px] text-orange-500 font-semibold">dalam 30 hari</p>
             </div>
           </div>
         </div>

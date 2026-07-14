@@ -3,7 +3,7 @@ import { Target, TrendingUp, Award, Users } from "lucide-react";
 import KpiForm from "./KpiForm";
 
 export default async function KPIPage() {
-  const [{ data: evaluations }, { data: employees }] = await Promise.all([
+  const [{ data: evaluations }, { data: employees }, { data: formasiList }, { data: kpiCatalog }] = await Promise.all([
     supabaseAdmin
       .from("evaluasi_kpi")
       .select("*, karyawan!inner(full_name, department, position)")
@@ -11,10 +11,19 @@ export default async function KPIPage() {
       .limit(50),
     supabaseAdmin
       .from("karyawan")
-      .select("id, full_name, kode, department, position")
+      .select("id, full_name, kode, department, position, formasi_id")
       .neq("email", "superadmin@ptpgp.co.id")
       .limit(100),
+    supabaseAdmin.from("formasi_jabatan").select("id, jabatan_id"),
+    supabaseAdmin.from("kpi_jabatan").select("*").eq("aktif", true).order("urutan", { ascending: true }),
   ]);
+
+  // Employee Assignment chain: karyawan.formasi_id -> formasi_jabatan.jabatan_id
+  // — same resolution pattern used by Competency Gap Analysis / Learning TNA.
+  const formasiToJabatan = new Map(((formasiList || []) as { id: string; jabatan_id: string }[]).map(f => [f.id, f.jabatan_id]));
+  const employeesWithJabatan = ((employees || []) as Array<{ id: string; full_name: string; kode?: string; department: string; position: string; formasi_id: string | null }>).map(e => ({
+    ...e, jabatan_id: e.formasi_id ? formasiToJabatan.get(e.formasi_id) || null : null,
+  }));
 
   const evals = (evaluations || []) as Array<Record<string, unknown>>;
   const scores = evals.filter((e) => e.score != null).map((e) => Number(e.score) || 0);
@@ -49,8 +58,9 @@ export default async function KPIPage() {
       </div>
 
       <KpiForm
-        employees={(employees || []) as Array<{ id: string; full_name: string; department: string; position: string }>}
+        employees={employeesWithJabatan}
         evaluations={evals}
+        kpiCatalog={(kpiCatalog || []) as Array<{ id: string; jabatan_id: string; nama_kpi: string; source_system: string | null; bobot_default: number }>}
       />
     </div>
   );

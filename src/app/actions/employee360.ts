@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { getKnowledgeForJabatan } from "@/app/actions/knowledge";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const revalidateProfile = (id: string) => revalidatePath(`/hrd/infrastructure/employees/${id}`);
@@ -128,10 +129,20 @@ export async function getEmployee360(karyawanId: string) {
     ? await supabaseAdmin.from("data_pribadi_karyawan").select("*").eq("email", email.toLowerCase()).maybeSingle()
     : { data: null };
 
+  // Mandatory Knowledge: resolve jabatan via Employee Assignment chain
+  // (karyawan.formasi_id -> formasi_jabatan.jabatan_id), same as Gap Analysis/TNA.
+  let mandatoryKnowledge: Awaited<ReturnType<typeof getKnowledgeForJabatan>> = [];
+  const formasiId = k.formasi_id as string | null;
+  if (formasiId) {
+    const { data: formasi } = await supabaseAdmin.from("formasi_jabatan").select("jabatan_id").eq("id", formasiId).maybeSingle();
+    const jabatanId = (formasi as { jabatan_id: string } | null)?.jabatan_id;
+    if (jabatanId) mandatoryKnowledge = await getKnowledgeForJabatan(jabatanId);
+  }
+
   return {
     karyawan: k,
     personal: { pendidikan: pendidikan || [], keluarga: keluarga || [], dataPribadi: dataPribadi || null },
-    recruitment: { pelamar: pelamar || null, sertifikat: sertifikat || [], peserta: peserta || [], catSertifikasi: catSertifikasi || [], catPelatihan: catPelatihan || [], catRekrutmen: catRekrutmen || [] },
+    recruitment: { pelamar: pelamar || null, sertifikat: sertifikat || [], peserta: peserta || [], catSertifikasi: catSertifikasi || [], catPelatihan: catPelatihan || [], catRekrutmen: catRekrutmen || [], mandatoryKnowledge },
     employment: { kontrak: kontrak || [], riwayatPosisi: riwayatPosisi || [], proyek: proyek || [], mutasi: mutasi || [], promosi: promosi || [], catKontrak: catKontrak || [], catMutasiPromosi: catMutasiPromosi || [] },
     performance: { kpi: kpi || [], feedback: feedback || [], rencana: rencana || [], kompetensi: kompetensi || [], penghargaan: penghargaan || [], peringatan: peringatan || [], kandidatSuksesor: kandidatSuksesor || null, poolSuksesi: poolSuksesi || null, catKpi: catKpi || [], catKompetensi: catKompetensi || [], catReward: catReward || [], catDisiplin: catDisiplin || [], catTalent: catTalent || [] },
     compensation: { penggajian: penggajianRows || [], strukturGaji: strukturGaji || null, catPayroll: catPayroll || [] },

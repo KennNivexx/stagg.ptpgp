@@ -83,24 +83,39 @@ export async function getTrainings() {
   }));
 }
 
-// Training programs can only ever be CREATED via reviewTrainingRequest()
-// approving a department head's gap-based request (see below) — HRD has no
-// path to add one from scratch. This function only ever UPDATES an existing
-// training (refining dates/description/status after auto-creation).
+// Master Data fields (kategori/metode/provider/instruktur/lokasi/jam) — read
+// once here and reused by both the create and update branches below.
+function readTrainingMasterFields(formData: FormData) {
+  return {
+    category: (formData.get("category") as string || "").trim() || null,
+    method: (formData.get("method") as string || "Offline").trim(),
+    provider: (formData.get("provider") as string || "").trim() || null,
+    instruktur: (formData.get("instruktur") as string || "").trim() || null,
+    jenis_instruktur: (formData.get("jenis_instruktur") as string || "Internal").trim(),
+    lokasi: (formData.get("lokasi") as string || "").trim() || null,
+    durasi_jam: formData.get("durasi_jam") ? Number(formData.get("durasi_jam")) : null,
+  };
+}
+
+/**
+ * Creates a training from scratch when no `id` is given (previously this
+ * function was update-only — the only ways to get a training row were via
+ * reviewTrainingRequest()/createTrainingFromGap()/createTrainingFromTNA(),
+ * with no manual "Katalog Pelatihan" entry point at all), otherwise updates
+ * the existing row.
+ */
 export async function saveTraining(formData: FormData) {
   await requireRole("hrd", "superadmin");
 
   const id = (formData.get("id") as string || "").trim();
-  if (!id) {
-    return { error: "Training baru hanya dapat dibuat melalui persetujuan Permintaan Training yang diajukan Kepala Departemen." };
-  }
-
   const title = (formData.get("title") as string || "").trim();
   const skill_id = (formData.get("skill_id") as string || "").trim();
   const description = (formData.get("description") as string || "").trim();
   const date_start = (formData.get("date_start") as string || "").trim();
   const date_end = (formData.get("date_end") as string || "").trim();
   const status = (formData.get("status") as string || "").trim();
+  const department = (formData.get("department") as string || "").trim();
+  const master = readTrainingMasterFields(formData);
 
   if (!title || !date_start || !date_end) return { error: "Judul, tanggal mulai, dan tanggal selesai wajib diisi." };
   const VALID_STATUSES = ["Planned", "Ongoing", "Completed", "Cancelled"];
@@ -109,8 +124,22 @@ export async function saveTraining(formData: FormData) {
   }
   if (new Date(date_end) < new Date(date_start)) return { error: "Tanggal selesai harus setelah tanggal mulai." };
 
+  if (!id) {
+    const newId = uid();
+    const { error } = await supabaseAdmin.from("pelatihan").insert({
+      id: newId, title, skill_id: skill_id || null, description,
+      date_start, date_end, status: status || "Planned", department: department || null,
+      ...master, created_at: new Date().toISOString(),
+    });
+    if (error?.code === "42703" || error?.code === "PGRST204") return { error: "Jalankan migrasi 20260715001_learning_training_management.sql terlebih dahulu." };
+    if (error) { console.error("[trainings] saveTraining insert error:", error.message); return { error: "Gagal membuat pelatihan." }; }
+    revalidatePath("/hrd/learning");
+    revalidatePath("/hrd/learning/trainings");
+    return { success: true, id: newId };
+  }
+
   const { error } = await supabaseAdmin.from("pelatihan").update({
-    title, skill_id: skill_id || null, description, date_start, date_end, status
+    title, skill_id: skill_id || null, description, date_start, date_end, status, ...master,
   }).eq("id", id);
   if (error) return { error: "Gagal mengupdate pelatihan." };
 
@@ -380,6 +409,160 @@ export async function createTrainingFromGap(params: {
   return { success: true, enrolledCount };
 }
 
+// ── Training Need Analysis (TNA) — persisted, org-wide gap scan ─────────────
+// Previously Gap Analysis was only ever live-computed on the fly (see
+// src/app/hrd/competency/gap/page.tsx) with no saved record of which gaps
+// have actually been acted on. generateTNA() snapshots the same resolution
+// chain (Employee Assignment -> Position Number -> Master Jabatan, falling
+// back to legacy position-text match) into tna_kompetensi so HR can track
+// status (Open/Assigned/Resolved) instead of re-deriving it from scratch
+// and losing track of what's already been turned into a training.
+
+export interface TnaRow {
+  id: string;
+  karyawan_id: string;
+  karyawan_nama: string;
+  skill_id: string;
+  skill_nama: string;
+  required_level: number;
+  current_level: number;
+  gap: number;
+  status: string;
+  pelatihan_id: string | null;
+}
+
+export async function generateTNA(): Promise<{ error: string } | { success: true; count: number }> {
+  await requireRole("hrd", "superadmin");
+
+  const [{ data: employees }, { data: skills }, { data: empSkills }, { data: posSkills }, { data: formasiList }] = await Promise.all([
+    supabaseAdmin.from("karyawan").select("id, position, formasi_id").neq("status", "Inactive"),
+    supabaseAdmin.from("master_kompetensi").select("id"),
+    supabaseAdmin.from("kompetensi_karyawan").select("employee_id, skill_id, current_level"),
+    supabaseAdmin.from("kompetensi_jabatan").select("position_code, skill_id, required_level, jabatan_id"),
+    supabaseAdmin.from("formasi_jabatan").select("id, jabatan_id"),
+  ]);
+  if (!employees || !skills) return { error: "Gagal memuat data untuk TNA." };
+
+  const formasiToJabatan = new Map((formasiList || []).map((f: { id: string; jabatan_id: string }) => [f.id, f.jabatan_id]));
+  const empCurrentMap: Record<string, Record<string, number>> = {};
+  for (const es of (empSkills || []) as { employee_id: string; skill_id: string; current_level: number }[]) {
+    if (!empCurrentMap[es.employee_id]) empCurrentMap[es.employee_id] = {};
+    empCurrentMap[es.employee_id][es.skill_id] = es.current_level;
+  }
+  const posReqMap: Record<string, Record<string, number>> = {};
+  const jabatanReqMap: Record<string, Record<string, number>> = {};
+  for (const ps of (posSkills || []) as { position_code: string; skill_id: string; required_level: number; jabatan_id: string | null }[]) {
+    if (!posReqMap[ps.position_code]) posReqMap[ps.position_code] = {};
+    posReqMap[ps.position_code][ps.skill_id] = ps.required_level;
+    if (ps.jabatan_id) {
+      if (!jabatanReqMap[ps.jabatan_id]) jabatanReqMap[ps.jabatan_id] = {};
+      jabatanReqMap[ps.jabatan_id][ps.skill_id] = ps.required_level;
+    }
+  }
+
+  const rows: { id: string; karyawan_id: string; skill_id: string; required_level: number; current_level: number; gap: number; status: string }[] = [];
+  for (const emp of employees as { id: string; position: string; formasi_id: string | null }[]) {
+    const jabatanId = emp.formasi_id ? formasiToJabatan.get(emp.formasi_id) : null;
+    for (const skill of skills as { id: string }[]) {
+      const required = (jabatanId ? jabatanReqMap[jabatanId]?.[skill.id] : undefined) ?? posReqMap[emp.position]?.[skill.id] ?? null;
+      if (required === null) continue;
+      const current = empCurrentMap[emp.id]?.[skill.id] ?? 0;
+      const gap = current - required;
+      if (gap >= 0) continue;
+      rows.push({
+        id: "tna-" + crypto.randomUUID(), karyawan_id: emp.id, skill_id: skill.id,
+        required_level: required, current_level: current, gap, status: "Open",
+      });
+    }
+  }
+
+  if (rows.length === 0) return { success: true, count: 0 };
+
+  const { error } = await supabaseAdmin.from("tna_kompetensi").upsert(rows, { onConflict: "karyawan_id,skill_id,status" });
+  if (error?.code === "42P01") return { error: "Jalankan migrasi 20260715001_learning_training_management.sql terlebih dahulu." };
+  if (error) { console.error("[trainings] generateTNA error:", error.message); return { error: "Gagal membuat TNA." }; }
+
+  revalidatePath("/hrd/learning/tna");
+  return { success: true, count: rows.length };
+}
+
+export async function getTNA(): Promise<TnaRow[]> {
+  await requireRole("hrd", "superadmin");
+  const { data: rows, error } = await supabaseAdmin.from("tna_kompetensi").select("*").order("gap", { ascending: true });
+  if (error || !rows) return [];
+
+  const empIds = [...new Set(rows.map((r: { karyawan_id: string }) => r.karyawan_id))];
+  const skillIds = [...new Set(rows.map((r: { skill_id: string }) => r.skill_id))];
+  const [{ data: emps }, { data: skills }] = await Promise.all([
+    empIds.length ? supabaseAdmin.from("karyawan").select("id, full_name").in("id", empIds) : Promise.resolve({ data: [] }),
+    skillIds.length ? supabaseAdmin.from("master_kompetensi").select("id, name").in("id", skillIds) : Promise.resolve({ data: [] }),
+  ]);
+  const empName = new Map(((emps || []) as { id: string; full_name: string }[]).map(e => [e.id, e.full_name]));
+  const skillName = new Map(((skills || []) as { id: string; name: string }[]).map(s => [s.id, s.name]));
+
+  return (rows as Record<string, unknown>[]).map(r => ({
+    id: r.id as string, karyawan_id: r.karyawan_id as string, karyawan_nama: empName.get(r.karyawan_id as string) || "—",
+    skill_id: r.skill_id as string, skill_nama: skillName.get(r.skill_id as string) || "—",
+    required_level: r.required_level as number, current_level: r.current_level as number, gap: r.gap as number,
+    status: r.status as string, pelatihan_id: (r.pelatihan_id as string) || null,
+  }));
+}
+
+/** Groups selected Open TNA rows by skill_id, creates one training per
+ * skill (reusing the same createTrainingFromGap shape), enrolls the
+ * relevant employees, then marks those TNA rows Assigned + linked. */
+export async function createTrainingFromTNA(tnaIds: string[]): Promise<{ error: string } | { success: true; createdCount: number }> {
+  const user = await requireRole("hrd", "superadmin");
+  if (!tnaIds || tnaIds.length === 0) return { error: "Pilih minimal satu baris TNA." };
+
+  const { data: rows } = await supabaseAdmin.from("tna_kompetensi").select("*").in("id", tnaIds).eq("status", "Open");
+  if (!rows || rows.length === 0) return { error: "Baris TNA tidak ditemukan atau sudah diproses." };
+
+  const skillIds = [...new Set((rows as { skill_id: string }[]).map(r => r.skill_id))];
+  const { data: skills } = await supabaseAdmin.from("master_kompetensi").select("id, name").in("id", skillIds);
+  const skillName = new Map(((skills || []) as { id: string; name: string }[]).map(s => [s.id, s.name]));
+
+  const empIds = [...new Set((rows as { karyawan_id: string }[]).map(r => r.karyawan_id))];
+  const { data: emps } = await supabaseAdmin.from("karyawan").select("id, department").in("id", empIds);
+  const empDept = new Map(((emps || []) as { id: string; department: string }[]).map(e => [e.id, e.department]));
+
+  const now = new Date();
+  const startDefault = now.toISOString().split("T")[0];
+  const endDefault = new Date(now.getTime() + 30 * 86_400_000).toISOString().split("T")[0];
+  let createdCount = 0;
+
+  const bySkill = new Map<string, { karyawan_id: string; department: string }[]>();
+  for (const r of rows as { id: string; karyawan_id: string; skill_id: string }[]) {
+    const dept = empDept.get(r.karyawan_id) || "";
+    if (!bySkill.has(r.skill_id)) bySkill.set(r.skill_id, []);
+    bySkill.get(r.skill_id)!.push({ karyawan_id: r.karyawan_id, department: dept });
+  }
+
+  for (const [skillId, participants] of bySkill) {
+    const trainingId = uid();
+    const { error: trainErr } = await supabaseAdmin.from("pelatihan").insert({
+      id: trainingId, title: `Pelatihan ${skillName.get(skillId) || skillId}`, skill_id: skillId,
+      description: `Dibuat oleh ${user.name || user.email} dari Training Need Analysis.`,
+      date_start: startDefault, date_end: endDefault, status: "Planned",
+      department: participants[0]?.department || null, budget_status: "Menunggu Direktur",
+      created_at: now.toISOString(),
+    });
+    if (trainErr) { console.error("[trainings] createTrainingFromTNA insert error:", trainErr.message); continue; }
+    createdCount++;
+
+    await supabaseAdmin.from("peserta_pelatihan").insert(
+      participants.map(p => ({ id: "te-" + crypto.randomUUID(), training_id: trainingId, employee_id: p.karyawan_id, status: "Enrolled", enrolled_at: now.toISOString() }))
+    );
+
+    const tnaIdsForSkill = (rows as { id: string; skill_id: string }[]).filter(r => r.skill_id === skillId).map(r => r.id);
+    await supabaseAdmin.from("tna_kompetensi").update({ status: "Assigned", pelatihan_id: trainingId }).in("id", tnaIdsForSkill);
+  }
+
+  revalidatePath("/hrd/learning/tna");
+  revalidatePath("/hrd/learning/trainings");
+  return { success: true, createdCount };
+}
+
 export async function getTrainingsAwaitingBudget() {
   await requireRole("director", "superadmin");
   const { data, error } = await supabaseAdmin
@@ -450,6 +633,69 @@ export async function reviewTrainingBudget(trainingId: string, approve: boolean,
   revalidatePath("/director/trainings");
   revalidatePath("/hrd/learning/trainings");
   revalidatePath("/employee/training");
+  return { success: true };
+}
+
+// ── Evaluasi Pelatihan (Kirkpatrick: Reaction/Learning/Behavior/Result) ─────
+
+export interface EvaluasiPelatihanRow {
+  id: string;
+  training_id: string;
+  karyawan_id: string;
+  karyawan_nama: string;
+  reaction_score: number | null;
+  learning_score: number | null;
+  behavior_score: number | null;
+  result_notes: string | null;
+}
+
+export async function getEvaluasiPelatihan(trainingId: string): Promise<EvaluasiPelatihanRow[]> {
+  await requireRole("hrd", "superadmin");
+  if (!trainingId) return [];
+
+  const [{ data: peserta }, { data: evaluasi }] = await Promise.all([
+    supabaseAdmin.from("peserta_pelatihan").select("employee_id, karyawan!inner(id, full_name)").eq("training_id", trainingId),
+    supabaseAdmin.from("evaluasi_pelatihan").select("*").eq("training_id", trainingId),
+  ]);
+  if (!peserta) return [];
+
+  const evalByEmp = new Map(((evaluasi || []) as Record<string, unknown>[]).map(e => [e.karyawan_id as string, e]));
+
+  return (peserta as Record<string, unknown>[]).map(p => {
+    const emp = p.karyawan as { id: string; full_name: string } | null;
+    const empId = emp?.id || (p.employee_id as string);
+    const e = evalByEmp.get(empId) as Record<string, unknown> | undefined;
+    return {
+      id: (e?.id as string) || "", training_id: trainingId, karyawan_id: empId,
+      karyawan_nama: emp?.full_name || "—",
+      reaction_score: (e?.reaction_score as number) ?? null, learning_score: (e?.learning_score as number) ?? null,
+      behavior_score: (e?.behavior_score as number) ?? null, result_notes: (e?.result_notes as string) || null,
+    };
+  });
+}
+
+export async function saveEvaluasiPelatihan(formData: FormData) {
+  await requireRole("hrd", "superadmin");
+
+  const training_id = (formData.get("training_id") as string || "").trim();
+  const karyawan_id = (formData.get("karyawan_id") as string || "").trim();
+  if (!training_id || !karyawan_id) return { error: "Training dan karyawan wajib diisi." };
+
+  const reaction_score = formData.get("reaction_score") ? parseInt(formData.get("reaction_score") as string, 10) : null;
+  const learning_score = formData.get("learning_score") ? parseInt(formData.get("learning_score") as string, 10) : null;
+  const behavior_score = formData.get("behavior_score") ? parseInt(formData.get("behavior_score") as string, 10) : null;
+  const result_notes = (formData.get("result_notes") as string || "").trim() || null;
+
+  const { data: existing } = await supabaseAdmin.from("evaluasi_pelatihan").select("id").eq("training_id", training_id).eq("karyawan_id", karyawan_id).maybeSingle();
+  const id = (existing as { id: string } | null)?.id || ("ev-" + crypto.randomUUID());
+
+  const { error } = await supabaseAdmin.from("evaluasi_pelatihan").upsert({
+    id, training_id, karyawan_id, reaction_score, learning_score, behavior_score, result_notes,
+  }, { onConflict: "training_id,karyawan_id" });
+  if (error?.code === "42P01") return { error: "Jalankan migrasi 20260715001_learning_training_management.sql terlebih dahulu." };
+  if (error) { console.error("[trainings] saveEvaluasiPelatihan error:", error.message); return { error: "Gagal menyimpan evaluasi." }; }
+
+  revalidatePath("/hrd/learning/evaluation");
   return { success: true };
 }
 

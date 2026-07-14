@@ -6,6 +6,7 @@ type Skill = {
   name: string;
   category: string;
   department?: string | null;
+  jenis_kompetensi?: string;
 };
 
 type Position = {
@@ -19,12 +20,13 @@ type PositionSkill = {
   position_code: string;
   skill_id: string;
   required_level: number;
+  jabatan_id?: string | null;
 };
 
 export default async function LibraryPage() {
   const [skillRes, posSkillRes, posRes] = await Promise.all([
-    supabaseAdmin.from("master_kompetensi").select("id, name, category, department").order("category").order("name"),
-    supabaseAdmin.from("kompetensi_jabatan").select("position_code, skill_id, required_level"),
+    supabaseAdmin.from("master_kompetensi").select("id, name, category, department, jenis_kompetensi").order("category").order("name"),
+    supabaseAdmin.from("kompetensi_jabatan").select("position_code, skill_id, required_level, jabatan_id"),
     supabaseAdmin.from("jabatan").select("id, name, department, level").order("name"),
   ]);
 

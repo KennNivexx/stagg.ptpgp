@@ -6,6 +6,7 @@ type Employee = {
   full_name: string;
   department: string;
   position: string;
+  formasi_id: string | null;
 };
 
 type Skill = {
@@ -24,6 +25,7 @@ type PositionSkill = {
   position_code: string;
   skill_id: string;
   required_level: number;
+  jabatan_id: string | null;
 };
 
 type GapRow = {
@@ -40,10 +42,10 @@ type GapRow = {
 };
 
 export default async function GapAnalysisPage() {
-  const [empRes, skillRes, empSkillRes, posSkillRes] = await Promise.all([
+  const [empRes, skillRes, empSkillRes, posSkillRes, formasiRes] = await Promise.all([
     supabaseAdmin
       .from("karyawan")
-      .select("id, full_name, department, position")
+      .select("id, full_name, department, position, formasi_id")
       .neq("status", "Inactive")
       .order("full_name", { ascending: true }),
     supabaseAdmin
@@ -55,7 +57,12 @@ export default async function GapAnalysisPage() {
       .select("employee_id, skill_id, current_level"),
     supabaseAdmin
       .from("kompetensi_jabatan")
-      .select("position_code, skill_id, required_level"),
+      .select("position_code, skill_id, required_level, jabatan_id"),
+    // Employee Assignment chain: karyawan.formasi_id -> formasi_jabatan.jabatan_id
+    // -> kompetensi_jabatan (via jabatan_id) — the actual "competency follows
+    // the position" resolution. position_code text-match below is now only a
+    // fallback for employees not yet assigned via Position Management.
+    supabaseAdmin.from("formasi_jabatan").select("id, jabatan_id"),
   ]);
 
   const employees: Employee[] = (empRes.data as Employee[]) || [];
@@ -64,6 +71,8 @@ export default async function GapAnalysisPage() {
     (empSkillRes.data as EmployeeSkill[]) || [];
   const positionSkills: PositionSkill[] =
     (posSkillRes.data as PositionSkill[]) || [];
+  const formasiList = (formasiRes.data as { id: string; jabatan_id: string }[]) || [];
+  const formasiToJabatan = new Map(formasiList.map(f => [f.id, f.jabatan_id]));
 
   const empSkillMap: Record<string, Record<string, number>> = {};
   for (const es of employeeSkills) {
@@ -72,16 +81,26 @@ export default async function GapAnalysisPage() {
   }
 
   const posSkillMap: Record<string, Record<string, number>> = {};
+  const jabatanSkillMap: Record<string, Record<string, number>> = {};
   for (const ps of positionSkills) {
     if (!posSkillMap[ps.position_code]) posSkillMap[ps.position_code] = {};
     posSkillMap[ps.position_code][ps.skill_id] = ps.required_level;
+    if (ps.jabatan_id) {
+      if (!jabatanSkillMap[ps.jabatan_id]) jabatanSkillMap[ps.jabatan_id] = {};
+      jabatanSkillMap[ps.jabatan_id][ps.skill_id] = ps.required_level;
+    }
   }
 
   const gapRows: GapRow[] = [];
   for (const emp of employees) {
+    const jabatanId = emp.formasi_id ? formasiToJabatan.get(emp.formasi_id) : null;
     for (const skill of skills) {
       const current = empSkillMap[emp.id]?.[skill.id] ?? null;
-      const required = posSkillMap[emp.position]?.[skill.id] ?? null;
+      // Employee Assignment chain first; fall back to legacy position-text
+      // match only when the employee has no formasi assignment yet, or that
+      // jabatan has no competency requirements defined via jabatan_id.
+      const required = (jabatanId ? jabatanSkillMap[jabatanId]?.[skill.id] : undefined)
+        ?? posSkillMap[emp.position]?.[skill.id] ?? null;
       // Skip if no required standard set for this position-skill combo
       if (required === null) continue;
       const effectiveCurrent = current ?? 0;

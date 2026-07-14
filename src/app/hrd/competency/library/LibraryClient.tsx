@@ -11,9 +11,9 @@ import {
 import PanduanLevelForm from "./PanduanLevelForm";
 import EmptyState from "@/components/EmptyState";
 
-type Skill = { id: string; name: string; category: string; department?: string | null };
+type Skill = { id: string; name: string; category: string; department?: string | null; jenis_kompetensi?: string };
 type Position = { id: string; name: string; department: string; level?: string };
-type PositionSkill = { id?: string; position_code: string; skill_id: string; required_level: number };
+type PositionSkill = { id?: string; position_code: string; skill_id: string; required_level: number; jabatan_id?: string | null };
 
 interface Props {
   skills: Skill[];
@@ -63,7 +63,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
 
   const [skillModal, setSkillModal] = useState<null | "add" | "edit" | "del">(null);
-  const [skillForm, setSkillForm] = useState({ id: "", name: "", category: "", department: "" });
+  const [skillForm, setSkillForm] = useState({ id: "", name: "", category: "", department: "", jenis_kompetensi: "Hard Skill" });
   const [skillFormErr, setSkillFormErr] = useState("");
   const [skillFormLoading, setSkillFormLoading] = useState(false);
 
@@ -184,26 +184,26 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   }, [posSkills]);
 
   const openAddSkill = () => {
-    setSkillForm({ id: "", name: "", category: "", department: "" });
+    setSkillForm({ id: "", name: "", category: "", department: "", jenis_kompetensi: "Hard Skill" });
     setSkillFormErr("");
     setSkillModal("add");
   };
 
   const openEditSkill = (s: Skill) => {
-    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "" });
+    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "", jenis_kompetensi: s.jenis_kompetensi || "Hard Skill" });
     setSkillFormErr("");
     setSkillModal("edit");
   };
 
   const openDelSkill = (s: Skill) => {
-    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "" });
+    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "", jenis_kompetensi: s.jenis_kompetensi || "Hard Skill" });
     setSkillFormErr("");
     setSkillModal("del");
   };
 
   const closeSkillModal = () => {
     setSkillModal(null);
-    setSkillForm({ id: "", name: "", category: "", department: "" });
+    setSkillForm({ id: "", name: "", category: "", department: "", jenis_kompetensi: "Hard Skill" });
     setSkillFormErr("");
   };
 
@@ -219,6 +219,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     if (skillForm.id) fd.append("id", skillForm.id);
     fd.append("name", name);
     fd.append("category", category);
+    fd.append("jenis_kompetensi", skillForm.jenis_kompetensi);
     if (skillForm.department) fd.append("department", skillForm.department);
     const r = await saveSkill(fd);
     setSkillFormLoading(false);
@@ -249,6 +250,11 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     fd.append("position_code", selectedPosition);
     fd.append("skill_id", skillId);
     fd.append("required_level", String(level));
+    // `positions` is sourced straight from the `jabatan` table (Master
+    // Jabatan) — passing its id here is what makes Gap Analysis resolve via
+    // Employee Assignment (formasi_jabatan.jabatan_id) instead of only the
+    // legacy position-name text match.
+    if (selectedPosInfo?.id) fd.append("jabatan_id", selectedPosInfo.id);
     const r = await saveRequiredLevel(fd);
     setSavingLevelIds((prev) => {
       const next = new Set(prev);
@@ -268,6 +274,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
       fd.append("position_code", selectedPosition);
       fd.append("skill_id", skillId);
       fd.append("required_level", "0");
+      if (selectedPosInfo?.id) fd.append("jabatan_id", selectedPosInfo.id);
       const r = await saveRequiredLevel(fd);
       if (r?.error) { showToast("error", r.error); hasError = true; break; }
     }
@@ -780,6 +787,19 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                       ))}
                     </div>
                   )}
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Jenis Kompetensi
+                  </label>
+                  <select
+                    value={skillForm.jenis_kompetensi}
+                    onChange={(e) => setSkillForm({ ...skillForm, jenis_kompetensi: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all"
+                  >
+                    <option value="Hard Skill">Hard Skill</option>
+                    <option value="Soft Skill">Soft Skill</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">

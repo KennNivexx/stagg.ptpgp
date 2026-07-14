@@ -238,6 +238,21 @@ export default function Employee360Client({ data }: { data: Data }) {
               <button type="submit" disabled={busy} className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50"><Plus size={13} /> Tambah</button>
             </form>
           </Card>
+          <Card title="Mandatory Knowledge" action={<span className="text-[10px] text-slate-400">{data.recruitment.mandatoryKnowledge.length} materi</span>}>
+            {data.recruitment.mandatoryKnowledge.length === 0 ? (
+              <Empty text="Belum ada materi wajib untuk jabatan ini." />
+            ) : data.recruitment.mandatoryKnowledge.map(kn => (
+              <Row key={`${kn.content_type}-${kn.content_id}`}>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={13} className={kn.mandatory ? "text-red-500" : "text-slate-300"} />
+                  <div>
+                    <p className="font-semibold text-slate-800">{kn.title}</p>
+                    <p className="text-[11px] text-slate-400">{kn.content_type.toUpperCase()} · Kompetensi: {kn.skill_name} {kn.mandatory ? "· Wajib" : ""}</p>
+                  </div>
+                </div>
+              </Row>
+            ))}
+          </Card>
         </div>
       )}
 
@@ -302,6 +317,25 @@ export default function Employee360Client({ data }: { data: Data }) {
 
       {tab === "performance" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {data.performance.kpi.some(k => k.final_score != null) && (
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-3">Final Performance Score (Target Achievement × bobot + Culture Achievement × bobot)</p>
+              <div className="flex flex-wrap gap-3">
+                {data.performance.kpi.filter(k => k.final_score != null).map(k => (
+                  <div key={k.id} className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 rounded-xl">
+                    <div>
+                      <p className="text-[10px] text-slate-400">{k.period}</p>
+                      <p className="text-lg font-extrabold text-slate-800">{Number(k.final_score).toFixed(0)}</p>
+                    </div>
+                    <div className="text-[10px] text-slate-500 space-y-0.5">
+                      <p>TA: {Number(k.score ?? 0).toFixed(0)} × {k.ta_weight_used ?? "-"}%</p>
+                      <p>Culture: {k.culture_score != null ? Number(k.culture_score).toFixed(0) : "-"} × {k.culture_weight_used ?? "-"}%</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <Card title="KPI & Performance" action={<span className="text-[10px] text-slate-400">{data.performance.catKpi.length} catatan</span>}>
             {data.performance.catKpi.length === 0 ? <Empty text="Belum ada catatan KPI." /> : data.performance.catKpi.map(c => (
               <Row key={c.id}>

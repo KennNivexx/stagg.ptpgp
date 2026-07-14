@@ -16,6 +16,7 @@ import {
 import PanduanLevel from "@/components/PanduanLevel";
 import EmptyState from "@/components/EmptyState";
 import { createTrainingFromGap } from "@/app/actions/trainings";
+import { createIdpFromGap } from "@/app/actions/career-hrd";
 
 type Employee = {
   id: string;
@@ -61,8 +62,21 @@ export default function GapAnalysisClient({
   const [creating, setCreating] = useState(false);
   const [toast, setToast] = useState("");
   const [handledKeys, setHandledKeys] = useState<Set<string>>(new Set());
+  const [idpKeys, setIdpKeys] = useState<Set<string>>(new Set());
+  const [idpCreating, setIdpCreating] = useState<string | null>(null);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 4000); };
+
+  const rowKey = (r: GapRow) => `${r.employeeId}-${r.skillId}`;
+
+  const handleCreateIdp = async (r: GapRow) => {
+    setIdpCreating(rowKey(r));
+    const result = await createIdpFromGap(r.employeeId, r.skillId, r.gap);
+    setIdpCreating(null);
+    if ("error" in result) { showToast(result.error); return; }
+    setIdpKeys((prev) => new Set(prev).add(rowKey(r)));
+    showToast(`IDP dibuat untuk ${r.employeeName} — ${r.skillName}.`);
+  };
 
   const submitTrainingFromGap = async () => {
     if (!trainingModalRow) return;
@@ -335,18 +349,33 @@ export default function GapAnalysisClient({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {handledKeys.has(`${r.department}-${r.skillId}`) ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold">
-                          <CheckCircle2 size={10} /> Training Dibuat
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => setTrainingModalRow(r)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#CC0000] text-white rounded-lg text-[10px] font-bold hover:bg-[#aa0000] transition-colors"
-                        >
-                          <GraduationCap size={10} /> Buat Training
-                        </button>
-                      )}
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        {handledKeys.has(`${r.department}-${r.skillId}`) ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold">
+                            <CheckCircle2 size={10} /> Training Dibuat
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setTrainingModalRow(r)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#CC0000] text-white rounded-lg text-[10px] font-bold hover:bg-[#aa0000] transition-colors"
+                          >
+                            <GraduationCap size={10} /> Buat Training
+                          </button>
+                        )}
+                        {idpKeys.has(rowKey(r)) ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold">
+                            <CheckCircle2 size={10} /> IDP Dibuat
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleCreateIdp(r)}
+                            disabled={idpCreating === rowKey(r)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 text-white rounded-lg text-[10px] font-bold hover:bg-slate-700 transition-colors disabled:opacity-60"
+                          >
+                            <TrendingUp size={10} /> {idpCreating === rowKey(r) ? "Membuat..." : "Buat IDP"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

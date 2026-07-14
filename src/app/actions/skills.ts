@@ -201,12 +201,13 @@ export async function saveSkill(formData: FormData): Promise<{ error: string } |
   const category = (formData.get("category") as string || "").trim();
   // null = berlaku semua dept; string = hanya departemen tertentu
   const department = (formData.get("department") as string || "").trim() || null;
+  const jenis_kompetensi = (formData.get("jenis_kompetensi") as string || "Hard Skill").trim();
 
   if (!name || !category) return { error: "Nama dan kategori skill wajib diisi." };
 
   const now = new Date().toISOString();
   if (id) {
-    const { error } = await supabaseAdmin.from("master_kompetensi").update({ name, category, department, updated_at: now }).eq("id", id);
+    const { error } = await supabaseAdmin.from("master_kompetensi").update({ name, category, department, jenis_kompetensi, updated_at: now }).eq("id", id);
     if (error) return { error: "Gagal mengupdate skill." };
     revalidatePath("/hrd/competency/library");
     return { success: true };
@@ -283,6 +284,11 @@ export async function saveRequiredLevel(formData: FormData) {
   const position_code = (formData.get("position_code") as string || "").trim();
   const skill_id = (formData.get("skill_id") as string || "").trim();
   const required_level = parseInt(formData.get("required_level") as string || "0");
+  // Position/Position Number FK — the actual "competency follows the
+  // position" link (Master Jabatan), kept alongside position_code so
+  // employees not yet assigned via Position Management still resolve via
+  // the legacy text match (see gap/page.tsx).
+  const jabatan_id = (formData.get("jabatan_id") as string || "").trim() || null;
 
   if (!position_code || !skill_id) return { error: "Posisi dan skill wajib diisi." };
 
@@ -295,13 +301,13 @@ export async function saveRequiredLevel(formData: FormData) {
 
   if (existing) {
     const { error } = await supabaseAdmin.from("kompetensi_jabatan")
-      .update({ required_level })
+      .update({ required_level, jabatan_id })
       .eq("position_code", position_code)
       .eq("skill_id", skill_id);
     if (error) return { error: "Gagal mengupdate level." };
   } else {
     const { error } = await supabaseAdmin.from("kompetensi_jabatan").insert({
-      position_code, skill_id, required_level,
+      position_code, skill_id, required_level, jabatan_id,
     });
     if (error) return { error: "Gagal menambah required level." };
   }

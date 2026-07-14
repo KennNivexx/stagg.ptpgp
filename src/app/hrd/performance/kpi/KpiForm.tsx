@@ -5,13 +5,15 @@ import { Plus, Eye, Star, Trash2 } from "lucide-react";
 import { saveKpiEvaluation } from "@/app/actions/performance-hrd";
 import EmptyState from "@/components/EmptyState";
 
-type Employee = { id: string; full_name: string; kode?: string; department: string; position: string };
+type Employee = { id: string; full_name: string; kode?: string; department: string; position: string; jabatan_id: string | null };
 type KpiEval = Record<string, unknown>;
 type MetricRow = { metric: string; weight: string; value: string };
+type KpiCatalogEntry = { id: string; jabatan_id: string; nama_kpi: string; source_system: string | null; bobot_default: number };
 
 interface Props {
   employees: Employee[];
   evaluations: KpiEval[];
+  kpiCatalog: KpiCatalogEntry[];
 }
 
 function Msg({ m }: { m: { type: "success" | "error"; text: string } | null }) {
@@ -52,7 +54,7 @@ function statusLabel(status: string) {
   return status || "Draft";
 }
 
-export default function KpiForm({ employees, evaluations }: Props) {
+export default function KpiForm({ employees, evaluations, kpiCatalog }: Props) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
@@ -60,7 +62,22 @@ export default function KpiForm({ employees, evaluations }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [detail, setDetail] = useState<KpiEval | null>(null);
   const [metricRows, setMetricRows] = useState<MetricRow[]>([emptyMetricRow()]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const computedScore = previewWeightedScore(metricRows);
+
+  const selectedJabatanId = employees.find(e => e.id === selectedEmployeeId)?.jabatan_id || null;
+  const catalogForEmployee = selectedJabatanId ? kpiCatalog.filter(k => k.jabatan_id === selectedJabatanId) : [];
+
+  function addCatalogRow(kpiId: string) {
+    const entry = kpiCatalog.find(k => k.id === kpiId);
+    if (!entry) return;
+    setMetricRows((rows) => {
+      const target = rows.findIndex(r => !r.metric);
+      const newRow = { metric: entry.nama_kpi, weight: String(entry.bobot_default || ""), value: "" };
+      if (target >= 0) return rows.map((r, i) => (i === target ? newRow : r));
+      return [...rows, newRow];
+    });
+  }
 
   function updateMetricRow(idx: number, field: keyof MetricRow, value: string) {
     setMetricRows((rows) => rows.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
@@ -112,7 +129,8 @@ export default function KpiForm({ employees, evaluations }: Props) {
           <form ref={formRef} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Karyawan</label>
-              <select name="employee_id" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+              <select name="employee_id" value={selectedEmployeeId} onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
                 <option value="">Pilih karyawan...</option>
                 {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}{e.kode ? ` (${e.kode})` : ""} - {e.department}</option>)}
               </select>
@@ -123,6 +141,15 @@ export default function KpiForm({ employees, evaluations }: Props) {
             </div>
             <div className="md:col-span-2 space-y-2">
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Rincian KPI Metrics (opsional)</label>
+              {catalogForEmployee.length > 0 && (
+                <div className="flex items-center gap-2 mb-2">
+                  <select onChange={(e) => { if (e.target.value) { addCatalogRow(e.target.value); e.target.value = ""; } }}
+                    className="text-xs border border-gray-200 rounded-xl px-3 py-2 focus:border-[#CC0000] outline-none bg-white">
+                    <option value="">+ Pilih dari KPI Catalog jabatan...</option>
+                    {catalogForEmployee.map((k) => <option key={k.id} value={k.id}>{k.nama_kpi}{k.source_system ? ` (${k.source_system})` : ""} — bobot {k.bobot_default}</option>)}
+                  </select>
+                </div>
+              )}
               <div className="space-y-2">
                 {metricRows.map((row, idx) => (
                   <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_100px_100px_auto] gap-2 items-center">
@@ -215,18 +242,19 @@ export default function KpiForm({ employees, evaluations }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/50">
-              {["Karyawan", "Periode", "Skor", "Grade", "Status", "Catatan", ""].map((h) => (
+              {["Karyawan", "Periode", "Skor", "Grade", "Skor Akhir", "Status", "Catatan", ""].map((h) => (
                 <th key={h} className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase ${h === "" ? "text-right" : "text-left"}`}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {evaluations.length === 0 ? (
-              <tr><td colSpan={7}><EmptyState icon={Star} title={'Belum ada evaluasi KPI. Klik "Buat Evaluasi Baru" untuk mulai.'} /></td></tr>
+              <tr><td colSpan={8}><EmptyState icon={Star} title={'Belum ada evaluasi KPI. Klik "Buat Evaluasi Baru" untuk mulai.'} /></td></tr>
             ) : evaluations.map((ev) => {
               const emp = ev.karyawan as Record<string, string> | undefined;
               const score = Number(ev.score) || 0;
               const grade = score >= 90 ? "A" : score >= 80 ? "B+" : score >= 70 ? "B" : score >= 60 ? "C" : "D";
+              const finalScore = ev.final_score != null ? Number(ev.final_score) : null;
               return (
                 <tr key={ev.id as string} className="hover:bg-slate-50/30 transition-colors">
                   <td className="px-6 py-4">
@@ -241,6 +269,9 @@ export default function KpiForm({ employees, evaluations }: Props) {
                     <span className="flex items-center gap-1 text-amber-600 font-bold text-xs">
                       <Star size={12} className="fill-amber-400 text-amber-400" />{grade}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {finalScore !== null ? <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${scoreColor(finalScore)}`}>{finalScore.toFixed(0)}</span> : <span className="text-[10px] text-slate-300">-</span>}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${statusBadge(ev.status as string)}`}>{statusLabel(ev.status as string)}</span>

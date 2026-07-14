@@ -1,13 +1,18 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { GraduationCap, BookOpen, Users, Clock, CheckCircle2, Play, BarChart3 } from "lucide-react";
+import { GraduationCap, BookOpen, Users, Clock, CheckCircle2, Play, BarChart3, ListChecks, Timer, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDLearning() {
-  const [{ data: trainings }, { data: enrollments }] = await Promise.all([
+  const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [{ data: trainings }, { data: enrollments }, { count: openTnaCount }, { data: expiringLicenses }] = await Promise.all([
     supabaseAdmin.from("pelatihan").select("*").order("date_start", { ascending: false }),
     supabaseAdmin.from("peserta_pelatihan").select("training_id, status"),
+    supabaseAdmin.from("tna_kompetensi").select("*", { count: "exact", head: true }).eq("status", "Open"),
+    supabaseAdmin.from("sim_sertifikasi_karyawan").select("id, expiry_date").gte("expiry_date", today).lte("expiry_date", in30Days),
   ]);
 
   const trainingList = (trainings || []) as Record<string, unknown>[];
@@ -18,6 +23,9 @@ export default async function HRDLearning() {
   const ongoing  = trainingList.filter((t) => t.status === "Ongoing").length;
   const completed = trainingList.filter((t) => t.status === "Completed").length;
   const totalEnrollments = enrollmentList.length;
+  const totalTrainingHours = trainingList
+    .filter((t) => t.status === "Completed")
+    .reduce((sum, t) => sum + (Number(t.durasi_jam) || 0), 0);
 
   const recent = trainingList.slice(0, 6);
 
@@ -50,6 +58,9 @@ export default async function HRDLearning() {
           { label: "Sedang Berjalan", value: ongoing,          icon: Play,          color: "bg-amber-50 text-amber-600" },
           { label: "Selesai",         value: completed,        icon: CheckCircle2,  color: "bg-emerald-50 text-emerald-600" },
           { label: "Total Peserta",   value: totalEnrollments, icon: Users,         color: "bg-purple-50 text-purple-600" },
+          { label: "TNA Terbuka",     value: openTnaCount || 0, icon: ListChecks,   color: "bg-red-50 text-red-600" },
+          { label: "Total Jam Pelatihan", value: totalTrainingHours, icon: Timer,   color: "bg-sky-50 text-sky-600" },
+          { label: "Sertifikasi Kedaluwarsa", value: (expiringLicenses || []).length, icon: ShieldAlert, color: "bg-orange-50 text-orange-600" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3">
@@ -63,7 +74,7 @@ export default async function HRDLearning() {
         ))}
       </div>
 
-      <SectionQuickLinks groupLabel="Pelatihan" excludeHref="/hrd/learning" />
+      <SectionQuickLinks groupLabel="Learning & Training Management" excludeHref="/hrd/learning" />
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
