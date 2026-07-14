@@ -123,7 +123,7 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     ],
   },
   {
-    label: "Kompetensi",
+    label: "Competency Management",
     icon: Award,
     color: "purple",
     hubHref: "/hrd/competency",

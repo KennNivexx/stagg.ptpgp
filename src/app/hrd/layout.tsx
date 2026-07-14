@@ -66,7 +66,7 @@ const GROUP_TOOLTIPS: Record<string, string> = {
   "Aset & Fasilitas": "Kendaraan, trip, pengadaan, dan dokumen perusahaan",
   "Workforce Time Management": "Jadwal kerja, absensi, lembur, cuti, timesheet, dan penugasan project/site",
   "Rekrutmen": "Cari, seleksi, dan terima karyawan baru",
-  "Kompetensi": "Kelola standar keahlian dan asesmen karyawan",
+  "Competency Management": "Kelola standar keahlian dan asesmen karyawan",
   "Learning & Training Management": "TNA otomatis dari gap kompetensi, training, materi, evaluasi, dan sertifikasi",
   "Knowledge Management": "SOP & instruksi kerja, kebijakan, basis pengetahuan, video panduan, dan mapping ke kompetensi",
   "Performance Management": "Framework, KPI, culture, dan skor performa akhir",

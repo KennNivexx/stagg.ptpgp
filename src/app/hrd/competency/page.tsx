@@ -97,7 +97,7 @@ export default async function HRDCompetency() {
         <p className="text-sm text-gray-500">Pengelolaan kompetensi dan standar keahlian karyawan</p>
       </div>
 
-      <SectionQuickLinks groupLabel="Kompetensi" excludeHref="/hrd/competency" />
+      <SectionQuickLinks groupLabel="Competency Management" excludeHref="/hrd/competency" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
