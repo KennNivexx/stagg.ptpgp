@@ -57,6 +57,7 @@ export default function GapAnalysisClient({
 }: Props) {
   const [selectedDept, setSelectedDept] = useState("");
   const [searchName, setSearchName] = useState("");
+  const [view, setView] = useState<"individual" | "department">("individual");
   const [trainingModalRow, setTrainingModalRow] = useState<GapRow | null>(null);
   const [proposedCost, setProposedCost] = useState("");
   const [creating, setCreating] = useState(false);
@@ -122,6 +123,27 @@ export default function GapAnalysisClient({
   const totalGap = filtered.length;
   const wajibTraining = filtered.filter((r) => r.gap <= -2).length;
   const mendekati = filtered.filter((r) => r.gap === -1).length;
+
+  // Department rollup — purely a client-side aggregation over the same
+  // already-fetched gapRows, no new query/table.
+  const deptRollup = useMemo(() => {
+    const byDept = new Map<string, { employees: Set<string>; gapCount: number; wajibCount: number; skillCounts: Map<string, number> }>();
+    for (const r of filtered) {
+      if (!byDept.has(r.department)) byDept.set(r.department, { employees: new Set(), gapCount: 0, wajibCount: 0, skillCounts: new Map() });
+      const d = byDept.get(r.department)!;
+      d.employees.add(r.employeeId);
+      d.gapCount += 1;
+      if (r.gap <= -2) d.wajibCount += 1;
+      d.skillCounts.set(r.skillName, (d.skillCounts.get(r.skillName) || 0) + 1);
+    }
+    return [...byDept.entries()].map(([department, d]) => ({
+      department,
+      employeeCount: d.employees.size,
+      gapCount: d.gapCount,
+      wajibCount: d.wajibCount,
+      topSkills: [...d.skillCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3),
+    })).sort((a, b) => b.gapCount - a.gapCount);
+  }, [filtered]);
 
   return (
     <div className="p-6 lg:p-8">
@@ -226,8 +248,57 @@ export default function GapAnalysisClient({
             ))}
           </select>
         </div>
+        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
+          {(["individual", "department"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === v ? "bg-[#CC0000] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+            >
+              {v === "individual" ? "Individu" : "Department"}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {view === "department" ? (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-100">
+            <h3 className="font-extrabold text-slate-800 text-sm">Rekap Gap per Departemen</h3>
+          </div>
+          {deptRollup.length === 0 ? (
+            <EmptyState icon={AlertTriangle} title="Tidak ada data kesenjangan yang ditemukan." />
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {deptRollup.map((d) => (
+                <div key={d.department} className="p-5 flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{d.department}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{d.employeeCount} karyawan terdampak</p>
+                    {d.topSkills.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {d.topSkills.map(([name, count]) => (
+                          <span key={name} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-semibold">{name} ({count})</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-center">
+                      <p className="text-lg font-extrabold text-slate-800">{d.gapCount}</p>
+                      <p className="text-[9px] text-slate-400 uppercase font-bold">Total Gap</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-extrabold text-red-700">{d.wajibCount}</p>
+                      <p className="text-[9px] text-slate-400 uppercase font-bold">Wajib Training</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between">
@@ -403,6 +474,7 @@ export default function GapAnalysisClient({
           </div>
         )}
       </div>
+      )}
 
       {toast && (
         <div className="fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-bold max-w-sm">

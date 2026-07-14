@@ -132,6 +132,7 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
       { href: "/hrd/competency/skillmatrix", label: "Matriks Keahlian" },
       { href: "/hrd/competency/assessment", label: "Asesmen Kompetensi" },
       { href: "/hrd/competency/gap", label: "Analisis Kesenjangan" },
+      { href: "/hrd/competency/reports", label: "Laporan Kompetensi" },
     ],
   },
   {

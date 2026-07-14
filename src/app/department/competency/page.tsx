@@ -382,6 +382,7 @@ export default function DeptCompetencyPage() {
   const [skillGuides, setSkillGuides] = useState<Record<string, Record<number, LevelGuide>>>({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [assessmentType, setAssessmentType] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
   const [levels, setLevels] = useState<Record<string, number>>({});
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
@@ -487,7 +488,7 @@ export default function DeptCompetencyPage() {
     setSavingId(employeeId);
     try {
       const empSkillsToSave = skills.map((s) => ({ skill_id: s.id, current_level: levels[`${employeeId}__${s.id}`] ?? 0 }));
-      const result = await assessEmployee(employeeId, empSkillsToSave);
+      const result = await assessEmployee(employeeId, empSkillsToSave, assessmentType[employeeId] || "Supervisor");
       if (result && (result as unknown as { error?: string }).error) {
         showToast("error", (result as unknown as { error: string }).error); return;
       }
@@ -914,13 +915,24 @@ export default function DeptCompetencyPage() {
                         </tbody>
                       </table>
                     </div>
-                    <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
+                    <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between gap-2 flex-wrap">
                       <span className="text-[10px] text-slate-400">{skills.length} kompetensi · {kompetenCount} kompeten · {negativeGaps} gap</span>
-                      <button onClick={() => handleSave(emp.id)} disabled={savingId === emp.id}
-                        className="px-4 py-2 bg-emerald-700 text-white rounded-xl text-xs font-bold hover:bg-emerald-800 transition-colors inline-flex items-center gap-2 disabled:opacity-50">
-                        <Save size={12} />
-                        {savingId === emp.id ? "Menyimpan..." : "Simpan Penilaian"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={assessmentType[emp.id] || "Supervisor"}
+                          onChange={(e) => setAssessmentType((prev) => ({ ...prev, [emp.id]: e.target.value }))}
+                          className="px-2.5 py-2 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 bg-white"
+                        >
+                          {["Supervisor", "Self", "HR", "Assessment Center", "Technical Test", "Interview"].map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                        <button onClick={() => handleSave(emp.id)} disabled={savingId === emp.id}
+                          className="px-4 py-2 bg-emerald-700 text-white rounded-xl text-xs font-bold hover:bg-emerald-800 transition-colors inline-flex items-center gap-2 disabled:opacity-50">
+                          <Save size={12} />
+                          {savingId === emp.id ? "Menyimpan..." : "Simpan Penilaian"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

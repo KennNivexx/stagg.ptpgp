@@ -58,8 +58,10 @@ export async function getPositionSkills() {
 
 export async function assessEmployee(
   employeeId: string,
-  skills: { skill_id: string; current_level: number }[]
+  skills: { skill_id: string; current_level: number; evidence?: string }[],
+  assessmentType?: string
 ) {
+  const assessmentTypeValue = (assessmentType || "Supervisor").trim();
   const assessor = await requireRole("department_manager", "superadmin", "hrd");
 
   if (assessor.role === "department_manager") {
@@ -103,7 +105,7 @@ export async function assessEmployee(
     if (existingId) {
       await supabaseAdmin
         .from("kompetensi_karyawan")
-        .update({ current_level: sk.current_level, assessed_by: assessor.email, updated_at: now })
+        .update({ current_level: sk.current_level, assessed_by: assessor.email, assessment_type: assessmentTypeValue, evidence: sk.evidence || null, updated_at: now })
         .eq("id", existingId);
     } else {
       await supabaseAdmin.from("kompetensi_karyawan").insert({
@@ -112,6 +114,8 @@ export async function assessEmployee(
         skill_id: sk.skill_id,
         current_level: sk.current_level,
         assessed_by: assessor.email,
+        assessment_type: assessmentTypeValue,
+        evidence: sk.evidence || null,
         updated_at: now,
       });
     }
@@ -202,12 +206,15 @@ export async function saveSkill(formData: FormData): Promise<{ error: string } |
   // null = berlaku semua dept; string = hanya departemen tertentu
   const department = (formData.get("department") as string || "").trim() || null;
   const jenis_kompetensi = (formData.get("jenis_kompetensi") as string || "Hard Skill").trim();
+  const kode = (formData.get("kode") as string || "").trim() || null;
+  const deskripsi = (formData.get("deskripsi") as string || "").trim() || null;
+  const status = (formData.get("status") as string || "Aktif").trim();
 
   if (!name || !category) return { error: "Nama dan kategori skill wajib diisi." };
 
   const now = new Date().toISOString();
   if (id) {
-    const { error } = await supabaseAdmin.from("master_kompetensi").update({ name, category, department, jenis_kompetensi, updated_at: now }).eq("id", id);
+    const { error } = await supabaseAdmin.from("master_kompetensi").update({ name, category, department, jenis_kompetensi, kode, deskripsi, status, updated_at: now }).eq("id", id);
     if (error) return { error: "Gagal mengupdate skill." };
     revalidatePath("/hrd/competency/library");
     return { success: true };

@@ -17,6 +17,8 @@ interface EmpSkill {
   required_level: number | null;
   gap: number | null;
   assessed_by: string;
+  assessment_type?: string;
+  evidence?: string;
   updated_at: string;
 }
 
@@ -200,6 +202,22 @@ export default function AssessmentClient({ data, totalEmployees }: Props) {
                         <td key={s.id} className="py-2 px-4 text-center text-[10px] text-slate-400">{s.assessed_by || "—"}</td>
                       ))}
                     </tr>
+                    {emp.skills.some((s) => s.assessment_type) && (
+                      <tr>
+                        <td className="py-2 px-4 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">Tipe Asesmen</td>
+                        {emp.skills.map((s) => (
+                          <td key={s.id} className="py-2 px-4 text-center text-[10px] text-slate-500">{s.assessment_type || "—"}</td>
+                        ))}
+                      </tr>
+                    )}
+                    {emp.skills.some((s) => s.evidence) && (
+                      <tr>
+                        <td className="py-2 px-4 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">Evidence</td>
+                        {emp.skills.map((s) => (
+                          <td key={s.id} className="py-2 px-4 text-center text-[10px] text-slate-500 max-w-[140px] truncate" title={s.evidence || ""}>{s.evidence || "—"}</td>
+                        ))}
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

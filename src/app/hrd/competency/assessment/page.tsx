@@ -5,7 +5,7 @@ export default async function AsesmenKompetensi() {
   const { data: employees } = await supabaseAdmin.from("karyawan").select("id, full_name").neq("status", "Inactive");
 
   const { data: employeeSkills } = await supabaseAdmin.from("kompetensi_karyawan")
-    .select("id, employee_id, skill_id, current_level, assessed_by, updated_at")
+    .select("id, employee_id, skill_id, current_level, assessed_by, assessment_type, evidence, updated_at")
     .order("updated_at", { ascending: false });
 
   const { data: skills } = await supabaseAdmin.from("master_kompetensi").select("id, name, category");
@@ -57,6 +57,8 @@ export default async function AsesmenKompetensi() {
       required_level: requiredLevel,
       gap,
       assessed_by: r.assessed_by as string || "",
+      assessment_type: r.assessment_type as string || "",
+      evidence: r.evidence as string || "",
       updated_at: r.updated_at as string,
     };
   });

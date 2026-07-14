@@ -11,7 +11,7 @@ import {
 import PanduanLevelForm from "./PanduanLevelForm";
 import EmptyState from "@/components/EmptyState";
 
-type Skill = { id: string; name: string; category: string; department?: string | null; jenis_kompetensi?: string };
+type Skill = { id: string; name: string; category: string; department?: string | null; jenis_kompetensi?: string; kode?: string | null; deskripsi?: string | null; status?: string | null };
 type Position = { id: string; name: string; department: string; level?: string };
 type PositionSkill = { id?: string; position_code: string; skill_id: string; required_level: number; jabatan_id?: string | null };
 
@@ -63,7 +63,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
 
   const [skillModal, setSkillModal] = useState<null | "add" | "edit" | "del">(null);
-  const [skillForm, setSkillForm] = useState({ id: "", name: "", category: "", department: "", jenis_kompetensi: "Hard Skill" });
+  const [skillForm, setSkillForm] = useState({ id: "", name: "", category: "", department: "", jenis_kompetensi: "Hard Skill", kode: "", deskripsi: "", status: "Aktif" });
   const [skillFormErr, setSkillFormErr] = useState("");
   const [skillFormLoading, setSkillFormLoading] = useState(false);
 
@@ -184,26 +184,26 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
   }, [posSkills]);
 
   const openAddSkill = () => {
-    setSkillForm({ id: "", name: "", category: "", department: "", jenis_kompetensi: "Hard Skill" });
+    setSkillForm({ id: "", name: "", category: "", department: "", jenis_kompetensi: "Hard Skill", kode: "", deskripsi: "", status: "Aktif" });
     setSkillFormErr("");
     setSkillModal("add");
   };
 
   const openEditSkill = (s: Skill) => {
-    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "", jenis_kompetensi: s.jenis_kompetensi || "Hard Skill" });
+    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "", jenis_kompetensi: s.jenis_kompetensi || "Hard Skill", kode: s.kode || "", deskripsi: s.deskripsi || "", status: s.status || "Aktif" });
     setSkillFormErr("");
     setSkillModal("edit");
   };
 
   const openDelSkill = (s: Skill) => {
-    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "", jenis_kompetensi: s.jenis_kompetensi || "Hard Skill" });
+    setSkillForm({ id: s.id, name: s.name, category: s.category, department: s.department || "", jenis_kompetensi: s.jenis_kompetensi || "Hard Skill", kode: s.kode || "", deskripsi: s.deskripsi || "", status: s.status || "Aktif" });
     setSkillFormErr("");
     setSkillModal("del");
   };
 
   const closeSkillModal = () => {
     setSkillModal(null);
-    setSkillForm({ id: "", name: "", category: "", department: "", jenis_kompetensi: "Hard Skill" });
+    setSkillForm({ id: "", name: "", category: "", department: "", jenis_kompetensi: "Hard Skill", kode: "", deskripsi: "", status: "Aktif" });
     setSkillFormErr("");
   };
 
@@ -221,6 +221,14 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
     fd.append("category", category);
     fd.append("jenis_kompetensi", skillForm.jenis_kompetensi);
     if (skillForm.department) fd.append("department", skillForm.department);
+    // Kode/Deskripsi/Status hanya berlaku untuk skill yang sudah ada — skill
+    // baru melalui alur usulan_kompetensi (persetujuan Direktur) yang belum
+    // punya kolom ini, jadi hanya dikirim saat mengedit skill existing.
+    if (skillForm.id) {
+      if (skillForm.kode) fd.append("kode", skillForm.kode);
+      if (skillForm.deskripsi) fd.append("deskripsi", skillForm.deskripsi);
+      fd.append("status", skillForm.status);
+    }
     const r = await saveSkill(fd);
     setSkillFormLoading(false);
     if ("error" in r) { showToast("error", r.error); setSkillFormErr(r.error); return; }
@@ -801,6 +809,41 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                     <option value="Soft Skill">Soft Skill</option>
                   </select>
                 </div>
+                {skillForm.id && (
+                  <>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kode Kompetensi</label>
+                      <input
+                        type="text"
+                        value={skillForm.kode}
+                        onChange={(e) => setSkillForm({ ...skillForm, kode: e.target.value })}
+                        placeholder="Contoh: C001"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Deskripsi</label>
+                      <textarea
+                        value={skillForm.deskripsi}
+                        onChange={(e) => setSkillForm({ ...skillForm, deskripsi: e.target.value })}
+                        rows={2}
+                        placeholder="Penjelasan singkat kompetensi ini..."
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+                      <select
+                        value={skillForm.status}
+                        onChange={(e) => setSkillForm({ ...skillForm, status: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all"
+                      >
+                        <option value="Aktif">Aktif</option>
+                        <option value="Tidak Aktif">Tidak Aktif</option>
+                      </select>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                     Khusus Departemen
