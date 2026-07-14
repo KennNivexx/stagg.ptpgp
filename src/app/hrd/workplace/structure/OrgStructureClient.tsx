@@ -67,7 +67,7 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
   const EMPTY_DESIGN: UnitDesignFields = {
     jenis_unit: "Departemen", singkatan: "", deskripsi: "", jumlah_formasi: "0",
     budget_cost_center: "", kode_cost_center: "", business_unit: "",
-    lokasi_kerja: "", tanggal_berlaku: "", tanggal_berakhir: "", status: "Aktif",
+    lokasi_unit_kerja: "", tanggal_berlaku: "", tanggal_berakhir: "", status: "Aktif",
   };
   const [fName, setFName] = useState("");
   const [fCode, setFCode] = useState("");
@@ -101,7 +101,7 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
     jenis_unit: n.jenis_unit || "Departemen", singkatan: n.singkatan || "", deskripsi: n.deskripsi || "",
     jumlah_formasi: String(n.jumlah_formasi ?? 0), budget_cost_center: n.budget_cost_center != null ? String(n.budget_cost_center) : "",
     kode_cost_center: n.kode_cost_center || "", business_unit: n.business_unit || "",
-    lokasi_kerja: n.lokasi_kerja || "", tanggal_berlaku: n.tanggal_berlaku || "",
+    lokasi_unit_kerja: n.lokasi_unit_kerja || "", tanggal_berlaku: n.tanggal_berlaku || "",
     tanggal_berakhir: n.tanggal_berakhir || "", status: n.status || "Aktif",
   });
 
@@ -115,7 +115,7 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
     fd.append("jenis_unit", design.jenis_unit); fd.append("singkatan", design.singkatan);
     fd.append("deskripsi", design.deskripsi); fd.append("jumlah_formasi", design.jumlah_formasi);
     fd.append("budget_cost_center", design.budget_cost_center); fd.append("kode_cost_center", design.kode_cost_center);
-    fd.append("business_unit", design.business_unit); fd.append("lokasi_kerja", design.lokasi_kerja);
+    fd.append("business_unit", design.business_unit); fd.append("lokasi_unit_kerja", design.lokasi_unit_kerja);
     fd.append("tanggal_berlaku", design.tanggal_berlaku); fd.append("tanggal_berakhir", design.tanggal_berakhir);
     fd.append("status", design.status);
   };

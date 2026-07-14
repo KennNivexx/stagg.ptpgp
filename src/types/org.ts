@@ -15,7 +15,7 @@ export interface OrgUnit {
   budget_cost_center?: number | null;
   kode_cost_center?: string | null;
   business_unit?: string | null;
-  lokasi_kerja?: string | null;
+  lokasi_unit_kerja?: string | null;
   tanggal_berlaku?: string | null;
   tanggal_berakhir?: string | null;
   status?: string;

@@ -135,7 +135,7 @@ function InfoRow({ icon, label, value, color }: { icon: React.ReactNode; label: 
 export interface UnitDesignFields {
   jenis_unit: string; singkatan: string; deskripsi: string; jumlah_formasi: string;
   budget_cost_center: string; kode_cost_center: string; business_unit: string;
-  lokasi_kerja: string; tanggal_berlaku: string; tanggal_berakhir: string; status: string;
+  lokasi_unit_kerja: string; tanggal_berlaku: string; tanggal_berakhir: string; status: string;
 }
 
 export const JENIS_UNIT_OPTIONS = ["Holding", "Direktorat", "Divisi", "Departemen", "Section", "Sub Section", "Unit", "Tim", "Project", "Cabang"];
@@ -249,7 +249,7 @@ export function EditModal({
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Lokasi Kerja</label>
-                  <input type="text" value={design.lokasi_kerja} onChange={e => set("lokasi_kerja")(e.target.value)}
+                  <input type="text" value={design.lokasi_unit_kerja} onChange={e => set("lokasi_unit_kerja")(e.target.value)}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all" />
                 </div>
                 <div>

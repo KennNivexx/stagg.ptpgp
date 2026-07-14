@@ -19,7 +19,7 @@ function readUnitDesignFields(formData: FormData) {
     budget_cost_center: formData.get("budget_cost_center") ? Number(formData.get("budget_cost_center")) : null,
     kode_cost_center: (formData.get("kode_cost_center") as string || "").trim() || null,
     business_unit: (formData.get("business_unit") as string || "").trim() || null,
-    lokasi_kerja: (formData.get("lokasi_kerja") as string || "").trim() || null,
+    lokasi_unit_kerja: (formData.get("lokasi_unit_kerja") as string || "").trim() || null,
     tanggal_berlaku: (formData.get("tanggal_berlaku") as string || "").trim() || null,
     tanggal_berakhir: (formData.get("tanggal_berakhir") as string || "").trim() || null,
     status: (formData.get("status") as string || "Aktif").trim(),
@@ -114,7 +114,7 @@ interface OrgUnitRow {
   level: number; leader_name: string | null; leader_email: string | null; sort_order: number;
   jenis_unit?: string | null; singkatan?: string | null; deskripsi?: string | null;
   jumlah_formasi?: number | null; budget_cost_center?: number | null; kode_cost_center?: string | null;
-  business_unit?: string | null; lokasi_kerja?: string | null; tanggal_berlaku?: string | null;
+  business_unit?: string | null; lokasi_unit_kerja?: string | null; tanggal_berlaku?: string | null;
   tanggal_berakhir?: string | null; status?: string | null;
 }
 
@@ -137,7 +137,7 @@ async function buildTree(): Promise<OrgUnit[]> {
         jenis_unit: row.jenis_unit || "Departemen", singkatan: row.singkatan || null,
         deskripsi: row.deskripsi || null, jumlah_formasi: row.jumlah_formasi || 0,
         budget_cost_center: row.budget_cost_center ?? null, kode_cost_center: row.kode_cost_center || null,
-        business_unit: row.business_unit || null, lokasi_kerja: row.lokasi_kerja || null,
+        business_unit: row.business_unit || null, lokasi_unit_kerja: row.lokasi_unit_kerja || null,
         tanggal_berlaku: row.tanggal_berlaku || null, tanggal_berakhir: row.tanggal_berakhir || null,
         status: row.status || "Aktif",
       });
