@@ -102,22 +102,25 @@ export async function POST(request: NextRequest) {
       incoming = { type: "text", text };
     }
 
-    // Fonnte doesn't provide a stable per-message id in the base payload, and
-    // when it also omits `timestamp` the old fallback used Date.now() — which
-    // is different on every HTTP call, so a slow response that made Fonnte
-    // retry the webhook got a brand-new "unique" id each retry and sailed
-    // straight past the log_pesan_wa dedup check. That let the SAME inbound
-    // message get routed through the conversation state machine 2-3+ times,
-    // racing each other and producing the "random menu spam" symptom. Hash
-    // the stable content instead (sender+text, or sender+imageDataUrl for
-    // photos) so identical retries always produce the identical key. The
-    // tradeoff: if a user genuinely sends the exact same text twice in a row
-    // fast enough to land in the same processing window, the second one gets
-    // treated as a duplicate and dropped — rare, and far better than spam.
+    // Dedup key is ALWAYS derived from message content (sender+text, or
+    // sender+image for photos) rather than fields.inboxid/timestamp. Two
+    // things were tried and both still let duplicates through in practice:
+    // (1) Date.now() as a last-resort fallback — different on every HTTP
+    // call, so a slow-response retry got a fresh "unique" id every time; (2)
+    // trusting fields.inboxid/timestamp when present — WhatsApp multi-device
+    // can deliver the SAME user message to this webhook multiple times with
+    // genuinely different inboxid/timestamp values per delivery (it's not a
+    // naive HTTP retry, it's distinct delivery events for one logical
+    // message), so keying on those still bypassed the log_pesan_wa unique
+    // check and caused the bot to process — and reply to — the same message
+    // 2-3+ times ("ngespam chat terus"). Content hashing sidesteps both:
+    // identical content always yields the identical key regardless of which
+    // volatile envelope field Fonnte attaches to a given delivery. Tradeoff:
+    // a user sending the exact same text twice in a row within the same
+    // processing window has the second one dropped as a false-positive
+    // duplicate — rare, and far better than a reply loop.
     const contentKey = text || (incoming.type === "image" ? incoming.imageDataUrl || incoming.mediaError || "" : "");
-    const messageId = fields.inboxid || fields.timestamp
-      ? `fonnte-${sender}-${fields.inboxid || fields.timestamp}`
-      : `fonnte-${sender}-${createHash("sha1").update(contentKey).digest("hex").slice(0, 16)}`;
+    const messageId = `fonnte-${sender}-${createHash("sha1").update(contentKey).digest("hex").slice(0, 16)}`;
 
     await processInboundWaMessage({ from: normalized.number, messageId, message: incoming });
 
