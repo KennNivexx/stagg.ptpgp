@@ -12,14 +12,11 @@ import {
   Server,
 } from "lucide-react";
 
-const iconColorMap: Record<string, { bg: string; text: string }> = {
-  blue: { bg: "bg-blue-50", text: "text-blue-600" },
-  emerald: { bg: "bg-emerald-50", text: "text-emerald-600" },
-  amber: { bg: "bg-amber-50", text: "text-amber-600" },
-  purple: { bg: "bg-purple-50", text: "text-purple-600" },
-  red: { bg: "bg-red-50", text: "text-red-600" },
-  indigo: { bg: "bg-indigo-50", text: "text-indigo-600" },
-};
+// Brand palette is red + neutral black/white only — every icon badge shares
+// the single pgp-red accent regardless of which color key is passed in.
+const iconColorMap: Record<string, { bg: string; text: string }> = new Proxy({}, {
+  get: () => ({ bg: "bg-red-50", text: "text-pgp-red" }),
+});
 
 function AdminCard({
   icon: Icon,

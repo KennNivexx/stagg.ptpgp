@@ -190,10 +190,20 @@ export async function deleteRewardRule(id: string): Promise<{ error: string } | 
 }
 
 /** % kehadiran karyawan pada periode "MM/YYYY" tertentu: hari dengan
- * check_in terisi dibagi jumlah hari kerja (Senin-Jumat) di bulan itu. */
-async function computeAttendancePct(employeeId: string, period: string): Promise<number> {
+ * check_in terisi dibagi jumlah hari kerja (Senin-Jumat) di bulan itu.
+ * absensi.employee_id disimpan sebagai pengguna.id (session user, lihat
+ * clockIn() -> clockInForEmployee({employeeId: user.id})) — BUKAN
+ * karyawan.id. Resolve via email dulu, jangan query pakai karyawan.id
+ * langsung (akan selalu 0 hasil kalau begitu). */
+async function computeAttendancePct(email: string, period: string): Promise<number> {
+  if (!email) return 0;
   const [mm, yyyy] = period.split("/").map(Number);
   if (!mm || !yyyy) return 0;
+
+  const { data: usr } = await supabaseAdmin.from("pengguna").select("id").eq("email", email).maybeSingle();
+  const penggunaId = (usr as { id: string } | null)?.id;
+  if (!penggunaId) return 0;
+
   const start = `${yyyy}-${String(mm).padStart(2, "0")}-01`;
   const lastDay = new Date(yyyy, mm, 0).getDate();
   const end = `${yyyy}-${String(mm).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
@@ -206,7 +216,7 @@ async function computeAttendancePct(employeeId: string, period: string): Promise
   if (workingDays === 0) return 0;
 
   const { count } = await supabaseAdmin.from("absensi").select("*", { count: "exact", head: true })
-    .eq("employee_id", employeeId).gte("date", start).lte("date", end).not("check_in", "is", null);
+    .eq("employee_id", penggunaId).gte("date", start).lte("date", end).not("check_in", "is", null);
   return Math.round(((count || 0) / workingDays) * 100);
 }
 
@@ -218,8 +228,8 @@ export async function evaluateRewardRules(period: string): Promise<{ error: stri
   const rules = (rulesRaw || []) as Array<Record<string, unknown>>;
   if (rules.length === 0) return { error: "Belum ada aturan reward aktif." };
 
-  const { data: employeesRaw } = await supabaseAdmin.from("karyawan").select("id, department").neq("status", "Inactive");
-  const employees = (employeesRaw || []) as { id: string; department: string | null }[];
+  const { data: employeesRaw } = await supabaseAdmin.from("karyawan").select("id, department, email").neq("status", "Inactive");
+  const employees = (employeesRaw || []) as { id: string; department: string | null; email: string | null }[];
 
   let generated = 0;
   for (const rule of rules) {
@@ -235,7 +245,7 @@ export async function evaluateRewardRules(period: string): Promise<{ error: stri
       }
 
       if (rule.min_attendance_pct != null) {
-        const pct = await computeAttendancePct(emp.id, period);
+        const pct = await computeAttendancePct(emp.email || "", period);
         if (pct < Number(rule.min_attendance_pct)) continue;
       }
 
@@ -437,8 +447,12 @@ export async function getTotalRewardsStatement(karyawanId: string, year: number)
 
   const [{ data: salaryRow }, { data: incentiveRows }, { data: payslipRows }, { data: emp }] = await Promise.all([
     supabaseAdmin.from("struktur_gaji").select("*").eq("employee_id", karyawanId).maybeSingle(),
+    // period disimpan sebagai teks "MM/YYYY" (mis. "03/2026") — .gte/.lte di
+    // sini akan jadi perbandingan string leksikografis yang salah (membanding-
+    // kan digit bulan duluan, bukan tahun), jadi bocor data dari tahun lain.
+    // .like("%/YYYY") cocok persis dengan suffix tahun, benar untuk semua bulan.
     supabaseAdmin.from("insentif").select("*").eq("employee_id", karyawanId).in("status", ["Disetujui", "Dibayarkan"])
-      .gte("period", `01/${year}`).lte("period", `12/${year}`),
+      .like("period", `%/${year}`),
     supabaseAdmin.from("penggajian").select("*").eq("employee_id", karyawanId).eq("year", year),
     supabaseAdmin.from("karyawan").select("full_name, position, department").eq("id", karyawanId).maybeSingle(),
   ]);

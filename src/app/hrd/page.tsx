@@ -12,25 +12,34 @@ import {
   Building2,
   Clock,
   UserCog,
+  Sparkles,
+  AlertTriangle,
+  CheckCircle2,
+  Activity,
+  ArrowUpRight,
+  Timer,
+  Award,
+  UserMinus,
+  Trophy,
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import TrendArea from "@/components/charts/TrendArea";
 import RankedBar from "@/components/charts/RankedBar";
+import RadialGauge from "@/components/charts/RadialGauge";
+import LiveClock from "@/components/hrd/LiveClock";
+import Sparkline from "@/components/hrd/Sparkline";
 
 // Force dynamic rendering — every request re-fetches fresh data from Supabase
 // instead of Next.js serving a statically cached copy of this dashboard.
 export const dynamic = "force-dynamic";
 
-const iconColorMap: Record<string, { bg: string; text: string }> = {
-  blue: { bg: "bg-blue-50", text: "text-blue-600" },
-  emerald: { bg: "bg-emerald-50", text: "text-emerald-600" },
-  amber: { bg: "bg-amber-50", text: "text-amber-600" },
-  purple: { bg: "bg-purple-50", text: "text-purple-600" },
-  red: { bg: "bg-red-50", text: "text-red-600" },
-  indigo: { bg: "bg-indigo-50", text: "text-indigo-600" },
-  slate: { bg: "bg-slate-100", text: "text-slate-600" },
-  teal: { bg: "bg-teal-50", text: "text-teal-600" },
-};
+// Brand palette is red + neutral black/white only — icon badges no longer
+// carry a per-item color key, they all render in the single pgp-red accent
+// (the Proxy keeps every existing `color="..."` call site working
+// unchanged regardless of which key it passes).
+const iconColorMap: Record<string, { bg: string; text: string }> = new Proxy({}, {
+  get: () => ({ bg: "bg-red-50", text: "text-pgp-red" }),
+});
 
 function QuickCard({
   icon: Icon, title, desc, href, color,
@@ -58,11 +67,14 @@ function QuickCard({
 }
 
 function StatMiniCard({
-  icon: Icon, label, value, color, tooltip, trend, suffix,
+  icon: Icon, label, value, color, tooltip, trend, suffix, sparklineValues,
 }: {
   icon: React.ComponentType<{ size?: number }>;
   label: string; value: number; color: string; tooltip?: string; suffix?: string;
   trend?: { direction: "up" | "down"; percentage: number };
+  /** Real short time-series for the mini trend line — omitted (not
+      fabricated) when no such series exists for this metric. */
+  sparklineValues?: number[];
 }) {
   const c = iconColorMap[color] || iconColorMap.blue;
   return (
@@ -72,14 +84,21 @@ function StatMiniCard({
           <Icon size={18} />
         </div>
         {trend && (
-          <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold shrink-0 ${trend.direction === "up" ? "text-emerald-600" : "text-red-600"}`}>
+          <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold shrink-0 ${trend.direction === "up" ? "text-[#1A2530]" : "text-pgp-red"}`}>
             {trend.direction === "up" ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
             {trend.percentage}%
           </span>
         )}
       </div>
-      <p className="text-xl font-extrabold text-slate-800 leading-tight">{value}{suffix}</p>
-      <p className="text-[10px] font-bold text-slate-400 uppercase leading-snug mt-1">{label}</p>
+      <div className="flex items-end justify-between gap-2">
+        <div>
+          <p className="text-xl font-extrabold text-slate-800 leading-tight">{value}{suffix}</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase leading-snug mt-1">{label}</p>
+        </div>
+        {sparklineValues && sparklineValues.length >= 2 && (
+          <Sparkline values={sparklineValues} positive={trend?.direction !== "down"} />
+        )}
+      </div>
     </div>
   );
 }
@@ -167,9 +186,6 @@ export default async function HRDDashboard({
 
   const now = new Date();
   const today = now.toISOString().split("T")[0];
-  const currentDateStr = now.toLocaleDateString("id-ID", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
-  });
 
   const { start: periodStart, end: periodEnd, bucket } = getPeriodRange(period, now);
   const periodStartStr = periodStart.toISOString().split("T")[0];
@@ -183,6 +199,9 @@ export default async function HRDDashboard({
   const trendWindowStart = new Date(now); trendWindowStart.setDate(trendWindowStart.getDate() - 6);
   const trendWindowStartStr = trendWindowStart.toISOString().split("T")[0];
 
+  const yearStart = new Date(now.getFullYear(), 0, 1).toISOString();
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
   // Each query falls back to an empty/null result instead of rejecting, so one
   // bad table or network hiccup can't take down the whole dashboard render.
   const [
@@ -192,12 +211,17 @@ export default async function HRDDashboard({
     { count: pendingRequests },
     { count: pendingLeaves },
     { count: activeJobs },
+    { count: overtimeToday },
     { data: attendanceRaw },
     { data: trendAttendanceRaw },
     { data: employeesRaw },
     { data: leavesRaw },
     { data: applicantsRaw },
     { data: profileFieldsRaw },
+    { data: kpiScoresRaw },
+    { data: employeeDeptRaw },
+    { data: headcountDatesRaw },
+    { data: resignationsRaw },
   ] = await Promise.all([
     supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }).neq("status", "Inactive").then((r) => r, () => ({ count: null })),
     supabaseAdmin.from("departemen").select("*", { count: "exact", head: true }).eq("level", 3).then((r) => r, () => ({ count: null })),
@@ -205,13 +229,25 @@ export default async function HRDDashboard({
     supabaseAdmin.from("permintaan_sdm").select("*", { count: "exact", head: true }).eq("status", "Pending").then((r) => r, () => ({ count: null })),
     supabaseAdmin.from("pengajuan_cuti").select("*", { count: "exact", head: true }).eq("status", "Pending").then((r) => r, () => ({ count: null })),
     supabaseAdmin.from("lowongan_kerja").select("*", { count: "exact", head: true }).eq("status", "Open").then((r) => r, () => ({ count: null })),
+    supabaseAdmin.from("lembur").select("*", { count: "exact", head: true }).eq("tanggal", today).then((r) => r, () => ({ count: null })),
     supabaseAdmin.from("absensi").select("date").gte("date", periodStartStr).lte("date", periodEndStr).not("check_in", "is", null).then((r) => r, () => ({ data: null })),
     supabaseAdmin.from("absensi").select("date").gte("date", trendWindowStartStr).lte("date", today).not("check_in", "is", null).then((r) => r, () => ({ data: null })),
     supabaseAdmin.from("karyawan").select("department").neq("status", "Inactive").then((r) => r, () => ({ data: null })),
     supabaseAdmin.from("pengajuan_cuti").select("status").gte("created_at", monthStart).then((r) => r, () => ({ data: null })),
     supabaseAdmin.from("pelamar").select("status").then((r) => r, () => ({ data: null })),
     supabaseAdmin.from("karyawan").select("phone, address, nik, emergency_phone").neq("status", "Inactive").then((r) => r, () => ({ data: null })),
+    supabaseAdmin.from("evaluasi_kpi").select("employee_id, final_score").like("period", `%/${now.getFullYear()}`).not("final_score", "is", null).then((r) => r, () => ({ data: null })),
+    supabaseAdmin.from("karyawan").select("id, department").neq("status", "Inactive").then((r) => r, () => ({ data: null })),
+    supabaseAdmin.from("karyawan").select("created_at").gte("created_at", sixMonthsAgo.toISOString()).then((r) => r, () => ({ data: null })),
+    supabaseAdmin.from("pengunduran_diri").select("created_at, status").gte("created_at", yearStart).then((r) => r, () => ({ data: null })),
   ]);
+
+  const { data: activityLogRaw } = await supabaseAdmin
+    .from("audit_logs")
+    .select("action, detail, performed_by_name, target_name, created_at")
+    .order("created_at", { ascending: false })
+    .limit(8)
+    .then((r) => r, () => ({ data: null as { action: string; detail: string | null; performed_by_name: string | null; target_name: string | null; created_at: string }[] | null }));
 
   // Process attendance per bucket (day or week depending on selected period)
   const attendanceByDate: Record<string, number> = {};
@@ -256,6 +292,12 @@ export default async function HRDDashboard({
   const attendanceTrend = otherAvg > 0
     ? { direction: (todayCount >= otherAvg ? "up" : "down") as "up" | "down", percentage: Math.round(Math.abs((todayCount - otherAvg) / otherAvg) * 100) }
     : undefined;
+  // Real 7-day series for the "Hadir Hari Ini" KPI card sparkline.
+  const attendanceSparkline: number[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    attendanceSparkline.push(trendByDate[d.toISOString().split("T")[0]] || 0);
+  }
 
   // Process employees by department (top 6)
   const deptCount: Record<string, number> = {};
@@ -308,6 +350,109 @@ export default async function HRDDashboard({
   ).length;
   const profileCompletionPct = profileFields.length > 0 ? Math.round((completeProfiles / profileFields.length) * 100) : 0;
 
+  // Performance Score: average of this year's Final Score across all
+  // evaluated employees (real data from evaluasi_kpi, not a placeholder).
+  const kpiScores = (kpiScoresRaw || []) as { employee_id: string; final_score: number }[];
+  const performanceScorePct = kpiScores.length > 0
+    ? Math.round(kpiScores.reduce((sum, k) => sum + k.final_score, 0) / kpiScores.length)
+    : 0;
+
+  // Department Performance: average Final Score per department, joined
+  // client-side since evaluasi_kpi.employee_id and karyawan.id share the
+  // same ID space (karyawan!employee_id embed used elsewhere confirms this).
+  const employeeDeptMap: Record<string, string> = {};
+  (employeeDeptRaw || []).forEach((e) => {
+    if (e.id && e.department) employeeDeptMap[e.id as string] = e.department as string;
+  });
+  const deptScoreAgg: Record<string, { sum: number; count: number }> = {};
+  kpiScores.forEach((k) => {
+    const dept = employeeDeptMap[k.employee_id];
+    if (!dept) return;
+    if (!deptScoreAgg[dept]) deptScoreAgg[dept] = { sum: 0, count: 0 };
+    deptScoreAgg[dept].sum += k.final_score;
+    deptScoreAgg[dept].count += 1;
+  });
+  const deptPerformance = Object.entries(deptScoreAgg)
+    .map(([department, { sum, count }]) => ({ department, score: Math.round(sum / count) }))
+    .sort((a, b) => b.score - a.score);
+  const topDepartments = deptPerformance.slice(0, 5);
+  const needAttentionDepartments = deptPerformance.filter((d) => d.score < 75).sort((a, b) => a.score - b.score).slice(0, 5);
+
+  // Headcount Trend: active employees added per month, last 6 months —
+  // a simple real cumulative-growth proxy from karyawan.created_at.
+  const headcountMonths: { key: string; label: string }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    headcountMonths.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: d.toLocaleDateString("id-ID", { month: "short" }) });
+  }
+  const headcountByMonth: Record<string, number> = {};
+  (headcountDatesRaw || []).forEach((r) => {
+    if (!r.created_at) return;
+    const d = new Date(r.created_at as string);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    headcountByMonth[key] = (headcountByMonth[key] || 0) + 1;
+  });
+  const headcountTrendData = headcountMonths.map((m) => ({ label: m.label, value: headcountByMonth[m.key] || 0 }));
+
+  // Turnover Trend: approved resignations per month this year.
+  const resignations = (resignationsRaw || []) as { created_at: string; status: string }[];
+  const approvedResignations = resignations.filter((r) => ["Disetujui", "Approved"].includes(r.status));
+  const turnoverMonths: { key: string; label: string }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    turnoverMonths.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: d.toLocaleDateString("id-ID", { month: "short" }) });
+  }
+  const turnoverByMonth: Record<string, number> = {};
+  approvedResignations.forEach((r) => {
+    const d = new Date(r.created_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    turnoverByMonth[key] = (turnoverByMonth[key] || 0) + 1;
+  });
+  const turnoverTrendData = turnoverMonths.map((m) => ({ label: m.label, value: turnoverByMonth[m.key] || 0 }));
+  const turnoverRatePct = (totalEmployees || 0) > 0
+    ? Math.round((approvedResignations.length / (totalEmployees || 1)) * 1000) / 10
+    : 0;
+
+  // HR Health Score: honest composite of 3 real, already-computed metrics —
+  // not a fabricated/AI-generated number, just a weighted average presented
+  // as a single at-a-glance indicator.
+  const attendanceRatePct = (totalEmployees || 0) > 0 ? Math.round(((presentToday || 0) / (totalEmployees || 1)) * 100) : 0;
+  const pendingLoad = (pendingLeaves || 0) + (pendingRequests || 0);
+  const pendingLoadScore = Math.max(0, 100 - pendingLoad * 5);
+  const hrHealthScore = Math.round((attendanceRatePct + profileCompletionPct + pendingLoadScore) / 3);
+
+  const greeting = now.getHours() < 11 ? "Selamat Pagi" : now.getHours() < 15 ? "Selamat Siang" : now.getHours() < 18 ? "Selamat Sore" : "Selamat Malam";
+
+  // Smart Insights: rule-based, computed from real data already fetched above
+  // (not AI/ML — this app has no such infrastructure, so insights are honest
+  // threshold checks rather than fabricated predictions).
+  type Insight = { icon: React.ComponentType<{ size?: number }>; tone: "warning" | "critical" | "good"; text: string; href?: string };
+  const insights: Insight[] = [];
+  if ((pendingLeaves || 0) > 0) {
+    insights.push({ icon: AlertTriangle, tone: "warning", text: `${pendingLeaves} pengajuan cuti menunggu persetujuan Anda`, href: "/hrd/attendance" });
+  }
+  if ((pendingRequests || 0) > 0) {
+    insights.push({ icon: AlertTriangle, tone: "warning", text: `${pendingRequests} permintaan tenaga kerja menunggu review`, href: "/hrd/workforce" });
+  }
+  if (attendanceTrend?.direction === "down" && attendanceTrend.percentage >= 10) {
+    insights.push({ icon: TrendingDown, tone: "critical", text: `Kehadiran hari ini turun ${attendanceTrend.percentage}% dibanding rata-rata 7 hari terakhir`, href: "/hrd/attendance" });
+  }
+  if (profileCompletionPct < 80 && profileFields.length > 0) {
+    insights.push({ icon: UserCog, tone: "warning", text: `Baru ${profileCompletionPct}% karyawan melengkapi profil pribadi mereka`, href: "/hrd/infrastructure/employees" });
+  }
+  if ((activeJobs || 0) > 0 && appChartData.length === 0) {
+    insights.push({ icon: Briefcase, tone: "warning", text: `${activeJobs} lowongan aktif belum menerima pelamar`, href: "/hrd/recruitment" });
+  }
+  if (insights.length === 0) {
+    insights.push({ icon: CheckCircle2, tone: "good", text: "Semua metrik utama dalam kondisi normal — tidak ada yang perlu ditindaklanjuti segera." });
+  }
+
+  const activityTimeline = (activityLogRaw || []).map((a) => ({
+    text: a.detail || `${a.action}${a.target_name ? ` — ${a.target_name}` : ""}`,
+    actor: a.performed_by_name || "Sistem",
+    time: new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+  }));
+
   const quickAccess = [
     { icon: UserCog, title: "Profil Karyawan", desc: "Lihat data diri dan profil yang diisi oleh karyawan", href: "/hrd/infrastructure/employees", color: "blue" },
     { icon: Briefcase, title: "Rekrutmen", desc: "Lowongan, pelamar, dan hiring", href: "/hrd/recruitment", color: "emerald" },
@@ -321,7 +466,9 @@ export default async function HRDDashboard({
   const stats = [
     { label: "Total Karyawan", value: totalEmployees || 0, icon: Users, color: "blue", tooltip: "Jumlah seluruh karyawan aktif" },
     { label: "Total Departemen", value: totalDepartments || 0, icon: Building2, color: "indigo", tooltip: "Jumlah departemen terdaftar" },
-    { label: "Hadir Hari Ini", value: presentToday || 0, icon: CalendarCheck, color: "emerald", tooltip: "Karyawan hadir hari ini", trend: attendanceTrend },
+    { label: "Hadir Hari Ini", value: presentToday || 0, icon: CalendarCheck, color: "emerald", tooltip: "Karyawan hadir hari ini", trend: attendanceTrend, sparklineValues: attendanceSparkline },
+    { label: "Skor Performa", value: performanceScorePct, suffix: performanceScorePct > 0 ? "%" : "", icon: Award, color: "red", tooltip: `Rata-rata Final Score ${kpiScores.length} evaluasi KPI tahun ini` },
+    { label: "Turnover Rate", value: turnoverRatePct, suffix: "%", icon: UserMinus, color: "red", tooltip: `${approvedResignations.length} resign disetujui tahun ini dari ${totalEmployees || 0} karyawan aktif` },
     { label: "Permintaan Pending", value: pendingRequests || 0, icon: Clock, color: "amber", tooltip: "Permintaan tenaga kerja menunggu" },
     { label: "Cuti Pending", value: pendingLeaves || 0, icon: FileText, color: "red", tooltip: "Pengajuan cuti menunggu HRD" },
     { label: "Lowongan Aktif", value: activeJobs || 0, icon: Briefcase, color: "purple", tooltip: "Lowongan kerja yang dibuka" },
@@ -330,12 +477,68 @@ export default async function HRDDashboard({
 
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-screen-2xl mx-auto">
-      {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-          Selamat Datang, {userName}
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">{currentDateStr}</p>
+      {/* Executive Header */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">PT Pratama Galuh Perkasa &middot; {now.getFullYear()}</p>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              {greeting}, {userName}
+            </h1>
+            <div className="mt-1.5">
+              <LiveClock initialIso={now.toISOString()} />
+            </div>
+          </div>
+          <div className="flex items-center gap-4 shrink-0">
+            <RadialGauge value={hrHealthScore} label="HR Health Score" size={92} />
+          </div>
+        </div>
+
+        {/* Summary Hari Ini */}
+        <div className="grid grid-cols-3 sm:grid-cols-6 divide-x divide-slate-100 border-t border-slate-100">
+          {[
+            { label: "Total Karyawan", value: totalEmployees || 0 },
+            { label: "Hadir Hari Ini", value: presentToday || 0 },
+            { label: "Cuti", value: pendingLeaves || 0 },
+            { label: "Lembur Hari Ini", value: overtimeToday || 0 },
+            { label: "Lowongan Aktif", value: activeJobs || 0 },
+            { label: "Pending Approval", value: (pendingRequests || 0) + (pendingLeaves || 0) },
+          ].map((s) => (
+            <div key={s.label} className="px-4 py-3 text-center">
+              <p className="text-lg font-extrabold text-slate-800 leading-tight">{s.value}</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase leading-snug mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Smart Insights */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles size={18} className="text-pgp-red" />
+          <h2 className="text-lg font-extrabold text-slate-800">Smart Insights</h2>
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Berbasis aturan &amp; data real-time</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {insights.map((insight, i) => {
+            const toneStyle = insight.tone === "critical"
+              ? "bg-red-50 border-red-100 text-pgp-red"
+              : insight.tone === "warning"
+                ? "bg-slate-50 border-slate-200 text-slate-700"
+                : "bg-[#1A2530] border-[#1A2530] text-white";
+            const Icon = insight.icon;
+            const content = (
+              <div className={`flex items-start gap-3 rounded-xl border p-4 ${toneStyle} ${insight.href ? "hover:shadow-sm transition-shadow" : ""}`}>
+                <Icon size={18} />
+                <p className="text-xs font-semibold leading-relaxed flex-1">{insight.text}</p>
+                {insight.href && <ArrowUpRight size={14} className="shrink-0 mt-0.5" />}
+              </div>
+            );
+            return insight.href
+              ? <Link key={i} href={insight.href}>{content}</Link>
+              : <div key={i}>{content}</div>;
+          })}
+        </div>
       </div>
 
       {/* Quick Access */}
@@ -432,6 +635,94 @@ export default async function HRDDashboard({
             )}
           </div>
 
+          {/* Headcount Trend */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <div className="mb-4">
+              <h3 className="font-extrabold text-slate-800 text-sm">Headcount Trend</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">Karyawan baru bergabung per bulan, 6 bulan terakhir</p>
+            </div>
+            <TrendArea data={headcountTrendData} xKey="label" series={[{ key: "value", label: "Karyawan Baru" }]} height={200} />
+          </div>
+
+          {/* Turnover Trend */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <div className="mb-4">
+              <h3 className="font-extrabold text-slate-800 text-sm">Turnover Trend</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">Resign disetujui per bulan, 6 bulan terakhir</p>
+            </div>
+            <TrendArea data={turnoverTrendData} xKey="label" series={[{ key: "value", label: "Resign" }]} height={200} />
+          </div>
+
+        </div>
+      </div>
+
+      {/* Department Performance */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Trophy size={18} className="text-pgp-red" />
+          <h2 className="text-lg font-extrabold text-slate-800">Performa Departemen</h2>
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Rata-rata Final Score KPI tahun ini</span>
+        </div>
+        {deptPerformance.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <EmptyState icon={Trophy} title="Belum ada data evaluasi KPI untuk dianalisis." className="border-none py-10" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <h3 className="font-extrabold text-slate-800 text-sm mb-4">Top Performing Department</h3>
+              <ul className="space-y-3">
+                {topDepartments.map((d, i) => (
+                  <li key={d.department} className="flex items-center gap-3">
+                    <span className="h-6 w-6 rounded-full bg-[#1A2530] text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">{i + 1}</span>
+                    <span className="text-xs font-semibold text-slate-700 flex-1 truncate">{d.department}</span>
+                    <span className="text-xs font-extrabold text-slate-800">{d.score}%</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <h3 className="font-extrabold text-slate-800 text-sm mb-4">Need Attention</h3>
+              {needAttentionDepartments.length === 0 ? (
+                <EmptyState icon={CheckCircle2} title="Tidak ada departemen di bawah ambang batas." className="border-none py-8" />
+              ) : (
+                <ul className="space-y-3">
+                  {needAttentionDepartments.map((d) => (
+                    <li key={d.department} className="flex items-center gap-3">
+                      <span className="h-2 w-2 rounded-full bg-pgp-red shrink-0" />
+                      <span className="text-xs font-semibold text-slate-700 flex-1 truncate">{d.department}</span>
+                      <span className="text-xs font-extrabold text-pgp-red">{d.score}%</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Activity Timeline */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Activity size={18} className="text-pgp-red" />
+          <h2 className="text-lg font-extrabold text-slate-800">Aktivitas Terbaru</h2>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          {activityTimeline.length === 0 ? (
+            <EmptyState icon={Activity} title="Belum ada aktivitas tercatat." className="border-none py-8" />
+          ) : (
+            <ul className="space-y-4">
+              {activityTimeline.map((item, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <div className="mt-1 w-2 h-2 rounded-full bg-pgp-red shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-700 leading-relaxed">{item.text}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{item.actor} &middot; {item.time}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
