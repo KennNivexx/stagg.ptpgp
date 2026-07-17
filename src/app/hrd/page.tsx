@@ -14,6 +14,8 @@ import {
   UserCog,
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import TrendArea from "@/components/charts/TrendArea";
+import RankedBar from "@/components/charts/RankedBar";
 
 // Force dynamic rendering — every request re-fetches fresh data from Supabase
 // instead of Next.js serving a statically cached copy of this dashboard.
@@ -46,7 +48,7 @@ function QuickCard({
         <div className="min-w-0">
           <h3 className="text-sm font-extrabold text-slate-800 mb-1">{title}</h3>
           <p className="text-xs text-slate-500 leading-relaxed mb-3">{desc}</p>
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-[#CC0000] group-hover:gap-2 transition-all">
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-pgp-red group-hover:gap-2 transition-all">
             Buka <span className="group-hover:translate-x-0.5 transition-transform">&rarr;</span>
           </span>
         </div>
@@ -83,138 +85,6 @@ function StatMiniCard({
 }
 
 const BAR_CHART_MAX_BARS = 12;
-
-function BarChart({ data }: { data: { label: string; sublabel?: string; value: number }[] }) {
-  const displayData = data.length > BAR_CHART_MAX_BARS ? data.slice(-BAR_CHART_MAX_BARS) : data;
-
-  // Ceil to the nearest whole unit so a small max (e.g. 3) still gets clean,
-  // non-repeating gridline labels instead of duplicate rounded fractions.
-  const yMax = Math.max(Math.ceil(Math.max(...displayData.map((d) => d.value), 0)), 1);
-  const BAR_H = 120;
-  const BAR_W = 32;
-  const GAP = 14;
-  const PADDING_LEFT = 28;
-  const totalW = PADDING_LEFT + displayData.length * (BAR_W + GAP) - GAP + 10;
-
-  return (
-    <div className="max-h-[180px] w-full text-[#CC0000]">
-      <svg
-        viewBox={`0 0 ${totalW} ${BAR_H + 52}`}
-        className="w-full h-full"
-        preserveAspectRatio="xMidYMax meet"
-        aria-hidden
-      >
-        {/* y-axis gridlines — skip a label when rounding would repeat the previous one */}
-        {[0, 0.25, 0.5, 0.75, 1].map((frac, i, arr) => {
-          const y = BAR_H - frac * BAR_H;
-          const val = Math.round(frac * yMax);
-          const prevVal = i > 0 ? Math.round(arr[i - 1] * yMax) : null;
-          const showLabel = val !== prevVal;
-          return (
-            <g key={frac}>
-              <line x1={PADDING_LEFT - 4} y1={y} x2={totalW - 6} y2={y} stroke="#f1f5f9" strokeWidth={1} />
-              {showLabel && (
-                <text x={PADDING_LEFT - 6} y={y + 4} textAnchor="end" fontSize={8} fill="#cbd5e1">{val}</text>
-              )}
-            </g>
-          );
-        })}
-        {displayData.map((d, i) => {
-          const barH = Math.max((d.value / yMax) * BAR_H, d.value > 0 ? 4 : 2);
-          const x = PADDING_LEFT + i * (BAR_W + GAP);
-          const y = BAR_H - barH;
-          return (
-            <g key={i}>
-              <rect x={x} y={y} width={BAR_W} height={barH} fill="currentColor" rx={4}
-                opacity={d.value === 0 ? 0.15 : 0.85} />
-              {d.value > 0 && (
-                <text x={x + BAR_W / 2} y={y - 4} textAnchor="middle" fontSize={9} fill="currentColor" fontWeight="700">
-                  {d.value}
-                </text>
-              )}
-              <text x={x + BAR_W / 2} y={BAR_H + 14} textAnchor="middle" fontSize={9} fill="#64748b" fontWeight="600">
-                {d.label}
-              </text>
-              {d.sublabel && (
-                <text x={x + BAR_W / 2} y={BAR_H + 26} textAnchor="middle" fontSize={8} fill="#94a3b8">
-                  {d.sublabel}
-                </text>
-              )}
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
-function HorizontalBarChart({ data }: { data: { label: string; value: number; color: string }[] }) {
-  const max = Math.max(...data.map((d) => d.value), 1);
-  return (
-    <div className="space-y-3">
-      {data.map((d, i) => (
-        <div key={i}>
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-xs font-semibold text-slate-700 truncate max-w-[160px]">{d.label}</span>
-            <span className="text-xs font-extrabold text-slate-800 ml-2">{d.value}</span>
-          </div>
-          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-            <div
-              className="h-2 rounded-full transition-all"
-              style={{ width: `${(d.value / max) * 100}%`, backgroundColor: d.color }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DonutChart({ segments, total }: { segments: { label: string; value: number; color: string }[]; total: number }) {
-  const R = 52;
-  const CX = 64;
-  const CY = 64;
-  const strokeW = 20;
-  const circumference = 2 * Math.PI * R;
-
-  let offset = 0;
-  const arcs = segments.map((seg) => {
-    const pct = total === 0 ? 0 : seg.value / total;
-    const dash = pct * circumference;
-    const arc = { ...seg, dash, offset: offset * circumference };
-    offset += pct;
-    return arc;
-  });
-
-  return (
-    <div className="flex items-center gap-6">
-      <svg viewBox="0 0 128 128" className="w-28 h-28 shrink-0" aria-hidden>
-        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#f1f5f9" strokeWidth={strokeW} />
-        {total === 0 ? (
-          <circle cx={CX} cy={CY} r={R} fill="none" stroke="#e2e8f0" strokeWidth={strokeW} />
-        ) : arcs.map((arc, i) => (
-          <circle key={i} cx={CX} cy={CY} r={R} fill="none"
-            stroke={arc.color} strokeWidth={strokeW}
-            strokeDasharray={`${arc.dash} ${circumference - arc.dash}`}
-            strokeDashoffset={circumference / 4 - arc.offset}
-            transform={`rotate(-90 ${CX} ${CY})`}
-          />
-        ))}
-        <text x={CX} y={CY - 5} textAnchor="middle" fontSize={18} fontWeight="800" fill="#1e293b">{total}</text>
-        <text x={CX} y={CY + 12} textAnchor="middle" fontSize={9} fill="#94a3b8">Total</text>
-      </svg>
-      <div className="space-y-2 flex-1">
-        {segments.map((seg, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
-            <span className="text-xs text-slate-600 flex-1">{seg.label}</span>
-            <span className="text-xs font-extrabold text-slate-800">{seg.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 const PERIOD_OPTIONS = [
   { key: "7d", label: "7 Hari" },
@@ -281,8 +151,6 @@ function getWeekBuckets(start: Date, end: Date) {
   }
   return weeks;
 }
-
-const DEPT_COLORS = ["#CC0000", "#2563eb", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
 
 import { requireRole } from "@/lib/auth-guard";
 
@@ -397,7 +265,7 @@ export default async function HRDDashboard({
   const deptChartData = Object.entries(deptCount)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
-    .map(([label, value], i) => ({ label, value, color: DEPT_COLORS[i % DEPT_COLORS.length] }));
+    .map(([label, value]) => ({ label, value }));
 
   // Process leave by status
   const leaveCount: Record<string, number> = { Pending: 0, Disetujui: 0, Ditolak: 0 };
@@ -405,10 +273,10 @@ export default async function HRDDashboard({
     if (l.status && l.status in leaveCount) leaveCount[l.status]++;
   });
   const leaveTotal = Object.values(leaveCount).reduce((a, b) => a + b, 0);
-  const leaveSegments = [
-    { label: "Pending", value: leaveCount.Pending, color: "#f59e0b" },
-    { label: "Disetujui", value: leaveCount.Disetujui, color: "#16a34a" },
-    { label: "Ditolak", value: leaveCount.Ditolak, color: "#CC0000" },
+  const leaveChartData = [
+    { label: "Pending", value: leaveCount.Pending, color: "var(--chart-status-warning)" },
+    { label: "Disetujui", value: leaveCount.Disetujui, color: "var(--chart-status-good)" },
+    { label: "Ditolak", value: leaveCount.Ditolak, color: "var(--chart-status-critical)" },
   ];
 
   // Process applicants by status
@@ -419,7 +287,7 @@ export default async function HRDDashboard({
   const appChartData = Object.entries(appCount)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
-    .map(([label, value], i) => ({ label, value, color: DEPT_COLORS[i % DEPT_COLORS.length] }));
+    .map(([label, value]) => ({ label, value }));
 
   // Self-service profile completeness: how many employees have filled in the
   // fields that only they can enter via /employee/profile (not HRD-entered).
@@ -509,7 +377,7 @@ export default async function HRDDashboard({
                     key={opt.key}
                     href={opt.key === "7d" ? "/hrd" : `/hrd?range=${opt.key}`}
                     className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-colors ${
-                      period === opt.key ? "bg-white shadow-sm text-[#CC0000]" : "text-slate-500 hover:text-slate-700"
+                      period === opt.key ? "bg-white shadow-sm text-pgp-red" : "text-slate-500 hover:text-slate-700"
                     }`}
                   >
                     {opt.label}
@@ -517,7 +385,7 @@ export default async function HRDDashboard({
                 ))}
               </div>
             </div>
-            <BarChart data={attendanceChartData} />
+            <TrendArea data={attendanceChartData} xKey="label" series={[{ key: "value", label: "Kehadiran" }]} height={220} />
             {attendanceChartTruncated && (
               <p className="text-[10px] text-slate-400 mt-2 text-center">
                 Menampilkan {BAR_CHART_MAX_BARS} dari {attendanceChartTotalCount} {bucket === "week" ? "minggu" : "hari"} terbaru
@@ -534,7 +402,7 @@ export default async function HRDDashboard({
             {deptChartData.length === 0 ? (
               <EmptyState icon={Building2} title="Belum ada data departemen." className="border-none py-8" />
             ) : (
-              <HorizontalBarChart data={deptChartData} />
+              <RankedBar data={deptChartData} height={deptChartData.length * 44} />
             )}
           </div>
 
@@ -547,7 +415,7 @@ export default async function HRDDashboard({
             {leaveTotal === 0 ? (
               <EmptyState icon={FileText} title="Belum ada pengajuan cuti bulan ini." className="border-none py-8" />
             ) : (
-              <DonutChart segments={leaveSegments} total={leaveTotal} />
+              <RankedBar data={leaveChartData} height={leaveChartData.length * 44} />
             )}
           </div>
 
@@ -560,7 +428,7 @@ export default async function HRDDashboard({
             {appChartData.length === 0 ? (
               <EmptyState icon={Briefcase} title="Belum ada data pelamar." className="border-none py-8" />
             ) : (
-              <HorizontalBarChart data={appChartData} />
+              <RankedBar data={appChartData} height={appChartData.length * 44} />
             )}
           </div>
 

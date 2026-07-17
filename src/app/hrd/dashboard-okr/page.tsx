@@ -1,6 +1,8 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
 import { Users, Target, TrendingUp, Award, Building2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import RadialGauge from "@/components/charts/RadialGauge";
+import RankedBar from "@/components/charts/RankedBar";
 
 export default async function DashboardOKR() {
   const [
@@ -131,34 +133,17 @@ export default async function DashboardOKR() {
               </div>
             </div>
           </div>
-          <div className="p-6 space-y-6">
+          <div className="p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
             {deptOKR.length === 0 ? (
-              <EmptyState icon={Target} title="Belum ada data OKR per departemen." description="Lakukan evaluasi KPI untuk melihat progress di sini." />
+              <div className="col-span-full">
+                <EmptyState icon={Target} title="Belum ada data OKR per departemen." description="Lakukan evaluasi KPI untuk melihat progress di sini." />
+              </div>
             ) : (
               deptOKR.map((dept) => {
                 const pct = dept.target > 0 ? Math.min(Math.round((dept.avgScore / dept.target) * 100), 100) : 0;
-                const isOnTrack = pct >= 70;
-                const barColor = isOnTrack ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-red-500";
                 return (
-                  <div key={dept.name}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Building2 size={14} className="text-slate-500" />
-                        <span className="text-xs font-bold text-slate-700">{dept.name}</span>
-                        <span className="text-[10px] text-slate-400">({dept.totalEmployees} karyawan)</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-slate-400">Target: <span className="font-bold text-slate-700">{dept.target}</span></span>
-                        <span className="text-[10px] text-slate-400">Skor: <span className={`font-bold ${isOnTrack ? "text-emerald-600" : "text-red-600"}`}>{dept.avgScore}</span></span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${Math.max(pct, 3)}%` }} />
-                      </div>
-                      <span className={`text-xs font-bold w-10 text-right ${isOnTrack ? "text-emerald-600" : "text-red-600"}`}>{pct}%</span>
-                      {isOnTrack ? <CheckCircle2 size={14} className="text-emerald-500" /> : <AlertCircle size={14} className="text-amber-500" />}
-                    </div>
+                  <div key={dept.name} className="flex flex-col items-center">
+                    <RadialGauge value={pct} label={dept.name} size={120} sublabel={`${dept.totalEmployees} karyawan`} />
                   </div>
                 );
               })
@@ -223,22 +208,17 @@ export default async function DashboardOKR() {
           {evals.length === 0 ? (
             <EmptyState icon={Award} title="Belum ada data evaluasi OKR." description="Buat evaluasi KPI untuk melihat distribusi skor." />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[
-                { range: "0-20", label: "Sangat Rendah", count: evals.filter((e) => (Number(e.progress) || 0) <= 20).length, color: "bg-red-500" },
-                { range: "21-40", label: "Rendah", count: evals.filter((e) => (Number(e.progress) || 0) > 20 && (Number(e.progress) || 0) <= 40).length, color: "bg-orange-500" },
-                { range: "41-60", label: "Cukup", count: evals.filter((e) => (Number(e.progress) || 0) > 40 && (Number(e.progress) || 0) <= 60).length, color: "bg-amber-500" },
-                { range: "61-80", label: "Baik", count: evals.filter((e) => (Number(e.progress) || 0) > 60 && (Number(e.progress) || 0) <= 80).length, color: "bg-emerald-500" },
-                { range: "81-100", label: "Sangat Baik", count: evals.filter((e) => (Number(e.progress) || 0) > 80).length, color: "bg-blue-500" },
-              ].map((bucket) => (
-                <div key={bucket.range} className="bg-white rounded-xl border border-slate-100 p-4 text-center">
-                  <div className={`h-1.5 w-full rounded-full ${bucket.color} mb-3`} />
-                  <p className="text-xs font-bold text-slate-800">{bucket.range}</p>
-                  <p className="text-[10px] text-slate-400">{bucket.label}</p>
-                  <p className="text-lg font-extrabold text-slate-800 mt-1">{bucket.count}</p>
-                </div>
-              ))}
-            </div>
+            <RankedBar
+              data={[
+                { label: "0-20 · Sangat Rendah", value: evals.filter((e) => (Number(e.progress) || 0) <= 20).length, color: "var(--chart-status-critical)" },
+                { label: "21-40 · Rendah", value: evals.filter((e) => (Number(e.progress) || 0) > 20 && (Number(e.progress) || 0) <= 40).length, color: "var(--chart-status-serious)" },
+                { label: "41-60 · Cukup", value: evals.filter((e) => (Number(e.progress) || 0) > 40 && (Number(e.progress) || 0) <= 60).length, color: "var(--chart-status-warning)" },
+                { label: "61-80 · Baik", value: evals.filter((e) => (Number(e.progress) || 0) > 60 && (Number(e.progress) || 0) <= 80).length, color: "var(--chart-status-good)" },
+                { label: "81-100 · Sangat Baik", value: evals.filter((e) => (Number(e.progress) || 0) > 80).length, color: "var(--chart-1)" },
+              ]}
+              height={220}
+              barLabel="Evaluasi"
+            />
           )}
         </div>
       </div>

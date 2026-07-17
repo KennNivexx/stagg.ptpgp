@@ -2,6 +2,7 @@
 import { UserX, TrendingUp, AlertTriangle, Users } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
+import RadialGauge from "@/components/charts/RadialGauge";
 
 export const dynamic = "force-dynamic";
 
@@ -150,20 +151,14 @@ export default async function LaporanTurnover() {
               <p className="text-xs text-slate-400 mt-0.5">Metrik kunci</p>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-slate-600">Turnover Rate</span>
-                  <span className={`text-lg font-extrabold ${Number(turnoverRate) > 10 ? "text-red-600" : Number(turnoverRate) > 5 ? "text-amber-600" : "text-emerald-600"}`}>
-                    {turnoverRate}%
-                  </span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${Number(turnoverRate) > 10 ? "bg-red-500" : Number(turnoverRate) > 5 ? "bg-amber-500" : "bg-emerald-500"}`}
-                    style={{ width: `${Math.min(100, Number(turnoverRate) * 5)}%` }}
-                  />
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1">
+              <div className="flex flex-col items-center">
+                <RadialGauge
+                  value={Number(turnoverRate)}
+                  label="Turnover Rate"
+                  size={140}
+                  severity={Number(turnoverRate) > 10 ? "critical" : Number(turnoverRate) > 5 ? "warning" : "good"}
+                />
+                <p className="text-[10px] text-slate-400 mt-2 text-center">
                   {Number(turnoverRate) > 10 ? "Tingkat turnover tinggi - perlu perhatian!" :
                    Number(turnoverRate) > 5 ? "Tingkat turnover moderat" :
                    "Tingkat turnover sehat"}
@@ -189,24 +184,8 @@ export default async function LaporanTurnover() {
               <h3 className="font-extrabold text-slate-800 text-sm">Retensi Karyawan</h3>
               <p className="text-xs text-slate-400 mt-0.5">Persentase retensi</p>
             </div>
-            <div className="p-8 text-center">
-              <div className="relative w-24 h-24 mx-auto mb-3">
-                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="40" stroke="#e2e8f0" strokeWidth="8" fill="none" />
-                  <circle
-                    cx="50" cy="50" r="40"
-                    stroke={Number(turnoverRate) > 10 ? "#ef4444" : Number(turnoverRate) > 5 ? "#f59e0b" : "#10b981"}
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray={`${(100 - Number(turnoverRate)) * 2.51} 251`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-extrabold text-slate-800">{100 - Number(turnoverRate)}%</span>
-                </div>
-              </div>
-              <p className="text-xs text-slate-500">Tingkat Retensi</p>
+            <div className="p-6 flex flex-col items-center">
+              <RadialGauge value={100 - Number(turnoverRate)} label="Tingkat Retensi" size={140} />
             </div>
           </div>
         </div>

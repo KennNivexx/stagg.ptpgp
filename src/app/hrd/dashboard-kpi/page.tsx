@@ -2,9 +2,10 @@ import { supabaseAdmin } from "@/lib/supabase";
 import {
   Target, TrendingUp, Users, DollarSign, Calendar,
   Briefcase, Award, Star, Activity, BarChart3,
-  ArrowUp, CheckCircle2, AlertCircle
+  ArrowUp
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import RadialGauge from "@/components/charts/RadialGauge";
 
 export default async function HRDDashboardKPI() {
   const [
@@ -168,43 +169,12 @@ export default async function HRDDashboardKPI() {
             </div>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
             {kpiAreas.map((area) => {
-              const c = colorClasses[area.color] || colorClasses.blue;
               const pct = area.target > 0 ? Math.min(Math.round((area.actual / area.target) * 100), 100) : 0;
-              const isOnTrack = pct >= 70;
               return (
-                <div key={area.title}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-1.5 rounded-lg ${c.light} ${c.text}`}>
-                        {area.icon}
-                      </div>
-                      <span className="text-xs font-bold text-slate-700">{area.title}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-slate-400">
-                        Target: <span className="font-bold text-slate-700">{area.target} {area.unit}</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        Actual: <span className={`font-bold ${isOnTrack ? "text-emerald-600" : "text-red-600"}`}>{area.actual} {area.unit}</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${c.bar}`}
-                        style={{ width: `${Math.max(pct, 4)}%` }}
-                      />
-                    </div>
-                    <span className={`text-xs font-bold w-10 text-right ${isOnTrack ? "text-emerald-600" : "text-red-600"}`}>
-                      {pct}%
-                    </span>
-                    <span className={`${isOnTrack ? "text-emerald-500" : "text-amber-500"}`}>
-                      {isOnTrack ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                    </span>
-                  </div>
+                <div key={area.title} className="flex flex-col items-center">
+                  <RadialGauge value={pct} label={area.title} size={120} sublabel={`${area.actual}/${area.target} ${area.unit}`} />
                 </div>
               );
             })}
@@ -304,15 +274,9 @@ export default async function HRDDashboardKPI() {
               </div>
             </div>
           </div>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-bold text-slate-700">Progress Evaluasi</span>
-              <span className="text-xl font-extrabold text-slate-800">{evaluationRate}%</span>
-            </div>
-            <div className="h-3 bg-slate-100 rounded-full overflow-hidden mb-4">
-              <div className="h-full rounded-full bg-purple-500" style={{ width: `${Math.max(evaluationRate, 2)}%` }} />
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="p-6 flex flex-col items-center">
+            <RadialGauge value={evaluationRate} label="Progress Evaluasi" size={140} />
+            <div className="flex items-center justify-between text-xs text-slate-500 w-full mt-4">
               <span>{evaluatedCount} sudah dinilai</span>
               <span>{(totalEmployees || 0) - evaluatedCount} belum dinilai</span>
             </div>

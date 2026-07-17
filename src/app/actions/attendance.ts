@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/auth-guard";
 import { averageDescriptors } from "@/lib/face-recognition";
 import { encryptDescriptor, decryptDescriptor } from "@/lib/face-encryption";
 import { auditLog } from "@/lib/audit";
-import { clockInForEmployee, clockOutForEmployee } from "@/lib/attendance-core";
+import { clockInForEmployee, clockOutForEmployee, resolveFaceEmployeeIds } from "@/lib/attendance-core";
 
 export async function clockIn(formData: FormData) {
   const user = await requireRole("hrd", "superadmin", "employee");
@@ -284,12 +284,22 @@ export async function getAllFaceDescriptors() {
 export async function getEmployeeFaceStatus(employeeId: string) {
   const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
   // Employees can only check their own face status
-  const targetId = user.role === "employee" ? user.id : employeeId;
+  let email: string;
+  if (user.role === "employee") {
+    email = user.email;
+  } else {
+    const { data: emp } = await supabaseAdmin.from("karyawan").select("email").eq("id", employeeId).maybeSingle();
+    email = (emp as { email?: string } | null)?.email || "";
+  }
+  const ids = await resolveFaceEmployeeIds(email);
+  if (ids.length === 0) return null;
 
   const { data } = await supabaseAdmin
     .from("data_wajah_karyawan")
     .select("id, photo_count, created_at, updated_at, photo_url")
-    .eq("employee_id", targetId)
+    .in("employee_id", ids)
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   return data || null;
@@ -297,17 +307,25 @@ export async function getEmployeeFaceStatus(employeeId: string) {
 
 export async function getMyFaceStatus() {
   const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
-  const { data } = await supabaseAdmin
-    .from("data_wajah_karyawan")
-    .select("id, photo_count, created_at, updated_at")
-    .eq("employee_id", user.id)
-    .maybeSingle();
+  const ids = await resolveFaceEmployeeIds(user.email);
+  const { data } = ids.length > 0
+    ? await supabaseAdmin
+        .from("data_wajah_karyawan")
+        .select("id, photo_count, created_at, updated_at")
+        .in("employee_id", ids)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
   return { status: data || null, userId: user.id, userName: user.name || user.email };
 }
 
 export async function getMyFaceDescriptors(): Promise<{ employeeId: string; employeeName: string; descriptor: number[] }[]> {
   const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
   const hasEncryption = !!process.env.FACE_ENCRYPTION_KEY;
+
+  const ids = await resolveFaceEmployeeIds(user.email);
+  if (ids.length === 0) return [];
 
   // Only select columns that exist: encrypted_* columns only exist when encryption is enabled
   const cols: string = hasEncryption
@@ -316,7 +334,9 @@ export async function getMyFaceDescriptors(): Promise<{ employeeId: string; empl
   const { data } = await supabaseAdmin
     .from("data_wajah_karyawan")
     .select(cols)
-    .eq("employee_id", user.id)
+    .in("employee_id", ids)
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle() as { data: Record<string, unknown> | null };
 
   if (!data) return [];
@@ -356,11 +376,28 @@ export async function getMyFaceDescriptors(): Promise<{ employeeId: string; empl
 export async function getAllEmployeeFaceStatuses() {
   await requireRole("hrd", "superadmin");
 
-  const { data } = await supabaseAdmin
-    .from("data_wajah_karyawan")
-    .select("employee_id");
+  const { data: faceRows } = await supabaseAdmin.from("data_wajah_karyawan").select("employee_id");
+  const rawIds = [...new Set((faceRows || []).map((f) => f.employee_id as string))];
+  if (rawIds.length === 0) return new Set<string>();
 
-  return new Set((data || []).map((f) => f.employee_id));
+  // employee_id is karyawan.id when HRD registered the face, or pengguna.id
+  // when the employee self-registered — the roster page (hrd/employees)
+  // checks faceIds.has(karyawan.id), so resolve every pengguna.id-keyed row
+  // back to its karyawan.id via email.
+  const resolved = new Set<string>();
+  const [{ data: karyawanDirect }, { data: penggunaRows }] = await Promise.all([
+    supabaseAdmin.from("karyawan").select("id").in("id", rawIds),
+    supabaseAdmin.from("pengguna").select("id, email").in("id", rawIds),
+  ]);
+  (karyawanDirect || []).forEach((k) => resolved.add((k as { id: string }).id));
+
+  const penggunaEmails = [...new Set((penggunaRows || []).map((u) => (u as { email?: string }).email).filter(Boolean))] as string[];
+  if (penggunaEmails.length > 0) {
+    const { data: matchedKaryawan } = await supabaseAdmin.from("karyawan").select("id").in("email", penggunaEmails);
+    (matchedKaryawan || []).forEach((k) => resolved.add((k as { id: string }).id));
+  }
+
+  return resolved;
 }
 
 // ── Face Change Requests ──────────────────────────────────────────
@@ -373,9 +410,13 @@ export async function submitFaceChangeRequest(formData: FormData) {
 
   if (!descriptorsJson) return { error: "Data descriptor wajah wajib diisi." };
 
-  // Must already have a registered face to request a change
-  const { data: existing } = await supabaseAdmin
-    .from("data_wajah_karyawan").select("id").eq("employee_id", user.id).maybeSingle();
+  // Must already have a registered face to request a change — check both id
+  // spaces (data_wajah_karyawan.employee_id may be karyawan.id if HRD
+  // registered it, not just user.id / pengguna.id from self-registration).
+  const faceIds = await resolveFaceEmployeeIds(user.email);
+  const { data: existing } = faceIds.length > 0
+    ? await supabaseAdmin.from("data_wajah_karyawan").select("id").in("employee_id", faceIds).maybeSingle()
+    : { data: null };
   if (!existing) {
     return { error: "Belum ada data wajah. Gunakan fitur Daftarkan Wajah terlebih dahulu." };
   }

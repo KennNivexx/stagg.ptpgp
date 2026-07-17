@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import PanduanLevel from "@/components/PanduanLevel";
 import EmptyState from "@/components/EmptyState";
+import CompetencyRadar from "@/components/charts/CompetencyRadar";
 import { createTrainingFromGap } from "@/app/actions/trainings";
 import { createIdpFromGap } from "@/app/actions/career-hrd";
 
@@ -145,6 +146,27 @@ export default function GapAnalysisClient({
     })).sort((a, b) => b.gapCount - a.gapCount);
   }, [filtered]);
 
+  // Average current vs required level per skill, across every gap row in
+  // the current filter — top 8 by frequency so the radar stays legible.
+  const skillRadarData = useMemo(() => {
+    const bySkill = new Map<string, { currentSum: number; requiredSum: number; count: number }>();
+    for (const r of filtered) {
+      if (!bySkill.has(r.skillName)) bySkill.set(r.skillName, { currentSum: 0, requiredSum: 0, count: 0 });
+      const s = bySkill.get(r.skillName)!;
+      s.currentSum += r.currentLevel;
+      s.requiredSum += r.requiredLevel;
+      s.count += 1;
+    }
+    return [...bySkill.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 8)
+      .map(([skill, s]) => ({
+        skill,
+        current: Math.round((s.currentSum / s.count) * 10) / 10,
+        required: Math.round((s.requiredSum / s.count) * 10) / 10,
+      }));
+  }, [filtered]);
+
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-6">
@@ -221,6 +243,14 @@ export default function GapAnalysisClient({
           </div>
         </div>
       </div>
+
+      {skillRadarData.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
+          <h3 className="font-extrabold text-slate-800 text-sm mb-1">Profil Kompetensi — Current vs Required</h3>
+          <p className="text-xs text-slate-400 mb-2">Rata-rata level saat ini vs standar yang dibutuhkan, top {skillRadarData.length} kompetensi dengan gap terbanyak</p>
+          <CompetencyRadar data={skillRadarData} />
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
         <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm">

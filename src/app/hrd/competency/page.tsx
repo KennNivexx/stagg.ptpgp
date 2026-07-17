@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { Users, Award, Star, Search, Target, AlertTriangle, ShieldAlert } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
+import RankedBar from "@/components/charts/RankedBar";
 
 export default async function HRDCompetency() {
   const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -81,15 +82,6 @@ export default async function HRDCompetency() {
     .sort((a, b) => b[1] - a[1])
     .map(([cat, cnt]) => ({ category: cat, count: cnt, pct: Math.round((cnt / (totalSkills || 1)) * 100) }));
 
-  const catColors: Record<string, string> = {
-    "Manajemen": "bg-blue-500",
-    "Soft Skills": "bg-emerald-500",
-    "Teknis": "bg-amber-500",
-    "HR": "bg-red-500",
-    "K3": "bg-orange-500",
-    "Operasional": "bg-purple-500",
-  };
-
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div>
@@ -161,54 +153,27 @@ export default async function HRDCompetency() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
           <h3 className="font-extrabold text-slate-800 text-sm mb-4">Kategori Kompetensi</h3>
-          <div className="space-y-4">
-            {categoryDistribution.map((cat) => (
-              <div key={cat.category}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-slate-700">{cat.category}</span>
-                  <span className="text-[10px] text-slate-400">{cat.count}</span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${catColors[cat.category] || "bg-slate-500"}`}
-                    style={{ width: `${cat.pct}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <RankedBar
+            data={categoryDistribution.map((cat) => ({ label: cat.category, value: cat.count }))}
+            height={categoryDistribution.length * 44}
+            barLabel="Kompetensi"
+          />
         </div>
 
         {totalAssessed > 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
             <h3 className="font-extrabold text-slate-800 text-sm mb-4">Distribusi Level</h3>
-            <div className="space-y-4">
-              {levelDistribution.map((lv) => {
-                const levelLabels: Record<number, { label: string; color: string; text: string }> = {
-                  0: { label: "Tidak Kompeten", color: "bg-slate-400", text: "text-slate-600" },
-                  1: { label: "Basic", color: "bg-sky-500", text: "text-sky-600" },
-                  2: { label: "Intermediate", color: "bg-emerald-500", text: "text-emerald-600" },
-                  3: { label: "Advanced", color: "bg-amber-500", text: "text-amber-600" },
-                  4: { label: "Expert", color: "bg-orange-500", text: "text-orange-600" },
-                  5: { label: "Master", color: "bg-red-500", text: "text-red-600" },
+            <RankedBar
+              data={levelDistribution.map((lv) => {
+                const levelNames: Record<number, string> = {
+                  0: "Tidak Kompeten", 1: "Basic", 2: "Intermediate", 3: "Advanced", 4: "Expert", 5: "Master",
                 };
-                const lbl = levelLabels[lv.level] || { label: `Level ${lv.level}`, color: "bg-slate-400", text: "text-slate-600" };
-                return (
-                  <div key={lv.level}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-bold ${lbl.text}`}>{lbl.label}</span>
-                      <span className="text-[10px] text-slate-400">{lv.count} ({lv.pct}%)</span>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${lbl.color}`}
-                        style={{ width: `${lv.pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
+                return { label: levelNames[lv.level] || `Level ${lv.level}`, value: lv.count };
               })}
-            </div>
+              height={levelDistribution.length * 44}
+              valueSuffix=" orang"
+              barLabel="Karyawan"
+            />
           </div>
         )}
 

@@ -37,6 +37,10 @@ export async function getMutations() {
   const { data } = await supabaseAdmin
     .from("mutasi_karir")
     .select("*, karyawan!inner(full_name, position, department)")
+    // Salary Review rows also live in mutasi_karir (review_type set) but
+    // have their own approval flow in rewards.ts — exclude them here so
+    // this list and its approve/reject flow only ever see real mutations.
+    .is("review_type", null)
     .order("created_at", { ascending: false })
     .limit(50);
   return data || [];

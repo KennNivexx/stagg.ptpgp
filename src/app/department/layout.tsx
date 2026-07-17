@@ -4,16 +4,18 @@ import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Users, LogOut, Menu, X, ChevronRight, HelpCircle,
+  LayoutDashboard, Users, LogOut, Menu, X, ChevronRight, ChevronDown, HelpCircle,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
+import { GROUP_COLOR_CLASSES } from "@/lib/menu-colors";
 
 const MENU_GROUPS = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
+    color: "emerald",
     items: [
       { href: "/department", label: "Overview" },
     ],
@@ -21,6 +23,7 @@ const MENU_GROUPS = [
   {
     label: "Departemen Saya",
     icon: Users,
+    color: "teal",
     items: [
       { href: "/department/requests", label: "Riwayat Permintaan" },
       { href: "/department/competency", label: "Kompetensi" },
@@ -41,11 +44,37 @@ const MENU_GROUPS = [
   {
     label: "Bantuan",
     icon: HelpCircle,
+    color: "sky",
     items: [
       { href: "/department/guides", label: "Bantuan & Panduan" },
     ],
   },
 ];
+
+const GROUP_TOOLTIPS: Record<string, string> = {
+  "Dashboard": "Ringkasan aktivitas departemen Anda",
+  "Departemen Saya": "Kelola tim, kompetensi, kinerja, kehadiran, dan aset departemen",
+  "Bantuan": "Panduan penggunaan portal",
+};
+
+const ITEM_TOOLTIPS: Record<string, string> = {
+  "/department": "Ringkasan singkat departemen Anda",
+  "/department/requests": "Riwayat permintaan penambahan karyawan",
+  "/department/competency": "Penilaian kompetensi tim Anda",
+  "/department/kpi": "Evaluasi KPI karyawan di departemen",
+  "/department/warnings": "Surat peringatan yang diterbitkan",
+  "/department/leaves": "Persetujuan cuti & izin karyawan",
+  "/department/business-trips": "Laporan perjalanan dinas tim",
+  "/department/incidents": "Laporan insiden di departemen",
+  "/department/fleet": "Armada kendaraan dan SIM tim",
+  "/department/trips": "Rekap lembur dan biaya trip",
+  "/department/shifts": "Jadwal shift kerja tim",
+  "/department/locations": "Lokasi kerja tim (tampilan baca saja)",
+  "/department/attendance": "Rekap absensi tim",
+  "/department/documents": "Dokumen perusahaan yang relevan",
+  "/department/jobdesc": "Deskripsi & spesifikasi kerja jabatan",
+  "/department/guides": "Bantuan & panduan penggunaan portal",
+};
 
 export default function DepartmentLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -54,6 +83,16 @@ export default function DepartmentLayout({ children }: { children: ReactNode }) 
   const clientUserName = user?.name || "Manajer Departemen";
   const clientUserEmail = user?.email || "dept@ptpgp.co.id";
   const { hasUnreadForHref } = useNotifications("department");
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => new Set(MENU_GROUPS.map((g) => g.label))
+  );
+  const toggleGroup = (label: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800">
@@ -90,38 +129,50 @@ export default function DepartmentLayout({ children }: { children: ReactNode }) 
           {MENU_GROUPS.map((group) => {
             const GroupIcon = group.icon;
             const hasActive = group.items.some(item => pathname === item.href || pathname.startsWith(item.href + "/"));
+            const isExpanded = expandedGroups.has(group.label);
             return (
               <div key={group.label} className="mb-3">
-                <div className={`flex items-center gap-2 px-5 lg:px-0 lg:justify-center xl:px-5 xl:justify-start py-1.5 ${hasActive ? "text-emerald-300" : "text-emerald-700"}`}>
-                  <GroupIcon size={13} className="shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  title={GROUP_TOOLTIPS[group.label]}
+                  aria-expanded={isExpanded}
+                  className={`w-full flex items-center gap-2 px-5 lg:px-0 lg:justify-center xl:px-5 xl:justify-start py-1.5 ${hasActive ? "text-emerald-300" : "text-emerald-700 hover:text-emerald-400"} transition-colors`}
+                >
+                  <GroupIcon size={13} className={`shrink-0 ${hasActive ? "" : GROUP_COLOR_CLASSES[group.color] || ""}`} />
                   <span className="text-[10px] font-bold tracking-widest uppercase lg:hidden xl:inline">{group.label}</span>
+                  <ChevronDown size={11} className={`ml-auto shrink-0 transition-transform duration-300 lg:hidden xl:block ${isExpanded ? "rotate-180" : ""}`} />
+                </button>
+                <div
+                  className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isExpanded ? "max-h-[600px]" : "max-h-0 lg:max-h-[600px] xl:max-h-0"}`}
+                >
+                  {group.items.map((item) => {
+                    const isActive = pathname === item.href || (item.href !== "/department" && pathname.startsWith(item.href));
+                    const hasUnread = hasUnreadForHref(item.href, "/department");
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsSidebarOpen(false)}
+                        title={ITEM_TOOLTIPS[item.href] || item.label}
+                        className={`relative flex items-center gap-2 pl-9 lg:pl-0 lg:justify-center xl:pl-9 xl:justify-start pr-4 py-2 text-[11px] font-medium transition-all duration-150 ${
+                          isActive
+                            ? "bg-emerald-500/20 text-white border-l-2 border-emerald-400"
+                            : "text-emerald-200/70 hover:text-white hover:bg-emerald-800/40 border-l-2 border-transparent"
+                        }`}
+                      >
+                        {isActive && <ChevronRight size={10} className="text-emerald-400 shrink-0 lg:hidden xl:block" />}
+                        <span className="truncate lg:hidden xl:inline">{item.label}</span>
+                        {hasUnread && (
+                          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
+                        )}
+                        {hasUnread && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
+                        )}
+                      </Link>
+                    );
+                  })}
                 </div>
-                {group.items.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/department" && pathname.startsWith(item.href));
-                  const hasUnread = hasUnreadForHref(item.href, "/department");
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsSidebarOpen(false)}
-                      title={item.label}
-                      className={`relative flex items-center gap-2 pl-9 lg:pl-0 lg:justify-center xl:pl-9 xl:justify-start pr-4 py-2 text-[11px] font-medium transition-all duration-150 ${
-                        isActive
-                          ? "bg-emerald-500/20 text-white border-l-2 border-emerald-400"
-                          : "text-emerald-200/70 hover:text-white hover:bg-emerald-800/40 border-l-2 border-transparent"
-                      }`}
-                    >
-                      {isActive && <ChevronRight size={10} className="text-emerald-400 shrink-0 lg:hidden xl:block" />}
-                      <span className="truncate lg:hidden xl:inline">{item.label}</span>
-                      {hasUnread && (
-                        <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
-                      )}
-                      {hasUnread && (
-                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
-                      )}
-                    </Link>
-                  );
-                })}
               </div>
             );
           })}

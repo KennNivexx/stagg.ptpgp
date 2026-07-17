@@ -13,50 +13,7 @@ import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import { MENU_GROUPS, isHrdItemActive } from "@/lib/hrd-menu";
-
-// Warna ikon per grup menu — supaya 16 grup yang sebelumnya tampak identik
-// (semua abu-abu) jadi gampang dibedakan sekilas mata. Status "aktif" tetap
-// pakai merah (warna brand) di atas ini supaya "sedang di halaman ini" tetap
-// jelas terpisah dari sekadar pewarnaan kategori.
-const GROUP_COLOR_CLASSES: Record<string, string> = {
-  blue: "text-blue-400",
-  violet: "text-violet-400",
-  emerald: "text-emerald-400",
-  indigo: "text-indigo-400",
-  cyan: "text-cyan-400",
-  amber: "text-amber-400",
-  purple: "text-purple-400",
-  teal: "text-teal-400",
-  sky: "text-sky-400",
-  orange: "text-orange-400",
-  green: "text-green-400",
-  fuchsia: "text-fuchsia-400",
-  rose: "text-rose-400",
-  pink: "text-pink-400",
-  lime: "text-lime-400",
-  slate: "text-slate-400",
-};
-
-// Same palette, tuned for a white top bar instead of the dark sidebar
-// (the -400 shades above read fine on #0F172A but wash out on white).
-const GROUP_COLOR_CLASSES_LIGHT: Record<string, string> = {
-  blue: "text-blue-500",
-  violet: "text-violet-500",
-  emerald: "text-emerald-500",
-  indigo: "text-indigo-500",
-  cyan: "text-cyan-500",
-  amber: "text-amber-500",
-  purple: "text-purple-500",
-  teal: "text-teal-500",
-  sky: "text-sky-500",
-  orange: "text-orange-500",
-  green: "text-green-500",
-  fuchsia: "text-fuchsia-500",
-  rose: "text-rose-500",
-  pink: "text-pink-500",
-  lime: "text-lime-600",
-  slate: "text-slate-500",
-};
+import { GROUP_COLOR_CLASSES, GROUP_COLOR_CLASSES_LIGHT } from "@/lib/menu-colors";
 
 const GROUP_TOOLTIPS: Record<string, string> = {
   "Dashboard": "Ringkasan performa HR dalam satu tampilan",
@@ -70,7 +27,7 @@ const GROUP_TOOLTIPS: Record<string, string> = {
   "Learning & Training Management": "TNA otomatis dari gap kompetensi, training, materi, evaluasi, dan sertifikasi",
   "Knowledge Management": "SOP & instruksi kerja, kebijakan, basis pengetahuan, video panduan, dan mapping ke kompetensi",
   "Performance Management": "Framework, KPI, culture, dan skor performa akhir",
-  "Reward & Penggajian": "Kelola gaji, bonus, pajak karyawan",
+  "Reward & Recognition": "Formula reward, salary review, bonus, insentif, penghargaan, dan payroll",
   "Pengembangan Karir": "Jalur karir, promosi, mutasi, dan rencana pengembangan",
   "Suksesi": "Siapkan kandidat pengganti posisi penting",
   "Hubungan Karyawan": "Cuti, absensi, keluhan, dan surat peringatan",

@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { TrendingUp, Users, Star, Award } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
+import RankedBar from "@/components/charts/RankedBar";
 
 export const dynamic = "force-dynamic";
 
@@ -95,22 +96,16 @@ export default async function PerformanceReportsPage() {
           {deptRows.length === 0 ? (
             <EmptyState icon={Award} title="Belum ada data evaluasi." />
           ) : (
-            <div className="divide-y divide-slate-50">
-              {deptRows.map((row) => (
-                <div key={row.dept} className="px-6 py-4 flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">{row.dept}</p>
-                    <p className="text-[10px] text-slate-400">{row.count} evaluasi</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${row.avg >= 80 ? "bg-emerald-500" : row.avg >= 60 ? "bg-amber-500" : "bg-red-500"}`}
-                        style={{ width: `${Math.min(row.avg, 100)}%` }} />
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${scoreColor(row.avg)}`}>{row.avg.toFixed(0)}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="p-6">
+              <RankedBar
+                data={deptRows.map((row) => ({
+                  label: row.dept,
+                  value: Math.round(row.avg),
+                  color: row.avg >= 80 ? "var(--chart-status-good)" : row.avg >= 60 ? "var(--chart-status-warning)" : "var(--chart-status-critical)",
+                }))}
+                height={deptRows.length * 44}
+                barLabel="Rata-rata Skor"
+              />
             </div>
           )}
         </div>
@@ -153,7 +148,7 @@ export default async function PerformanceReportsPage() {
                         <td className="px-6 py-4">
                           <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${scoreColor(score)}`}>{score}</span>
                         </td>
-                        <td className="px-6 py-4 text-xs font-extrabold text-[#CC0000]">{gradeLabel(score)}</td>
+                        <td className="px-6 py-4 text-xs font-extrabold text-pgp-red">{gradeLabel(score)}</td>
                       </tr>
                     );
                   })}

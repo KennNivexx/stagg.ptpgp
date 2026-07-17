@@ -4,6 +4,7 @@ import {
   DollarSign, Target, Activity, ArrowUp, FileText, Building2
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import RankedBar from "@/components/charts/RankedBar";
 
 export default async function DashboardAnalytics() {
   const [
@@ -138,33 +139,22 @@ export default async function DashboardAnalytics() {
             </div>
           </div>
         </div>
-        <div className="divide-y divide-slate-50">
-          {modules.map((mod) => {
-            const c = colorMap[mod.color] || colorMap.blue;
-            const pct = mod.total > 0 ? Math.round((mod.active / mod.total) * 100) : 0;
-            return (
-              <div key={mod.name} className="p-5 hover:bg-slate-50/30 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${c.light} ${c.text}`}>
-                      <mod.icon size={14} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">{mod.name}</p>
-                      <p className="text-[10px] text-slate-400">Total: {mod.total} | Aktif: {mod.active} | Non-Aktif: {mod.inactive}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-xs font-bold ${pct >= 50 ? "text-emerald-600" : "text-amber-600"}`}>{pct}%</span>
-                    <span className="text-[10px] text-slate-400 ml-1">aktif</span>
-                  </div>
-                </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${c.bg}`} style={{ width: `${Math.max(pct, 2)}%` }} />
-                </div>
-              </div>
-            );
-          })}
+        <div className="p-5 space-y-1.5">
+          {modules.map((mod) => (
+            <div key={mod.name} className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+              <span className="font-bold text-slate-600">{mod.name}</span>
+              <span>Total: {mod.total} · Aktif: {mod.active} · Non-Aktif: {mod.inactive}</span>
+            </div>
+          ))}
+          <RankedBar
+            data={modules.map((mod) => ({
+              label: mod.name,
+              value: mod.total > 0 ? Math.round((mod.active / mod.total) * 100) : 0,
+            }))}
+            height={modules.length * 44}
+            valueSuffix="%"
+            barLabel="Persentase Aktif"
+          />
         </div>
       </div>
 
@@ -241,26 +231,19 @@ export default async function DashboardAnalytics() {
               </div>
             </div>
           </div>
-          <div className="p-6 space-y-3">
+          <div className="p-6">
             {Object.entries(statusDistribution).length === 0 ? (
               <EmptyState icon={Building2} title="Belum ada data." className="py-4" />
             ) : (
-              Object.entries(statusDistribution).map(([status, count]) => {
-                const pct = activeEmployees && activeEmployees > 0 ? Math.round((count / activeEmployees) * 100) : 0;
-                const barColor = status === "Tetap" ? "bg-emerald-500" : status === "Kontrak" ? "bg-amber-500" : "bg-slate-400";
-                const labelColor = status === "Tetap" ? "text-emerald-700" : status === "Kontrak" ? "text-amber-700" : "text-slate-600";
-                return (
-                  <div key={status}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-bold ${labelColor}`}>{status}</span>
-                      <span className="text-xs text-slate-500">{count} karyawan ({pct}%)</span>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.max(pct, 2)}%` }} />
-                    </div>
-                  </div>
-                );
-              })
+              <RankedBar
+                data={Object.entries(statusDistribution).map(([status, count]) => ({
+                  label: status,
+                  value: count,
+                  color: status === "Tetap" ? "var(--chart-status-good)" : status === "Kontrak" ? "var(--chart-status-warning)" : "var(--chart-ink-muted)",
+                }))}
+                height={Object.keys(statusDistribution).length * 44}
+                barLabel="Karyawan"
+              />
             )}
           </div>
         </div>
@@ -275,24 +258,15 @@ export default async function DashboardAnalytics() {
               </div>
             </div>
           </div>
-          <div className="p-6 space-y-3 max-h-[320px] overflow-y-auto">
+          <div className="p-6 max-h-[320px] overflow-y-auto">
             {Object.entries(deptDistribution).length === 0 ? (
               <EmptyState icon={Users} title="Belum ada data." className="py-4" />
             ) : (
-              Object.entries(deptDistribution).sort(([, a], [, b]) => b - a).map(([dept, count]) => {
-                const pct = activeEmployees && activeEmployees > 0 ? Math.round((count / activeEmployees) * 100) : 0;
-                return (
-                  <div key={dept}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-slate-700">{dept}</span>
-                      <span className="text-xs text-slate-400">{count} ({pct}%)</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.max(pct, 2)}%` }} />
-                    </div>
-                  </div>
-                );
-              })
+              <RankedBar
+                data={Object.entries(deptDistribution).sort(([, a], [, b]) => b - a).map(([dept, count]) => ({ label: dept, value: count }))}
+                height={Object.keys(deptDistribution).length * 44}
+                barLabel="Karyawan"
+              />
             )}
           </div>
         </div>

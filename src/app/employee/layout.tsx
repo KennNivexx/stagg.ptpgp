@@ -24,12 +24,107 @@ import {
   Plane,
   AlertTriangle,
   Route,
+  ChevronDown,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import SOSButton from "@/components/SOSButton";
+import { GROUP_COLOR_CLASSES_LIGHT } from "@/lib/menu-colors";
+
+const MENU_GROUPS = [
+  {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    color: "slate",
+    items: [
+      { href: "/employee", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Profil & Karir",
+    icon: User,
+    color: "blue",
+    items: [
+      { href: "/employee/profile", label: "Profil Saya", icon: User },
+      { href: "/employee/kpi", label: "KPI & Performa", icon: TrendingUp },
+      { href: "/employee/career", label: "Pengembangan Karir", icon: TrendingUp },
+      { href: "/employee/jobdesc", label: "Deskripsi Pekerjaan", icon: Briefcase },
+    ],
+  },
+  {
+    label: "Kehadiran & Perjalanan",
+    icon: Calendar,
+    color: "emerald",
+    items: [
+      { href: "/employee/attendance", label: "Absensi", icon: Calendar },
+      { href: "/employee/leaves", label: "Cuti & Izin", icon: FileText },
+      { href: "/employee/business-trip", label: "Perjalanan Dinas", icon: Plane },
+      { href: "/employee/trips", label: "Trip & Insentif", icon: Route },
+    ],
+  },
+  {
+    label: "Kompensasi & Pengembangan",
+    icon: DollarSign,
+    color: "amber",
+    items: [
+      { href: "/employee/payroll", label: "Gaji & Slip", icon: DollarSign },
+      { href: "/employee/training", label: "Pelatihan", icon: GraduationCap },
+      { href: "/employee/documents", label: "Dokumen & SOP", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Hubungan Karyawan",
+    icon: MessageCircle,
+    color: "rose",
+    items: [
+      { href: "/employee/incidents", label: "Laporan Insiden", icon: AlertTriangle },
+      { href: "/employee/complaints", label: "Keluhan & Saran", icon: MessageCircle },
+      { href: "/employee/warnings", label: "Surat Peringatan", icon: ShieldCheck },
+      { href: "/employee/surveys", label: "Survei Karyawan", icon: ClipboardList },
+      { href: "/employee/resignation", label: "Pengunduran Diri", icon: LogOut },
+    ],
+  },
+  {
+    label: "Bantuan",
+    icon: HelpCircle,
+    color: "sky",
+    items: [
+      { href: "/employee/guides", label: "Bantuan & Panduan", icon: HelpCircle },
+    ],
+  },
+];
+
+const GROUP_TOOLTIPS: Record<string, string> = {
+  "Dashboard": "Ringkasan aktivitas Anda",
+  "Profil & Karir": "Profil, KPI, pengembangan karir, dan deskripsi pekerjaan Anda",
+  "Kehadiran & Perjalanan": "Absensi, cuti, perjalanan dinas, dan trip & insentif",
+  "Kompensasi & Pengembangan": "Gaji, slip, pelatihan, dan dokumen/SOP",
+  "Hubungan Karyawan": "Insiden, keluhan, surat peringatan, survei, dan pengunduran diri",
+  "Bantuan": "Panduan penggunaan portal",
+};
+
+const ITEM_TOOLTIPS: Record<string, string> = {
+  "/employee": "Ringkasan singkat aktivitas Anda",
+  "/employee/profile": "Lihat dan edit profil pribadi Anda",
+  "/employee/kpi": "Evaluasi KPI dan performa Anda",
+  "/employee/career": "Jalur dan rencana pengembangan karir Anda",
+  "/employee/jobdesc": "Deskripsi pekerjaan jabatan Anda",
+  "/employee/attendance": "Riwayat absensi Anda",
+  "/employee/leaves": "Ajukan dan pantau cuti & izin",
+  "/employee/business-trip": "Ajukan dan lihat perjalanan dinas",
+  "/employee/trips": "Rekap trip dan insentif Anda",
+  "/employee/payroll": "Slip gaji Anda",
+  "/employee/training": "Pelatihan yang Anda ikuti",
+  "/employee/documents": "Dokumen dan SOP perusahaan",
+  "/employee/incidents": "Laporkan insiden yang Anda alami/temukan",
+  "/employee/complaints": "Sampaikan keluhan atau saran",
+  "/employee/warnings": "Surat peringatan yang Anda terima",
+  "/employee/surveys": "Isi survei karyawan",
+  "/employee/resignation": "Ajukan pengunduran diri",
+  "/employee/guides": "Bantuan & panduan penggunaan portal",
+};
 
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -38,27 +133,16 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const clientUserName = user?.name || "Karyawan";
   const userRoleLabel = "Karyawan";
   const { hasUnreadForHref } = useNotifications("employee");
-
-  const menuItems = [
-    { href: "/employee", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/employee/profile", label: "Profil Saya", icon: User },
-    { href: "/employee/attendance", label: "Absensi", icon: Calendar },
-    { href: "/employee/leaves", label: "Cuti & Izin", icon: FileText },
-    { href: "/employee/business-trip", label: "Perjalanan Dinas", icon: Plane },
-    { href: "/employee/incidents", label: "Laporan Insiden", icon: AlertTriangle },
-    { href: "/employee/trips", label: "Trip & Insentif", icon: Route },
-    { href: "/employee/payroll", label: "Gaji & Slip", icon: DollarSign },
-    { href: "/employee/training", label: "Pelatihan", icon: GraduationCap },
-    { href: "/employee/documents", label: "Dokumen & SOP", icon: BookOpen },
-    { href: "/employee/kpi", label: "KPI & Performa", icon: TrendingUp },
-    { href: "/employee/jobdesc", label: "Deskripsi Pekerjaan", icon: Briefcase },
-    { href: "/employee/career", label: "Pengembangan Karir", icon: TrendingUp },
-    { href: "/employee/complaints", label: "Keluhan & Saran", icon: MessageCircle },
-    { href: "/employee/warnings", label: "Surat Peringatan", icon: ShieldCheck },
-    { href: "/employee/resignation", label: "Pengunduran Diri", icon: LogOut },
-    { href: "/employee/surveys", label: "Survei Karyawan", icon: ClipboardList },
-    { href: "/employee/guides", label: "Bantuan & Panduan", icon: HelpCircle },
-  ];
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => new Set(MENU_GROUPS.map((g) => g.label))
+  );
+  const toggleGroup = (label: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800">
@@ -103,37 +187,61 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
 
         {/* Nav Items */}
         <nav className="flex-1 p-4 lg:px-2 xl:px-4 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/employee" && pathname.startsWith(item.href));
-            const hasUnread = hasUnreadForHref(item.href, "/employee");
-            const Icon = item.icon;
-
+          {MENU_GROUPS.map((group) => {
+            const GroupIcon = group.icon;
+            const hasActive = group.items.some(item => pathname === item.href || (item.href !== "/employee" && pathname.startsWith(item.href)));
+            const isExpanded = expandedGroups.has(group.label);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsSidebarOpen(false)}
-                title={item.label}
-                className={`
-                  relative flex items-center gap-3 px-4 lg:px-0 xl:px-4 lg:justify-center xl:justify-start py-2.5 rounded-xl transition-all duration-200 text-xs font-semibold group
-                  ${isActive
-                    ? "bg-[#0F172A] text-white shadow-lg shadow-slate-900/15"
-                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
-                  }
-                `}
-              >
-                <Icon size={16} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-900"}`} />
-                <span className="lg:hidden xl:inline">{item.label}</span>
-                {hasUnread && !isActive && (
-                  <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
-                )}
-                {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
-                )}
-                {hasUnread && !isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
-                )}
-              </Link>
+              <div key={group.label} className="mb-2">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  title={GROUP_TOOLTIPS[group.label]}
+                  aria-expanded={isExpanded}
+                  className={`w-full flex items-center gap-2 px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-2 text-left ${hasActive ? "text-slate-900" : "text-slate-400 hover:text-slate-600"} transition-colors`}
+                >
+                  <GroupIcon size={13} className={`shrink-0 ${hasActive ? "" : GROUP_COLOR_CLASSES_LIGHT[group.color] || ""}`} />
+                  <span className="text-[10px] font-bold tracking-widest uppercase lg:hidden xl:inline">{group.label}</span>
+                  <ChevronDown size={11} className={`ml-auto shrink-0 transition-transform duration-300 lg:hidden xl:block ${isExpanded ? "rotate-180" : ""}`} />
+                </button>
+                <div
+                  className={`overflow-hidden transition-[max-height] duration-300 ease-in-out space-y-1 ${isExpanded ? "max-h-[600px]" : "max-h-0 lg:max-h-[600px] xl:max-h-0"}`}
+                >
+                  {group.items.map((item) => {
+                    const isActive = pathname === item.href || (item.href !== "/employee" && pathname.startsWith(item.href));
+                    const hasUnread = hasUnreadForHref(item.href, "/employee");
+                    const Icon = item.icon;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsSidebarOpen(false)}
+                        title={ITEM_TOOLTIPS[item.href] || item.label}
+                        className={`
+                          relative flex items-center gap-3 px-4 lg:px-0 xl:px-4 lg:justify-center xl:justify-start py-2.5 rounded-xl transition-all duration-200 text-xs font-semibold group
+                          ${isActive
+                            ? "bg-[#0F172A] text-white shadow-lg shadow-slate-900/15"
+                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                          }
+                        `}
+                      >
+                        <Icon size={16} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-900"}`} />
+                        <span className="lg:hidden xl:inline">{item.label}</span>
+                        {hasUnread && !isActive && (
+                          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
+                        )}
+                        {isActive && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
+                        )}
+                        {hasUnread && !isActive && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </nav>

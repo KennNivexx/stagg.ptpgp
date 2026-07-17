@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveReadinessAssessment } from "@/app/actions/succession";
+import RadialGauge from "@/components/charts/RadialGauge";
 
 const CRITERIA = [
   { key: "kepemimpinan", label: "Kepemimpinan", weight: 25 },
@@ -59,7 +60,7 @@ export default function ReadinessForm({ candidates }: { candidates: Candidate[] 
         <select
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
-          className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none"
+          className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-white text-gray-600 focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none"
         >
           <option value="">Pilih kandidat...</option>
           {candidates.map((c) => (
@@ -81,7 +82,7 @@ export default function ReadinessForm({ candidates }: { candidates: Candidate[] 
               max="100"
               value={scores[c.key]}
               onChange={(e) => setScores(prev => ({ ...prev, [c.key]: parseInt(e.target.value) }))}
-              className="flex-1 accent-[#CC0000] h-1.5"
+              className="flex-1 accent-pgp-red h-1.5"
             />
             <input
               type="number"
@@ -91,31 +92,20 @@ export default function ReadinessForm({ candidates }: { candidates: Candidate[] 
               onChange={(e) =>
                 setScores(prev => ({ ...prev, [c.key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) }))
               }
-              className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 text-center focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none"
+              className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 text-center focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none"
             />
           </div>
         </div>
       ))}
 
-      <div className="bg-slate-50 rounded-xl p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-700">Skor Kesiapan Total</span>
-          <span className={`text-lg font-extrabold ${totalScore >= 80 ? "text-emerald-600" : totalScore >= 60 ? "text-amber-600" : "text-[#CC0000]"}`}>
-            {totalScore}%
-          </span>
-        </div>
-        <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${totalScore >= 80 ? "bg-emerald-500" : totalScore >= 60 ? "bg-amber-500" : "bg-[#CC0000]"}`}
-            style={{ width: `${totalScore}%` }}
-          />
-        </div>
+      <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center">
+        <RadialGauge value={totalScore} label="Skor Kesiapan Total" size={130} />
       </div>
 
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full px-4 py-2.5 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors disabled:opacity-50"
+        className="w-full px-4 py-2.5 bg-pgp-red text-white text-xs font-bold rounded-xl hover:bg-pgp-red-hover transition-colors disabled:opacity-50"
       >
         {saving ? "Menyimpan..." : "Simpan Penilaian Kesiapan"}
       </button>

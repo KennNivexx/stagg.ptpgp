@@ -2,6 +2,8 @@
 import { Users, UserPlus, UserX, Building2 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
+import RankedBar from "@/components/charts/RankedBar";
+import TrendArea from "@/components/charts/TrendArea";
 
 export const dynamic = "force-dynamic";
 
@@ -144,7 +146,7 @@ export default async function LaporanKaryawan() {
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[120px]">
                             <div
-                              className="h-full bg-[#CC0000] rounded-full"
+                              className="h-full bg-pgp-red rounded-full"
                               style={{ width: `${((count / (totalEmployees || 1)) * 100).toFixed(0)}%` }}
                             />
                           </div>
@@ -167,29 +169,19 @@ export default async function LaporanKaryawan() {
               <h3 className="font-extrabold text-slate-800 text-sm">Distribusi Status</h3>
               <p className="text-xs text-slate-400 mt-0.5">Perbandingan status karyawan</p>
             </div>
-            <div className="p-6 space-y-3">
-              {Object.entries(statusCounts).map(([status, count]) => {
-                const colors: Record<string, string> = {
-                  Tetap: "bg-emerald-500",
-                  Kontrak: "bg-amber-500",
-                  Magang: "bg-purple-500",
-                  Resigned: "bg-red-500",
-                };
-                return (
-                  <div key={status}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-slate-600">{status}</span>
-                      <span className="text-xs font-bold text-slate-800">{count}</span>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${colors[status] || "bg-blue-500"}`}
-                        style={{ width: `${Math.max(2, (count / (totalEmployees || 1)) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="p-6">
+              <RankedBar
+                data={Object.entries(statusCounts).map(([status, count]) => ({
+                  label: status,
+                  value: count,
+                  color: status === "Tetap" ? "var(--chart-status-good)"
+                    : status === "Kontrak" ? "var(--chart-status-warning)"
+                    : status === "Resigned" ? "var(--chart-status-critical)"
+                    : "var(--chart-5)",
+                }))}
+                height={Object.keys(statusCounts).length * 44}
+                barLabel="Karyawan"
+              />
             </div>
           </div>
 
@@ -200,22 +192,12 @@ export default async function LaporanKaryawan() {
             </div>
             <div className="p-6">
               {months.length > 0 ? (
-                <div className="space-y-2">
-                  {months.slice(-6).map((m) => (
-                    <div key={m} className="flex items-center justify-between">
-                      <span className="text-[10px] text-slate-500">{m}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden w-24">
-                          <div
-                            className="h-full bg-[#CC0000] rounded-full"
-                            style={{ width: `${Math.min(100, (monthlyJoin[m] || 0) * 20)}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-800">{monthlyJoin[m] || 0}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <TrendArea
+                  data={months.slice(-6).map((m) => ({ month: m, value: monthlyJoin[m] || 0 }))}
+                  xKey="month"
+                  series={[{ key: "value", label: "Karyawan Baru" }]}
+                  height={200}
+                />
               ) : (
                 <p className="text-xs text-slate-400 text-center py-4">Belum ada data.</p>
               )}

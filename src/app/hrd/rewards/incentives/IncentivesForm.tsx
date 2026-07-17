@@ -1,8 +1,8 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Gift, Plus, CheckCircle } from "lucide-react";
-import { saveIncentivePayment, updateIncentiveStatus } from "@/app/actions/rewards";
+import { Gift, Plus, CheckCircle, AlertTriangle } from "lucide-react";
+import { saveIncentivePayment, updateIncentiveStatus, getRewardBudgetStatus } from "@/app/actions/rewards";
 import EmptyState from "@/components/EmptyState";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
@@ -39,7 +39,17 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [actingId, setActingId] = useState("");
+  const [empId, setEmpId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [budget, setBudget] = useState<{ budgetAmount: number; usedAmount: number } | null>(null);
   const years = [new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2];
+
+  useEffect(() => {
+    const dept = employees.find(e => e.id === empId)?.department;
+    if (!dept) { setBudget(null); return; }
+    const period = `${String(month).padStart(2, "0")}/${year}`;
+    getRewardBudgetStatus(dept, period).then(setBudget).catch(() => setBudget(null));
+  }, [empId, month, year, employees]);
 
   async function handleSave() {
     if (!formRef.current) return;
@@ -51,6 +61,7 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
     if ("error" in result) { setMsg({ type: "error", text: result.error ?? "Terjadi kesalahan" }); return; }
     setMsg({ type: "success", text: "Pembayaran insentif berhasil disimpan!" });
     formRef.current.reset();
+    setEmpId(""); setAmount("");
     setShowForm(false);
     router.refresh();
   }
@@ -102,7 +113,7 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
           <form ref={formRef} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Karyawan</label>
-              <select name="employee_id" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+              <select name="employee_id" value={empId} onChange={(e) => setEmpId(e.target.value)} className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
                 <option value="">Pilih karyawan...</option>
                 {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name} - {e.department}</option>)}
               </select>
@@ -115,7 +126,15 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Jumlah (Rp)</label>
-              <input name="amount" type="number" min="1" placeholder="1000000" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              <input name="amount" type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1000000" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              {budget && (
+                <p className={`text-[10px] mt-1.5 flex items-center gap-1 ${
+                  budget.usedAmount + (Number(amount) || 0) > budget.budgetAmount ? "text-amber-600 font-bold" : "text-slate-400"
+                }`}>
+                  {budget.usedAmount + (Number(amount) || 0) > budget.budgetAmount && <AlertTriangle size={11} />}
+                  Sisa Budget Departemen: Rp {(budget.budgetAmount - budget.usedAmount).toLocaleString("id-ID")} dari Rp {budget.budgetAmount.toLocaleString("id-ID")}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>

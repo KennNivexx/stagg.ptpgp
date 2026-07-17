@@ -35,11 +35,106 @@ import {
   BadgeCheck,
   HelpCircle,
   Megaphone,
+  ChevronDown,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
+import { GROUP_COLOR_CLASSES } from "@/lib/menu-colors";
+import type { LucideIcon } from "lucide-react";
+
+type MenuItem = { href: string; label: string; icon?: LucideIcon };
+type MenuGroup = { label: string; icon: LucideIcon; color: string; items: MenuItem[] };
+
+const MENU_GROUPS: MenuGroup[] = [
+  {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    color: "amber",
+    items: [
+      { href: "/superadmin", label: "Dashboard" },
+    ],
+  },
+  {
+    label: "Manajemen Website",
+    icon: Globe,
+    color: "sky",
+    items: [
+      { href: "/superadmin/website/theme", label: "Tema & Warna", icon: Palette },
+      { href: "/superadmin/website/hero", label: "Hero Section", icon: Image },
+      { href: "/superadmin/website/about", label: "Tentang Kami", icon: Info },
+      { href: "/superadmin/website/features", label: "Keunggulan", icon: Sparkles },
+      { href: "/superadmin/website/services", label: "Layanan", icon: Grid3x3 },
+      { href: "/superadmin/website/coverage", label: "Cakupan Wilayah", icon: MapPin },
+      { href: "/superadmin/website/stats", label: "Statistik", icon: BarChart3 },
+      { href: "/superadmin/website/industries", label: "Industri", icon: Factory },
+      { href: "/superadmin/website/gallery", label: "Galeri", icon: GalleryHorizontal },
+      { href: "/superadmin/website/testimonial", label: "Testimoni", icon: MessageSquareQuote },
+      { href: "/superadmin/website/certification", label: "Sertifikasi", icon: BadgeCheck },
+      { href: "/superadmin/website/faq", label: "FAQ", icon: HelpCircle },
+      { href: "/superadmin/website/cta", label: "Call to Action", icon: Megaphone },
+      { href: "/superadmin/website/info", label: "Info Perusahaan", icon: Building2 },
+      { href: "/superadmin/website/links", label: "Link & Navigasi", icon: Link2 },
+      { href: "/superadmin/website/contact", label: "Kontak", icon: Phone },
+      { href: "/superadmin/website/teaser", label: "Teaser (Karir/E-Pro)", icon: Layers },
+      { href: "/superadmin/website/footer", label: "Footer", icon: Footprints },
+    ],
+  },
+  {
+    label: "Monitoring",
+    icon: Monitor,
+    color: "violet",
+    items: [
+      { href: "/superadmin/monitoring/hrd", label: "Data HRD", icon: Eye },
+      { href: "/superadmin/monitoring/employees", label: "Data Karyawan", icon: Users },
+    ],
+  },
+  {
+    label: "Manajemen User",
+    icon: ShieldCheck,
+    color: "emerald",
+    items: [
+      { href: "/superadmin/employees", label: "Manajemen User", icon: UserCog },
+      { href: "/hrd/admin/roles", label: "Role & Permission", icon: KeyRound },
+      { href: "/hrd/admin/audit", label: "Audit Log", icon: ClipboardList },
+    ],
+  },
+];
+
+const GROUP_TOOLTIPS: Record<string, string> = {
+  "Dashboard": "Ringkasan sistem secara keseluruhan",
+  "Manajemen Website": "Kelola konten dan tampilan website perusahaan",
+  "Monitoring": "Pantau data HRD dan karyawan",
+  "Manajemen User": "Kelola akun, role, permission, dan audit log",
+};
+
+const ITEM_TOOLTIPS: Record<string, string> = {
+  "/superadmin": "Ringkasan sistem secara keseluruhan",
+  "/superadmin/website/theme": "Atur tema dan warna website",
+  "/superadmin/website/hero": "Kelola bagian hero halaman utama",
+  "/superadmin/website/about": "Kelola konten Tentang Kami",
+  "/superadmin/website/features": "Kelola daftar keunggulan perusahaan",
+  "/superadmin/website/services": "Kelola daftar layanan",
+  "/superadmin/website/coverage": "Kelola cakupan wilayah operasi",
+  "/superadmin/website/stats": "Kelola statistik perusahaan",
+  "/superadmin/website/industries": "Kelola daftar industri yang dilayani",
+  "/superadmin/website/gallery": "Kelola galeri foto",
+  "/superadmin/website/testimonial": "Kelola testimoni klien",
+  "/superadmin/website/certification": "Kelola sertifikasi perusahaan",
+  "/superadmin/website/faq": "Kelola pertanyaan yang sering diajukan",
+  "/superadmin/website/cta": "Kelola Call to Action",
+  "/superadmin/website/info": "Kelola info perusahaan",
+  "/superadmin/website/links": "Kelola link & navigasi website",
+  "/superadmin/website/contact": "Kelola info kontak",
+  "/superadmin/website/teaser": "Kelola teaser Karir/E-Procurement",
+  "/superadmin/website/footer": "Kelola footer website",
+  "/superadmin/monitoring/hrd": "Pantau data yang dikelola HRD",
+  "/superadmin/monitoring/employees": "Pantau data karyawan",
+  "/superadmin/employees": "Kelola akun pengguna sistem",
+  "/hrd/admin/roles": "Kelola role dan permission",
+  "/hrd/admin/audit": "Lihat audit log aktivitas sistem",
+};
 
 export default function SuperadminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -51,42 +146,16 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
   // HRD route tree its notification feed links into, so per-item href matching
   // wouldn't ever light up — flag the Dashboard entry instead as a general signal.
   const { unreadCount } = useNotifications("hrd");
-
-  const menuItems = [
-    { href: "/superadmin", label: "Dashboard", icon: LayoutDashboard },
-  ];
-
-  const websiteItems = [
-    { href: "/superadmin/website/theme", label: "Tema & Warna", icon: Palette },
-    { href: "/superadmin/website/hero", label: "Hero Section", icon: Image },
-    { href: "/superadmin/website/about", label: "Tentang Kami", icon: Info },
-    { href: "/superadmin/website/features", label: "Keunggulan", icon: Sparkles },
-    { href: "/superadmin/website/services", label: "Layanan", icon: Grid3x3 },
-    { href: "/superadmin/website/coverage", label: "Cakupan Wilayah", icon: MapPin },
-    { href: "/superadmin/website/stats", label: "Statistik", icon: BarChart3 },
-    { href: "/superadmin/website/industries", label: "Industri", icon: Factory },
-    { href: "/superadmin/website/gallery", label: "Galeri", icon: GalleryHorizontal },
-    { href: "/superadmin/website/testimonial", label: "Testimoni", icon: MessageSquareQuote },
-    { href: "/superadmin/website/certification", label: "Sertifikasi", icon: BadgeCheck },
-    { href: "/superadmin/website/faq", label: "FAQ", icon: HelpCircle },
-    { href: "/superadmin/website/cta", label: "Call to Action", icon: Megaphone },
-    { href: "/superadmin/website/info", label: "Info Perusahaan", icon: Building2 },
-    { href: "/superadmin/website/links", label: "Link & Navigasi", icon: Link2 },
-    { href: "/superadmin/website/contact", label: "Kontak", icon: Phone },
-    { href: "/superadmin/website/teaser", label: "Teaser (Karir/E-Pro)", icon: Layers },
-    { href: "/superadmin/website/footer", label: "Footer", icon: Footprints },
-  ];
-
-  const monitoringItems = [
-    { href: "/superadmin/monitoring/hrd", label: "Data HRD", icon: Eye },
-    { href: "/superadmin/monitoring/employees", label: "Data Karyawan", icon: Users },
-  ];
-
-  const userItems = [
-    { href: "/superadmin/employees", label: "Manajemen User", icon: UserCog },
-    { href: "/hrd/admin/roles", label: "Role & Permission", icon: KeyRound },
-    { href: "/hrd/admin/audit", label: "Audit Log", icon: ClipboardList },
-  ];
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => new Set(MENU_GROUPS.map((g) => g.label))
+  );
+  const toggleGroup = (label: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800">
@@ -136,139 +205,64 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 p-4 lg:px-2 xl:px-4 space-y-1.5 overflow-y-auto">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href;
-            const hasUnread = unreadCount > 0 && item.href === "/superadmin";
-            const Icon = item.icon;
-
+        <nav className="flex-1 p-4 lg:px-2 xl:px-4 space-y-1 overflow-y-auto">
+          {MENU_GROUPS.map((group) => {
+            const GroupIcon = group.icon;
+            const hasActive = group.items.some(item => item.href === "/superadmin" ? pathname === item.href : pathname.startsWith(item.href));
+            const isExpanded = expandedGroups.has(group.label);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsSidebarOpen(false)}
-                title={item.label}
-                className={`
-                  relative flex items-center gap-3 px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-3 rounded-xl transition-all duration-200 text-sm font-medium group
-                  ${isActive
-                    ? "bg-amber-600 text-white shadow-lg shadow-amber-600/15"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                  }
-                `}
-              >
-                <Icon size={18} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
-                <span className="lg:hidden xl:inline">{item.label}</span>
-                {hasUnread && !isActive && (
-                  <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
-                )}
-                {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
-                )}
-                {hasUnread && !isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
-                )}
-              </Link>
+              <div key={group.label} className="mb-2">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  title={GROUP_TOOLTIPS[group.label]}
+                  aria-expanded={isExpanded}
+                  className={`w-full flex items-center gap-2 px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-2 text-left ${hasActive ? "text-amber-400" : "text-slate-500 hover:text-slate-300"} transition-colors`}
+                >
+                  <GroupIcon size={13} className={`shrink-0 ${hasActive ? "" : GROUP_COLOR_CLASSES[group.color] || ""}`} />
+                  <span className="text-[10px] font-bold tracking-widest uppercase lg:hidden xl:inline">{group.label}</span>
+                  <ChevronDown size={11} className={`ml-auto shrink-0 transition-transform duration-300 lg:hidden xl:block ${isExpanded ? "rotate-180" : ""}`} />
+                </button>
+                <div
+                  className={`overflow-hidden transition-[max-height] duration-300 ease-in-out space-y-1 ${isExpanded ? "max-h-[1200px]" : "max-h-0 lg:max-h-[1200px] xl:max-h-0"}`}
+                >
+                  {group.items.map((item) => {
+                    const isActive = item.href === "/superadmin" ? pathname === item.href : pathname.startsWith(item.href);
+                    const hasUnread = unreadCount > 0 && item.href === "/superadmin";
+                    const Icon = item.icon || group.icon;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsSidebarOpen(false)}
+                        title={ITEM_TOOLTIPS[item.href] || item.label}
+                        className={`
+                          relative flex items-center gap-3 px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group
+                          ${isActive
+                            ? "bg-amber-600 text-white shadow-lg shadow-amber-600/15"
+                            : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                          }
+                        `}
+                      >
+                        <Icon size={16} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
+                        <span className="lg:hidden xl:inline">{item.label}</span>
+                        {hasUnread && !isActive && (
+                          <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-yellow-400 lg:block xl:hidden" aria-hidden="true" />
+                        )}
+                        {isActive && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
+                        )}
+                        {hasUnread && !isActive && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 lg:hidden xl:block" aria-hidden="true" />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
-
-          {/* Website Management Section */}
-          <div className="pt-3">
-            <p className="px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-2 text-[10px] font-bold text-slate-500 tracking-widest uppercase flex items-center gap-2">
-              <Globe size={11} className="shrink-0" /> <span className="lg:hidden xl:inline">Manajemen Website</span>
-            </p>
-            {websiteItems.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsSidebarOpen(false)}
-                  title={item.label}
-                  className={`
-                    flex items-center gap-3 px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group
-                    ${isActive
-                      ? "bg-amber-600 text-white shadow-lg shadow-amber-600/15"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                    }
-                  `}
-                >
-                  <Icon size={16} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
-                  <span className="lg:hidden xl:inline">{item.label}</span>
-                  {isActive && (
-                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* Monitoring Section */}
-          <div className="pt-3">
-            <p className="px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-2 text-[10px] font-bold text-slate-500 tracking-widest uppercase flex items-center gap-2">
-              <Monitor size={11} className="shrink-0" /> <span className="lg:hidden xl:inline">Monitoring</span>
-            </p>
-            {monitoringItems.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsSidebarOpen(false)}
-                  title={item.label}
-                  className={`
-                    flex items-center gap-3 px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group
-                    ${isActive
-                      ? "bg-amber-600 text-white shadow-lg shadow-amber-600/15"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                    }
-                  `}
-                >
-                  <Icon size={16} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
-                  <span className="lg:hidden xl:inline">{item.label}</span>
-                  {isActive && (
-                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* User Management Section */}
-          <div className="pt-3">
-            <p className="px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-2 text-[10px] font-bold text-slate-500 tracking-widest uppercase flex items-center gap-2">
-              <ShieldCheck size={11} className="shrink-0" /> <span className="lg:hidden xl:inline">Manajemen User</span>
-            </p>
-            {userItems.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsSidebarOpen(false)}
-                  title={item.label}
-                  className={`
-                    flex items-center gap-3 px-4 lg:px-0 lg:justify-center xl:px-4 xl:justify-start py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group
-                    ${isActive
-                      ? "bg-amber-600 text-white shadow-lg shadow-amber-600/15"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                    }
-                  `}
-                >
-                  <Icon size={16} className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
-                  <span className="lg:hidden xl:inline">{item.label}</span>
-                  {isActive && (
-                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white lg:hidden xl:block" />
-                  )}
-                </Link>
-              );
-            })}
-          </div>
         </nav>
 
         {/* User Profile Card & Logout */}

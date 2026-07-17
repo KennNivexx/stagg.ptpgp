@@ -12,7 +12,27 @@ import { checkGeofenceForEmployee } from "@/lib/geofence";
 
 const uid = () => crypto.randomUUID();
 
-const FACE_MATCH_THRESHOLD = 0.65;
+/**
+ * data_wajah_karyawan.employee_id is stored under TWO different id spaces for
+ * the same person depending on who registered the face: karyawan.id when
+ * HRD registers it (registerFace, formData employee_id), or pengguna.id when
+ * the employee self-registers (registerFace, user.id). Every reader of this
+ * table must check both — resolve both ids for an email and let callers
+ * query with .in("employee_id", ids) instead of a single .eq(...).
+ */
+export async function resolveFaceEmployeeIds(email: string): Promise<string[]> {
+  if (!email) return [];
+  const [{ data: emp }, { data: usr }] = await Promise.all([
+    supabaseAdmin.from("karyawan").select("id").eq("email", email).maybeSingle(),
+    supabaseAdmin.from("pengguna").select("id").eq("email", email).maybeSingle(),
+  ]);
+  return [emp?.id as string | undefined, usr?.id as string | undefined].filter((v): v is string => !!v);
+}
+
+// face-api.js's own documented threshold for its 128-dim descriptor space is
+// ~0.6 max (0.4-0.5 for stricter security). This was previously 0.65 — loose
+// enough that visibly different faces were accepted as a match.
+const FACE_MATCH_THRESHOLD = 0.45;
 
 export async function uploadAttendancePhoto(base64: string, employeeId: string): Promise<{ url: string } | { error: string }> {
   try {

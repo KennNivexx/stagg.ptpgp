@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Gift, Plus, DollarSign, TrendingUp, Star, X, CheckCircle } from "lucide-react";
-import { addBonus, updateBonusStatus } from "@/app/actions/rewards";
+import { Gift, Plus, DollarSign, TrendingUp, Star, X, CheckCircle, AlertTriangle } from "lucide-react";
+import { addBonus, updateBonusStatus, getRewardBudgetStatus } from "@/app/actions/rewards";
 import EmptyState from "@/components/EmptyState";
 
 const BONUS_TYPES = ["Kinerja", "Proyek", "Tahunan", "Khusus", "Lebaran", "THR"];
@@ -39,9 +39,17 @@ export default function BonusesClient({
   const [saving, setSaving] = useState(false);
   const [actingId, setActingId] = useState("");
   const [toast, setToast] = useState("");
+  const [budget, setBudget] = useState<{ budgetAmount: number; usedAmount: number } | null>(null);
   const years = [new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2];
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3500); };
+
+  useEffect(() => {
+    const dept = employees.find(e => e.id === empId)?.department;
+    if (!dept) { setBudget(null); return; }
+    const period = `${String(month).padStart(2, "0")}/${year}`;
+    getRewardBudgetStatus(dept, period).then(setBudget).catch(() => setBudget(null));
+  }, [empId, month, year, employees]);
 
   const totalBonus = bonuses.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
   const paidBonus = bonuses.filter(b => b.status === "Dibayarkan").reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
@@ -114,6 +122,14 @@ export default function BonusesClient({
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Jumlah (Rp)</label>
                 <input value={amount} onChange={e => setAmount(e.target.value.replace(/\D/g, ""))}
                   placeholder="0" className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
+                {budget && (
+                  <p className={`text-[10px] mt-1.5 flex items-center gap-1 ${
+                    budget.usedAmount + (Number(amount) || 0) > budget.budgetAmount ? "text-amber-600 font-bold" : "text-slate-400"
+                  }`}>
+                    {budget.usedAmount + (Number(amount) || 0) > budget.budgetAmount && <AlertTriangle size={11} />}
+                    Sisa Budget Departemen: Rp {(budget.budgetAmount - budget.usedAmount).toLocaleString("id-ID")} dari Rp {budget.budgetAmount.toLocaleString("id-ID")}
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>

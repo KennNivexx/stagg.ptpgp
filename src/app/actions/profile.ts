@@ -129,10 +129,16 @@ export async function saveBasicProfile(formData: FormData) {
 
   const updateData: Record<string, unknown> = { full_name, email, department: department || null, position: position || null };
 
-  // Employees cannot change their own department or position
+  // Employees cannot change their own department, position, or email —
+  // email especially: karyawan.email is the join key every self-service
+  // ownership check compares against the session's pengguna.email (see the
+  // requireRole("employee") guard above and every other action in this
+  // file). Letting an employee change it here desyncs the two tables and
+  // silently locks them out of their own record on the very next action.
   if (user.role === "employee") {
     delete updateData.department;
     delete updateData.position;
+    delete updateData.email;
   }
 
   const { error } = await supabaseAdmin

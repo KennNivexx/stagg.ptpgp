@@ -1,36 +1,42 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { DollarSign, Download, Gift, FileText, Users } from "lucide-react";
+import { DollarSign, Download, Gift, FileText, Users, Zap } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
+import RewardBudgetPanel from "./RewardBudgetPanel";
+
+function currentPeriod() {
+  const now = new Date();
+  return `${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+}
 
 export default async function HRDRewards() {
-  const { data: payrolls, error } = await supabaseAdmin
-    .from("penggajian")
-    .select("*, karyawan!inner(full_name, department)")
-    .order("year", { ascending: false })
-    .order("month", { ascending: false })
-    .limit(20);
-
-  const { count: totalEmployees } = await supabaseAdmin
-    .from("karyawan")
-    .select("*", { count: "exact", head: true });
+  const period = currentPeriod();
+  const [{ data: payrolls, error }, { count: totalEmployees }, { count: pendingSuggestions }, { data: allIncentives }, { data: deptRows }] = await Promise.all([
+    supabaseAdmin.from("penggajian").select("*, karyawan!inner(full_name, department)").order("year", { ascending: false }).order("month", { ascending: false }).limit(20),
+    supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("insentif").select("*", { count: "exact", head: true }).like("program", "Aturan: %").eq("status", "Pending"),
+    supabaseAdmin.from("insentif").select("amount").eq("period", period).in("status", ["Disetujui", "Dibayarkan"]),
+    supabaseAdmin.from("karyawan").select("department").neq("status", "Inactive"),
+  ]);
 
   const totalNetSalary = (payrolls || []).reduce(
     (sum: number, p: Record<string, unknown>) => sum + (Number(p.net_salary) || 0), 0
   );
+  const budgetUsedThisMonth = (allIncentives || []).reduce((s, r: Record<string, unknown>) => s + (Number(r.amount) || 0), 0);
+  const departments = [...new Set((deptRows || []).map((d: Record<string, unknown>) => d.department as string).filter(Boolean))].sort();
 
   const monthNames = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Rewards & Recognition</h1>
-        <p className="text-sm text-gray-500">Kompensasi, benefit, payroll, dan penghargaan karyawan</p>
+        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Reward & Recognition</h1>
+        <p className="text-sm text-gray-500">Formula reward, salary review, kompensasi, benefit, payroll, dan penghargaan karyawan</p>
       </div>
 
-      <SectionQuickLinks groupLabel="Reward & Penggajian" excludeHref="/hrd/rewards" />
+      <SectionQuickLinks groupLabel="Reward & Recognition" excludeHref="/hrd/rewards" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Users size={18} /></div>
@@ -71,7 +77,28 @@ export default async function HRDRewards() {
             </div>
           </div>
         </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl"><Zap size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Saran Reward Pending</p>
+              <p className="text-xl font-extrabold text-slate-800">{pendingSuggestions || 0}</p>
+              <p className="text-[9px] text-slate-400">dari Reward Rule Engine</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Gift size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Budget Terpakai Bulan Ini</p>
+              <p className="text-lg font-extrabold text-slate-800">Rp {budgetUsedThisMonth.toLocaleString("id-ID").split(",")[0]}</p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <RewardBudgetPanel departments={departments} />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">

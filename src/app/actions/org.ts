@@ -723,6 +723,7 @@ async function syncOrgToDepartments() {
 }
 
 export async function getDepartments(): Promise<FlatDept[]> {
+  await requireRole("hrd", "superadmin");
   let { data } = await supabaseAdmin.from("departemen").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
   if (!data || data.length === 0) {
     await syncOrgToDepartments();

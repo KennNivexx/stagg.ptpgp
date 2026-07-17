@@ -17,6 +17,15 @@ const NAV = [
   { href: "/applicant/guides", label: "Bantuan & Panduan", icon: HelpCircle },
 ];
 
+const ITEM_TOOLTIPS: Record<string, string> = {
+  "/applicant": "Ringkasan singkat lamaran Anda",
+  "/applicant/status": "Pantau status proses lamaran Anda",
+  "/applicant/company": "Informasi tentang perusahaan",
+  "/applicant/test": "Ikuti tes seleksi online",
+  "/applicant/profile": "Lengkapi profil dan dokumen lamaran Anda",
+  "/applicant/guides": "Bantuan & panduan penggunaan portal",
+};
+
 interface Props {
   userName: string;
   userEmail: string;
@@ -69,7 +78,7 @@ export default function ApplicantSidebar({ userName, userEmail }: Props) {
             >
               <Link
                 href={href}
-                title={label}
+                title={ITEM_TOOLTIPS[href] || label}
                 onClick={() => setIsOpen(false)}
                 className="relative flex items-center gap-3 lg:justify-center xl:justify-start px-3 lg:px-0 xl:px-3 py-2.5 rounded-xl text-xs font-semibold overflow-hidden"
               >

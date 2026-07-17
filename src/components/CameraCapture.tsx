@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CameraOff, MapPin, CheckCircle, AlertTriangle, RefreshCw, UserCheck, UserX } from "lucide-react";
+import { CameraOff, MapPin, CheckCircle, AlertTriangle, RefreshCw, UserCheck, UserX, Eye } from "lucide-react";
 import { findBestFaceMatch, type FaceReference } from "@/lib/face-recognition";
 
 // Models served locally from /public/models — NOT from external CDN
@@ -34,6 +34,17 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+/** Eye Aspect Ratio (Soukupová & Čech) from 6 landmark points of one eye —
+ * drops sharply when the eye closes. Used for a cheap liveness check (a
+ * held-up photo can't blink) without any extra model beyond the 68-point
+ * landmarks this component already loads. */
+function eyeAspectRatio(pts: { x: number; y: number }[]): number {
+  const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+  return (dist(pts[1], pts[5]) + dist(pts[2], pts[4])) / (2 * dist(pts[0], pts[3]));
+}
+
+const EAR_CLOSED_THRESHOLD = 0.22;
+
 export default function CameraCapture({
   onCapture,
   buttonLabel = "Ambil Foto",
@@ -49,6 +60,8 @@ export default function CameraCapture({
   const recognizedNameRef = useRef("");
   const recognitionConfidenceRef = useRef(0);
   const recognitionMatchedRef = useRef(false);
+  const eyeStateRef = useRef<"open" | "closed">("open");
+  const blinkVerifiedRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [modelError, setModelError] = useState("");
@@ -64,6 +77,7 @@ export default function CameraCapture({
   const [recognitionConfidence, setRecognitionConfidence] = useState(0);
   const [recognitionDistance, setRecognitionDistance] = useState(0);
   const [recognitionMatched, setRecognitionMatched] = useState(false);
+  const [blinkVerified, setBlinkVerified] = useState(false);
 
   const isRecognitionMode = mode === "recognition";
   const isRegistrationMode = mode === "registration";
@@ -216,22 +230,40 @@ export default function CameraCapture({
 
             // Face matching — do this BEFORE drawing label
             if (isRecognitionMode && referenceDescriptors.length > 0) {
-              const match = findBestFaceMatch(det.descriptor, referenceDescriptors, 0.72);
+              // 0.45 matches face-api.js's own documented sane threshold for
+              // its 128-dim descriptor space — was previously 0.72, loose
+              // enough that visibly different faces were accepted as a match.
+              const match = findBestFaceMatch(det.descriptor, referenceDescriptors, 0.45);
               if (match) {
-                const matchLabel = match.distance < 0.35 ? "Sangat Cocok"
-                                 : match.distance < 0.50 ? "Cocok"
-                                 : "Cukup Cocok";
+                const matchLabel = match.distance < 0.35 ? "Sangat Cocok" : "Cocok";
                 setRecognizedName(match.employeeName);
-                setRecognitionConfidence(Math.round(matchLabel === "Sangat Cocok" ? 95 : matchLabel === "Cocok" ? 85 : 72));
+                setRecognitionConfidence(Math.round(matchLabel === "Sangat Cocok" ? 95 : 85));
                 setRecognitionDistance(match.distance);
-                setRecognitionMatched(match.distance < 0.72);
+                setRecognitionMatched(match.distance < 0.45);
                 recognizedNameRef.current = `${match.employeeName} · ${matchLabel}`;
-                recognitionMatchedRef.current = match.distance < 0.72;
+                recognitionMatchedRef.current = match.distance < 0.45;
               } else {
                 setRecognizedName(""); setRecognitionConfidence(0);
                 setRecognitionDistance(1); setRecognitionMatched(false);
                 recognizedNameRef.current = "";
                 recognitionMatchedRef.current = false;
+              }
+
+              // Liveness: require one full open→closed→open blink cycle before
+              // the shutter unlocks, so a held-up photo (which can't blink)
+              // can't be used to clock in for someone else. Landmarks 36-41 =
+              // left eye, 42-47 = right eye (standard 68-point scheme).
+              const pts = det.landmarks.positions;
+              if (pts.length >= 48) {
+                const ear = (eyeAspectRatio(pts.slice(36, 42)) + eyeAspectRatio(pts.slice(42, 48))) / 2;
+                const eyesClosed = ear < EAR_CLOSED_THRESHOLD;
+                if (eyesClosed && eyeStateRef.current === "open") {
+                  eyeStateRef.current = "closed";
+                } else if (!eyesClosed && eyeStateRef.current === "closed") {
+                  eyeStateRef.current = "open";
+                  blinkVerifiedRef.current = true;
+                  setBlinkVerified(true);
+                }
               }
             }
 
@@ -253,6 +285,11 @@ export default function CameraCapture({
             setRecognitionMatched(false);
             recognizedNameRef.current = ""; recognitionConfidenceRef.current = 0;
             recognitionMatchedRef.current = false;
+            // Face left the frame — require a fresh blink if it reappears,
+            // so swapping in a different photo can't inherit a stale liveness pass.
+            eyeStateRef.current = "open";
+            blinkVerifiedRef.current = false;
+            setBlinkVerified(false);
           }
         } else {
           // Detection-only mode (no descriptor needed)
@@ -363,7 +400,7 @@ export default function CameraCapture({
   }
 
   const shutterEnabled = !capturing && !loading && streamReady && (
-    isRecognitionMode ? (faceDetected && recognitionMatched) : faceDetected
+    isRecognitionMode ? (faceDetected && recognitionMatched && blinkVerified) : faceDetected
   );
 
   const ringColor = capturing
@@ -376,6 +413,7 @@ export default function CameraCapture({
     : !streamReady ? "Memuat kamera..."
     : !faceDetected ? "Wajah tidak terdeteksi"
     : isRecognitionMode && !recognitionMatched ? "Wajah tidak dikenali sistem"
+    : isRecognitionMode && !blinkVerified ? "Kedipkan mata untuk verifikasi..."
     : buttonLabel;
 
   return (
@@ -427,6 +465,12 @@ export default function CameraCapture({
               ? <><UserCheck size={13} /> {recognizedName} — {recognitionConfidence >= 90 ? "Sangat Cocok" : recognitionConfidence >= 80 ? "Cocok" : "Cukup Cocok"}</>
               : <><UserX size={13} /> {recognizedName ? `${recognizedName}? (tidak yakin)` : "Wajah tidak dikenali"}</>
             }
+          </div>
+        )}
+
+        {isRecognitionMode && faceDetected && recognitionMatched && !blinkVerified && (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-500/90 text-white animate-pulse">
+            <Eye size={13} /> Kedipkan mata untuk verifikasi wajah asli
           </div>
         )}
 
