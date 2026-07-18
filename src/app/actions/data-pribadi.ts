@@ -40,6 +40,7 @@ async function assertAccess(targetEmail: string) {
 
 export async function getDataPribadi(email: string): Promise<DataPribadi | null> {
   if (!email) return null;
+  await assertAccess(email);
   const { data } = await supabaseAdmin.from("data_pribadi_karyawan").select("*").eq("email", email.toLowerCase()).maybeSingle();
   return (data as DataPribadi) || null;
 }
@@ -120,6 +121,7 @@ export async function deleteFamilyMemberByEmail(id: string, email: string) {
 
 export async function getFamilyByEmail(email: string) {
   if (!email) return [];
+  await assertAccess(email);
   const { data } = await supabaseAdmin.from("keluarga_karyawan").select("*").eq("karyawan_email", email.toLowerCase()).order("created_at", { ascending: false });
   return data || [];
 }
@@ -157,6 +159,7 @@ export async function deleteEducationByEmail(id: string, email: string) {
 
 export async function getEducationByEmail(email: string) {
   if (!email) return [];
+  await assertAccess(email);
   const { data } = await supabaseAdmin.from("pendidikan_karyawan").select("*").eq("karyawan_email", email.toLowerCase()).order("created_at", { ascending: false });
   return data || [];
 }
@@ -179,6 +182,7 @@ export interface CatatanKaryawan {
 
 export async function getCatatanByKategori(email: string, kategori: string): Promise<CatatanKaryawan[]> {
   if (!email) return [];
+  await assertAccess(email);
   const { data } = await supabaseAdmin
     .from("catatan_karyawan")
     .select("*")

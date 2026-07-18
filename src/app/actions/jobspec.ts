@@ -36,8 +36,13 @@ export async function saveJobSpec(formData: FormData) {
   const education = (formData.get("education") as string || "").trim();
   const experience = (formData.get("experience") as string || "").trim();
   const jabatan_id = (formData.get("jabatan_id") as string || "").trim() || null;
-  const skills = (JSON.parse((formData.get("skills") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
-  const certifications = (JSON.parse((formData.get("certifications") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
+  let skills: string[], certifications: string[];
+  try {
+    skills = (JSON.parse((formData.get("skills") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
+    certifications = (JSON.parse((formData.get("certifications") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
+  } catch {
+    return { error: "Format skills/sertifikasi tidak valid." };
+  }
 
   if (!department) return { error: "Departemen wajib dipilih." };
   if (!kode) return { error: "Kode perusahaan wajib diisi." };

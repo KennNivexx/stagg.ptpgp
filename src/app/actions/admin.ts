@@ -20,6 +20,7 @@ export async function createAdminUser(formData: FormData) {
   if (existing) return { error: "Email sudah terdaftar dalam sistem." };
   const { error } = await supabaseAdmin.from("karyawan").insert({
     id: "emp-" + crypto.randomUUID(), full_name: name, email,
+    position: "Administrator", join_date: new Date().toISOString().slice(0, 10),
     status: "Active", created_at: new Date().toISOString(),
   });
   if (error) { console.error("[admin] createAdminUser error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
@@ -146,44 +147,18 @@ export async function updateEmployeeStatus(employeeId: string, newStatus: string
   return { success: true };
 }
 
-export async function generatePayslip(formData: FormData) {
-  await requireRole("hrd", "superadmin");
-  const employeeId = (formData.get("employee_id") as string || "").trim();
-  const month = parseInt(formData.get("month") as string || "0", 10);
-  const year = parseInt(formData.get("year") as string || "0", 10);
-  if (!employeeId || !month || !year) return { error: "Pilih karyawan, bulan, dan tahun." };
-  const { data: existing } = await supabaseAdmin.from("penggajian")
-    .select("id").eq("employee_id", employeeId).eq("month", month).eq("year", year).maybeSingle();
-  if (existing) return { error: "Slip gaji untuk periode ini sudah dibuat." };
-  const { data: salaryData } = await supabaseAdmin.from("struktur_gaji")
-    .select("basic_salary, transport_allowance, meal_allowance, housing_allowance, position_allowance, ptkp_status")
-    .eq("employee_id", employeeId).maybeSingle();
-  const basic = Number(salaryData?.basic_salary) || 0;
-  const allowances = (Number(salaryData?.transport_allowance) || 0) +
-    (Number(salaryData?.meal_allowance) || 0) +
-    (Number(salaryData?.housing_allowance) || 0) +
-    (Number(salaryData?.position_allowance) || 0);
-  if (basic === 0) return { error: "Belum ada struktur gaji untuk karyawan ini. Isi di menu Komponen Gaji terlebih dahulu." };
-
-  // ── Bonus/insentif yang sudah final (Disetujui/Dibayarkan) untuk periode
-  // yang sama — periode disimpan sebagai "MM/YYYY" di form Bonus/Insentif
-  // agar pencocokan dengan month+year di sini bisa diandalkan.
-  const periodKey = `${String(month).padStart(2, "0")}/${year}`;
-  const { data: bonusRows } = await supabaseAdmin
-    .from("insentif")
-    .select("amount")
-    .eq("employee_id", employeeId)
-    .eq("period", periodKey)
-    .in("status", ["Disetujui", "Dibayarkan"]);
-  const bonus = (bonusRows || []).reduce((s, r) => s + (Number((r as Record<string, unknown>).amount) || 0), 0);
-
-  // ── Hitung PPh 21 otomatis ──────────────────────────────────────────────
+/** Shared PPh21 (progressive income tax) + BPJS employee-share calculation —
+ * previously hand-duplicated between generatePayslip and computePayrollEntry
+ * (single-payslip vs batch generation), which meant a future tweak to one
+ * copy (e.g. a bracket change) could silently produce different net salaries
+ * for the same employee/period depending on which button was clicked. Both
+ * now call this one implementation. */
+async function computeTaxAndBpjs(basic: number, allowances: number, ptkpStatus: string): Promise<{ monthlyTax: number; bpjsHealth: number; bpjsEmployment: number }> {
   let monthlyTax = 0;
   try {
     const { data: taxRow } = await supabaseAdmin
       .from("pengaturan_sistem").select("value").eq("key", "pph21_config").maybeSingle();
     const cfg = taxRow?.value ? JSON.parse(taxRow.value as string) : null;
-    const ptkpStatus = (salaryData?.ptkp_status as string) || "TK/0";
     const ptkpMap: Record<string, number> = {
       "TK/0": cfg?.ptkp_tk0 ?? 54_000_000,
       "TK/1": cfg?.ptkp_tk1 ?? 58_500_000,
@@ -216,10 +191,6 @@ export async function generatePayslip(formData: FormData) {
     monthlyTax = Math.round(annualTax / 12);
   } catch { monthlyTax = 0; }
 
-  // ── Hitung BPJS Kesehatan & Ketenagakerjaan (ditanggung karyawan) ───────
-  // Persentase dan batas upah bisa diatur HRD di Konfigurasi PPh 21 & BPJS
-  // (system_settings key "bpjs_config") — nilai di bawah hanya default awal,
-  // bukan angka final, karena ketentuan BPJS berubah dari waktu ke waktu.
   let bpjsHealth = 0;
   let bpjsEmployment = 0;
   try {
@@ -244,6 +215,42 @@ export async function generatePayslip(formData: FormData) {
     bpjsEmployment = jht + jp;
   } catch { bpjsHealth = 0; bpjsEmployment = 0; }
 
+  return { monthlyTax, bpjsHealth, bpjsEmployment };
+}
+
+export async function generatePayslip(formData: FormData) {
+  await requireRole("hrd", "superadmin");
+  const employeeId = (formData.get("employee_id") as string || "").trim();
+  const month = parseInt(formData.get("month") as string || "0", 10);
+  const year = parseInt(formData.get("year") as string || "0", 10);
+  if (!employeeId || !month || !year) return { error: "Pilih karyawan, bulan, dan tahun." };
+  const { data: existing } = await supabaseAdmin.from("penggajian")
+    .select("id").eq("employee_id", employeeId).eq("month", month).eq("year", year).maybeSingle();
+  if (existing) return { error: "Slip gaji untuk periode ini sudah dibuat." };
+  const { data: salaryData } = await supabaseAdmin.from("struktur_gaji")
+    .select("basic_salary, transport_allowance, meal_allowance, housing_allowance, position_allowance, ptkp_status")
+    .eq("employee_id", employeeId).maybeSingle();
+  const basic = Number(salaryData?.basic_salary) || 0;
+  const allowances = (Number(salaryData?.transport_allowance) || 0) +
+    (Number(salaryData?.meal_allowance) || 0) +
+    (Number(salaryData?.housing_allowance) || 0) +
+    (Number(salaryData?.position_allowance) || 0);
+  if (basic === 0) return { error: "Belum ada struktur gaji untuk karyawan ini. Isi di menu Komponen Gaji terlebih dahulu." };
+
+  // ── Bonus/insentif yang sudah final (Disetujui/Dibayarkan) untuk periode
+  // yang sama — periode disimpan sebagai "MM/YYYY" di form Bonus/Insentif
+  // agar pencocokan dengan month+year di sini bisa diandalkan.
+  const periodKey = `${String(month).padStart(2, "0")}/${year}`;
+  const { data: bonusRows } = await supabaseAdmin
+    .from("insentif")
+    .select("amount")
+    .eq("employee_id", employeeId)
+    .eq("period", periodKey)
+    .in("status", ["Disetujui", "Dibayarkan"]);
+  const bonus = (bonusRows || []).reduce((s, r) => s + (Number((r as Record<string, unknown>).amount) || 0), 0);
+
+  const { monthlyTax, bpjsHealth, bpjsEmployment } = await computeTaxAndBpjs(basic, allowances, (salaryData?.ptkp_status as string) || "TK/0");
+
   // `deductions` represents OTHER non-tax, non-BPJS deductions (e.g. potongan
   // pinjaman) — currently none are implemented, so it stays 0. Tax and BPJS
   // each have their own dedicated columns/rows on the payslip so nothing is
@@ -252,7 +259,7 @@ export async function generatePayslip(formData: FormData) {
   const netSalary = basic + allowances + bonus - monthlyTax - bpjsHealth - bpjsEmployment - deductions;
 
   const { error } = await supabaseAdmin.from("penggajian").insert({
-    id: "pay-" + crypto.randomUUID(),
+    id: crypto.randomUUID(),
     employee_id: employeeId,
     month, year,
     basic_salary: basic,
@@ -402,32 +409,10 @@ async function computePayrollEntry(employeeId: string, month: number, year: numb
   const { data: bonusRows } = await supabaseAdmin.from("insentif").select("amount")
     .eq("employee_id", employeeId).eq("period", periodKey).in("status", ["Disetujui", "Dibayarkan"]);
   const bonus = (bonusRows || []).reduce((s, r) => s + (Number((r as Record<string, unknown>).amount) || 0), 0);
-  let tax = 0;
-  try {
-    const { data: tr } = await supabaseAdmin.from("pengaturan_sistem").select("value").eq("key", "pph21_config").maybeSingle();
-    const cfg = tr?.value ? JSON.parse(tr.value as string) : null;
-    const ptkpStatus = (sd?.ptkp_status as string) || "TK/0";
-    const m: Record<string, number> = { "TK/0": cfg?.ptkp_tk0 ?? 54000000, "TK/1": cfg?.ptkp_tk1 ?? 58500000, "TK/2": cfg?.ptkp_tk2 ?? 63000000, "TK/3": cfg?.ptkp_tk3 ?? 67500000, "K/0": cfg?.ptkp_k0 ?? 58500000, "K/1": cfg?.ptkp_k1 ?? 63000000, "K/2": cfg?.ptkp_k2 ?? 67500000, "K/3": cfg?.ptkp_k3 ?? 72000000 };
-    const ptkp = m[ptkpStatus] ?? 54000000;
-    const brs: Array<{ min: number; max: number | null; rate: number }> = cfg?.brackets ?? [{ min: 0, max: 60000000, rate: 5 }, { min: 60000000, max: 250000000, rate: 15 }, { min: 250000000, max: 500000000, rate: 25 }, { min: 500000000, max: 5000000000, rate: 30 }, { min: 5000000000, max: null, rate: 35 }];
-    const annual = (basic + allowances) * 12;
-    const pkp = Math.max(0, annual - ptkp);
-    let aTax = 0; let rem = pkp;
-    for (const b of brs) { if (rem <= 0) break; const sz = b.max !== null ? b.max - b.min : rem; const tx = Math.min(rem, sz); aTax += tx * (b.rate / 100); rem -= tx; }
-    tax = Math.round(aTax / 12);
-  } catch { tax = 0; }
-  let bpH = 0; let bpE = 0;
-  try {
-    const { data: br } = await supabaseAdmin.from("pengaturan_sistem").select("value").eq("key", "bpjs_config").maybeSingle();
-    const bc = br?.value ? JSON.parse(br.value as string) : null;
-    const g = basic + allowances;
-    bpH = Math.round(Math.min(g, bc?.health_wage_cap ?? 12000000) * ((bc?.health_employee_percent ?? 1) / 100));
-    bpE = Math.round(g * ((bc?.jht_employee_percent ?? 2) / 100));
-    if (bc?.jp_enabled ?? true) bpE += Math.round(Math.min(g, bc?.jp_wage_cap ?? 10547400) * ((bc?.jp_employee_percent ?? 1) / 100));
-  } catch { bpH = 0; bpE = 0; }
+  const { monthlyTax: tax, bpjsHealth: bpH, bpjsEmployment: bpE } = await computeTaxAndBpjs(basic, allowances, (sd?.ptkp_status as string) || "TK/0");
   const net = basic + allowances + bonus - tax - bpH - bpE;
   const { error } = await supabaseAdmin.from("penggajian").insert({
-    id: "pay-" + crypto.randomUUID(), employee_id: employeeId, month, year,
+    id: crypto.randomUUID(), employee_id: employeeId, month, year,
     basic_salary: basic, allowances, bonus, tax, bpjs_health: bpH, bpjs_employment: bpE,
     deductions: 0, net_salary: net, status: "Draft", created_at: new Date().toISOString(),
   });

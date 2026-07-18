@@ -252,11 +252,9 @@ export async function reviewCompetencyRequest(id: string, approve: boolean): Pro
   if (req.status !== "Pending") return { error: `Usulan ini sudah diproses sebelumnya (${req.status}).` };
 
   if (approve) {
-    const now = new Date().toISOString();
     const { error: insertErr } = await supabaseAdmin.from("master_kompetensi").insert({
       id: suid(),
       name: req.name, category: req.category, department: req.department,
-      created_at: now, updated_at: now,
     });
     if (insertErr) return { error: "Gagal membuat kompetensi." };
   }

@@ -32,6 +32,7 @@ export async function registerVendor(formData: FormData) {
     .from("vendor")
     .insert([
       {
+        name: company_name,
         company_name,
         company_email,
         company_phone,
@@ -76,6 +77,7 @@ export async function submitQuotation(formData: FormData) {
   const { error } = await supabaseAdmin
     .from("vendor")
     .insert([{
+      name: company_name,
       company_name,
       company_email: email,
       company_phone: phone || null,

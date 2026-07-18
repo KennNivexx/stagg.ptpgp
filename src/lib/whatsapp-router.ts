@@ -420,9 +420,15 @@ export async function handleVerificationFlow(waNumber: string, text: string): Pr
       return null;
     }
 
+    // One Fonnte send instead of two (profile text + menu were previously
+    // separate messages) — same information, half the outbound message
+    // count for every new verification, which is what actually consumes
+    // the monthly Fonnte quota.
     const profileText = await getEmployeeProfileText(employee.id);
-    await sendTextMessage(waNumber, ["*Verifikasi Berhasil!*", "", profileText].join("\n"));
-    await sendMainMenu(waNumber);
+    await sendTextMessage(
+      waNumber,
+      ["*Verifikasi Berhasil!*", "", profileText, "", MAIN_MENU_TEXT].join("\n"),
+    );
 
     return employee;
   }

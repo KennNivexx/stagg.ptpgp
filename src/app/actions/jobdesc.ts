@@ -41,8 +41,13 @@ export async function saveJobDesc(formData: FormData) {
   const department = (formData.get("department") as string || "").trim();
   const kode = (formData.get("kode") as string || "").trim();
   const jabatan_id = (formData.get("jabatan_id") as string || "").trim() || null;
-  const responsibilities = (JSON.parse((formData.get("responsibilities") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
-  const requirements = (JSON.parse((formData.get("requirements") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
+  let responsibilities: string[], requirements: string[];
+  try {
+    responsibilities = (JSON.parse((formData.get("responsibilities") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
+    requirements = (JSON.parse((formData.get("requirements") as string) || "[]") as string[]).map(s => s.trim()).filter(Boolean);
+  } catch {
+    return { error: "Format tanggung jawab/persyaratan tidak valid." };
+  }
 
   if (!position) return { error: "Posisi wajib diisi." };
   if (!kode) return { error: "Kode perusahaan wajib diisi." };

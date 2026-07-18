@@ -51,6 +51,7 @@ const MISSING_TABLE = (code?: string) => code === "42P01" || code === "PGRST205"
 const MISSING_COLUMN = (code?: string) => code === "PGRST204";
 
 export async function getPolicies() {
+  await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
     .from("kebijakan_perusahaan")
     .select("*")
@@ -60,6 +61,7 @@ export async function getPolicies() {
 }
 
 export async function getPolicyById(id: string) {
+  await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin.from("kebijakan_perusahaan").select("*").eq("id", id).maybeSingle();
   if (error) return null;
   return data as Record<string, unknown> | null;
@@ -92,6 +94,7 @@ export async function savePolicy(formData: FormData) {
 // ── Basis Pengetahuan ────────────────────────────────────────────────────────
 
 export async function getArticles() {
+  await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
     .from("artikel_pengetahuan")
     .select("*")
@@ -101,6 +104,7 @@ export async function getArticles() {
 }
 
 export async function getArticleById(id: string) {
+  await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin.from("artikel_pengetahuan").select("*").eq("id", id).maybeSingle();
   if (error || !data) return null;
   await supabaseAdmin.from("artikel_pengetahuan").update({ views: (Number((data as Record<string, unknown>).views) || 0) + 1 }).eq("id", id);
@@ -130,6 +134,7 @@ export async function saveArticle(formData: FormData) {
 // ── Video Tutorial ───────────────────────────────────────────────────────────
 
 export async function getVideos() {
+  await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin
     .from("video_pelatihan")
     .select("*")
@@ -139,6 +144,7 @@ export async function getVideos() {
 }
 
 export async function getVideoById(id: string) {
+  await requireRole("hrd", "superadmin");
   const { data, error } = await supabaseAdmin.from("video_pelatihan").select("*").eq("id", id).maybeSingle();
   if (error || !data) return null;
   await supabaseAdmin.from("video_pelatihan").update({ views: (Number((data as Record<string, unknown>).views) || 0) + 1 }).eq("id", id);

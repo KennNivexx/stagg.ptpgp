@@ -131,6 +131,7 @@ export async function getParticipationEntries(type: ParticipationType) {
 }
 
 export async function submitParticipationEntry(formData: FormData) {
+  await requireRole("hrd", "superadmin");
   const type = (formData.get("participation_type") as string || "").trim() as ParticipationType;
   const karyawanId = (formData.get("karyawan_id") as string || "").trim() || null;
   const title = (formData.get("title") as string || "").trim();

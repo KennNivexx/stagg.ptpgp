@@ -29,6 +29,33 @@
 -- All seeded login accounts use password: password
 -- ============================================================================
 
+-- Defensive: 20260712001_org_design_overhaul.sql (which defines
+-- formasi_jabatan and karyawan.formasi_id) was never actually run on the
+-- live database — confirmed via live schema introspection, karyawan.id is
+-- UUID (not the TEXT this codebase's own migrations elsewhere assumed) and
+-- formasi_jabatan doesn't exist at all yet. Create both here defensively so
+-- this seed (and the career-development.ts / employee-relations.ts actions
+-- that query formasi_jabatan) work regardless of whether that migration is
+-- ever run separately.
+DO $$ BEGIN
+CREATE TABLE IF NOT EXISTS formasi_jabatan (
+  id TEXT PRIMARY KEY,
+  position_number TEXT UNIQUE NOT NULL,
+  unit_organisasi_id TEXT NOT NULL REFERENCES unit_organisasi(id),
+  jabatan_id TEXT NOT NULL REFERENCES jabatan(id),
+  status TEXT NOT NULL DEFAULT 'Vacant' CHECK (status IN ('Vacant','Filled')),
+  karyawan_id UUID REFERENCES karyawan(id),
+  tanggal_mulai DATE,
+  keterangan TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_formasi_unit ON formasi_jabatan(unit_organisasi_id);
+CREATE INDEX IF NOT EXISTS idx_formasi_karyawan ON formasi_jabatan(karyawan_id);
+ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS formasi_id TEXT REFERENCES formasi_jabatan(id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped formasi_jabatan schema fix: %', SQLERRM;
+END $$;
+
 -- ── Core org chain: unit_organisasi -> jabatan -> grade_jabatan -> formasi_jabatan
 DO $$ BEGIN
 INSERT INTO unit_organisasi (id, code, name, parent_code, level, sort_order) VALUES
@@ -98,16 +125,16 @@ END $$;
 -- ── Employees (karyawan) + login accounts (pengguna)
 DO $$ BEGIN
 INSERT INTO karyawan (id, full_name, email, department, position, status, formasi_id, join_date, phone) VALUES
-  ('demo-emp-01', 'Siti Rahayu',    'siti.rahayu@ptpgp.co.id',    'HR & GA', 'HR & GA Staff', 'Active', 'demo-formasi-01', '2023-02-01', '081200000001'),
-  ('demo-emp-02', 'Budi Santoso',   'budi.santoso@ptpgp.co.id',   'HR & GA', 'HR & GA Supervisor', 'Active', 'demo-formasi-02', '2021-06-15', '081200000002'),
-  ('demo-emp-03', 'Andi Wijaya',    'andi.wijaya@ptpgp.co.id',    'Finance', 'Finance & Accounting Staff', 'Active', 'demo-formasi-03', '2022-09-10', '081200000003'),
-  ('demo-emp-04', 'Dewi Lestari',   'dewi.lestari@ptpgp.co.id',   'Operational Division', 'Staff PPJK (Kepabeanan)', 'Active', 'demo-formasi-04', '2020-03-20', '081200000004'),
-  ('demo-emp-05', 'Agus Purnomo',   'agus.purnomo@ptpgp.co.id',   'Operational Division', 'Staff Dokumentasi Ekspor-Impor', 'Active', 'demo-formasi-05', '2021-08-12', '081200000005'),
-  ('demo-emp-06', 'Rina Marlina',   'rina.marlina@ptpgp.co.id',   'Operational Division', 'Supervisor Gudang & Cargo', 'Active', 'demo-formasi-06', '2019-05-02', '081200000006'),
-  ('demo-emp-07', 'Hendra Saputra', 'hendra.saputra@ptpgp.co.id', 'Operational Division', 'Koordinator Armada & Trucking', 'Active', 'demo-formasi-07', '2018-11-19', '081200000007'),
-  ('demo-emp-08', 'Maya Kusuma',    'maya.kusuma@ptpgp.co.id',    'Operational Division', 'Customer Service Ekspor-Impor', 'Active', 'demo-formasi-08', '2023-07-03', '081200000008'),
-  ('demo-emp-09', 'Fajar Nugroho',  'fajar.nugroho@ptpgp.co.id',  'Operational Division', 'Operational Manager', 'Active', 'demo-formasi-09', '2016-02-14', '081200000009'),
-  ('demo-emp-10', 'Yudi Firmansyah','yudi.firmansyah@ptpgp.co.id','Health, Safety & Environment', 'HSE Officer', 'Active', 'demo-formasi-11', '2022-01-17', '081200000010')
+  ('e1a0ca47-173f-4c93-a2bb-678e68a2fa61', 'Siti Rahayu',    'siti.rahayu@ptpgp.co.id',    'HR & GA', 'HR & GA Staff', 'Active', 'demo-formasi-01', '2023-02-01', '081200000001'),
+  ('11bf125b-b66a-44ea-9a30-73ed9524e7bc', 'Budi Santoso',   'budi.santoso@ptpgp.co.id',   'HR & GA', 'HR & GA Supervisor', 'Active', 'demo-formasi-02', '2021-06-15', '081200000002'),
+  ('533fb02e-c137-444e-94b5-a0f7ea88058c', 'Andi Wijaya',    'andi.wijaya@ptpgp.co.id',    'Finance', 'Finance & Accounting Staff', 'Active', 'demo-formasi-03', '2022-09-10', '081200000003'),
+  ('ccb5862d-21dc-4d07-8da0-dd411bb3d97e', 'Dewi Lestari',   'dewi.lestari@ptpgp.co.id',   'Operational Division', 'Staff PPJK (Kepabeanan)', 'Active', 'demo-formasi-04', '2020-03-20', '081200000004'),
+  ('ab2109d1-e11f-4e79-8ecf-c8dc5b87cb5a', 'Agus Purnomo',   'agus.purnomo@ptpgp.co.id',   'Operational Division', 'Staff Dokumentasi Ekspor-Impor', 'Active', 'demo-formasi-05', '2021-08-12', '081200000005'),
+  ('84019708-d3d6-43f8-817b-da2ff8052eeb', 'Rina Marlina',   'rina.marlina@ptpgp.co.id',   'Operational Division', 'Supervisor Gudang & Cargo', 'Active', 'demo-formasi-06', '2019-05-02', '081200000006'),
+  ('e19a4e1b-d365-4d5a-826c-7b66aa8cca62', 'Hendra Saputra', 'hendra.saputra@ptpgp.co.id', 'Operational Division', 'Koordinator Armada & Trucking', 'Active', 'demo-formasi-07', '2018-11-19', '081200000007'),
+  ('f132413c-0c1d-4de9-ac53-21b0bcbe57d4', 'Maya Kusuma',    'maya.kusuma@ptpgp.co.id',    'Operational Division', 'Customer Service Ekspor-Impor', 'Active', 'demo-formasi-08', '2023-07-03', '081200000008'),
+  ('9f388845-acbf-4178-8ef3-c4e5ac4511ac', 'Fajar Nugroho',  'fajar.nugroho@ptpgp.co.id',  'Operational Division', 'Operational Manager', 'Active', 'demo-formasi-09', '2016-02-14', '081200000009'),
+  ('217ac2be-f6bc-4481-bdb6-db3d68a26083', 'Yudi Firmansyah','yudi.firmansyah@ptpgp.co.id','Health, Safety & Environment', 'HSE Officer', 'Active', 'demo-formasi-11', '2022-01-17', '081200000010')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped karyawan: %', SQLERRM;
 END $$;
@@ -150,11 +177,11 @@ END $$;
 
 DO $$ BEGIN
 INSERT INTO absensi (id, employee_id, employee_name, department, date, check_in, check_out, status) VALUES
-  ('demo-abs-01', 'demo-emp-01', 'Siti Rahayu', 'HR & GA', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '08:02', (CURRENT_DATE - 1) + TIME '17:05', 'Hadir'),
-  ('demo-abs-02', 'demo-emp-02', 'Budi Santoso', 'HR & GA', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '07:55', (CURRENT_DATE - 1) + TIME '17:10', 'Hadir'),
-  ('demo-abs-03', 'demo-emp-04', 'Dewi Lestari', 'Operational Division', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '07:40', (CURRENT_DATE - 1) + TIME '17:30', 'Hadir'),
-  ('demo-abs-04', 'demo-emp-06', 'Rina Marlina', 'Operational Division', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '06:50', (CURRENT_DATE - 1) + TIME '16:45', 'Hadir'),
-  ('demo-abs-05', 'demo-emp-07', 'Hendra Saputra', 'Operational Division', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '06:30', (CURRENT_DATE - 1) + TIME '18:00', 'Hadir')
+  ('demo-abs-01', 'e1a0ca47-173f-4c93-a2bb-678e68a2fa61', 'Siti Rahayu', 'HR & GA', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '08:02', (CURRENT_DATE - 1) + TIME '17:05', 'Hadir'),
+  ('demo-abs-02', '11bf125b-b66a-44ea-9a30-73ed9524e7bc', 'Budi Santoso', 'HR & GA', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '07:55', (CURRENT_DATE - 1) + TIME '17:10', 'Hadir'),
+  ('demo-abs-03', 'ccb5862d-21dc-4d07-8da0-dd411bb3d97e', 'Dewi Lestari', 'Operational Division', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '07:40', (CURRENT_DATE - 1) + TIME '17:30', 'Hadir'),
+  ('demo-abs-04', '84019708-d3d6-43f8-817b-da2ff8052eeb', 'Rina Marlina', 'Operational Division', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '06:50', (CURRENT_DATE - 1) + TIME '16:45', 'Hadir'),
+  ('demo-abs-05', 'e19a4e1b-d365-4d5a-826c-7b66aa8cca62', 'Hendra Saputra', 'Operational Division', CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '06:30', (CURRENT_DATE - 1) + TIME '18:00', 'Hadir')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped absensi: %', SQLERRM;
 END $$;
@@ -186,12 +213,12 @@ END $$;
 
 DO $$ BEGIN
 INSERT INTO kompetensi_karyawan (id, employee_id, skill_id, current_level, assessed_by) VALUES
-  ('demo-ek-01', 'demo-emp-02', 'demo-skill-lead', 3, 'hrd@ptpgp.co.id'),
-  ('demo-ek-02', 'demo-emp-02', 'demo-skill-comm', 4, 'hrd@ptpgp.co.id'),
-  ('demo-ek-03', 'demo-emp-04', 'demo-skill-customs', 3, 'hrd@ptpgp.co.id'),
-  ('demo-ek-04', 'demo-emp-06', 'demo-skill-cargo', 4, 'hrd@ptpgp.co.id'),
-  ('demo-ek-05', 'demo-emp-09', 'demo-skill-lead', 4, 'hrd@ptpgp.co.id'),
-  ('demo-ek-06', 'demo-emp-09', 'demo-skill-customs', 4, 'hrd@ptpgp.co.id')
+  ('demo-ek-01', '11bf125b-b66a-44ea-9a30-73ed9524e7bc', 'demo-skill-lead', 3, 'hrd@ptpgp.co.id'),
+  ('demo-ek-02', '11bf125b-b66a-44ea-9a30-73ed9524e7bc', 'demo-skill-comm', 4, 'hrd@ptpgp.co.id'),
+  ('demo-ek-03', 'ccb5862d-21dc-4d07-8da0-dd411bb3d97e', 'demo-skill-customs', 3, 'hrd@ptpgp.co.id'),
+  ('demo-ek-04', '84019708-d3d6-43f8-817b-da2ff8052eeb', 'demo-skill-cargo', 4, 'hrd@ptpgp.co.id'),
+  ('demo-ek-05', '9f388845-acbf-4178-8ef3-c4e5ac4511ac', 'demo-skill-lead', 4, 'hrd@ptpgp.co.id'),
+  ('demo-ek-06', '9f388845-acbf-4178-8ef3-c4e5ac4511ac', 'demo-skill-customs', 4, 'hrd@ptpgp.co.id')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped kompetensi_karyawan: %', SQLERRM;
 END $$;
@@ -207,9 +234,9 @@ END $$;
 
 DO $$ BEGIN
 INSERT INTO peserta_pelatihan (id, training_id, employee_id, status) VALUES
-  ('demo-pt-01', 'demo-train-01', 'demo-emp-04', 'Enrolled'),
-  ('demo-pt-02', 'demo-train-01', 'demo-emp-09', 'Enrolled'),
-  ('demo-pt-03', 'demo-train-02', 'demo-emp-02', 'Enrolled')
+  ('demo-pt-01', 'demo-train-01', 'ccb5862d-21dc-4d07-8da0-dd411bb3d97e', 'Enrolled'),
+  ('demo-pt-02', 'demo-train-01', '9f388845-acbf-4178-8ef3-c4e5ac4511ac', 'Enrolled'),
+  ('demo-pt-03', 'demo-train-02', '11bf125b-b66a-44ea-9a30-73ed9524e7bc', 'Enrolled')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped peserta_pelatihan: %', SQLERRM;
 END $$;
@@ -251,9 +278,9 @@ END $$;
 
 DO $$ BEGIN
 INSERT INTO evaluasi_kpi (id, employee_id, period, score, status, evaluator_id) VALUES
-  ('demo-kpi-01', 'demo-emp-02', to_char(CURRENT_DATE, 'MM/YYYY'), 92, 'Approved', 'hrd@ptpgp.co.id'),
-  ('demo-kpi-02', 'demo-emp-09', to_char(CURRENT_DATE, 'MM/YYYY'), 88, 'Approved', 'hrd@ptpgp.co.id'),
-  ('demo-kpi-03', 'demo-emp-04', to_char(CURRENT_DATE, 'MM/YYYY'), 85, 'Approved', 'hrd@ptpgp.co.id')
+  ('demo-kpi-01', '11bf125b-b66a-44ea-9a30-73ed9524e7bc', to_char(CURRENT_DATE, 'MM/YYYY'), 92, 'Approved', 'hrd@ptpgp.co.id'),
+  ('demo-kpi-02', '9f388845-acbf-4178-8ef3-c4e5ac4511ac', to_char(CURRENT_DATE, 'MM/YYYY'), 88, 'Approved', 'hrd@ptpgp.co.id'),
+  ('demo-kpi-03', 'ccb5862d-21dc-4d07-8da0-dd411bb3d97e', to_char(CURRENT_DATE, 'MM/YYYY'), 85, 'Approved', 'hrd@ptpgp.co.id')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped evaluasi_kpi: %', SQLERRM;
 END $$;
@@ -261,26 +288,26 @@ END $$;
 -- ── Reward & Recognition
 DO $$ BEGIN
 INSERT INTO struktur_gaji (id, employee_id, basic_salary, transport_allowance, meal_allowance, position_allowance, ptkp_status) VALUES
-  ('demo-sal-01', 'demo-emp-01', 6500000, 500000, 400000, 0, 'TK/0'),
-  ('demo-sal-02', 'demo-emp-02', 10500000, 800000, 500000, 1000000, 'K/1'),
-  ('demo-sal-03', 'demo-emp-04', 8500000, 700000, 450000, 500000, 'TK/0'),
-  ('demo-sal-04', 'demo-emp-09', 16000000, 1200000, 600000, 2000000, 'K/2')
+  ('demo-sal-01', 'e1a0ca47-173f-4c93-a2bb-678e68a2fa61', 6500000, 500000, 400000, 0, 'TK/0'),
+  ('demo-sal-02', '11bf125b-b66a-44ea-9a30-73ed9524e7bc', 10500000, 800000, 500000, 1000000, 'K/1'),
+  ('demo-sal-03', 'ccb5862d-21dc-4d07-8da0-dd411bb3d97e', 8500000, 700000, 450000, 500000, 'TK/0'),
+  ('demo-sal-04', '9f388845-acbf-4178-8ef3-c4e5ac4511ac', 16000000, 1200000, 600000, 2000000, 'K/2')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped struktur_gaji: %', SQLERRM;
 END $$;
 
 DO $$ BEGIN
 INSERT INTO insentif (id, employee_id, program, amount, period, status, type) VALUES
-  ('demo-inc-01', 'demo-emp-02', 'Bonus Kinerja Triwulan', 3000000, to_char(CURRENT_DATE, 'MM/YYYY'), 'Disetujui', 'bonus'),
-  ('demo-inc-02', 'demo-emp-04', 'Insentif Target Custom Clearance', 1500000, to_char(CURRENT_DATE, 'MM/YYYY'), 'Disetujui', 'incentive')
+  ('demo-inc-01', '11bf125b-b66a-44ea-9a30-73ed9524e7bc', 'Bonus Kinerja Triwulan', 3000000, to_char(CURRENT_DATE, 'MM/YYYY'), 'Disetujui', 'bonus'),
+  ('demo-inc-02', 'ccb5862d-21dc-4d07-8da0-dd411bb3d97e', 'Insentif Target Custom Clearance', 1500000, to_char(CURRENT_DATE, 'MM/YYYY'), 'Disetujui', 'incentive')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped insentif: %', SQLERRM;
 END $$;
 
 DO $$ BEGIN
 INSERT INTO penghargaan_karyawan (id, employee_id, employee_name, department, category, description, award_date, given_by) VALUES
-  ('demo-award-01', 'demo-emp-02', 'Budi Santoso', 'HR & GA', 'Employee of The Month', 'Kinerja dan kedisiplinan luar biasa bulan ini.', to_char(CURRENT_DATE, 'YYYY-MM'), 'HRD'),
-  ('demo-award-02', 'demo-emp-04', 'Dewi Lestari', 'Operational Division', 'Best Attendance', 'Tingkat kehadiran dan ketepatan waktu terbaik.', to_char(CURRENT_DATE, 'YYYY-MM'), 'HRD')
+  ('demo-award-01', '11bf125b-b66a-44ea-9a30-73ed9524e7bc', 'Budi Santoso', 'HR & GA', 'Employee of The Month', 'Kinerja dan kedisiplinan luar biasa bulan ini.', to_char(CURRENT_DATE, 'YYYY-MM'), 'HRD'),
+  ('demo-award-02', 'ccb5862d-21dc-4d07-8da0-dd411bb3d97e', 'Dewi Lestari', 'Operational Division', 'Best Attendance', 'Tingkat kehadiran dan ketepatan waktu terbaik.', to_char(CURRENT_DATE, 'YYYY-MM'), 'HRD')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped penghargaan_karyawan: %', SQLERRM;
 END $$;
@@ -288,7 +315,7 @@ END $$;
 -- ── Career
 DO $$ BEGIN
 INSERT INTO promosi_karir (id, employee_id, from_position, to_position, from_department, to_department, effective_date, reason, status, requested_by) VALUES
-  ('demo-promo-01', 'demo-emp-04', 'Staff PPJK (Kepabeanan)', 'Supervisor PPJK', 'Operational Division', 'Operational Division', CURRENT_DATE + 30, 'Kinerja konsisten baik dan penguasaan regulasi kepabeanan yang kuat selama 3 tahun.', 'Menunggu', 'hrd@ptpgp.co.id')
+  ('demo-promo-01', 'ccb5862d-21dc-4d07-8da0-dd411bb3d97e', 'Staff PPJK (Kepabeanan)', 'Supervisor PPJK', 'Operational Division', 'Operational Division', CURRENT_DATE + 30, 'Kinerja konsisten baik dan penguasaan regulasi kepabeanan yang kuat selama 3 tahun.', 'Menunggu', 'hrd@ptpgp.co.id')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped promosi_karir: %', SQLERRM;
 END $$;

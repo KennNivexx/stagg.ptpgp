@@ -213,7 +213,7 @@ export async function createJobPosting(formData: FormData) {
   if (!title || !department) return { error: "Judul posisi dan departemen wajib diisi." };
   const { error } = await supabaseAdmin.from("lowongan_kerja").insert({
     id: "job-" + crypto.randomUUID(),
-    title, department, location: location || null,
+    title, position: title, department, location: location || null,
     status, description: description || null,
     quantity: 1, quantity_filled: 0,
     created_at: new Date().toISOString(),

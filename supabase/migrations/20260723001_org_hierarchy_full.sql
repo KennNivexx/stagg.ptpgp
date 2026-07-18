@@ -183,21 +183,21 @@ END $$;
 -- positions, so the org chart shows real people, not just vacant formations.
 DO $$ BEGIN
 INSERT INTO karyawan (id, full_name, email, department, position, status, formasi_id, join_date, phone) VALUES
-  ('demo-emp-komisaris','H. Bambang Sutrisno', 'komisaris@ptpgp.co.id', 'Holding', 'Komisaris', 'Active', 'demo-formasi-komisaris', '2015-01-05', '081300000001'),
-  ('demo-emp-dirut',    'Ir. Ahmad Faisal',    'dirut@ptpgp.co.id',     'Holding', 'Direktur Utama', 'Active', 'demo-formasi-dirut', '2016-03-10', '081300000002'),
-  ('demo-emp-dir-hr',   'Dra. Ratna Kusumawati','dir.hr@ptpgp.co.id',  'HR & GA', 'Direktur HR & GA', 'Active', 'demo-formasi-dir-hr', '2017-02-01', '081300000003'),
-  ('demo-emp-dir-fin',  'Drs. Setiawan Halim', 'dir.finance@ptpgp.co.id','Finance','Direktur Finance', 'Active', 'demo-formasi-dir-fin', '2017-04-15', '081300000004'),
-  ('demo-emp-dir-ops',  'Ir. Bayu Kristanto',  'dir.ops@ptpgp.co.id',  'Operational Division', 'Direktur Operasional', 'Active', 'demo-formasi-dir-ops', '2016-08-20', '081300000005'),
-  ('demo-emp-gm-ops',   'Dedi Kurniawan',      'gm.ops@ptpgp.co.id',   'Operational Division', 'General Manager Operasional', 'Active', 'demo-formasi-gm-ops', '2018-01-10', '081300000006'),
-  ('demo-emp-mgr-ppjk', 'Wawan Setiadi',       'mgr.ppjk@ptpgp.co.id', 'Operational Division', 'Manager Kepabeanan (PPJK)', 'Active', 'demo-formasi-mgr-ppjk', '2019-02-18', '081300000007'),
-  ('demo-emp-spv-ppjk', 'Eko Prasetyo',        'spv.ppjk@ptpgp.co.id', 'Operational Division', 'Supervisor Kepabeanan (PPJK)', 'Active', 'demo-formasi-spv-ppjk2', '2020-05-11', '081300000008'),
-  ('demo-emp-staff-ppjk','Dian Anggraini',     'staff.ppjk@ptpgp.co.id','Operational Division', 'Staff PPJK (Kepabeanan)', 'Active', 'demo-formasi-staff-ppjk2', '2022-03-07', '081300000009'),
-  ('demo-emp-mgr-gudang','Slamet Riyadi',      'mgr.gudang@ptpgp.co.id','Operational Division', 'Manager Gudang & Cargo', 'Active', 'demo-formasi-mgr-gudang', '2019-06-25', '081300000010'),
-  ('demo-emp-mgr-armada','Joko Susilo',        'mgr.armada@ptpgp.co.id','Operational Division', 'Manager Armada & Trucking', 'Active', 'demo-formasi-mgr-armada', '2019-09-14', '081300000011'),
-  ('demo-emp-gm-hr',    'Fitriani Handayani',  'gm.hr@ptpgp.co.id',    'HR & GA', 'General Manager HR & GA', 'Active', 'demo-formasi-gm-hr', '2018-04-02', '081300000012'),
-  ('demo-emp-mgr-hr',   'Rudi Hartanto',       'mgr.hr@ptpgp.co.id',   'HR & GA', 'Manager HR & GA', 'Active', 'demo-formasi-mgr-hr', '2020-01-20', '081300000013'),
-  ('demo-emp-gm-fin',   'Lina Marlina',        'gm.finance@ptpgp.co.id','Finance', 'General Manager Finance', 'Active', 'demo-formasi-gm-fin', '2018-07-09', '081300000014'),
-  ('demo-emp-mgr-fin',  'Hendro Wibowo',       'mgr.finance@ptpgp.co.id','Finance', 'Manager Finance & Accounting', 'Active', 'demo-formasi-mgr-fin', '2020-03-16', '081300000015')
+  ('6a291a56-7714-45f3-98ae-825fce7785d5','H. Bambang Sutrisno', 'komisaris@ptpgp.co.id', 'Holding', 'Komisaris', 'Active', 'demo-formasi-komisaris', '2015-01-05', '081300000001'),
+  ('9f3eab6c-928b-4207-b8e5-6d128899e0e4',    'Ir. Ahmad Faisal',    'dirut@ptpgp.co.id',     'Holding', 'Direktur Utama', 'Active', 'demo-formasi-dirut', '2016-03-10', '081300000002'),
+  ('b7b46400-4225-45ac-a4de-97af1a68da3c',   'Dra. Ratna Kusumawati','dir.hr@ptpgp.co.id',  'HR & GA', 'Direktur HR & GA', 'Active', 'demo-formasi-dir-hr', '2017-02-01', '081300000003'),
+  ('58291f18-63d9-443c-9c3d-bc37bebe61ea',  'Drs. Setiawan Halim', 'dir.finance@ptpgp.co.id','Finance','Direktur Finance', 'Active', 'demo-formasi-dir-fin', '2017-04-15', '081300000004'),
+  ('eb8789f2-e710-4fbe-a7b8-d045484311aa',  'Ir. Bayu Kristanto',  'dir.ops@ptpgp.co.id',  'Operational Division', 'Direktur Operasional', 'Active', 'demo-formasi-dir-ops', '2016-08-20', '081300000005'),
+  ('94dde282-3c16-4f5d-887f-59395dd1b4b4',   'Dedi Kurniawan',      'gm.ops@ptpgp.co.id',   'Operational Division', 'General Manager Operasional', 'Active', 'demo-formasi-gm-ops', '2018-01-10', '081300000006'),
+  ('af1f9c79-9add-4140-ba9d-a564fcda5bc8', 'Wawan Setiadi',       'mgr.ppjk@ptpgp.co.id', 'Operational Division', 'Manager Kepabeanan (PPJK)', 'Active', 'demo-formasi-mgr-ppjk', '2019-02-18', '081300000007'),
+  ('f489b27a-5dee-490b-b578-4e750c4faff1', 'Eko Prasetyo',        'spv.ppjk@ptpgp.co.id', 'Operational Division', 'Supervisor Kepabeanan (PPJK)', 'Active', 'demo-formasi-spv-ppjk2', '2020-05-11', '081300000008'),
+  ('1cd2c026-2b1b-479e-9282-58ac97a61028','Dian Anggraini',     'staff.ppjk@ptpgp.co.id','Operational Division', 'Staff PPJK (Kepabeanan)', 'Active', 'demo-formasi-staff-ppjk2', '2022-03-07', '081300000009'),
+  ('fc90f329-b1d3-41ce-9ec8-683b2af3ce08','Slamet Riyadi',      'mgr.gudang@ptpgp.co.id','Operational Division', 'Manager Gudang & Cargo', 'Active', 'demo-formasi-mgr-gudang', '2019-06-25', '081300000010'),
+  ('5fce7edf-8acf-4f26-988c-41cde9344ed8','Joko Susilo',        'mgr.armada@ptpgp.co.id','Operational Division', 'Manager Armada & Trucking', 'Active', 'demo-formasi-mgr-armada', '2019-09-14', '081300000011'),
+  ('8992e5aa-484b-4027-ae80-b09f2fabad7d',    'Fitriani Handayani',  'gm.hr@ptpgp.co.id',    'HR & GA', 'General Manager HR & GA', 'Active', 'demo-formasi-gm-hr', '2018-04-02', '081300000012'),
+  ('a512a9ac-2954-4bf0-a34e-7f71e515e346',   'Rudi Hartanto',       'mgr.hr@ptpgp.co.id',   'HR & GA', 'Manager HR & GA', 'Active', 'demo-formasi-mgr-hr', '2020-01-20', '081300000013'),
+  ('ed9e51c3-f645-485b-aad7-5c9443a677b2',   'Lina Marlina',        'gm.finance@ptpgp.co.id','Finance', 'General Manager Finance', 'Active', 'demo-formasi-gm-fin', '2018-07-09', '081300000014'),
+  ('303e8e80-07bf-494c-99a3-8f7469d12eac',  'Hendro Wibowo',       'mgr.finance@ptpgp.co.id','Finance', 'Manager Finance & Accounting', 'Active', 'demo-formasi-mgr-fin', '2020-03-16', '081300000015')
 ON CONFLICT (id) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped karyawan (hierarchy): %', SQLERRM;
 END $$;
