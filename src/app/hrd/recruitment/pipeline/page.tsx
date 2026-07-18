@@ -6,9 +6,15 @@ import {
   getApplicationsForPipeline, moveApplicationStatus,
   hireCandidateFromPipeline, rejectApplicant, addToTalentPool,
 } from "@/app/actions/recruitment";
+import { computeFinalEvaluation, type FinalEvalResult } from "@/app/actions/recruitment-intelligence";
+import {
+  initHiringApproval, getHiringApprovalStatus, decideHiringApprovalStep,
+  setBackgroundCheck, setMedicalCheckup,
+} from "@/app/actions/recruitment-hiring";
 import {
   Users, Mail, Phone, Calendar, CalendarClock, UserPlus, XCircle,
   Star, CheckCircle2, AlertTriangle, X, FileText, Search, ClipboardList,
+  ShieldCheck, Stethoscope, ListChecks,
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 
@@ -203,6 +209,151 @@ function TestResults({ app }: { app: Record<string, unknown> }) {
           })()}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── Hiring Workflow: Final Evaluation, Background Check, Medical Check Up,
+//    and the HR -> Department Head -> Finance -> Director approval chain.
+//    Enterprise Recruitment Management, Round 2. ─────────────────────────
+
+type ApprovalStep = { step_number: number; approver_role: string; status: string; approved_by: string | null; notes: string | null };
+
+function HiringWorkflowPanel({ app }: { app: Record<string, unknown> }) {
+  const [open, setOpen] = useState(false);
+  const [finalEval, setFinalEval] = useState<FinalEvalResult | null>(null);
+  const [steps, setSteps] = useState<ApprovalStep[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const load = async () => {
+    const [stepsRes] = await Promise.all([getHiringApprovalStatus(app.id as string)]);
+    setSteps(stepsRes as ApprovalStep[]);
+  };
+
+  useEffect(() => { if (open && steps === null) load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open]);
+
+  const runFinalEval = async () => {
+    setBusy(true); setMsg("");
+    const res = await computeFinalEvaluation(app.id as string);
+    setBusy(false);
+    if ("error" in res) { setMsg(res.error); return; }
+    setFinalEval(res.result);
+  };
+
+  const runBackgroundCheck = async (status: "Proses" | "Bersih" | "Ditandai") => {
+    setBusy(true);
+    await setBackgroundCheck(app.id as string, status, "");
+    setBusy(false);
+  };
+
+  const runMedicalCheck = async (status: "Fit" | "Fit With Note" | "Unfit") => {
+    setBusy(true);
+    await setMedicalCheckup(app.id as string, status, "");
+    setBusy(false);
+  };
+
+  const startApproval = async () => {
+    setBusy(true); setMsg("");
+    const res = await initHiringApproval(app.id as string);
+    setBusy(false);
+    if ("error" in res) { setMsg(res.error); return; }
+    await load();
+  };
+
+  const decide = async (stepNumber: number, approved: boolean) => {
+    if (!approved) {
+      const notes = prompt("Alasan penolakan:");
+      if (!notes || !notes.trim()) return;
+      setBusy(true);
+      const res = await decideHiringApprovalStep(app.id as string, stepNumber, false, notes.trim());
+      setBusy(false);
+      if ("error" in res) { setMsg(res.error); return; }
+      await load();
+      return;
+    }
+    setBusy(true); setMsg("");
+    const res = await decideHiringApprovalStep(app.id as string, stepNumber, true);
+    setBusy(false);
+    if ("error" in res) { setMsg(res.error); return; }
+    await load();
+  };
+
+  if (!["Interview", "Diterima", "Ditolak"].includes(app.status as string)) return null;
+
+  return (
+    <div className="mt-2">
+      <button onClick={() => setOpen(!open)} className="text-[11px] font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1.5">
+        <ListChecks size={12} /> {open ? "Sembunyikan" : "Tampilkan"} Hiring Workflow (Evaluasi, Background Check, Approval)
+      </button>
+      {open && (
+        <div className="border border-slate-200 rounded-xl mt-2 p-3 space-y-3 text-[11px]">
+          {msg && <div className="px-2.5 py-1.5 bg-red-50 text-red-700 rounded-lg font-semibold">{msg}</div>}
+
+          {/* Final Evaluation */}
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-slate-600 flex items-center gap-1.5"><Star size={11} /> Final Evaluation</span>
+            <div className="flex items-center gap-2">
+              {(finalEval?.score ?? (app.final_score as number | undefined)) != null && (
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md font-extrabold">{finalEval?.score ?? (app.final_score as number)}</span>
+              )}
+              <button onClick={runFinalEval} disabled={busy} className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-slate-600 disabled:opacity-50">Hitung</button>
+            </div>
+          </div>
+
+          {/* Background Check */}
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-slate-600 flex items-center gap-1.5"><ShieldCheck size={11} /> Background Check</span>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-semibold text-slate-500">{(app.background_check_status as string) || "Belum Dilakukan"}</span>
+              <button onClick={() => runBackgroundCheck("Bersih")} disabled={busy} className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-bold disabled:opacity-50">Bersih</button>
+              <button onClick={() => runBackgroundCheck("Ditandai")} disabled={busy} className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg font-bold disabled:opacity-50">Ditandai</button>
+            </div>
+          </div>
+
+          {/* Medical Check Up */}
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-slate-600 flex items-center gap-1.5"><Stethoscope size={11} /> Medical Check Up</span>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-semibold text-slate-500">{(app.medical_checkup_status as string) || "Belum Dilakukan"}</span>
+              <button onClick={() => runMedicalCheck("Fit")} disabled={busy} className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-bold disabled:opacity-50">Fit</button>
+              <button onClick={() => runMedicalCheck("Fit With Note")} disabled={busy} className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg font-bold disabled:opacity-50">Fit w/ Note</button>
+              <button onClick={() => runMedicalCheck("Unfit")} disabled={busy} className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg font-bold disabled:opacity-50">Unfit</button>
+            </div>
+          </div>
+
+          {/* Hiring Approval Chain */}
+          <div>
+            <span className="font-bold text-slate-600 flex items-center gap-1.5 mb-1.5"><ClipboardList size={11} /> Hiring Approval (HR → Dept Head → Finance → Director)</span>
+            {steps === null ? (
+              <p className="text-slate-400">Memuat...</p>
+            ) : steps.length === 0 ? (
+              <button onClick={startApproval} disabled={busy} className="px-3 py-1.5 bg-[#CC0000] text-white rounded-lg font-bold disabled:opacity-50">Mulai Approval Hiring</button>
+            ) : (
+              <div className="space-y-1">
+                {steps.map(s => (
+                  <div key={s.step_number} className="flex items-center justify-between px-2.5 py-1.5 bg-slate-50 rounded-lg">
+                    <span className="font-semibold text-slate-600">{s.step_number}. {s.approver_role}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded-md font-bold ${
+                        s.status === "Approved" ? "bg-emerald-50 text-emerald-700"
+                        : s.status === "Rejected" ? "bg-red-50 text-red-700"
+                        : "bg-amber-50 text-amber-700"
+                      }`}>{s.status}{s.approved_by ? ` — ${s.approved_by}` : ""}</span>
+                      {s.status === "Pending" && (
+                        <>
+                          <button onClick={() => decide(s.step_number, true)} disabled={busy} className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded font-bold disabled:opacity-50">✓</button>
+                          <button onClick={() => decide(s.step_number, false)} disabled={busy} className="px-2 py-0.5 bg-red-50 hover:bg-red-100 text-red-700 rounded font-bold disabled:opacity-50">✕</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -503,7 +654,21 @@ export default function PipelineKandidat() {
                       {(app.full_name as string)?.charAt(0)?.toUpperCase() || "?"}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-800 truncate">{app.full_name as string}</p>
+                      <p className="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5">
+                        {app.full_name as string}
+                        {app.match_score != null && (
+                          <span
+                            title="Kecocokan CV terhadap syarat lowongan (Recruitment Intelligence)"
+                            className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                              (app.match_score as number) >= 70 ? "bg-emerald-50 text-emerald-700"
+                              : (app.match_score as number) >= 40 ? "bg-amber-50 text-amber-700"
+                              : "bg-red-50 text-red-700"
+                            }`}
+                          >
+                            {app.match_score as number}% match
+                          </span>
+                        )}
+                      </p>
                       <p className="text-[10px] text-slate-400 truncate">{job?.position || "-"} · {job?.department || "-"}</p>
                     </div>
                   </div>
@@ -581,6 +746,7 @@ export default function PipelineKandidat() {
                 <div className="px-5 py-3 border-b border-slate-50">
                   <ProfileDetail app={app} />
                   <TestResults app={app} />
+                  <HiringWorkflowPanel app={app} />
                 </div>
               </div>
             );

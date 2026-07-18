@@ -15,6 +15,7 @@ import {
   advanceRecruitmentStage, addRequestDocument, removeRequestDocument, bulkImportRequests,
   type RequestHistoryEntry, type DocumentEntry,
 } from "@/app/actions/requests";
+import { runManpowerValidation } from "@/app/actions/manpower-validation";
 import { RECRUITMENT_STAGES } from "@/lib/workforce-constants";
 import { getJobDescsForPosition, type JobDesc } from "@/app/actions/jobdesc";
 import { getJobSpecsForDepartment, type JobSpec } from "@/app/actions/jobspec";
@@ -37,13 +38,19 @@ interface Request {
   finance_required?: boolean; finance_approved?: boolean;
   finance_approved_by?: string; finance_approved_at?: string;
   recruitment_stage?: string; cancel_reason?: string; required_license?: string;
+  request_type_id?: string | null; reason_category_id?: string | null;
+  validation_result?: { checks: { key: string; label: string; status: string; message: string }[]; overallStatus: string; computedAt: string } | null;
 }
+
+interface MasterOption { id: string; code: string; name: string }
 
 interface Props {
   departments: string[];
   positions: string[];
   userRole: string;
   userName: string;
+  requestTypes: MasterOption[];
+  requestReasons: MasterOption[];
 }
 
 const URGENCY_OPTS = ["Rendah", "Sedang", "Tinggi"];
@@ -79,7 +86,7 @@ function slaInfo(needByDate?: string): { label: string; className: string; daysL
   return { label: `Sisa ${daysLeft} hari`, className: "bg-emerald-50 text-emerald-700 border-emerald-200", daysLeft };
 }
 
-export default function RequestsClient({ departments, positions, userRole, userName }: Props) {
+export default function RequestsClient({ departments, positions, userRole, userName, requestTypes, requestReasons }: Props) {
   const [data, setData] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
@@ -174,6 +181,13 @@ export default function RequestsClient({ departments, positions, userRole, userN
     const result = await setFinanceRequired(id, required);
     if ("error" in result) { showToast(result.error); return; }
     showToast(required ? "Approval Finance diaktifkan." : "Approval Finance dinonaktifkan.");
+    refreshDetail(id);
+  };
+
+  const doRevalidate = async (id: string) => {
+    const result = await runManpowerValidation(id);
+    if ("error" in result) { showToast(result.error); return; }
+    showToast("Validation Engine diperbarui.");
     refreshDetail(id);
   };
 
@@ -806,6 +820,32 @@ export default function RequestsClient({ departments, positions, userRole, userN
                 </div>
               )}
 
+              {/* Validation Engine — rule-based checks computed on submit,
+                  matching the app's honest "real data, not fabricated AI"
+                  pattern used elsewhere (Smart Insights, AI ER Engine). */}
+              {detail.validation_result && (
+                <div className="border-t border-slate-100 pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5"><ListChecks size={12} /> Validation Engine</p>
+                    <button onClick={() => doRevalidate(detail.id)} className="text-[10px] font-bold text-blue-600 hover:text-blue-700">Validasi Ulang</button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {detail.validation_result.checks.map(c => {
+                      const style = c.status === "Pass" ? "bg-emerald-50 text-emerald-700"
+                        : c.status === "Incomplete" ? "bg-red-50 text-red-700"
+                        : c.status === "Warning" ? "bg-amber-50 text-amber-700"
+                        : "bg-slate-50 text-slate-500";
+                      return (
+                        <div key={c.key} className={`rounded-lg px-2.5 py-1.5 text-[11px] ${style}`}>
+                          <span className="font-bold">{c.label}:</span> {c.message}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1.5">Diperbarui {new Date(detail.validation_result.computedAt).toLocaleString("id-ID")}</p>
+                </div>
+              )}
+
               {/* Dokumen Pendukung */}
               <div className="border-t border-slate-100 pt-4">
                 <div className="flex items-center justify-between">
@@ -1131,6 +1171,31 @@ export default function RequestsClient({ departments, positions, userRole, userN
                     <span className="ml-1 text-[10px] font-normal text-slate-400">(opsional)</span>
                   </label>
                   <input name="need_by_date" type="date" defaultValue={editTarget?.need_by_date || ""} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/30" />
+                </div>
+              </div>
+
+              {/* Kategori Jenis & Alasan (master data — dipakai Validation Engine
+                  dan otomasi pasca-approval, terpisah dari field bebas di atas) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                    Kategori Jenis Permintaan
+                    <span className="ml-1 text-[10px] font-normal text-slate-400">(opsional)</span>
+                  </label>
+                  <select name="request_type_id" defaultValue={editTarget?.request_type_id || ""} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/30">
+                    <option value="">Pilih kategori</option>
+                    {requestTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                    Kategori Alasan
+                    <span className="ml-1 text-[10px] font-normal text-slate-400">(opsional)</span>
+                  </label>
+                  <select name="reason_category_id" defaultValue={editTarget?.reason_category_id || ""} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/30">
+                    <option value="">Pilih alasan</option>
+                    {requestReasons.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
                 </div>
               </div>
 

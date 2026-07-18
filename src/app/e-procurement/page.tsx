@@ -2,8 +2,16 @@ import NewNavbar from "@/components/public/NewNavbar";
 import PGPFooter from "@/components/public/PGPFooter";
 import { ShieldCheck, Receipt, FileText, BarChart3, Mail, Phone, CheckCircle2, ArrowRight, Building2, Clock } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
+// Vendor/e-procurement hidden from the site per request — not linked from
+// any nav/teaser, and this direct route is disabled too so it can't be
+// reached even by a guessed/bookmarked URL. Remove this guard to re-enable.
 export default function EProcurementPage() {
+  redirect("/");
+}
+
+function _EProcurementPage() {
   return (
     <main className="min-h-screen bg-[#F9F7F6] pt-[72px]">
       <NewNavbar />

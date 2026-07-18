@@ -429,10 +429,10 @@ export default async function HRDDashboard({
   type Insight = { icon: React.ComponentType<{ size?: number }>; tone: "warning" | "critical" | "good"; text: string; href?: string };
   const insights: Insight[] = [];
   if ((pendingLeaves || 0) > 0) {
-    insights.push({ icon: AlertTriangle, tone: "warning", text: `${pendingLeaves} pengajuan cuti menunggu persetujuan Anda`, href: "/hrd/attendance" });
+    insights.push({ icon: AlertTriangle, tone: "warning", text: `${pendingLeaves} pengajuan cuti menunggu persetujuan Anda`, href: "/hrd/leaves" });
   }
   if ((pendingRequests || 0) > 0) {
-    insights.push({ icon: AlertTriangle, tone: "warning", text: `${pendingRequests} permintaan tenaga kerja menunggu review`, href: "/hrd/workforce" });
+    insights.push({ icon: AlertTriangle, tone: "warning", text: `${pendingRequests} permintaan tenaga kerja menunggu review`, href: "/hrd/workforce/requests" });
   }
   if (attendanceTrend?.direction === "down" && attendanceTrend.percentage >= 10) {
     insights.push({ icon: TrendingDown, tone: "critical", text: `Kehadiran hari ini turun ${attendanceTrend.percentage}% dibanding rata-rata 7 hari terakhir`, href: "/hrd/attendance" });
@@ -456,7 +456,7 @@ export default async function HRDDashboard({
   const quickAccess = [
     { icon: UserCog, title: "Profil Karyawan", desc: "Lihat data diri dan profil yang diisi oleh karyawan", href: "/hrd/infrastructure/employees", color: "blue" },
     { icon: Briefcase, title: "Rekrutmen", desc: "Lowongan, pelamar, dan hiring", href: "/hrd/recruitment", color: "emerald" },
-    { icon: CalendarCheck, title: "Absensi & Cuti", desc: "Pantau kehadiran dan setujui cuti", href: "/hrd/attendance", color: "amber" },
+    { icon: CalendarCheck, title: "Absensi & Cuti", desc: "Pantau kehadiran dan setujui cuti", href: "/hrd/leaves", color: "amber" },
     { icon: Wallet, title: "Payroll", desc: "Gaji, slip, dan komponen salary", href: "/hrd/payroll", color: "purple" },
     { icon: TrendingUp, title: "KPI & Performa", desc: "Penilaian kinerja karyawan", href: "/hrd/performance/kpi", color: "red" },
     { icon: FileText, title: "Laporan", desc: "Rekap dan analisis data HR", href: "/hrd/reports", color: "indigo" },

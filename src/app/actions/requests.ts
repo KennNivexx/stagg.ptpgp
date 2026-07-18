@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { RECRUITMENT_STAGES } from "@/lib/workforce-constants";
+import { runManpowerValidation } from "@/app/actions/manpower-validation";
 
 const uid = () => "req-" + crypto.randomUUID();
 const historyId = () => "wrh-" + crypto.randomUUID();
@@ -114,6 +115,8 @@ function readRequestFields(formData: FormData) {
     budget_approved_by: (formData.get("budget_approved_by") as string || "").trim() || null,
     kpi_jabatan: (formData.get("kpi_jabatan") as string || "").trim() || null,
     required_license: (formData.get("required_license") as string || "").trim() || null,
+    request_type_id: (formData.get("request_type_id") as string || "").trim() || null,
+    reason_category_id: (formData.get("reason_category_id") as string || "").trim() || null,
   };
 }
 
@@ -142,6 +145,11 @@ export async function addRequest(formData: FormData, asDraft?: boolean): Promise
     actorRole: user.role,
     toStatus: status,
   });
+
+  // Run the rule-based Validation Engine as soon as a real (non-draft)
+  // request exists — HRD/Director should see Position/Org/Budget/Headcount/
+  // Internal Mobility/Succession checks before deciding on approval.
+  if (!asDraft) await runManpowerValidation(id);
 
   revalidatePath("/hrd/workforce/requests");
   revalidatePath("/department");
@@ -180,6 +188,8 @@ export async function editRequest(id: string, formData: FormData, resubmit?: boo
     fromStatus: cur.status,
     toStatus: newStatus,
   });
+
+  if (resubmit) await runManpowerValidation(id);
 
   revalidatePath("/hrd/workforce/requests");
   revalidatePath("/department");
@@ -342,9 +352,10 @@ export async function updateRequestStatus(id: string, status: string, note?: str
   }
 
   if (status === "Disetujui") {
-    const { data: req } = await supabaseAdmin.from("permintaan_sdm").select("department, quantity").eq("id", id).maybeSingle();
+    const { data: req } = await supabaseAdmin.from("permintaan_sdm")
+      .select("department, quantity, position, request_type_id, job_desc").eq("id", id).maybeSingle();
     if (req) {
-      const dept = req as { department: string; quantity: number };
+      const dept = req as { department: string; quantity: number; position: string; request_type_id: string | null; job_desc: string | null };
       // Atomic headcount increment via RPC or raw SQL increment
       const { error: hcError } = await supabaseAdmin.rpc("increment_headcount", {
         dept_name: dept.department,
@@ -370,10 +381,35 @@ export async function updateRequestStatus(id: string, status: string, note?: str
           if (updated && updated.length > 0) break;
         }
       }
+
+      // Post-approval automation: an approved request whose type is flagged
+      // "triggers_recruitment" auto-creates the vacancy — no manual re-entry
+      // into the Recruitment module needed. Guarded against re-running (e.g.
+      // a retried request) by checking no vacancy already links this request.
+      if (dept.request_type_id) {
+        const { data: typeRow } = await supabaseAdmin.from("jenis_permintaan_sdm")
+          .select("triggers_recruitment").eq("id", dept.request_type_id).maybeSingle();
+        const triggers = (typeRow as { triggers_recruitment?: boolean } | null)?.triggers_recruitment;
+        if (triggers) {
+          const { data: existingVacancy } = await supabaseAdmin.from("lowongan_kerja")
+            .select("id").eq("manpower_request_id", id).maybeSingle();
+          if (!existingVacancy) {
+            await supabaseAdmin.from("lowongan_kerja").insert({
+              id: "job-" + crypto.randomUUID(),
+              title: dept.position, position: dept.position, department: dept.department,
+              status: "Open", description: dept.job_desc || null,
+              quantity: dept.quantity, quantity_filled: 0,
+              manpower_request_id: id,
+              created_at: new Date().toISOString(),
+            });
+          }
+        }
+      }
     }
 
     revalidatePath("/hrd/workforce/requests");
     revalidatePath("/hrd/workforce/headcount");
+    revalidatePath("/hrd/recruitment");
     return { success: true };
   }
 

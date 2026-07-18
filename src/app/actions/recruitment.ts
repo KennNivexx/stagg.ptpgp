@@ -503,6 +503,8 @@ export async function respondToOffer(response: "accepted" | "counter", counterSa
       .from("pelamar").select("offered_salary").eq("id", user.application_id).single();
     updates.final_salary = app?.offered_salary;
     updates.negotiation_status = "agreed";
+    updates.offer_letter_status = "Diterima";
+    updates.offer_letter_responded_at = new Date().toISOString();
   } else {
     updates.negotiation_status = "negotiating";
     updates.salary_expectation = counterSalary || null;

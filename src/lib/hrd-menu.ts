@@ -42,15 +42,15 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     ],
   },
   {
-    label: "Perencanaan Tenaga Kerja",
+    label: "Manpower Request Management",
     icon: BarChart3,
     color: "violet",
     items: [
-      { href: "/hrd/workforce/requests", label: "Permintaan SDM" },
+      { href: "/hrd/workforce/requests", label: "Permintaan Tenaga Kerja" },
     ],
   },
   {
-    label: "Rekrutmen",
+    label: "Recruitment Management",
     icon: Briefcase,
     color: "emerald",
     items: [
