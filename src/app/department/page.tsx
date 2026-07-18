@@ -5,8 +5,8 @@ import {
   Users, Briefcase, Clock, CheckCircle2, Plus, Send, AlertTriangle,
   X, Info, Tag, FileText, BookOpen, ChevronRight,
 } from "lucide-react";
-import { getDeptData, submitRequest, getMyDept } from "@/app/actions/department";
-import { editRequest, cancelRequest } from "@/app/actions/requests";
+import { getDeptData, getMyDept } from "@/app/actions/department";
+import { addRequest, editRequest, cancelRequest } from "@/app/actions/requests";
 import EmptyState from "@/components/EmptyState";
 
 interface Employee {
@@ -55,6 +55,7 @@ function RequestModal({
   const [fReason, setFReason] = useState(editTarget?.reason || "");
   const [fType, setFType] = useState(editTarget?.request_type || "");
   const [fNeedBy, setFNeedBy] = useState(editTarget?.need_by_date || "");
+  const [fDept, setFDept] = useState(deptName || editTarget?.department || "");
   const [fErr, setFErr] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -63,10 +64,11 @@ function RequestModal({
   const exampleCode = exampleUnit?.code ?? "";
 
   const doSubmit = async (asDraft: boolean) => {
+    if (!fDept.trim()) { setFErr("Nama departemen wajib diisi."); return; }
     if (!fPos.trim()) { setFErr("Nama posisi wajib diisi."); return; }
     setLoading(true); setFErr("");
     const fd = new FormData();
-    fd.append("department", deptName);
+    fd.append("department", fDept.trim());
     fd.append("grade_code", fGrade.trim());
     fd.append("position", fPos.trim());
     fd.append("quantity", String(fQty));
@@ -77,7 +79,7 @@ function RequestModal({
     fd.append("need_by_date", fNeedBy);
     const r = editTarget
       ? await editRequest(editTarget.id, fd, !asDraft)
-      : await submitRequest(fd, asDraft);
+      : await addRequest(fd, asDraft);
     setLoading(false);
     if ("error" in r && r.error) { setFErr(r.error); return; }
     onSuccess();
@@ -224,7 +226,7 @@ function RequestModal({
               <h3 className="font-extrabold text-slate-800 text-sm">{editTarget ? "Revisi Permintaan SDM" : "Ajukan Permintaan SDM"}</h3>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <p className="text-[11px] text-slate-500 font-medium">{deptName}</p>
+                <p className="text-[11px] text-slate-500 font-medium">{deptName || fDept || "Departemen belum diisi"}</p>
               </div>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
@@ -234,6 +236,22 @@ function RequestModal({
 
           {/* Form body */}
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+
+            {/* Departemen — hanya tampil jika tidak terdeteksi otomatis */}
+            {!deptName && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Departemen <span className="text-red-400 normal-case">*</span>
+                </label>
+                <input
+                  value={fDept}
+                  onChange={e => setFDept(e.target.value)}
+                  placeholder="Masukkan nama departemen Anda"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                />
+                <p className="text-[10px] text-amber-600 mt-1">Departemen Anda tidak terdeteksi otomatis. Isi manual sesuai nama departemen di sistem.</p>
+              </div>
+            )}
 
             {/* Kode + Nama Posisi */}
             <div className="grid grid-cols-5 gap-3">
@@ -463,7 +481,7 @@ export default function DeptDashboard() {
       )}
 
       {/* Modal form */}
-      {showModal && deptName && (
+      {showModal && (
         <RequestModal
           deptName={deptName}
           orgUnits={orgUnits}
@@ -472,7 +490,7 @@ export default function DeptDashboard() {
           onClose={() => { setShowModal(false); setEditTarget(null); }}
           onSuccess={() => {
             showToast("success", editTarget ? "Perubahan berhasil disimpan." : "Permintaan SDM berhasil diajukan! HRD akan segera mereview.");
-            loadData(deptName);
+            if (deptName) loadData(deptName);
           }}
         />
       )}
@@ -483,15 +501,26 @@ export default function DeptDashboard() {
           <h1 className="text-2xl font-bold text-pgp-navy mb-1">Dashboard Departemen</h1>
           <p className="text-sm text-gray-500">{deptName || "Departemen tidak ditemukan"}</p>
         </div>
-        {deptName && (
-          <button
-            onClick={() => { setEditTarget(null); setShowModal(true); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#0d3b2e] hover:bg-[#1a5c45] text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
-          >
-            <Plus size={15} /> Ajukan SDM
-          </button>
-        )}
+        <button
+          onClick={() => { setEditTarget(null); setShowModal(true); }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#0d3b2e] hover:bg-[#1a5c45] text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
+        >
+          <Plus size={15} /> Ajukan SDM
+        </button>
       </div>
+
+      {/* Banner peringatan jika departemen tidak terdeteksi */}
+      {!deptName && !loading && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+          <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-amber-800">Departemen tidak terdeteksi otomatis</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Akun Anda belum terhubung ke data karyawan di sistem. Anda tetap bisa mengajukan permintaan SDM — isi nama departemen secara manual pada form pengajuan. Hubungi HRD untuk menghubungkan akun Anda ke data karyawan.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -562,7 +591,8 @@ export default function DeptDashboard() {
                         const r = await cancelRequest(req.id, "");
                         if ("error" in r) { showToast("error", r.error); return; }
                         showToast("success", "Permintaan dibatalkan.");
-                        loadData(deptName);
+                        if (deptName) loadData(deptName);
+                        else setRequests(prev => prev.map(x => x.id === req.id ? { ...x, status: "Dibatalkan" } : x));
                       }}
                       className="text-[10px] font-bold text-slate-400 hover:text-slate-600 mt-1 ml-3"
                     >

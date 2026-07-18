@@ -32,17 +32,30 @@ interface OrgUnitRow {
 // Returns the authenticated manager's own department, looked up from the
 // employees table by their session email. Superadmin can receive an override
 // via the optional deptName param; department_manager always gets their own.
+// Falls back to checking the pengguna table's department field if the manager
+// is not yet registered as an employee (e.g. account created before karyawan entry).
 export async function getMyDept(): Promise<{ dept: string | null }> {
   const user = await requireRole("department_manager", "superadmin");
   if (user.role === "superadmin") return { dept: null };
 
+  // Primary lookup: karyawan table
   const { data: emp } = await supabaseAdmin
     .from("karyawan")
     .select("department")
     .eq("email", user.email)
     .maybeSingle();
 
-  return { dept: (emp as { department?: string } | null)?.department || null };
+  const deptFromKaryawan = (emp as { department?: string } | null)?.department || null;
+  if (deptFromKaryawan) return { dept: deptFromKaryawan };
+
+  // Fallback: pengguna table may carry a department field
+  const { data: usr } = await supabaseAdmin
+    .from("pengguna")
+    .select("department")
+    .eq("email", user.email)
+    .maybeSingle();
+
+  return { dept: (usr as { department?: string } | null)?.department || null };
 }
 
 export async function getDeptData(deptName: string) {
