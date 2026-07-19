@@ -69,6 +69,7 @@ export async function submitMutation(formData: FormData) {
 
 export async function updateMutationStatus(id: string, status: "Disetujui" | "Ditolak") {
   await requireRole("hrd", "superadmin");
+  let cascadeFields: Record<string, unknown> = {};
 
   if (status === "Disetujui") {
     const { data: mutation, error: fetchError } = await supabaseAdmin
@@ -76,18 +77,55 @@ export async function updateMutationStatus(id: string, status: "Disetujui" | "Di
     if (fetchError || !mutation) return { error: "Data mutasi tidak ditemukan." };
     const m = mutation as { employee_id: string; to_department: string };
 
+    const { data: emp } = await supabaseAdmin.from("karyawan").select("position, formasi_id").eq("id", m.employee_id).maybeSingle();
+    const currentPosition = (emp as { position?: string; formasi_id?: string } | null)?.position || null;
+
+    // A pure department transfer keeps the same jabatan/grade/salary unless
+    // paired with a promotion — record that explicitly (grade_before ==
+    // grade_after) instead of leaving these columns permanently null.
+    const { data: jabatanRow } = currentPosition
+      ? await supabaseAdmin.from("jabatan").select("id, grade_id").eq("name", currentPosition).maybeSingle()
+      : { data: null };
+    const gradeId = (jabatanRow as { id?: string; grade_id?: string } | null)?.grade_id || null;
+    const { data: struktur } = await supabaseAdmin.from("struktur_gaji").select("basic_salary").eq("employee_id", m.employee_id).maybeSingle();
+    const currentSalary = (struktur as { basic_salary?: number } | null)?.basic_salary ?? null;
+    cascadeFields = { grade_before: gradeId, grade_after: gradeId, salary_before: currentSalary, salary_after: currentSalary };
+
+    // Reassign formasi to a vacant slot for the same jabatan in the new
+    // department, if one exists — otherwise leave the current formasi_id
+    // (org unit will no longer match the employee's department, but we
+    // don't silently invent a formasi row that doesn't exist).
+    const jabatanId = (jabatanRow as { id?: string } | null)?.id;
+    if (jabatanId) {
+      const { data: destUnit } = await supabaseAdmin.from("unit_organisasi").select("id").eq("name", m.to_department).maybeSingle();
+      const destUnitId = (destUnit as { id?: string } | null)?.id;
+      if (destUnitId) {
+        const { data: vacantFormasi } = await supabaseAdmin.from("formasi_jabatan")
+          .select("id").eq("jabatan_id", jabatanId).eq("unit_organisasi_id", destUnitId).eq("status", "Vacant").limit(1).maybeSingle();
+        const newFormasiId = (vacantFormasi as { id?: string } | null)?.id;
+        if (newFormasiId) {
+          const oldFormasiId = (emp as { formasi_id?: string } | null)?.formasi_id;
+          if (oldFormasiId) await supabaseAdmin.from("formasi_jabatan").update({ status: "Vacant", karyawan_id: null }).eq("id", oldFormasiId);
+          await supabaseAdmin.from("formasi_jabatan").update({ status: "Filled", karyawan_id: m.employee_id }).eq("id", newFormasiId);
+          (cascadeFields as Record<string, unknown>).formasi_id = newFormasiId;
+        }
+      }
+    }
+
     // Update the employee record FIRST — only flip the request to "Disetujui"
     // if this actually succeeds, so the request never ends up approved without
     // the department change actually having taken effect.
+    const empUpdate: Record<string, unknown> = { department: m.to_department };
+    if (cascadeFields.formasi_id) empUpdate.formasi_id = cascadeFields.formasi_id;
     const { error: empError } = await supabaseAdmin
-      .from("karyawan").update({ department: m.to_department }).eq("id", m.employee_id);
+      .from("karyawan").update(empUpdate).eq("id", m.employee_id);
     if (empError) {
       console.error("[career-hrd] updateMutationStatus employee update error:", empError.message);
       return { error: "Gagal memperbarui data departemen karyawan. Status mutasi tidak diubah." };
     }
   }
 
-  const { error } = await supabaseAdmin.from("mutasi_karir").update({ status }).eq("id", id);
+  const { error } = await supabaseAdmin.from("mutasi_karir").update({ status, ...cascadeFields }).eq("id", id);
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL." };
   if (error) { console.error("[career-hrd] updateMutationStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/career/mutations");
@@ -137,11 +175,54 @@ export async function updatePromotionStatus(id: string, status: "Disetujui" | "D
     if (fetchError || !promotion) return { error: "Data promosi tidak ditemukan." };
     const p = promotion as { employee_id: string; to_position: string };
 
+    const { data: emp } = await supabaseAdmin.from("karyawan").select("department, formasi_id").eq("id", p.employee_id).maybeSingle();
+    const empDept = (emp as { department?: string } | null)?.department;
+    const oldFormasiId = (emp as { formasi_id?: string } | null)?.formasi_id;
+
+    // Resolve the new jabatan's grade so the promotion actually raises salary
+    // instead of only changing the position label — a promotion that leaves
+    // grade/salary untouched is exactly the dead-end status change the spec
+    // warns against.
+    const { data: newJabatan } = await supabaseAdmin.from("jabatan").select("id, grade_id").eq("name", p.to_position).maybeSingle();
+    const newJabatanId = (newJabatan as { id?: string; grade_id?: string } | null)?.id;
+    const newGradeId = (newJabatan as { id?: string; grade_id?: string } | null)?.grade_id;
+
+    const empUpdate: Record<string, unknown> = { position: p.to_position };
+
+    if (newGradeId) {
+      const { data: grade } = await supabaseAdmin.from("grade_jabatan").select("salary_min").eq("id", newGradeId).maybeSingle();
+      const salaryMin = (grade as { salary_min?: number } | null)?.salary_min;
+      if (salaryMin) {
+        const { data: existingStruktur } = await supabaseAdmin.from("struktur_gaji").select("id, basic_salary").eq("employee_id", p.employee_id).maybeSingle();
+        const s = existingStruktur as { id?: string; basic_salary?: number } | null;
+        const newBasic = Math.max(s?.basic_salary || 0, salaryMin);
+        await supabaseAdmin.from("struktur_gaji").upsert({
+          id: s?.id || ("sal-" + crypto.randomUUID()), employee_id: p.employee_id,
+          basic_salary: newBasic, updated_at: new Date().toISOString(),
+        }, { onConflict: "employee_id" });
+      }
+    }
+
+    if (newJabatanId && empDept) {
+      const { data: unit } = await supabaseAdmin.from("unit_organisasi").select("id").eq("name", empDept).maybeSingle();
+      const unitId = (unit as { id?: string } | null)?.id;
+      if (unitId) {
+        const { data: vacantFormasi } = await supabaseAdmin.from("formasi_jabatan")
+          .select("id").eq("jabatan_id", newJabatanId).eq("unit_organisasi_id", unitId).eq("status", "Vacant").limit(1).maybeSingle();
+        const newFormasiId = (vacantFormasi as { id?: string } | null)?.id;
+        if (newFormasiId) {
+          if (oldFormasiId) await supabaseAdmin.from("formasi_jabatan").update({ status: "Vacant", karyawan_id: null }).eq("id", oldFormasiId);
+          await supabaseAdmin.from("formasi_jabatan").update({ status: "Filled", karyawan_id: p.employee_id }).eq("id", newFormasiId);
+          empUpdate.formasi_id = newFormasiId;
+        }
+      }
+    }
+
     // Update the employee record FIRST — only flip the request to "Disetujui"
     // if this actually succeeds, so the request never ends up approved without
     // the position change actually having taken effect.
     const { error: empError } = await supabaseAdmin
-      .from("karyawan").update({ position: p.to_position }).eq("id", p.employee_id);
+      .from("karyawan").update(empUpdate).eq("id", p.employee_id);
     if (empError) {
       console.error("[career-hrd] updatePromotionStatus employee update error:", empError.message);
       return { error: "Gagal memperbarui data jabatan karyawan. Status promosi tidak diubah." };

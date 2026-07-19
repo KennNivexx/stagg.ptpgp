@@ -7,7 +7,7 @@ import { generateOneTimeToken } from "@/lib/otp-token";
 import { requireRole } from "@/lib/auth-guard";
 import { sendMail, emailApplicantLoginLink, emailEmployeeLoginLink } from "@/lib/mailer";
 import { auditLog } from "@/lib/audit";
-import { computeMatchScoreCore } from "@/lib/recruitment-scoring";
+import { computeMatchScoreCore, applyAutoScreening } from "@/lib/recruitment-scoring";
 
 // Always query fresh — a module-level cache would permanently freeze to false
 // if the DB returned a transient error on the first cold request.
@@ -852,7 +852,10 @@ export async function submitApplication(formData: FormData) {
   // score right away so HRD sees it the moment the application lands in the
   // pipeline. Best-effort — a scoring failure must never fail the actual
   // application submission.
-  try { await computeMatchScoreCore(applicationId); } catch { /* non-critical */ }
+  try {
+    const scoreRes = await computeMatchScoreCore(applicationId);
+    if ("success" in scoreRes) await applyAutoScreening(applicationId, scoreRes.result);
+  } catch { /* non-critical */ }
 
   revalidatePath("/career");
   revalidatePath("/hrd/recruitment");

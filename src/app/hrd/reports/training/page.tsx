@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { GraduationCap, Clock, TrendingUp, Users } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
@@ -6,6 +7,7 @@ import ExportExcelButton from "@/components/ExportExcelButton";
 export const dynamic = "force-dynamic";
 
 export default async function LaporanPelatihan() {
+  await requireRole("hrd", "superadmin", "director");
   const [{ data: trainings }, { data: enrollments }, { data: roiRows }] = await Promise.all([
     supabaseAdmin.from("pelatihan").select("*").order("date_start", { ascending: false }),
     supabaseAdmin.from("peserta_pelatihan").select("training_id, status"),

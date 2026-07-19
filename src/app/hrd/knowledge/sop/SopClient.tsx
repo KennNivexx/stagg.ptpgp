@@ -92,6 +92,31 @@ export default function SopClient({ initialSops, categories }: Props) {
               <input name="version" type="text" defaultValue="v1.0" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
             </div>
             <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Status</label>
+              <select name="status" defaultValue="Published" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+                <option value="Draft">Draft</option>
+                <option value="Review">Review</option>
+                <option value="Published">Published</option>
+                <option value="Archived">Archived</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Subject Matter Expert (opsional)</label>
+              <input name="sme" type="text" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="Nama penyusun/SME" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tanggal Berlaku (opsional)</label>
+              <input name="effective_date" type="date" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tanggal Kedaluwarsa/Review (opsional)</label>
+              <input name="expiry_date" type="date" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+            </div>
+            <div className="flex items-center gap-2 pt-6">
+              <input type="checkbox" name="mandatory" id="sop-mandatory" className="rounded" />
+              <label htmlFor="sop-mandatory" className="text-xs text-slate-600">Wajib dipelajari (Mandatory)</label>
+            </div>
+            <div>
               <input type="hidden" name="document_url" value={documentUrl} />
               <DocumentUploadField
                 label="Dokumen (opsional)"
@@ -135,6 +160,10 @@ export default function SopClient({ initialSops, categories }: Props) {
               </div>
               <h4 className="font-extrabold text-slate-800 text-sm mb-1 line-clamp-2">{sop.title as string}</h4>
               <p className="text-[10px] text-slate-400 mb-3">{(sop.description as string) || ""}</p>
+              <div className="flex items-center gap-1.5 mb-3">
+                <span className={`px-2 py-0.5 text-[9px] font-bold rounded-md ${sop.status === "Published" || sop.status === "Aktif" ? "bg-emerald-50 text-emerald-700" : sop.status === "Draft" ? "bg-slate-100 text-slate-500" : sop.status === "Review" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-500"}`}>{(sop.status as string) || "Published"}</span>
+                {!!sop.mandatory && <span className="px-2 py-0.5 text-[9px] font-bold bg-red-50 text-pgp-red rounded-md">Wajib</span>}
+              </div>
               <div className="flex items-center justify-between pt-3 border-t border-slate-50">
                 <div className="flex items-center gap-2">
                   {(sop.department as string) && (

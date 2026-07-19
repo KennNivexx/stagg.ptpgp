@@ -6,10 +6,11 @@ import { requireRole } from "@/lib/auth-guard";
 /**
  * Manpower Request Validation Engine — rule-based checks against data that
  * genuinely exists in this schema (position/org/budget/headcount/internal
- * mobility/succession). This app has no ML infrastructure and no tracked
- * operational data (production/sales/utilization), so unlike the client's
- * spec this deliberately has no "Workload Analysis" check and no fabricated
- * AI score — every result below traces to a real row this function read.
+ * mobility/succession/workload). This app has no ML infrastructure and no
+ * tracked production/sales data, so "Workload Analysis" below uses a real,
+ * honest proxy instead — formasi (position slot) fill-rate for the unit,
+ * against thresholds HRD can edit in manpower_validation_rule — rather than
+ * fabricating operational metrics that don't exist anywhere in this app.
  */
 
 export type ValidationStatus = "Pass" | "Warning" | "Incomplete" | "Info";
@@ -131,6 +132,38 @@ export async function runManpowerValidation(requestId: string): Promise<{ error:
     checks.push({ key: "succession", label: "Succession Validation", status: "Info", message: "Tidak berlaku — posisi ini bukan level manajerial." });
   }
 
+  // ── 7. Workload Analysis ───────────────────────────────────────────────
+  // Real proxy for "is this unit actually stretched thin": formasi fill-rate
+  // (Filled / Total position slots) for the unit, against HRD-configurable
+  // thresholds — not fabricated production/sales/utilization numbers, since
+  // this app tracks none of that.
+  if (unit) {
+    const unitId = (unitMatch as { id: string }).id;
+    const [{ count: totalFormasi }, { count: filledFormasi }, { data: rules }] = await Promise.all([
+      supabaseAdmin.from("formasi_jabatan").select("*", { count: "exact", head: true }).eq("unit_organisasi_id", unitId),
+      supabaseAdmin.from("formasi_jabatan").select("*", { count: "exact", head: true }).eq("unit_organisasi_id", unitId).eq("status", "Filled"),
+      supabaseAdmin.from("manpower_validation_rule").select("rule_key, threshold_value").eq("is_active", true),
+    ]);
+    const ruleMap = new Map((rules || []).map((r: { rule_key: string; threshold_value: number }) => [r.rule_key, r.threshold_value]));
+    const highThreshold = ruleMap.get("workload_utilization_high_pct") ?? 90;
+    const lowThreshold = ruleMap.get("workload_utilization_low_pct") ?? 60;
+    const total = totalFormasi || 0;
+    if (total === 0) {
+      checks.push({ key: "workload", label: "Workload Analysis", status: "Info", message: "Belum ada formasi tercatat untuk unit ini — utilisasi tidak dapat dihitung." });
+    } else {
+      const utilizationPct = Math.round(((filledFormasi || 0) / total) * 100);
+      if (utilizationPct >= highThreshold) {
+        checks.push({ key: "workload", label: "Workload Analysis", status: "Pass", message: `Utilisasi formasi unit ${utilizationPct}% (≥${highThreshold}%) — beban kerja tinggi, penambahan tenaga kerja wajar.` });
+      } else if (utilizationPct < lowThreshold) {
+        checks.push({ key: "workload", label: "Workload Analysis", status: "Warning", message: `Utilisasi formasi unit hanya ${utilizationPct}% (<${lowThreshold}%) — masih banyak formasi kosong, pertimbangkan menunda penambahan headcount baru.` });
+      } else {
+        checks.push({ key: "workload", label: "Workload Analysis", status: "Info", message: `Utilisasi formasi unit ${utilizationPct}% — dalam rentang normal.` });
+      }
+    }
+  } else {
+    checks.push({ key: "workload", label: "Workload Analysis", status: "Info", message: "Tidak dapat dihitung karena unit organisasi tidak cocok." });
+  }
+
   const hasIncomplete = checks.some(c => c.status === "Incomplete");
   const result: ValidationResult = {
     checks,
@@ -153,5 +186,10 @@ export async function getRequestTypeOptions() {
 
 export async function getRequestReasonOptions() {
   const { data } = await supabaseAdmin.from("alasan_permintaan_sdm").select("*").eq("is_active", true).order("urutan");
+  return data || [];
+}
+
+export async function getEmploymentTypeOptions() {
+  const { data } = await supabaseAdmin.from("employment_type_master").select("*").eq("is_active", true).order("urutan");
   return data || [];
 }

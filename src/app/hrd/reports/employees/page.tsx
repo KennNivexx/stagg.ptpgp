@@ -1,4 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Users, UserPlus, UserX, Building2 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
@@ -8,6 +9,7 @@ import TrendArea from "@/components/charts/TrendArea";
 export const dynamic = "force-dynamic";
 
 export default async function LaporanKaryawan() {
+  await requireRole("hrd", "superadmin", "director");
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
     .select("*")

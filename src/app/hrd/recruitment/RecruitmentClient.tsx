@@ -6,7 +6,7 @@ import {
   Briefcase, Users, CheckCircle2, XCircle, FileText, Search,
   AlertTriangle, X,
 } from "lucide-react";
-import { getJobPostings } from "@/app/actions/recruitment";
+import { getJobPostings, openVacancyExternallyAction } from "@/app/actions/recruitment";
 import EmptyState from "@/components/EmptyState";
 
 interface JobPosting {
@@ -72,7 +72,15 @@ export default function RecruitmentClient({ totalEmployees }: Props) {
     const base = "px-2.5 py-1 rounded-lg text-xs font-bold";
     if (status === "Open") return `${base} bg-emerald-50 text-emerald-700`;
     if (status === "Closed") return `${base} bg-slate-100 text-slate-500`;
+    if (status === "Internal Review") return `${base} bg-amber-50 text-amber-700`;
     return `${base} bg-slate-100 text-slate-600`;
+  };
+
+  const handleOpenExternally = async (id: string) => {
+    const res = await openVacancyExternallyAction(id);
+    if ("error" in res) { showToast("error", res.error!); return; }
+    setPostings((prev) => prev.map((p) => (p.id === id ? { ...p, status: "Open" } : p)));
+    showToast("success", "Lowongan dibuka ke eksternal.");
   };
 
   return (
@@ -122,6 +130,7 @@ export default function RecruitmentClient({ totalEmployees }: Props) {
         >
           <option value="">Semua Status</option>
           <option value="Open">Open</option>
+          <option value="Internal Review">Internal Review</option>
           <option value="Closed">Closed</option>
         </select>
         <select
@@ -190,12 +199,23 @@ export default function RecruitmentClient({ totalEmployees }: Props) {
                       <span className="text-xs text-slate-500">{formatDate(p.created_at)}</span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <Link
-                        href={`/hrd/recruitment/pipeline?job=${p.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors"
-                      >
-                        <FileText size={12} /> Detail
-                      </Link>
+                      <div className="inline-flex items-center gap-1.5">
+                        {p.status === "Internal Review" && (
+                          <button
+                            onClick={() => handleOpenExternally(p.id)}
+                            title="Belum ada kandidat internal yang cocok — buka lowongan ke eksternal"
+                            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors"
+                          >
+                            Buka Eksternal
+                          </button>
+                        )}
+                        <Link
+                          href={`/hrd/recruitment/pipeline?job=${p.id}`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                          <FileText size={12} /> Detail
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

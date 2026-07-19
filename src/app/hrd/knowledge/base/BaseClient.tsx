@@ -97,6 +97,19 @@ export default function BaseClient({ initialArticles }: { initialArticles: Artic
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Isi Artikel</label>
               <textarea name="content" rows={8} className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="Tuliskan isi artikel, panduan, atau dokumentasi..." />
             </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Status</label>
+              <select name="status" defaultValue="Published" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+                <option value="Draft">Draft</option>
+                <option value="Review">Review</option>
+                <option value="Published">Published</option>
+                <option value="Archived">Archived</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 pt-6">
+              <input type="checkbox" name="mandatory" id="article-mandatory" className="rounded" />
+              <label htmlFor="article-mandatory" className="text-xs text-slate-600">Wajib dibaca (Mandatory)</label>
+            </div>
             <div className="md:col-span-2">
               <Msg m={msg} />
             </div>

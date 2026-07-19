@@ -102,3 +102,30 @@ export async function computeMatchScoreCore(applicationId: string): Promise<{ er
   await supabaseAdmin.from("pelamar").update({ match_score: finalScore, match_detail: result }).eq("id", applicationId);
   return { success: true, result };
 }
+
+/** Automatic Screening (spec: Minimum Education / Experience → Pass/Reject).
+ * Only auto-rejects when a requirement was actually comparable (component
+ * weight > 0 — real job requirement + real candidate data) and clearly
+ * unmet; otherwise leaves the application in "Menunggu Review" for HR to
+ * screen manually rather than guessing on missing data. */
+export async function applyAutoScreening(applicationId: string, result: MatchResult): Promise<{ rejected: boolean; reason?: string }> {
+  const educationComp = result.components.find(c => c.key === "education");
+  const experienceComp = result.components.find(c => c.key === "experience");
+
+  const failedEducation = educationComp && educationComp.weight > 0 && educationComp.score < 50;
+  const failedExperience = experienceComp && experienceComp.weight > 0 && experienceComp.score < 40;
+
+  if (!failedEducation && !failedExperience) return { rejected: false };
+
+  const reasons: string[] = [];
+  if (failedEducation) reasons.push(educationComp!.note);
+  if (failedExperience) reasons.push(experienceComp!.note);
+  const reason = `Screening otomatis: tidak memenuhi syarat minimum. ${reasons.join(" ")}`;
+
+  // No dedicated screening-note column — fold the reason into the same
+  // match_detail JSON blob computeMatchScoreCore already writes.
+  await supabaseAdmin.from("pelamar").update({
+    status: "Ditolak", match_detail: { ...result, screeningReason: reason },
+  }).eq("id", applicationId);
+  return { rejected: true, reason };
+}

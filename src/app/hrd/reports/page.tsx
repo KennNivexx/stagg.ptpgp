@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import {
   Briefcase,
   Users,
@@ -61,6 +62,7 @@ function ReportCard({
 }
 
 export default async function HRDReports() {
+  await requireRole("hrd", "superadmin", "director");
   const [
     { count: totalEmployees },
     { count: activeJobs },

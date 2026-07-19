@@ -16,6 +16,7 @@ import {
   type RequestHistoryEntry, type DocumentEntry,
 } from "@/app/actions/requests";
 import { runManpowerValidation } from "@/app/actions/manpower-validation";
+import { initManpowerApproval, getManpowerApprovalStatus, decideManpowerApprovalStep } from "@/app/actions/manpower-approval";
 import { RECRUITMENT_STAGES } from "@/lib/workforce-constants";
 import { getJobDescsForPosition, type JobDesc } from "@/app/actions/jobdesc";
 import { getJobSpecsForDepartment, type JobSpec } from "@/app/actions/jobspec";
@@ -38,7 +39,7 @@ interface Request {
   finance_required?: boolean; finance_approved?: boolean;
   finance_approved_by?: string; finance_approved_at?: string;
   recruitment_stage?: string; cancel_reason?: string; required_license?: string;
-  request_type_id?: string | null; reason_category_id?: string | null;
+  request_type_id?: string | null; reason_category_id?: string | null; employment_type_id?: string | null;
   validation_result?: { checks: { key: string; label: string; status: string; message: string }[]; overallStatus: string; computedAt: string } | null;
 }
 
@@ -51,6 +52,7 @@ interface Props {
   userName: string;
   requestTypes: MasterOption[];
   requestReasons: MasterOption[];
+  employmentTypes: MasterOption[];
 }
 
 const URGENCY_OPTS = ["Rendah", "Sedang", "Tinggi"];
@@ -86,7 +88,7 @@ function slaInfo(needByDate?: string): { label: string; className: string; daysL
   return { label: `Sisa ${daysLeft} hari`, className: "bg-emerald-50 text-emerald-700 border-emerald-200", daysLeft };
 }
 
-export default function RequestsClient({ departments, positions, userRole, userName, requestTypes, requestReasons }: Props) {
+export default function RequestsClient({ departments, positions, userRole, userName, requestTypes, requestReasons, employmentTypes }: Props) {
   const [data, setData] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
@@ -108,6 +110,8 @@ export default function RequestsClient({ departments, positions, userRole, userN
   const [cancelNote, setCancelNote] = useState("");
   const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [approvalSteps, setApprovalSteps] = useState<Awaited<ReturnType<typeof getManpowerApprovalStatus>>>([]);
+  const [approvalBusy, setApprovalBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -160,7 +164,32 @@ export default function RequestsClient({ departments, positions, userRole, userN
     getJobSpecsForDepartment(detail.department).then(setRefJobSpecs).catch(() => setRefJobSpecs([]));
     getDeptRequiredSkills(detail.department).then(setRefSkills).catch(() => setRefSkills([]));
     getOrgBreadcrumb(detail.department).then(setOrgBreadcrumb).catch(() => setOrgBreadcrumb([]));
+    getManpowerApprovalStatus(detail.id).then(setApprovalSteps).catch(() => setApprovalSteps([]));
   }, [detail?.id, detail?.position, detail?.department]);
+
+  const doStartApproval = async (id: string) => {
+    setApprovalBusy(true);
+    const res = await initManpowerApproval(id);
+    setApprovalBusy(false);
+    if ("error" in res) { showToast(res.error); return; }
+    showToast("Approval Workflow dimulai.");
+    getManpowerApprovalStatus(id).then(setApprovalSteps);
+  };
+
+  const doDecideApprovalStep = async (id: string, stepNumber: number, approved: boolean) => {
+    let notes: string | undefined;
+    if (!approved) {
+      notes = prompt("Alasan penolakan:") || "";
+      if (!notes.trim()) return;
+    }
+    setApprovalBusy(true);
+    const res = await decideManpowerApprovalStep(id, stepNumber, approved, notes);
+    setApprovalBusy(false);
+    if ("error" in res) { showToast(res.error); return; }
+    showToast(approved ? "Tahap disetujui." : "Tahap ditolak.");
+    getManpowerApprovalStatus(id).then(setApprovalSteps);
+    refreshDetail(id);
+  };
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
@@ -846,6 +875,48 @@ export default function RequestsClient({ departments, positions, userRole, userN
                 </div>
               )}
 
+              {/* Approval Workflow — konfigurasi dinamis (manpower_approval_workflow),
+                  bukan hardcode. Default: Dept Head/Division Head -> HRBP/HR Manager (HRD)
+                  -> Finance (Kadept Finance) -> Director/CEO. */}
+              {(isHRD || isDirector || isManager) && detail.status !== "Draft" && (
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1.5"><Users size={12} /> Approval Workflow</p>
+                  {approvalSteps.length === 0 ? (
+                    isHRD ? (
+                      <button onClick={() => doStartApproval(detail.id)} disabled={approvalBusy} className="px-3 py-1.5 bg-[#CC0000] text-white rounded-lg text-[11px] font-bold hover:bg-[#aa0000] disabled:opacity-50">
+                        Mulai Approval Workflow
+                      </button>
+                    ) : (
+                      <p className="text-[10px] text-slate-400">Approval workflow belum dimulai oleh HRD.</p>
+                    )
+                  ) : (
+                    <div className="space-y-1.5">
+                      {approvalSteps.map(s => (
+                        <div key={s.step_number} className="flex items-center justify-between px-2.5 py-1.5 bg-slate-50 rounded-lg text-[11px]">
+                          <span className="font-semibold text-slate-600">
+                            {s.step_number}. {s.step_label}
+                            {s.approver_department && <span className="text-slate-400"> ({s.approver_department})</span>}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`px-2 py-0.5 rounded-md font-bold ${
+                              s.status === "Approved" ? "bg-emerald-50 text-emerald-700"
+                              : s.status === "Rejected" ? "bg-red-50 text-red-700"
+                              : "bg-amber-50 text-amber-700"
+                            }`}>{s.status}{s.approved_by ? ` — ${s.approved_by}` : ""}</span>
+                            {s.status === "Pending" && (
+                              <>
+                                <button onClick={() => doDecideApprovalStep(detail.id, s.step_number, true)} disabled={approvalBusy} className="p-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded disabled:opacity-50"><CheckCircle2 size={12} /></button>
+                                <button onClick={() => doDecideApprovalStep(detail.id, s.step_number, false)} disabled={approvalBusy} className="p-1 bg-red-50 hover:bg-red-100 text-red-700 rounded disabled:opacity-50"><XCircle size={12} /></button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Dokumen Pendukung */}
               <div className="border-t border-slate-100 pt-4">
                 <div className="flex items-center justify-between">
@@ -1197,6 +1268,17 @@ export default function RequestsClient({ departments, positions, userRole, userN
                     {requestReasons.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                  Employment Type
+                  <span className="ml-1 text-[10px] font-normal text-slate-400">(opsional)</span>
+                </label>
+                <select name="employment_type_id" defaultValue={editTarget?.employment_type_id || ""} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#CC0000]/30">
+                  <option value="">Pilih tipe</option>
+                  {employmentTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
               </div>
 
               {/* Jumlah + Urgensi */}

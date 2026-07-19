@@ -76,7 +76,7 @@ export default function BonusesClient({
     setActingId(id);
     const result = await updateBonusStatus(id, newStatus);
     setActingId("");
-    if (result?.error) { showToast(result.error); return; }
+    if ("error" in result) { showToast(result.error); return; }
     showToast("Status diperbarui.");
     router.refresh();
   };

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session";
+import { insertVacancyWithNumber } from "@/lib/vacancy";
 
 const ALLOWED_ROLES = ["hrd", "superadmin"];
 
@@ -43,16 +43,19 @@ export async function POST(request: NextRequest) {
       location: (body.location ?? "").toString().trim().slice(0, 200),
       requirements: (body.requirements ?? "").toString().trim().slice(0, 5000),
       job_desk: (body.job_desk ?? "").toString().trim().slice(0, 5000),
-      title: (body.title ?? "").toString().trim().slice(0, 200),
+      title: (body.title ?? position).toString().trim().slice(0, 200),
       description: (body.description ?? "").toString().trim().slice(0, 5000),
-      source_request_id: (body.source_request_id ?? null),
+      // Same column requests.ts's auto-vacancy-generation guards against
+      // duplicates with — a manual posting here must register under the
+      // same key or the guard can't see it and will create a second vacancy.
+      manpower_request_id: (body.source_request_id ?? null),
       status: "Open",
       quantity_filled: 0,
     };
 
-    const { error } = await supabaseAdmin.from("lowongan_kerja").insert(payload);
+    const { error, data } = await insertVacancyWithNumber(payload);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    return NextResponse.json({ success: true, id: payload.id });
+    return NextResponse.json({ success: true, id: (data as { id?: string } | null)?.id || payload.id });
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

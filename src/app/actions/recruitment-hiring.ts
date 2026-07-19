@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { hireCandidateFromPipeline } from "@/app/actions/recruitment";
 
 /**
  * Recruitment Management, Round 2 — multi-panel interview scoring, a real
@@ -130,6 +131,21 @@ export async function decideHiringApprovalStep(
 
   if (!approved) {
     await supabaseAdmin.from("pelamar").update({ status: "Ditolak" }).eq("id", applicationId);
+    revalidatePath("/hrd/recruitment/decisions");
+    revalidatePath("/hrd/recruitment/pipeline");
+    return { success: true };
+  }
+
+  // Was this the last step in the chain? If so, this approval finalizes
+  // hiring — actually create the employee record now, so the 4-step gate
+  // (HR -> Department Head -> Finance -> Director) means something instead
+  // of being a formality HR can bypass via a separate "Hire" button.
+  const { data: allSteps } = await supabaseAdmin.from("hiring_approval_steps")
+    .select("step_number").eq("application_id", applicationId).order("step_number", { ascending: false }).limit(1);
+  const lastStep = (allSteps || [])[0] as { step_number: number } | undefined;
+  if (lastStep && lastStep.step_number === stepNumber) {
+    const hireRes = await hireCandidateFromPipeline(applicationId, true);
+    if (hireRes && "error" in hireRes) return { error: hireRes.error as string };
   }
 
   revalidatePath("/hrd/recruitment/decisions");

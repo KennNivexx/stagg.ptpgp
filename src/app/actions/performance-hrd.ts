@@ -389,10 +389,37 @@ export async function recomputeFinalScore(employeeId: string, period: string) {
   const jabatanId = await resolveJabatanId(employeeId);
   const framework = await getPerformanceFrameworkByJabatan(jabatanId);
 
-  const { data: feedbackRows } = await supabaseAdmin.from("umpan_balik_kinerja").select("rating")
+  const { data: feedbackRows } = await supabaseAdmin.from("umpan_balik_kinerja").select("rating, budaya_id")
     .eq("employee_id", employeeId).eq("period", period).not("budaya_id", "is", null);
-  const ratings = ((feedbackRows || []) as { rating: number }[]).map(r => r.rating * 20);
-  const cultureScore = ratings.length ? ratings.reduce((s, r) => s + r, 0) / ratings.length : 0;
+  const rows = (feedbackRows || []) as { rating: number; budaya_id: string }[];
+
+  // Average ratings per core value first (an employee may have multiple
+  // feedback entries tagged to the same value), then combine values using
+  // each value's configured bobot_default — a flat mean across all feedback
+  // silently ignores that weighting (e.g. Integrity 30% vs Teamwork 10%).
+  const byValue = new Map<string, number[]>();
+  for (const r of rows) {
+    if (!byValue.has(r.budaya_id)) byValue.set(r.budaya_id, []);
+    byValue.get(r.budaya_id)!.push(r.rating * 20);
+  }
+  let cultureScore = 0;
+  if (byValue.size > 0) {
+    const { data: valueRows } = await supabaseAdmin.from("budaya_perusahaan")
+      .select("id, bobot_default").in("id", Array.from(byValue.keys()));
+    const weights = new Map(((valueRows || []) as { id: string; bobot_default: number | null }[]).map(v => [v.id, v.bobot_default ?? 0]));
+    let weightedSum = 0;
+    let totalWeight = 0;
+    for (const [budayaId, valueRatings] of byValue) {
+      const avgForValue = valueRatings.reduce((s, r) => s + r, 0) / valueRatings.length;
+      const weight = weights.get(budayaId) || 0;
+      weightedSum += avgForValue * weight;
+      totalWeight += weight;
+    }
+    cultureScore = totalWeight > 0
+      ? weightedSum / totalWeight
+      : Array.from(byValue.values()).flat().reduce((s, r) => s + r, 0) / rows.length;
+  }
+  const ratings = rows;
 
   const finalScore = Math.round((kpi.score || 0) * (framework.ta_weight_pct / 100) + cultureScore * (framework.culture_weight_pct / 100));
 

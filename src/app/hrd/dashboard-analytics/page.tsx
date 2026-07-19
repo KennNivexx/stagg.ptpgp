@@ -1,12 +1,14 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import {
   BarChart3, Users, TrendingUp, Briefcase, CalendarCheck,
-  DollarSign, Target, Activity, ArrowUp, FileText, Building2
+  DollarSign, Target, Activity, FileText, Building2
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import RankedBar from "@/components/charts/RankedBar";
 
 export default async function DashboardAnalytics() {
+  await requireRole("hrd", "superadmin", "director");
   const [
     { count: totalEmployees },
     { count: activeEmployees },
@@ -114,13 +116,7 @@ export default async function DashboardAnalytics() {
           const c = colorMap[card.color] || colorMap.blue;
           return (
             <div key={card.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`p-2.5 rounded-xl ${c.light} ${c.text}`}>{card.icon}</div>
-                <div className="flex items-center gap-1">
-                  <ArrowUp size={12} className="text-emerald-500" />
-                  <span className="text-[10px] font-bold text-emerald-600">Active</span>
-                </div>
-              </div>
+              <div className={`p-2.5 rounded-xl ${c.light} ${c.text} w-fit mb-3`}>{card.icon}</div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.label}</p>
               <p className="text-2xl font-extrabold text-slate-800 mt-1">{card.value}</p>
               <p className="text-[10px] text-slate-400 mt-1">{card.subtitle}</p>

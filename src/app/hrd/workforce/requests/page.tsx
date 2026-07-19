@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireRole } from "@/lib/auth-guard";
 import RequestsClient from "./RequestsClient";
-import { getRequestTypeOptions, getRequestReasonOptions } from "@/app/actions/manpower-validation";
+import { getRequestTypeOptions, getRequestReasonOptions, getEmploymentTypeOptions } from "@/app/actions/manpower-validation";
 
 export default async function PermintaanTenagaKerja() {
   const session = await requireRole("hrd", "superadmin", "director", "department_manager");
@@ -12,9 +12,10 @@ export default async function PermintaanTenagaKerja() {
   const { data: employees } = await supabaseAdmin.from("karyawan").select("position").neq("status", "Inactive");
   const positions = [...new Set((employees || []).map((e: Record<string, unknown>) => e.position as string).filter(Boolean))];
 
-  const [requestTypes, requestReasons] = await Promise.all([
+  const [requestTypes, requestReasons, employmentTypes] = await Promise.all([
     getRequestTypeOptions(),
     getRequestReasonOptions(),
+    getEmploymentTypeOptions(),
   ]);
 
   return (
@@ -25,6 +26,7 @@ export default async function PermintaanTenagaKerja() {
       userName={session.name}
       requestTypes={requestTypes}
       requestReasons={requestReasons}
+      employmentTypes={employmentTypes}
     />
   );
 }

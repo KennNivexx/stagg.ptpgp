@@ -1,5 +1,6 @@
 import { getCareerAssessments } from "@/app/actions/career-development";
 import MasterDataTable from "@/components/hrd/MasterDataTable";
+import RecomputeButton from "./RecomputeButton";
 
 type Row = Record<string, unknown> & {
   karyawan?: { full_name?: string; department?: string } | null;
@@ -11,8 +12,9 @@ export default async function CareerAssessmentPage() {
   return (
     <MasterDataTable
       title="Career Assessment"
-      description="Hasil evaluasi otomatis Career Development Engine dari kinerja, kompetensi, skills, leadership, dan indikator lainnya."
+      description="Career score dihitung dari data performa (KPI), kompetensi, pembelajaran, kehadiran, dan masa kerja — bukan angka manual. Klik 'Hitung Ulang' untuk memperbarui semua karyawan."
       backHref="/hrd/career"
+      extra={<RecomputeButton />}
       rows={rows}
       emptyLabel="Belum ada Career Assessment."
       columns={[

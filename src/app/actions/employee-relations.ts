@@ -166,12 +166,12 @@ export async function getParticipationAnalytics() {
 
 const CASE_TYPES = ["Complaint", "Grievance", "Ethics Violation", "Fraud", "Harassment", "Whistleblowing"] as const;
 export type CaseType = (typeof CASE_TYPES)[number];
-const CASE_WORKFLOW = ["Case Created", "Validation", "Investigation", "Committee Review", "Decision", "Corrective Action", "Monitoring", "Case Closed", "Rejected"] as const;
+const CASE_WORKFLOW = ["Case Created", "Validation", "Investigation", "Evidence Collection", "Interview", "Committee Review", "Decision", "Corrective Action", "Monitoring", "Case Closed", "Rejected"] as const;
 
 export async function getCases(type?: CaseType) {
   await requireRole("hrd", "superadmin");
   let q = supabaseAdmin.from("employee_cases")
-    .select("*, reporter:karyawan!employee_cases_reporter_karyawan_id_fkey(full_name), subject:karyawan!employee_cases_subject_karyawan_id_fkey(full_name, department), case_categories(name, severity)")
+    .select("*, reporter:karyawan!employee_cases_reporter_karyawan_id_fkey(full_name), subject:karyawan!employee_cases_subject_karyawan_id_fkey(full_name, department), pic:karyawan!employee_cases_pic_karyawan_id_fkey(full_name), case_categories(name, severity)")
     .order("created_at", { ascending: false });
   if (type) q = q.eq("case_type", type);
   const { data } = await q;
@@ -183,6 +183,8 @@ export async function submitCase(formData: FormData) {
   const type = (formData.get("case_type") as string || "").trim() as CaseType;
   const categoryId = (formData.get("case_category_id") as string || "").trim() || null;
   const subjectKaryawanId = (formData.get("subject_karyawan_id") as string || "").trim() || null;
+  const reporterKaryawanId = (formData.get("reporter_karyawan_id") as string || "").trim() || null;
+  const picKaryawanId = (formData.get("pic_karyawan_id") as string || "").trim() || null;
   const title = (formData.get("title") as string || "").trim();
   const description = (formData.get("description") as string || "").trim();
   const anonymous = formData.get("anonymous") === "on";
@@ -195,7 +197,8 @@ export async function submitCase(formData: FormData) {
 
   const { error } = await supabaseAdmin.from("employee_cases").insert({
     id: "case-" + crypto.randomUUID(), case_type: type, case_category_id: categoryId,
-    reporter_karyawan_id: anonymous ? null : null, subject_karyawan_id: subjectKaryawanId,
+    reporter_karyawan_id: anonymous ? null : reporterKaryawanId, subject_karyawan_id: subjectKaryawanId,
+    pic_karyawan_id: picKaryawanId,
     title, description, status: "Case Created", sla_due_date: slaDueDate.toISOString().split("T")[0],
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   });
@@ -210,6 +213,15 @@ export async function updateCaseStatus(id: string, status: (typeof CASE_WORKFLOW
   if (!CASE_WORKFLOW.includes(status)) return { error: "Status tidak valid." };
   const { error } = await supabaseAdmin.from("employee_cases").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) { console.error("[employee-relations] updateCaseStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  revalidatePath("/hrd/relations/cases");
+  return { success: true };
+}
+
+export async function assignCasePic(id: string, picKaryawanId: string) {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin.from("employee_cases")
+    .update({ pic_karyawan_id: picKaryawanId || null, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) { console.error("[employee-relations] assignCasePic error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/relations/cases");
   return { success: true };
 }

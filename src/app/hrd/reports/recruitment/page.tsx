@@ -1,4 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { FileText, Briefcase, Users, Clock, TrendingUp } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
@@ -6,6 +7,7 @@ import ExportExcelButton from "@/components/ExportExcelButton";
 export const dynamic = "force-dynamic";
 
 export default async function LaporanRekrutmen() {
+  await requireRole("hrd", "superadmin", "director");
   const { data: jobs, error: jobsError } = await supabaseAdmin
     .from("lowongan_kerja")
     .select("*")

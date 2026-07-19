@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { RECRUITMENT_STAGES } from "@/lib/workforce-constants";
 import { runManpowerValidation } from "@/app/actions/manpower-validation";
+import { insertVacancyWithNumber } from "@/lib/vacancy";
 
 const uid = () => "req-" + crypto.randomUUID();
 const historyId = () => "wrh-" + crypto.randomUUID();
@@ -117,6 +118,7 @@ function readRequestFields(formData: FormData) {
     required_license: (formData.get("required_license") as string || "").trim() || null,
     request_type_id: (formData.get("request_type_id") as string || "").trim() || null,
     reason_category_id: (formData.get("reason_category_id") as string || "").trim() || null,
+    employment_type_id: (formData.get("employment_type_id") as string || "").trim() || null,
   };
 }
 
@@ -394,7 +396,7 @@ export async function updateRequestStatus(id: string, status: string, note?: str
           const { data: existingVacancy } = await supabaseAdmin.from("lowongan_kerja")
             .select("id").eq("manpower_request_id", id).maybeSingle();
           if (!existingVacancy) {
-            await supabaseAdmin.from("lowongan_kerja").insert({
+            await insertVacancyWithNumber({
               id: "job-" + crypto.randomUUID(),
               title: dept.position, position: dept.position, department: dept.department,
               status: "Open", description: dept.job_desc || null,

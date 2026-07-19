@@ -74,8 +74,25 @@ export async function saveIncentivePayment(formData: FormData) {
   return { success: true };
 }
 
-export async function updateIncentiveStatus(id: string, status: string) {
+async function checkRewardBudgetCap(id: string, status: string): Promise<{ error: string } | null> {
+  if (status !== "Disetujui") return null;
+  const { data: row } = await supabaseAdmin.from("insentif").select("amount, period, karyawan!employee_id(department)").eq("id", id).maybeSingle();
+  const r = row as { amount?: number; period?: string; karyawan?: { department?: string } | { department?: string }[] } | null;
+  if (!r?.period) return null;
+  const k = Array.isArray(r.karyawan) ? r.karyawan[0] : r.karyawan;
+  if (!k?.department) return null;
+  const budget = await getRewardBudgetStatus(k.department, r.period);
+  if (!budget) return null;
+  if (budget.usedAmount + (Number(r.amount) || 0) > budget.budgetAmount) {
+    return { error: `Melebihi budget reward ${k.department} periode ${r.period} (sisa Rp${(budget.budgetAmount - budget.usedAmount).toLocaleString("id-ID")}).` };
+  }
+  return null;
+}
+
+export async function updateIncentiveStatus(id: string, status: string): Promise<{ error: string } | { success: true }> {
   await requireRole("hrd", "superadmin");
+  const capError = await checkRewardBudgetCap(id, status);
+  if (capError) return capError;
   const { error } = await supabaseAdmin.from("insentif").update({ status }).eq("id", id).eq("type", "incentive");
   if (error) { console.error("[rewards] updateIncentiveStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/rewards/incentives");
@@ -135,8 +152,10 @@ export async function addBonus(formData: FormData) {
   return { success: true };
 }
 
-export async function updateBonusStatus(id: string, status: string) {
+export async function updateBonusStatus(id: string, status: string): Promise<{ error: string } | { success: true }> {
   await requireRole("hrd", "superadmin");
+  const capError = await checkRewardBudgetCap(id, status);
+  if (capError) return capError;
   const { error } = await supabaseAdmin.from("insentif").update({ status }).eq("id", id).eq("type", "bonus");
   if (error) { console.error("[rewards] updateBonusStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/rewards/bonuses");

@@ -1,4 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { UserX, TrendingUp, AlertTriangle, Users } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
@@ -7,6 +8,7 @@ import RadialGauge from "@/components/charts/RadialGauge";
 export const dynamic = "force-dynamic";
 
 export default async function LaporanTurnover() {
+  await requireRole("hrd", "superadmin", "director");
   const { count: totalEmployees } = await supabaseAdmin
     .from("karyawan")
     .select("*", { count: "exact", head: true });

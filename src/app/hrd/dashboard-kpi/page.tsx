@@ -1,13 +1,14 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import {
   Target, TrendingUp, Users, DollarSign, Calendar,
   Briefcase, Award, Star, Activity, BarChart3,
-  ArrowUp
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import RadialGauge from "@/components/charts/RadialGauge";
 
 export default async function HRDDashboardKPI() {
+  await requireRole("hrd", "superadmin", "director");
   const [
     { count: totalEmployees },
     { count: totalJobs },
@@ -46,6 +47,11 @@ export default async function HRDDashboardKPI() {
 
   const completionTargets = totalEmployees && totalEmployees > 0
     ? Math.round((presentCount / (totalEmployees * 22)) * 100) : 0;
+
+  const overallHealthScore = Math.round((avgScore + evaluationRate + Math.min(completionTargets, 100)) / 3);
+  const overallHealthLabel = overallHealthScore >= 75 ? "Operational" : overallHealthScore >= 50 ? "Needs Attention" : "At Risk";
+  const overallHealthColor = overallHealthScore >= 75 ? "bg-emerald-500" : overallHealthScore >= 50 ? "bg-amber-500" : "bg-red-500";
+  const overallHealthTextColor = overallHealthScore >= 75 ? "text-emerald-600" : overallHealthScore >= 50 ? "text-amber-600" : "text-red-600";
 
   const kpiAreas = [
     {
@@ -140,14 +146,8 @@ export default async function HRDDashboardKPI() {
           const c = colorClasses[stat.color] || colorClasses.blue;
           return (
             <div key={stat.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`p-2.5 rounded-xl ${c.light} ${c.text}`}>
-                  {stat.icon}
-                </div>
-                <div className="flex items-center gap-1">
-                  <ArrowUp size={12} className="text-emerald-500" />
-                  <span className="text-[10px] font-bold text-emerald-600">Active</span>
-                </div>
+              <div className={`p-2.5 rounded-xl ${c.light} ${c.text} w-fit mb-3`}>
+                {stat.icon}
               </div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
               <p className="text-2xl font-extrabold text-slate-800 mt-1">{stat.value}</p>
@@ -222,8 +222,8 @@ export default async function HRDDashboardKPI() {
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-slate-400">Overall Health</span>
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                <span className="text-[10px] font-bold text-emerald-600">Operational</span>
+                <span className={`h-2 w-2 rounded-full ${overallHealthColor}`} />
+                <span className={`text-[10px] font-bold ${overallHealthTextColor}`}>{overallHealthLabel}</span>
               </div>
             </div>
           </div>

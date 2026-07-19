@@ -29,9 +29,13 @@ export async function saveSop(formData: FormData) {
   const effective_date = (formData.get("effective_date") as string || "").trim() || null;
   const expiry_date = (formData.get("expiry_date") as string || "").trim() || null;
   const sme = (formData.get("sme") as string || "").trim() || null;
+  // "Published" here — same taxonomy as policies/articles/videos below,
+  // instead of a one-off "Aktif" that meant the same thing but read as a
+  // different lifecycle state in the UI.
+  const status = (formData.get("status") as string || "Published").trim();
   const { error } = await supabaseAdmin.from("dokumen_sop").insert({
     id: "sop-" + crypto.randomUUID(), number: finalNumber, title, department,
-    version, description, document_url: documentUrl, status: "Aktif",
+    version, description, document_url: documentUrl, status,
     mandatory, effective_date, expiry_date, sme,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   });

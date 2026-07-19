@@ -1,18 +1,19 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
-import { submitCase, updateCaseStatus, type CaseType } from "@/app/actions/employee-relations";
+import { submitCase, updateCaseStatus, assignCasePic, type CaseType } from "@/app/actions/employee-relations";
 import EmptyState from "@/components/EmptyState";
 import { ShieldAlert, Inbox } from "lucide-react";
 
 type Row = Record<string, unknown> & {
   id: string; title: string; description: string; status: string; case_type: string; sla_due_date: string | null;
   subject?: { full_name?: string; department?: string } | null;
+  pic?: { full_name?: string } | null;
   case_categories?: { name?: string; severity?: string } | null;
 };
 type CategoryOpt = { id: string; name: string };
 type EmployeeOpt = { id: string; full_name: string };
 
-const WORKFLOW_STAGES = ["Case Created", "Validation", "Investigation", "Committee Review", "Decision", "Corrective Action", "Monitoring", "Case Closed", "Rejected"] as const;
+const WORKFLOW_STAGES = ["Case Created", "Validation", "Investigation", "Evidence Collection", "Interview", "Committee Review", "Decision", "Corrective Action", "Monitoring", "Case Closed", "Rejected"] as const;
 
 export default function CaseClient({
   type, title, description, initialRows, categories, employees, showTypeColumn = false,
@@ -23,6 +24,7 @@ export default function CaseClient({
   const [rows, setRows] = useState(initialRows);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = (formData: FormData) => {
@@ -31,6 +33,7 @@ export default function CaseClient({
       const res = await submitCase(formData);
       if ("error" in res) { setError(res.error || "Gagal memproses."); return; }
       formRef.current?.reset();
+      setAnonymous(false);
       window.location.reload();
     });
   };
@@ -39,6 +42,16 @@ export default function CaseClient({
     startTransition(async () => {
       const res = await updateCaseStatus(id, status);
       if (!("error" in res)) setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    });
+  };
+
+  const assignPic = (id: string, picId: string) => {
+    startTransition(async () => {
+      const res = await assignCasePic(id, picId);
+      if (!("error" in res)) {
+        const picEmp = employees.find((e) => e.id === picId);
+        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, pic: picEmp ? { full_name: picEmp.full_name } : null } : r)));
+      }
     });
   };
 
@@ -73,9 +86,23 @@ export default function CaseClient({
               {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
             </select>
           </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Pelapor</label>
+            <select name="reporter_karyawan_id" disabled={anonymous} className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full disabled:bg-slate-50 disabled:text-slate-400">
+              <option value="">-</option>
+              {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">PIC (opsional)</label>
+            <select name="pic_karyawan_id" className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full">
+              <option value="">-</option>
+              {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+            </select>
+          </div>
           <div className="flex items-center gap-2 pt-6">
-            <input type="checkbox" name="anonymous" id="anon" className="rounded" />
-            <label htmlFor="anon" className="text-xs text-slate-600">Laporkan secara anonim</label>
+            <input type="checkbox" name="anonymous" id="anon" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} className="rounded" />
+            <label htmlFor="anon" className="text-xs text-slate-600">Laporkan secara anonim (identitas pelapor tidak dicatat)</label>
           </div>
           <div className="sm:col-span-2">
             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Deskripsi</label>
@@ -102,6 +129,7 @@ export default function CaseClient({
                   {showTypeColumn && <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Jenis</th>}
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Terkait</th>
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Kategori</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">PIC</th>
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">SLA</th>
                   <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Status</th>
                   <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Aksi</th>
@@ -111,13 +139,24 @@ export default function CaseClient({
                 {rows.map((r) => {
                   const overdue = r.sla_due_date && new Date(r.sla_due_date) < new Date() && !["Case Closed", "Rejected"].includes(r.status);
                   const stageIdx = WORKFLOW_STAGES.indexOf(r.status as (typeof WORKFLOW_STAGES)[number]);
-                  const nextStage = stageIdx >= 0 && stageIdx < 6 ? WORKFLOW_STAGES[stageIdx + 1] : null;
+                  const nextStage = stageIdx >= 0 && stageIdx < WORKFLOW_STAGES.length - 2 ? WORKFLOW_STAGES[stageIdx + 1] : null;
                   return (
                     <tr key={r.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/40">
                       <td className="px-4 py-3 font-semibold text-slate-700 max-w-xs truncate">{r.title}</td>
                       {showTypeColumn && <td className="px-4 py-3 text-slate-600">{r.case_type}</td>}
                       <td className="px-4 py-3 text-slate-600">{r.subject?.full_name || "-"}</td>
                       <td className="px-4 py-3 text-slate-600">{r.case_categories?.name || "-"}</td>
+                      <td className="px-4 py-3">
+                        <select
+                          defaultValue=""
+                          disabled={pending}
+                          onChange={(e) => e.target.value && assignPic(r.id, e.target.value)}
+                          className="border border-slate-200 rounded-lg px-2 py-1 text-xs"
+                        >
+                          <option value="">{r.pic?.full_name || "Tetapkan PIC"}</option>
+                          {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+                        </select>
+                      </td>
                       <td className={`px-4 py-3 ${overdue ? "text-pgp-red font-bold" : "text-slate-500"}`}>{r.sla_due_date || "-"}{overdue && " (Terlambat)"}</td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${r.status === "Case Closed" ? "bg-slate-800 text-white" : r.status === "Rejected" ? "bg-red-50 text-pgp-red" : "bg-slate-100 text-slate-600"}`}>{r.status}</span>

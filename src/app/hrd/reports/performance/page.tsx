@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { TrendingUp, Users, Star, Award } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import ExportExcelButton from "@/components/ExportExcelButton";
@@ -21,6 +22,7 @@ function gradeLabel(score: number) {
 }
 
 export default async function PerformanceReportsPage() {
+  await requireRole("hrd", "superadmin", "director");
   const { data: evaluations } = await supabaseAdmin
     .from("evaluasi_kpi")
     .select("*, karyawan!inner(full_name, department, position)")

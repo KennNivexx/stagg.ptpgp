@@ -7,7 +7,10 @@ import {
 } from "lucide-react";
 import { getDeptData, getMyDept } from "@/app/actions/department";
 import { addRequest, editRequest, cancelRequest } from "@/app/actions/requests";
+import { getRequestTypeOptions, getRequestReasonOptions, getEmploymentTypeOptions } from "@/app/actions/manpower-validation";
 import EmptyState from "@/components/EmptyState";
+
+interface MasterOption { id: string; code: string; name: string }
 
 interface Employee {
   id: string; full_name: string; email: string; department: string;
@@ -58,6 +61,18 @@ function RequestModal({
   const [fDept, setFDept] = useState(deptName || editTarget?.department || "");
   const [fErr, setFErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fRequestTypeId, setFRequestTypeId] = useState((editTarget as (Request & { request_type_id?: string }) | undefined)?.request_type_id || "");
+  const [fReasonCategoryId, setFReasonCategoryId] = useState((editTarget as (Request & { reason_category_id?: string }) | undefined)?.reason_category_id || "");
+  const [fEmploymentTypeId, setFEmploymentTypeId] = useState((editTarget as (Request & { employment_type_id?: string }) | undefined)?.employment_type_id || "");
+  const [requestTypes, setRequestTypes] = useState<MasterOption[]>([]);
+  const [requestReasons, setRequestReasons] = useState<MasterOption[]>([]);
+  const [employmentTypes, setEmploymentTypes] = useState<MasterOption[]>([]);
+
+  useEffect(() => {
+    getRequestTypeOptions().then(setRequestTypes).catch(() => {});
+    getRequestReasonOptions().then(setRequestReasons).catch(() => {});
+    getEmploymentTypeOptions().then(setEmploymentTypes).catch(() => {});
+  }, []);
 
   // Kode contoh: ambil sub-unit pertama (bukan divisi utama jika ada)
   const exampleUnit = orgUnits.length > 1 ? orgUnits[1] : orgUnits[0];
@@ -77,6 +92,9 @@ function RequestModal({
     fd.append("reason", fReason.trim());
     fd.append("request_type", fType);
     fd.append("need_by_date", fNeedBy);
+    fd.append("request_type_id", fRequestTypeId);
+    fd.append("reason_category_id", fReasonCategoryId);
+    fd.append("employment_type_id", fEmploymentTypeId);
     const r = editTarget
       ? await editRequest(editTarget.id, fd, !asDraft)
       : await addRequest(fd, asDraft);
@@ -345,6 +363,32 @@ function RequestModal({
                   onChange={e => setFNeedBy(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
                 />
+              </div>
+            </div>
+
+            {/* Kategori Jenis, Alasan, Employment Type (master data — dipakai
+                Validation Engine & otomasi pasca-approval) */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Kategori Jenis</label>
+                <select value={fRequestTypeId} onChange={e => setFRequestTypeId(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors">
+                  <option value="">Pilih</option>
+                  {requestTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Kategori Alasan</label>
+                <select value={fReasonCategoryId} onChange={e => setFReasonCategoryId(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors">
+                  <option value="">Pilih</option>
+                  {requestReasons.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Employment Type</label>
+                <select value={fEmploymentTypeId} onChange={e => setFEmploymentTypeId(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors">
+                  <option value="">Pilih</option>
+                  {employmentTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
               </div>
             </div>
 

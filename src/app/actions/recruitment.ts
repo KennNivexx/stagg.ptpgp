@@ -6,6 +6,14 @@ import { requireRole } from "@/lib/auth-guard";
 import { hashPassword, generateRandomPassword } from "@/lib/auth";
 import { generateOneTimeToken } from "@/lib/otp-token";
 import { sendMail, emailEmployeeLoginLink } from "@/lib/mailer";
+import { openVacancyExternally, insertVacancyWithNumber } from "@/lib/vacancy";
+
+export async function openVacancyExternallyAction(vacancyId: string) {
+  await requireRole("hrd", "superadmin");
+  const res = await openVacancyExternally(vacancyId);
+  revalidatePath("/hrd/recruitment");
+  return res;
+}
 
 export async function getJobPostings() {
   await requireRole("hrd", "superadmin", "director");
@@ -211,13 +219,13 @@ export async function createJobPosting(formData: FormData) {
   const status = (formData.get("status") as string || "Draft").trim();
   const description = (formData.get("description") as string || "").trim();
   if (!title || !department) return { error: "Judul posisi dan departemen wajib diisi." };
-  const { error } = await supabaseAdmin.from("lowongan_kerja").insert({
+  const { error } = await insertVacancyWithNumber({
     id: "job-" + crypto.randomUUID(),
     title, position: title, department, location: location || null,
     status, description: description || null,
     quantity: 1, quantity_filled: 0,
     created_at: new Date().toISOString(),
-  });
+  }, status !== "Open");
   if (error) { console.error("[recruitment] createJobPosting error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/workforce/vacancy");
   revalidatePath("/hrd/recruitment");
@@ -379,12 +387,30 @@ export async function scheduleInterview(
 }
 
 // ── Pipeline: hire candidate (creates employee record + sends email) ─────────
-export async function hireCandidateFromPipeline(applicationId: string) {
+export async function hireCandidateFromPipeline(applicationId: string, _skipApprovalGate = false) {
   await requireRole("hrd", "superadmin");
+
+  // Hiring Approval (HR -> Department Head -> Finance -> Director) must be
+  // fully approved before an employee record is created — otherwise the
+  // 4-step gate is a formality HR can bypass entirely. The one caller allowed
+  // to skip this check is decideHiringApprovalStep itself, which only calls
+  // this AFTER confirming the final step was just approved.
+  if (!_skipApprovalGate) {
+    const { data: steps } = await supabaseAdmin.from("hiring_approval_steps")
+      .select("step_number, status").eq("application_id", applicationId).order("step_number");
+    if (!steps || steps.length === 0) {
+      return { error: "Mulai dan selesaikan Hiring Approval (HR → Department Head → Finance → Director) terlebih dahulu sebelum merekrut kandidat ini." };
+    }
+    const notApproved = steps.find(s => s.status !== "Approved");
+    if (notApproved) {
+      return { error: `Hiring Approval belum selesai — tahap ${notApproved.step_number} berstatus "${notApproved.status}".` };
+    }
+  }
 
   const { data: app } = await supabaseAdmin
     .from("pelamar").select("*").eq("id", applicationId).single();
   if (!app) return { error: "Lamaran tidak ditemukan." };
+  if (app.status === "Diterima") return { error: "Kandidat ini sudah direkrut sebelumnya." };
 
   const { data: job } = await supabaseAdmin
     .from("lowongan_kerja").select("position, department").eq("id", app.job_id as string).single();

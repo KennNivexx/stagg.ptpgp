@@ -178,7 +178,13 @@ async function computeTaxAndBpjs(basic: number, allowances: number, ptkpStatus: 
       { min: 5_000_000_000,  max: null,          rate: 35 },
     ];
     const annualGross = (basic + allowances) * 12;
-    const pkp = Math.max(0, annualGross - ptkp);
+    // Biaya jabatan (Indonesian tax law): 5% of gross income, capped at
+    // Rp500,000/month (Rp6,000,000/year) — deducted before PTKP. Omitting
+    // this overstates PKP and overtaxes every employee.
+    const biayaJabatanPercent = cfg?.biaya_jabatan_percent ?? 5;
+    const biayaJabatanCapAnnual = cfg?.biaya_jabatan_cap_annual ?? 6_000_000;
+    const biayaJabatan = Math.min(annualGross * (biayaJabatanPercent / 100), biayaJabatanCapAnnual);
+    const pkp = Math.max(0, annualGross - biayaJabatan - ptkp);
     let annualTax = 0;
     let remaining = pkp;
     for (const br of brackets) {
