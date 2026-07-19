@@ -64,16 +64,18 @@ export async function runManpowerValidation(requestId: string): Promise<{ error:
   }
 
   // ── 2. Organization Validation ────────────────────────────────────────
+  // unit_organisasi has no status/active-inactive column in this schema —
+  // a row existing at all means it's a real, registered unit. Querying a
+  // non-existent "status" column here used to make this select fail
+  // silently on every call, so Organization Validation (and everything
+  // downstream that depends on `unit` — Headcount, Internal Mobility,
+  // Workload) always reported "can't verify" even for real departments.
   const { data: unitMatch } = await supabaseAdmin.from("unit_organisasi")
-    .select("id, status").eq("name", req.department).maybeSingle();
-  const unit = unitMatch as { status?: string } | null;
-  if (!unit) {
-    checks.push({ key: "org_unit", label: "Organization Validation", status: "Info", message: `Nama unit organisasi "${req.department}" tidak cocok persis dengan Master Unit Organisasi — tidak dapat diverifikasi otomatis (kemungkinan perbedaan penamaan).` });
-  } else {
-    checks.push(unit.status === "Aktif"
-      ? { key: "org_unit", label: "Organization Validation", status: "Pass", message: `Unit organisasi "${req.department}" berstatus Aktif.` }
-      : { key: "org_unit", label: "Organization Validation", status: "Incomplete", message: `Unit organisasi "${req.department}" berstatus ${unit.status || "tidak diketahui"}, bukan Aktif.` });
-  }
+    .select("id").eq("name", req.department).maybeSingle();
+  const unit = unitMatch as { id?: string } | null;
+  checks.push(unit
+    ? { key: "org_unit", label: "Organization Validation", status: "Pass", message: `Unit organisasi "${req.department}" terdaftar di Master Unit Organisasi.` }
+    : { key: "org_unit", label: "Organization Validation", status: "Info", message: `Nama unit organisasi "${req.department}" tidak cocok persis dengan Master Unit Organisasi — tidak dapat diverifikasi otomatis (kemungkinan perbedaan penamaan).` });
   checks.push(req.cost_center
     ? { key: "cost_center", label: "Cost Center", status: "Pass", message: `Cost center: ${req.cost_center}.` }
     : { key: "cost_center", label: "Cost Center", status: "Incomplete", message: "Cost center belum diisi." });
