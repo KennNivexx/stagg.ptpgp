@@ -9,7 +9,7 @@ import { auditLog } from "@/lib/audit";
 import { clockInForEmployee, clockOutForEmployee, resolveFaceEmployeeIds } from "@/lib/attendance-core";
 
 export async function clockIn(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin", "employee");
+  const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
   const result = await clockInForEmployee({
     employeeId: user.id,
     employeeEmail: user.email,
@@ -24,12 +24,13 @@ export async function clockIn(formData: FormData) {
   if ("success" in result) {
     revalidatePath("/hrd/attendance");
     revalidatePath("/employee");
+    revalidatePath("/department/attendance");
   }
   return result;
 }
 
 export async function clockOut(formData?: FormData) {
-  const user = await requireRole("hrd", "superadmin", "employee");
+  const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
   const result = await clockOutForEmployee({
     employeeId: user.id,
     employeeEmail: user.email,
@@ -41,12 +42,13 @@ export async function clockOut(formData?: FormData) {
   if ("success" in result) {
     revalidatePath("/hrd/attendance");
     revalidatePath("/employee");
+    revalidatePath("/department/attendance");
   }
   return result;
 }
 
 export async function getTodayAttendance() {
-  const user = await requireRole("hrd", "superadmin", "employee");
+  const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
   const { data } = await supabaseAdmin.from("absensi").select("*").eq("employee_id", user.id).eq("date", today).maybeSingle();
   return data || null;

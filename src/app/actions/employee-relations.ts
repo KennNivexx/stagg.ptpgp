@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { resolveManagerDepartment } from "@/lib/dept-resolve";
 
 /** Employee Relations & Experience — master data + engine tables from
  * 20260724001_employee_relations.sql. Menu items under "Employee Relations"
@@ -35,7 +36,7 @@ export async function getCommunicationCategories() {
   return data || [];
 }
 export async function getCaseCategories() {
-  await requireRole("hrd", "superadmin");
+  await requireRole("hrd", "superadmin", "department_manager");
   const { data } = await supabaseAdmin.from("case_categories").select("*").order("code");
   return data || [];
 }
@@ -179,7 +180,7 @@ export async function getCases(type?: CaseType) {
 }
 
 export async function submitCase(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
   const type = (formData.get("case_type") as string || "").trim() as CaseType;
   const categoryId = (formData.get("case_category_id") as string || "").trim() || null;
   const subjectKaryawanId = (formData.get("subject_karyawan_id") as string || "").trim() || null;
@@ -190,6 +191,23 @@ export async function submitCase(formData: FormData) {
   const anonymous = formData.get("anonymous") === "on";
   if (!CASE_TYPES.includes(type)) return { error: "Jenis kasus tidak valid." };
   if (!title || !description) return { error: "Judul dan deskripsi wajib diisi." };
+
+  // A department_manager may only file cases about their own team — without
+  // this check they could report on any employee company-wide, which is
+  // HRD's/Case Committee's authority, not a line manager's.
+  if (user.role === "department_manager" && subjectKaryawanId) {
+    const [ownDept, { data: subjectRow }] = await Promise.all([
+      resolveManagerDepartment(user.email),
+      supabaseAdmin.from("karyawan").select("department").eq("id", subjectKaryawanId).maybeSingle(),
+    ]);
+    const subjectDept = (subjectRow as { department?: string } | null)?.department;
+    if (!ownDept || subjectDept !== ownDept) {
+      return { error: "Anda hanya dapat melaporkan kasus untuk karyawan di departemen Anda sendiri." };
+    }
+  }
+  if (user.role === "department_manager" && picKaryawanId) {
+    return { error: "Penetapan PIC hanya dapat dilakukan oleh HRD." };
+  }
 
   const category = categoryId ? await supabaseAdmin.from("case_categories").select("sla_days").eq("id", categoryId).maybeSingle() : null;
   const slaDays = (category?.data as { sla_days?: number } | null)?.sla_days || 14;
@@ -205,7 +223,24 @@ export async function submitCase(formData: FormData) {
   if (error) { console.error("[employee-relations] submitCase error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   void user;
   revalidatePath("/hrd/relations/cases");
+  revalidatePath("/department/relations/cases");
   return { success: true };
+}
+
+/** Kepala Departemen's own case list — cases whose subject employee belongs
+ * to their department. Read-only view of workflow/status; only HRD can
+ * advance stages or assign PIC (updateCaseStatus/assignCasePic stay
+ * hrd/superadmin-only). */
+export async function getDeptCases(department: string) {
+  await requireRole("department_manager", "hrd", "superadmin");
+  if (!department) return [];
+  const { data } = await supabaseAdmin.from("employee_cases")
+    .select("*, reporter:karyawan!employee_cases_reporter_karyawan_id_fkey(full_name), subject:karyawan!employee_cases_subject_karyawan_id_fkey(full_name, department), pic:karyawan!employee_cases_pic_karyawan_id_fkey(full_name), case_categories(name, severity)")
+    .order("created_at", { ascending: false });
+  // Filtered client-side (not via a PostgREST embedded-resource filter,
+  // which needs an !inner join to work reliably) — acceptable given the
+  // low expected case volume.
+  return (data || []).filter((c) => (c as { subject?: { department?: string } | null }).subject?.department === department);
 }
 
 export async function updateCaseStatus(id: string, status: (typeof CASE_WORKFLOW)[number]) {

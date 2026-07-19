@@ -311,6 +311,47 @@ export async function getMyDeptTrainingRequests(department: string) {
   return (data || []) as TrainingRequest[];
 }
 
+export interface DeptTrainingStatusRow {
+  employee_id: string; employee_name: string; training_id: string;
+  training_title: string; date_start: string | null; date_end: string | null;
+  status: string; training_status: string;
+}
+
+/** Team training enrollment/completion status for a Kepala Departemen —
+ * cross-references peserta_pelatihan against the department's own
+ * employees, so a manager sees exactly who on their team is enrolled in
+ * what and whether they've completed it, without needing HRD's full
+ * company-wide Learning module. */
+export async function getDeptTrainingStatus(department: string): Promise<DeptTrainingStatusRow[]> {
+  await requireRole("department_manager", "hrd", "superadmin");
+  if (!department) return [];
+
+  const { data: employees } = await supabaseAdmin.from("karyawan")
+    .select("id, full_name").eq("department", department).neq("status", "Inactive");
+  const empIds = (employees || []).map((e: { id: string }) => e.id);
+  if (empIds.length === 0) return [];
+  const empMap = new Map((employees || []).map((e: { id: string; full_name: string }) => [e.id, e.full_name]));
+
+  const { data: enrollments } = await supabaseAdmin.from("peserta_pelatihan")
+    .select("employee_id, training_id, status").in("employee_id", empIds);
+  if (!enrollments || enrollments.length === 0) return [];
+
+  const trainingIds = [...new Set(enrollments.map((e: { training_id: string }) => e.training_id))];
+  const { data: trainings } = await supabaseAdmin.from("pelatihan")
+    .select("id, title, date_start, date_end, status").in("id", trainingIds);
+  const trainingMap = new Map((trainings || []).map((t: { id: string; title: string; date_start: string | null; date_end: string | null; status: string }) => [t.id, t]));
+
+  return enrollments.map((e: { employee_id: string; training_id: string; status: string }) => {
+    const t = trainingMap.get(e.training_id) as { title?: string; date_start?: string | null; date_end?: string | null; status?: string } | undefined;
+    return {
+      employee_id: e.employee_id, employee_name: empMap.get(e.employee_id) || "-",
+      training_id: e.training_id, training_title: t?.title || "-",
+      date_start: t?.date_start || null, date_end: t?.date_end || null,
+      status: e.status, training_status: t?.status || "-",
+    };
+  }).sort((a, b) => (b.date_start || "").localeCompare(a.date_start || ""));
+}
+
 export async function getTrainingRequests() {
   await requireRole("hrd", "superadmin");
   const { data } = await supabaseAdmin.from("permintaan_pelatihan").select("*").order("created_at", { ascending: false });

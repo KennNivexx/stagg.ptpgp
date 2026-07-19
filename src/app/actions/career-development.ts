@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { resolveManagerDepartment } from "@/lib/dept-resolve";
 
 /** Career Development & Succession — master data + engine tables introduced
  * in 20260720001/20260721001/20260722001. Menu items in hrd-menu.ts under
@@ -131,6 +132,20 @@ export async function getCareerAssessments() {
   return data || [];
 }
 
+/** Kepala Departemen's own team's career scores — read-only, same
+ * computeCareerAssessment()-generated data HRD sees, just scoped to their
+ * own department instead of company-wide. */
+export async function getDeptCareerAssessments(department: string) {
+  await requireRole("department_manager", "hrd", "superadmin");
+  if (!department) return [];
+  const { data } = await supabaseAdmin
+    .from("career_assessments")
+    .select("*, karyawan!inner(full_name, department, position), career_readiness_rules(category_name, color_code)")
+    .eq("karyawan.department", department)
+    .order("assessment_date", { ascending: false });
+  return data || [];
+}
+
 export async function getCareerRecommendations() {
   await requireRole("hrd", "superadmin");
   const { data } = await supabaseAdmin
@@ -216,8 +231,7 @@ function weightedAverage(components: Record<string, number | null>, weights: Rec
   return Math.round(sum / totalWeight);
 }
 
-export async function computeCareerAssessment(karyawanId: string, period: string): Promise<{ error: string } | { success: true; finalScore: number | null }> {
-  await requireRole("hrd", "superadmin");
+async function computeCareerAssessmentInternal(karyawanId: string, period: string): Promise<{ error: string } | { success: true; finalScore: number | null }> {
   const c = await computeRealScoreComponents(karyawanId);
 
   const { data: formulaRows } = await supabaseAdmin.from("career_score_formulas").select("*").order("created_at", { ascending: false }).limit(1);
@@ -254,16 +268,39 @@ export async function computeCareerAssessment(karyawanId: string, period: string
   return { success: true, finalScore };
 }
 
+export async function computeCareerAssessment(karyawanId: string, period: string): Promise<{ error: string } | { success: true; finalScore: number | null }> {
+  await requireRole("hrd", "superadmin");
+  return computeCareerAssessmentInternal(karyawanId, period);
+}
+
 export async function recomputeAllCareerAssessments(period: string): Promise<{ error: string } | { success: true; count: number }> {
   await requireRole("hrd", "superadmin");
   const { data: employees } = await supabaseAdmin.from("karyawan").select("id").neq("status", "Inactive");
   const ids = ((employees || []) as { id: string }[]).map(e => e.id);
   let count = 0;
   for (const id of ids) {
-    const res = await computeCareerAssessment(id, period);
+    const res = await computeCareerAssessmentInternal(id, period);
     if ("success" in res) count++;
   }
   revalidatePath("/hrd/career/assessment");
+  return { success: true, count };
+}
+
+/** Same recompute, scoped to a Kepala Departemen's own team. */
+export async function recomputeDeptCareerAssessments(department: string, period: string): Promise<{ error: string } | { success: true; count: number }> {
+  const user = await requireRole("department_manager", "hrd", "superadmin");
+  if (user.role === "department_manager") {
+    const ownDept = await resolveManagerDepartment(user.email);
+    if (!ownDept || ownDept !== department) return { error: "Anda hanya dapat menghitung ulang skor karier untuk departemen Anda sendiri." };
+  }
+  const { data: employees } = await supabaseAdmin.from("karyawan").select("id").eq("department", department).neq("status", "Inactive");
+  const ids = ((employees || []) as { id: string }[]).map(e => e.id);
+  let count = 0;
+  for (const id of ids) {
+    const res = await computeCareerAssessmentInternal(id, period);
+    if ("success" in res) count++;
+  }
+  revalidatePath("/department/career");
   return { success: true, count };
 }
 

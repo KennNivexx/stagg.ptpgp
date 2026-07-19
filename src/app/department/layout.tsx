@@ -4,7 +4,8 @@ import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Users, LogOut, Menu, X, ChevronRight, ChevronDown, HelpCircle,
+  LayoutDashboard, LogOut, Menu, X, ChevronRight, ChevronDown, HelpCircle, TrendingUp,
+  ClipboardList, Clock, Target, GraduationCap, BarChart3, Gift, HeartHandshake, Car, Building2,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
@@ -21,23 +22,90 @@ const MENU_GROUPS = [
     ],
   },
   {
-    label: "Departemen Saya",
-    icon: Users,
-    color: "teal",
+    label: "Manpower Request",
+    icon: ClipboardList,
+    color: "indigo",
     items: [
       { href: "/department/requests", label: "Riwayat Permintaan" },
-      { href: "/department/competency", label: "Kompetensi" },
-      { href: "/department/kpi", label: "KPI Karyawan" },
-      { href: "/department/warnings", label: "Surat Peringatan" },
+    ],
+  },
+  {
+    label: "Workforce Time Management",
+    icon: Clock,
+    color: "amber",
+    items: [
+      { href: "/department/attendance", label: "Absensi" },
       { href: "/department/leaves", label: "Cuti & Izin" },
-      { href: "/department/business-trips", label: "Perjalanan Dinas" },
-      { href: "/department/incidents", label: "Laporan Insiden" },
-      { href: "/department/fleet", label: "Armada & SIM Tim" },
-      { href: "/department/trips", label: "Lembur & Biaya Trip" },
       { href: "/department/shifts", label: "Shift Kerja" },
       { href: "/department/locations", label: "Lokasi Kerja" },
-      { href: "/department/attendance", label: "Absensi" },
+      { href: "/department/trips", label: "Lembur & Biaya Trip" },
+      { href: "/department/business-trips", label: "Perjalanan Dinas" },
+    ],
+  },
+  {
+    label: "Competency Management",
+    icon: Target,
+    color: "cyan",
+    items: [
+      { href: "/department/competency", label: "Kompetensi" },
+    ],
+  },
+  {
+    label: "Learning & Training",
+    icon: GraduationCap,
+    color: "purple",
+    items: [
+      { href: "/department/learning", label: "Pelatihan" },
+    ],
+  },
+  {
+    label: "Performance Management",
+    icon: BarChart3,
+    color: "blue",
+    items: [
+      { href: "/department/kpi", label: "KPI Karyawan" },
+    ],
+  },
+  {
+    label: "Career Development",
+    icon: TrendingUp,
+    color: "violet",
+    items: [
+      { href: "/department/career", label: "Karier & Suksesi" },
+    ],
+  },
+  {
+    label: "Reward & Recognition",
+    icon: Gift,
+    color: "rose",
+    items: [
+      { href: "/department/rewards", label: "Reward & Penghargaan" },
+    ],
+  },
+  {
+    label: "Employee Relations",
+    icon: HeartHandshake,
+    color: "pink",
+    items: [
+      { href: "/department/relations/cases", label: "Kasus & Pengaduan" },
+      { href: "/department/warnings", label: "Surat Peringatan" },
+      { href: "/department/incidents", label: "Laporan Insiden" },
+    ],
+  },
+  {
+    label: "Aset & Fasilitas",
+    icon: Car,
+    color: "orange",
+    items: [
+      { href: "/department/fleet", label: "Armada & SIM Tim" },
       { href: "/department/documents", label: "Dokumen Perusahaan" },
+    ],
+  },
+  {
+    label: "Desain Organisasi",
+    icon: Building2,
+    color: "teal",
+    items: [
       { href: "/department/jobdesc", label: "Deskripsi & Spesifikasi Kerja" },
     ],
   },
@@ -53,7 +121,16 @@ const MENU_GROUPS = [
 
 const GROUP_TOOLTIPS: Record<string, string> = {
   "Dashboard": "Ringkasan aktivitas departemen Anda",
-  "Departemen Saya": "Kelola tim, kompetensi, kinerja, kehadiran, dan aset departemen",
+  "Manpower Request": "Riwayat dan status permintaan penambahan karyawan",
+  "Workforce Time Management": "Absensi, cuti, shift, lokasi, lembur, dan perjalanan dinas tim",
+  "Competency Management": "Penilaian kompetensi tim Anda",
+  "Learning & Training": "Pelatihan dan sertifikasi tim Anda",
+  "Performance Management": "Evaluasi KPI karyawan di departemen",
+  "Career Development": "Career score, promosi, dan mutasi tim Anda",
+  "Reward & Recognition": "Bonus dan penghargaan tim Anda",
+  "Employee Relations": "Kasus, pengaduan, surat peringatan, dan insiden di departemen",
+  "Aset & Fasilitas": "Armada kendaraan, SIM tim, dan dokumen perusahaan",
+  "Desain Organisasi": "Deskripsi dan spesifikasi kerja jabatan",
   "Bantuan": "Panduan penggunaan portal",
 };
 
@@ -62,7 +139,11 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/department/requests": "Riwayat permintaan penambahan karyawan",
   "/department/competency": "Penilaian kompetensi tim Anda",
   "/department/kpi": "Evaluasi KPI karyawan di departemen",
+  "/department/relations/cases": "Kasus dan pengaduan hubungan kerja di departemen",
   "/department/warnings": "Surat peringatan yang diterbitkan",
+  "/department/learning": "Pelatihan dan sertifikasi tim Anda",
+  "/department/career": "Talent pool, promosi, dan mutasi tim Anda",
+  "/department/rewards": "Bonus dan penghargaan tim Anda",
   "/department/leaves": "Persetujuan cuti & izin karyawan",
   "/department/business-trips": "Laporan perjalanan dinas tim",
   "/department/incidents": "Laporan insiden di departemen",

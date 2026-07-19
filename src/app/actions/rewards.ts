@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { resolveManagerDepartment } from "@/lib/dept-resolve";
 
 const MISSING_REWARDS_SCHEMA = (error: { code?: string; message?: string } | null) =>
   !!error && (error.code === "PGRST204" || /column .* does not exist|could not find the .* column/i.test(error.message || ""));
@@ -105,8 +106,17 @@ export async function getAwards() {
   return (data || []) as Array<Record<string, unknown>>;
 }
 
+/** Kepala Departemen's own team's awards — read-only. */
+export async function getDeptAwards(department: string) {
+  await requireRole("department_manager", "hrd", "superadmin");
+  if (!department) return [];
+  const { data } = await supabaseAdmin.from("penghargaan_karyawan")
+    .select("*").eq("department", department).order("created_at", { ascending: false }).limit(100);
+  return (data || []) as Array<Record<string, unknown>>;
+}
+
 export async function nominateAward(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
   const employeeId = (formData.get("employee_id") as string || "").trim();
   const category = (formData.get("category") as string || "").trim();
   const description = (formData.get("description") as string || "").trim();
@@ -114,6 +124,12 @@ export async function nominateAward(formData: FormData) {
   if (!employeeId || !category) return { error: "Karyawan dan kategori wajib dipilih." };
   const { data: emp } = await supabaseAdmin.from("karyawan").select("full_name, department").eq("id", employeeId).maybeSingle();
   const e = emp as Record<string, unknown> | null;
+  if (user.role === "department_manager") {
+    const ownDept = await resolveManagerDepartment(user.email);
+    if (!ownDept || e?.department !== ownDept) {
+      return { error: "Anda hanya dapat menominasikan penghargaan untuk karyawan di departemen Anda sendiri." };
+    }
+  }
   const { error } = await supabaseAdmin.from("penghargaan_karyawan").insert({
     id: "awd-" + crypto.randomUUID(), employee_id: employeeId,
     employee_name: e?.full_name as string || "",
@@ -133,15 +149,37 @@ export async function getBonuses() {
   return (data || []) as Array<Record<string, unknown>>;
 }
 
+/** Kepala Departemen's own team's bonuses — read-only. */
+export async function getDeptBonuses(department: string) {
+  await requireRole("department_manager", "hrd", "superadmin");
+  if (!department) return [];
+  const { data } = await supabaseAdmin.from("insentif")
+    .select("*, karyawan!employee_id!inner(full_name, department, position)")
+    .eq("type", "bonus").eq("karyawan.department", department)
+    .order("created_at", { ascending: false }).limit(100);
+  return (data || []) as Array<Record<string, unknown>>;
+}
+
 export async function addBonus(formData: FormData) {
-  await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
   const employeeId = (formData.get("employee_id") as string || "").trim();
   const program = (formData.get("program") as string || "").trim();
   const rawAmount = (formData.get("amount") as string || "0").replace(/\D/g, "");
   const amount = parseInt(rawAmount, 10) || 0;
   const period = (formData.get("period") as string || "").trim();
-  const status = (formData.get("status") as string || "Pending").trim();
+  // A department_manager can only ever propose a bonus — the status they
+  // submit is ignored and forced to Pending, so they can't self-approve.
+  const status = user.role === "department_manager" ? "Pending" : (formData.get("status") as string || "Pending").trim();
   if (!employeeId || !program || amount <= 0) return { error: "Karyawan, program, dan jumlah wajib diisi." };
+  if (user.role === "department_manager") {
+    const [ownDept, { data: empRow }] = await Promise.all([
+      resolveManagerDepartment(user.email),
+      supabaseAdmin.from("karyawan").select("department").eq("id", employeeId).maybeSingle(),
+    ]);
+    if (!ownDept || (empRow as { department?: string } | null)?.department !== ownDept) {
+      return { error: "Anda hanya dapat mengajukan bonus untuk karyawan di departemen Anda sendiri." };
+    }
+  }
   const { error } = await supabaseAdmin.from("insentif").insert({
     id: "inc-" + crypto.randomUUID(), employee_id: employeeId,
     program, amount, period: period || null, status, type: "bonus", created_at: new Date().toISOString(),
@@ -149,6 +187,7 @@ export async function addBonus(formData: FormData) {
   if (MISSING_REWARDS_SCHEMA(error)) return { error: REWARDS_SCHEMA_ERROR };
   if (error) { console.error("[rewards] addBonus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/rewards/bonuses");
+  revalidatePath("/department/rewards");
   return { success: true };
 }
 

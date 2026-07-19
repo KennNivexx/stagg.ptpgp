@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { resolveManagerDepartment } from "@/lib/dept-resolve";
 
 // ── CAREER REQUESTS (lamaran internal & konsultasi karir dari karyawan) ─────
 
@@ -33,8 +34,8 @@ export async function updateCareerRequestStatus(id: string, status: CareerReques
 // ── MUTATIONS ──────────────────────────────────────────────────────────────
 
 export async function getMutations() {
-  await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin
+  const user = await requireRole("hrd", "superadmin", "department_manager");
+  let q = supabaseAdmin
     .from("mutasi_karir")
     .select("*, karyawan!inner(full_name, position, department)")
     // Salary Review rows also live in mutasi_karir (review_type set) but
@@ -43,11 +44,17 @@ export async function getMutations() {
     .is("review_type", null)
     .order("created_at", { ascending: false })
     .limit(50);
+  if (user.role === "department_manager") {
+    const ownDept = await resolveManagerDepartment(user.email);
+    if (!ownDept) return [];
+    q = q.eq("karyawan.department", ownDept);
+  }
+  const { data } = await q;
   return data || [];
 }
 
 export async function submitMutation(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
   const employeeId = (formData.get("employee_id") as string || "").trim();
   const fromDepartment = (formData.get("from_department") as string || "").trim();
   const toDepartment = (formData.get("to_department") as string || "").trim();
@@ -55,6 +62,15 @@ export async function submitMutation(formData: FormData) {
   const reason = (formData.get("reason") as string || "").trim() || null;
   if (!employeeId || !fromDepartment || !toDepartment)
     return { error: "Karyawan, departemen asal, dan departemen tujuan wajib diisi." };
+
+  // A department_manager may only initiate a mutation FOR an employee
+  // currently in their own department (the destination can be anywhere).
+  if (user.role === "department_manager") {
+    const ownDept = await resolveManagerDepartment(user.email);
+    if (!ownDept || fromDepartment !== ownDept) {
+      return { error: "Anda hanya dapat mengajukan mutasi untuk karyawan di departemen Anda sendiri." };
+    }
+  }
   const { error } = await supabaseAdmin.from("mutasi_karir").insert({
     id: "mut-" + crypto.randomUUID(),
     employee_id: employeeId, from_department: fromDepartment, to_department: toDepartment,
@@ -136,12 +152,22 @@ export async function updateMutationStatus(id: string, status: "Disetujui" | "Di
 // ── PROMOTIONS ─────────────────────────────────────────────────────────────
 
 export async function getPromotions() {
-  await requireRole("hrd", "superadmin", "department_manager");
-  const { data } = await supabaseAdmin
+  const user = await requireRole("hrd", "superadmin", "department_manager");
+  let q = supabaseAdmin
     .from("promosi_karir")
     .select("*, karyawan!inner(full_name, department, position)")
     .order("created_at", { ascending: false })
     .limit(50);
+  // A department_manager only ever sees promotions within their own
+  // department — without this, this list (and updatePromotionStatus's
+  // approve/reject) let any manager see and act on any department's
+  // promotions company-wide.
+  if (user.role === "department_manager") {
+    const ownDept = await resolveManagerDepartment(user.email);
+    if (!ownDept) return [];
+    q = q.eq("karyawan.department", ownDept);
+  }
+  const { data } = await q;
   return data || [];
 }
 
@@ -167,7 +193,20 @@ export async function submitPromotion(formData: FormData) {
 }
 
 export async function updatePromotionStatus(id: string, status: "Disetujui" | "Ditolak") {
-  await requireRole("hrd", "superadmin", "department_manager");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
+
+  const { data: promoRow } = await supabaseAdmin.from("promosi_karir").select("employee_id").eq("id", id).maybeSingle();
+  const promoEmployeeId = (promoRow as { employee_id?: string } | null)?.employee_id;
+  if (user.role === "department_manager" && promoEmployeeId) {
+    const [ownDept, { data: empRow }] = await Promise.all([
+      resolveManagerDepartment(user.email),
+      supabaseAdmin.from("karyawan").select("department").eq("id", promoEmployeeId).maybeSingle(),
+    ]);
+    const empDeptCheck = (empRow as { department?: string } | null)?.department;
+    if (!ownDept || empDeptCheck !== ownDept) {
+      return { error: "Anda hanya dapat memproses promosi untuk karyawan di departemen Anda sendiri." };
+    }
+  }
 
   if (status === "Disetujui") {
     const { data: promotion, error: fetchError } = await supabaseAdmin
