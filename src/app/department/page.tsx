@@ -75,6 +75,11 @@ function RequestModal({
   const [fBudgetRecruitment, setFBudgetRecruitment] = useState((editTarget as (Request & { budget_recruitment?: number }) | undefined)?.budget_recruitment ?? "");
   const [fBudgetAvailable, setFBudgetAvailable] = useState(!!(editTarget as (Request & { budget_available?: boolean }) | undefined)?.budget_available);
   const [fRequiredLicense, setFRequiredLicense] = useState((editTarget as (Request & { required_license?: string }) | undefined)?.required_license || "");
+  const [fSiteLocation, setFSiteLocation] = useState((editTarget as (Request & { site_location?: string }) | undefined)?.site_location || "");
+  const [fCostCenter, setFCostCenter] = useState((editTarget as (Request & { cost_center?: string }) | undefined)?.cost_center || "");
+  const [fBudgetApprovedBy, setFBudgetApprovedBy] = useState((editTarget as (Request & { budget_approved_by?: string }) | undefined)?.budget_approved_by || "");
+  const [fKpiJabatan, setFKpiJabatan] = useState((editTarget as (Request & { kpi_jabatan?: string }) | undefined)?.kpi_jabatan || "");
+  const [customPosition, setCustomPosition] = useState(!!(editTarget && !positions.includes(editTarget.position)));
   const [requestTypes, setRequestTypes] = useState<MasterOption[]>([]);
   const [requestReasons, setRequestReasons] = useState<MasterOption[]>([]);
   const [employmentTypes, setEmploymentTypes] = useState<MasterOption[]>([]);
@@ -84,10 +89,6 @@ function RequestModal({
     getRequestReasonOptions().then(setRequestReasons).catch(() => {});
     getEmploymentTypeOptions().then(setEmploymentTypes).catch(() => {});
   }, []);
-
-  // Kode contoh: ambil sub-unit pertama (bukan divisi utama jika ada)
-  const exampleUnit = orgUnits.length > 1 ? orgUnits[1] : orgUnits[0];
-  const exampleCode = exampleUnit?.code ?? "";
 
   const doSubmit = async (asDraft: boolean) => {
     if (!fDept.trim()) { setFErr("Nama departemen wajib diisi."); return; }
@@ -111,6 +112,10 @@ function RequestModal({
     if (fBudgetRecruitment !== "") fd.append("budget_recruitment", String(fBudgetRecruitment));
     if (fBudgetAvailable) fd.append("budget_available", "on");
     fd.append("required_license", fRequiredLicense);
+    fd.append("site_location", fSiteLocation.trim());
+    fd.append("cost_center", fCostCenter.trim());
+    fd.append("budget_approved_by", fBudgetApprovedBy.trim());
+    fd.append("kpi_jabatan", fKpiJabatan.trim());
     const r = editTarget
       ? await editRequest(editTarget.id, fd, !asDraft)
       : await addRequest(fd, asDraft);
@@ -287,17 +292,57 @@ function RequestModal({
               </div>
             )}
 
-            {/* Kode + Nama Posisi */}
-            <div className="grid grid-cols-5 gap-3">
-              <div className="col-span-2">
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Kode</label>
+            {/* Posisi/Jabatan + Kode Grade — persis urutan & widget form HRD:
+                dropdown dari Master Jabatan (dengan opsi ketik manual jika
+                posisi baru) berdampingan dengan Kode Grade. */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Posisi / Jabatan <span className="text-red-400 normal-case">*</span>
+                </label>
+                {positions.length > 0 ? (
+                  <>
+                    <select
+                      value={customPosition ? "__custom__" : (positions.includes(fPos) ? fPos : "")}
+                      onChange={e => {
+                        if (e.target.value === "__custom__") { setCustomPosition(true); setFPos(""); }
+                        else { setCustomPosition(false); setFPos(e.target.value); }
+                      }}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                    >
+                      <option value="">Pilih posisi</option>
+                      {positions.map(p => <option key={p} value={p}>{p}</option>)}
+                      <option value="__custom__">+ Posisi Baru (ketik manual)</option>
+                    </select>
+                    {(customPosition || (fPos && !positions.includes(fPos))) && (
+                      <input
+                        value={fPos}
+                        onChange={e => setFPos(e.target.value)}
+                        autoFocus
+                        placeholder="Ketik posisi baru"
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm mt-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <input
+                    value={fPos}
+                    onChange={e => setFPos(e.target.value)}
+                    placeholder="cth. Staff Ekspor"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Kode Grade <span className="text-[10px] font-normal normal-case text-slate-400">(opsional)</span>
+                </label>
                 <input
                   value={fGrade}
                   onChange={e => setFGrade(e.target.value)}
-                  placeholder={exampleCode || "cth. 1.1.2.1"}
+                  placeholder="cth. 1.1.1.1.0.0"
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
                 />
-                {/* Chip kode contoh — klik untuk isi otomatis */}
                 {orgUnits.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {orgUnits.slice(0, 3).map(u => (
@@ -314,17 +359,58 @@ function RequestModal({
                   </div>
                 )}
               </div>
-              <div className="col-span-3">
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  Nama Posisi <span className="text-red-400 normal-case">*</span>
-                </label>
+            </div>
+
+            {/* Jenis Permintaan + Need By Date */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Jenis Permintaan</label>
+                <select
+                  value={fType}
+                  onChange={e => setFType(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                >
+                  <option value="">Pilih jenis</option>
+                  {REQUEST_TYPE_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Need By Date</label>
                 <input
-                  value={fPos}
-                  onChange={e => setFPos(e.target.value)}
-                  placeholder="cth. Staff Ekspor, Supervisor"
+                  type="date"
+                  value={fNeedBy}
+                  onChange={e => setFNeedBy(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
                 />
               </div>
+            </div>
+
+            {/* Kategori Jenis Permintaan + Kategori Alasan (master data —
+                dipakai Validation Engine & otomasi pasca-approval) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Kategori Jenis Permintaan</label>
+                <select value={fRequestTypeId} onChange={e => setFRequestTypeId(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors">
+                  <option value="">Pilih kategori</option>
+                  {requestTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Kategori Alasan</label>
+                <select value={fReasonCategoryId} onChange={e => setFReasonCategoryId(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors">
+                  <option value="">Pilih alasan</option>
+                  {requestReasons.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Employment Type */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Employment Type</label>
+              <select value={fEmploymentTypeId} onChange={e => setFEmploymentTypeId(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors">
+                <option value="">Pilih tipe</option>
+                {employmentTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
             </div>
 
             {/* Jumlah + Urgensi */}
@@ -358,53 +444,27 @@ function RequestModal({
               </div>
             </div>
 
-            {/* Jenis Permintaan + Need By Date */}
+            {/* Lokasi/Site + Cost Center */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Jenis Permintaan</label>
-                <select
-                  value={fType}
-                  onChange={e => setFType(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
-                >
-                  <option value="">Pilih jenis</option>
-                  {REQUEST_TYPE_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Need By Date</label>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Lokasi/Site <span className="text-[10px] font-normal normal-case text-slate-400">(opsional)</span>
+                </label>
                 <input
-                  type="date"
-                  value={fNeedBy}
-                  onChange={e => setFNeedBy(e.target.value)}
+                  value={fSiteLocation} onChange={e => setFSiteLocation(e.target.value)}
+                  placeholder="cth. Pabrik Cikarang"
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
                 />
               </div>
-            </div>
-
-            {/* Kategori Jenis, Alasan, Employment Type (master data — dipakai
-                Validation Engine & otomasi pasca-approval) */}
-            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Kategori Jenis</label>
-                <select value={fRequestTypeId} onChange={e => setFRequestTypeId(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors">
-                  <option value="">Pilih</option>
-                  {requestTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Kategori Alasan</label>
-                <select value={fReasonCategoryId} onChange={e => setFReasonCategoryId(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors">
-                  <option value="">Pilih</option>
-                  {requestReasons.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Employment Type</label>
-                <select value={fEmploymentTypeId} onChange={e => setFEmploymentTypeId(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors">
-                  <option value="">Pilih</option>
-                  {employmentTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Cost Center <span className="text-[10px] font-normal normal-case text-slate-400">(opsional)</span>
+                </label>
+                <input
+                  value={fCostCenter} onChange={e => setFCostCenter(e.target.value)}
+                  placeholder="cth. CC-1001"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                />
               </div>
             </div>
 
@@ -457,6 +517,11 @@ function RequestModal({
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
                 <input type="checkbox" checked={fBudgetAvailable} onChange={e => setFBudgetAvailable(e.target.checked)} /> Budget sudah tersedia
               </label>
+              <input
+                value={fBudgetApprovedBy} onChange={e => setFBudgetApprovedBy(e.target.value)}
+                placeholder="Disetujui oleh (nama)"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+              />
             </div>
 
             {/* Kebutuhan SIM */}
@@ -475,6 +540,19 @@ function RequestModal({
                 <option value="SIM B3">SIM B3</option>
                 <option value="SIM C">SIM C</option>
               </select>
+            </div>
+
+            {/* KPI Jabatan */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                KPI Jabatan <span className="text-[10px] font-normal normal-case text-slate-400">(opsional)</span>
+              </label>
+              <textarea
+                value={fKpiJabatan} onChange={e => setFKpiJabatan(e.target.value)}
+                rows={2}
+                placeholder="Target KPI utama untuk posisi ini..."
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 resize-none transition-colors"
+              />
             </div>
 
             {fErr && (
