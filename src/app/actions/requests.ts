@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth-guard";
 import { RECRUITMENT_STAGES } from "@/lib/workforce-constants";
 import { runManpowerValidation } from "@/app/actions/manpower-validation";
 import { insertVacancyWithNumber } from "@/lib/vacancy";
+import { resolveManagerDepartment } from "@/lib/dept-resolve";
 
 const uid = () => "req-" + crypto.randomUUID();
 const historyId = () => "wrh-" + crypto.randomUUID();
@@ -71,7 +72,7 @@ async function getRequestOwnerEmail(department: string): Promise<string | null> 
 }
 
 export async function getRequests(params?: { status?: string; department?: string }): Promise<WorkforceRequest[]> {
-  await requireRole("hrd", "superadmin", "director", "department_manager");
+  const user = await requireRole("hrd", "superadmin", "director", "department_manager");
 
   let query = supabaseAdmin.from("permintaan_sdm").select("*").order("created_at", { ascending: false });
 
@@ -82,12 +83,29 @@ export async function getRequests(params?: { status?: string; department?: strin
     query = query.eq("department", params.department);
   }
 
+  // A department_manager must only ever see their own department's requests
+  // — without this, any department head reaching this action (e.g. via the
+  // HRD requests page, which allows the role for approval-step actions)
+  // would see and could act on every other department's requests too.
+  if (user.role === "department_manager") {
+    const ownDept = await resolveManagerDepartment(user.email);
+    if (!ownDept) return [];
+    query = query.eq("department", ownDept);
+  }
+
   const { data } = await query;
   return (data as WorkforceRequest[]) || [];
 }
 
 export async function getRequestHistory(requestId: string): Promise<RequestHistoryEntry[]> {
-  await requireRole("hrd", "superadmin", "director", "department_manager");
+  const user = await requireRole("hrd", "superadmin", "director", "department_manager");
+  if (user.role === "department_manager") {
+    const [ownDept, { data: reqRow }] = await Promise.all([
+      resolveManagerDepartment(user.email),
+      supabaseAdmin.from("permintaan_sdm").select("department").eq("id", requestId).maybeSingle(),
+    ]);
+    if (!ownDept || (reqRow as { department?: string } | null)?.department !== ownDept) return [];
+  }
   const { data } = await supabaseAdmin
     .from("riwayat_permintaan_sdm")
     .select("*")

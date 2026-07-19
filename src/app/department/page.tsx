@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import {
   Users, Briefcase, Clock, CheckCircle2, Plus, Send, AlertTriangle,
-  X, Info, Tag, FileText, BookOpen, ChevronRight,
+  X, Info, Tag, FileText, BookOpen, ChevronRight, Wallet,
 } from "lucide-react";
 import { getDeptData, getMyDept } from "@/app/actions/department";
 import { addRequest, editRequest, cancelRequest } from "@/app/actions/requests";
-import { getRequestTypeOptions, getRequestReasonOptions, getEmploymentTypeOptions } from "@/app/actions/manpower-validation";
+import { getRequestTypeOptions, getRequestReasonOptions, getEmploymentTypeOptions, runManpowerValidation, type ValidationResult } from "@/app/actions/manpower-validation";
+import { getManpowerApprovalStatus, type ApprovalStep } from "@/app/actions/manpower-approval";
 import EmptyState from "@/components/EmptyState";
+import { ListChecks, Users2 } from "lucide-react";
 
 interface MasterOption { id: string; code: string; name: string }
 
@@ -31,7 +33,11 @@ interface OrgUnitFlat {
 }
 
 const URGENCY = ["Tinggi", "Sedang", "Rendah"];
-const REQUEST_TYPE_OPTS = ["Posisi Baru", "Replacement", "Promosi", "Mutasi", "Pensiun", "Sementara"];
+const REQUEST_TYPE_OPTS = [
+  "Posisi Baru", "Replacement", "Tambahan Headcount", "Sementara",
+  "Magang", "Outsourcing", "Rekrutmen Proyek", "Musiman",
+  "Promosi", "Mutasi", "Pensiun",
+];
 
 
 // ─── Modal panduan + form ──────────────────────────────────────────────────────
@@ -64,6 +70,11 @@ function RequestModal({
   const [fRequestTypeId, setFRequestTypeId] = useState((editTarget as (Request & { request_type_id?: string }) | undefined)?.request_type_id || "");
   const [fReasonCategoryId, setFReasonCategoryId] = useState((editTarget as (Request & { reason_category_id?: string }) | undefined)?.reason_category_id || "");
   const [fEmploymentTypeId, setFEmploymentTypeId] = useState((editTarget as (Request & { employment_type_id?: string }) | undefined)?.employment_type_id || "");
+  const [fSalaryMin, setFSalaryMin] = useState((editTarget as (Request & { salary_range_min?: number }) | undefined)?.salary_range_min ?? "");
+  const [fSalaryMax, setFSalaryMax] = useState((editTarget as (Request & { salary_range_max?: number }) | undefined)?.salary_range_max ?? "");
+  const [fBudgetRecruitment, setFBudgetRecruitment] = useState((editTarget as (Request & { budget_recruitment?: number }) | undefined)?.budget_recruitment ?? "");
+  const [fBudgetAvailable, setFBudgetAvailable] = useState(!!(editTarget as (Request & { budget_available?: boolean }) | undefined)?.budget_available);
+  const [fRequiredLicense, setFRequiredLicense] = useState((editTarget as (Request & { required_license?: string }) | undefined)?.required_license || "");
   const [requestTypes, setRequestTypes] = useState<MasterOption[]>([]);
   const [requestReasons, setRequestReasons] = useState<MasterOption[]>([]);
   const [employmentTypes, setEmploymentTypes] = useState<MasterOption[]>([]);
@@ -95,6 +106,11 @@ function RequestModal({
     fd.append("request_type_id", fRequestTypeId);
     fd.append("reason_category_id", fReasonCategoryId);
     fd.append("employment_type_id", fEmploymentTypeId);
+    if (fSalaryMin !== "") fd.append("salary_range_min", String(fSalaryMin));
+    if (fSalaryMax !== "") fd.append("salary_range_max", String(fSalaryMax));
+    if (fBudgetRecruitment !== "") fd.append("budget_recruitment", String(fBudgetRecruitment));
+    if (fBudgetAvailable) fd.append("budget_available", "on");
+    fd.append("required_license", fRequiredLicense);
     const r = editTarget
       ? await editRequest(editTarget.id, fd, !asDraft)
       : await addRequest(fd, asDraft);
@@ -416,6 +432,51 @@ function RequestModal({
               />
             </div>
 
+            {/* Budget Kebutuhan SDM */}
+            <div className="border border-slate-200 rounded-xl p-3.5 space-y-3">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                <Wallet size={12} /> Budget Kebutuhan SDM <span className="text-[10px] font-normal normal-case text-slate-400">(opsional)</span>
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="number" value={fSalaryMin} onChange={e => setFSalaryMin(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="Gaji min (Rp)"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                />
+                <input
+                  type="number" value={fSalaryMax} onChange={e => setFSalaryMax(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="Gaji max (Rp)"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+                />
+              </div>
+              <input
+                type="number" value={fBudgetRecruitment} onChange={e => setFBudgetRecruitment(e.target.value === "" ? "" : Number(e.target.value))}
+                placeholder="Budget rekrutmen (Rp)"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+              />
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <input type="checkbox" checked={fBudgetAvailable} onChange={e => setFBudgetAvailable(e.target.checked)} /> Budget sudah tersedia
+              </label>
+            </div>
+
+            {/* Kebutuhan SIM */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                Kebutuhan SIM <span className="text-[10px] font-normal normal-case text-slate-400">(opsional, khusus posisi supir)</span>
+              </label>
+              <select
+                value={fRequiredLicense} onChange={e => setFRequiredLicense(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-slate-50 transition-colors"
+              >
+                <option value="">Tidak diperlukan</option>
+                <option value="SIM A">SIM A</option>
+                <option value="SIM B1">SIM B1</option>
+                <option value="SIM B2">SIM B2</option>
+                <option value="SIM B3">SIM B3</option>
+                <option value="SIM C">SIM C</option>
+              </select>
+            </div>
+
             {fErr && (
               <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
                 <AlertTriangle size={13} className="text-red-500 shrink-0" />
@@ -453,6 +514,113 @@ function RequestModal({
   );
 }
 
+const VALIDATION_STYLE: Record<string, string> = {
+  Pass: "bg-emerald-50 text-emerald-700",
+  Incomplete: "bg-red-50 text-red-700",
+  Warning: "bg-amber-50 text-amber-700",
+  Info: "bg-slate-50 text-slate-500",
+};
+
+const APPROVAL_STEP_STYLE: Record<string, string> = {
+  Approved: "bg-emerald-50 text-emerald-700",
+  Rejected: "bg-red-50 text-red-700",
+  Skipped: "bg-slate-100 text-slate-500",
+};
+
+// ─── Detail: Validation Engine (read-only) + status approval — data yang
+// sama persis dilihat HRD di /hrd/workforce/requests, bukan halaman terpisah
+// yang bisa berbeda-beda. ──────────────────────────────────────────────────
+function RequestDetailPanel({ request, onClose }: { request: Request; onClose: () => void }) {
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalStep[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const steps = await getManpowerApprovalStatus(request.id).catch(() => []);
+      setApprovalSteps(steps);
+      setLoading(false);
+    })();
+  }, [request.id]);
+
+  const doValidate = async () => {
+    setRevalidating(true);
+    const res = await runManpowerValidation(request.id);
+    setRevalidating(false);
+    if ("success" in res) setValidation(res.result);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative z-10 w-full max-w-lg max-h-[85vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div>
+            <h3 className="font-extrabold text-slate-800 text-sm">{request.position}</h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">Validasi &amp; Status Approval — data yang sama dilihat HRD</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
+            <X size={15} className="text-slate-500" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {loading ? (
+            <div className="py-8 text-center text-xs text-slate-400">Memuat...</div>
+          ) : (
+            <>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <ListChecks size={12} /> AI Validation Engine
+                  </p>
+                  <button onClick={doValidate} disabled={revalidating} className="text-[11px] font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                    {revalidating ? "Memvalidasi..." : "Jalankan Validasi"}
+                  </button>
+                </div>
+                {!validation ? (
+                  <p className="text-[11px] text-slate-400">Klik &quot;Jalankan Validasi&quot; untuk memeriksa kelengkapan posisi, organisasi, budget, headcount, mobilitas internal, suksesi, dan beban kerja.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {validation.checks.map(c => (
+                      <div key={c.key} className={`rounded-lg px-2.5 py-1.5 text-[11px] ${VALIDATION_STYLE[c.status] || "bg-slate-50 text-slate-500"}`}>
+                        <span className="font-bold">{c.label}:</span> {c.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                  <Users2 size={12} /> Approval Workflow
+                </p>
+                {approvalSteps.length === 0 ? (
+                  <p className="text-[11px] text-slate-400">Approval workflow belum dimulai oleh HRD.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {approvalSteps.map(s => (
+                      <div key={s.step_number} className="flex items-center justify-between px-2.5 py-1.5 bg-slate-50 rounded-lg text-[11px]">
+                        <span className="font-semibold text-slate-600">
+                          {s.step_number}. {s.step_label}
+                          {s.approver_department && <span className="text-slate-400"> ({s.approver_department})</span>}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-md font-bold ${APPROVAL_STEP_STYLE[s.status] || "bg-amber-50 text-amber-700"}`}>
+                          {s.status}{s.approved_by ? ` — ${s.approved_by}` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Halaman utama ─────────────────────────────────────────────────────────────
 export default function DeptDashboard() {
   const [deptName, setDeptName] = useState("");
@@ -464,6 +632,7 @@ export default function DeptDashboard() {
   const [toast, setToast] = useState<{ type: "error" | "success"; msg: string } | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Request | null>(null);
+  const [detailTarget, setDetailTarget] = useState<Request | null>(null);
 
   const showToast = (type: "error" | "success", msg: string) => {
     setToast({ type, msg });
@@ -537,6 +706,11 @@ export default function DeptDashboard() {
             if (deptName) loadData(deptName);
           }}
         />
+      )}
+
+      {/* Detail: Validation Engine + Approval Workflow */}
+      {detailTarget && (
+        <RequestDetailPanel request={detailTarget} onClose={() => setDetailTarget(null)} />
       )}
 
       {/* Header */}
@@ -619,6 +793,14 @@ export default function DeptDashboard() {
                   </p>
                   {req.status === "Ditolak" && req.rejection_reason && (
                     <p className="text-[10px] text-red-500 mt-0.5">Alasan: {req.rejection_reason}</p>
+                  )}
+                  {req.status !== "Draft" && (
+                    <button
+                      onClick={() => setDetailTarget(req)}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-700 mt-1"
+                    >
+                      Lihat Validasi &amp; Approval
+                    </button>
                   )}
                   {["Draft", "Ditolak"].includes(req.status) && (
                     <button

@@ -18,7 +18,7 @@ import { resolveManagerDepartment } from "@/lib/dept-resolve";
  */
 
 interface WorkflowStepConfig { step_number: number; step_label: string; approver_role: string; approver_department: string | null }
-interface ApprovalStep {
+export interface ApprovalStep {
   step_number: number; step_label: string; approver_role: string; approver_department: string | null;
   status: string; approved_by: string | null; approved_at: string | null; notes: string | null;
 }
