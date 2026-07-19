@@ -130,6 +130,12 @@ export default function RequestsClient({ departments, positions, userRole, userN
 
   const openEdit = (req: Request) => {
     setEditTarget(req);
+    // If the position isn't in the known list (e.g. a custom-typed position
+    // from a previous submission), the custom text input must be the ONLY
+    // active "position" field — otherwise both it and the <select> render
+    // with name="position" at once, and FormData.get("position") silently
+    // returns the select's empty value instead of the real typed position.
+    setCustomPosition(!positions.includes(req.position));
     setShowForm(true);
     if (detail) closeDetail();
   };
@@ -441,7 +447,7 @@ export default function RequestsClient({ departments, positions, userRole, userN
           )}
           {isManager && (
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => { setEditTarget(null); setCustomPosition(false); setShowForm(true); }}
               className="flex items-center gap-2 px-4 py-2 bg-[#CC0000] hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-colors shadow-sm"
             >
               <Plus size={15} /> Ajukan SDM
