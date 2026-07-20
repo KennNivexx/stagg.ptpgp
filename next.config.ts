@@ -2,8 +2,12 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverActions: {
-    bodySizeLimit: "10mb",
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+    staticGenerationMaxConcurrency: 1,
+    staticGenerationMinPagesPerWorker: 300,
   },
   images: {
     remotePatterns: [
