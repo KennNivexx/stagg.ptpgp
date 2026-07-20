@@ -157,12 +157,10 @@ export async function getApplicantTests() {
 
   if (!application) return { tulis: null, psikotes: null, alreadyTaken: {}, results: {} };
 
-  // Tes tersedia begitu HRD memindahkan status ke tahap "Tes Tulis & Psikotes".
-  // Status "Interview" juga tetap diizinkan mengakses (lihat hasil / kerjakan
-  // susulan) supaya kandidat yang sudah lanjut ke interview tidak kehilangan
-  // akses ke tes yang belum sempat dikerjakan.
-  const testEligibleStatuses = ["Tes Tulis & Psikotes", "Interview"];
-  if (!testEligibleStatuses.includes(application.status as string)) {
+  // Tes langsung tersedia begitu pelamar submit lamaran — tidak perlu menunggu
+  // HRD memindahkan status. Pelamar yang lamarannya sudah Ditolak tidak perlu
+  // akses tes, tapi status lain (termasuk "Menunggu Review") tetap bisa.
+  if (application.status === "Ditolak") {
     return { tulis: null, psikotes: null, alreadyTaken: {}, results: {} };
   }
 
