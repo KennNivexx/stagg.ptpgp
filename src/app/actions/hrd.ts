@@ -844,7 +844,7 @@ export async function submitApplication(formData: FormData) {
       emailSent = true;
     }).catch(err => {
       console.error("Failed to send applicant credentials email:", err);
-      emailWarning = "Lamaran tercatat, tetapi email berisi link akun gagal dikirim. Hubungi HRD untuk mendapatkan akses ke Portal Pelamar.";
+      emailWarning = `Lamaran tercatat, tetapi email akun gagal dikirim (${err instanceof Error ? err.message : "Gagal terhubung SMTP"}). Hubungi HRD untuk akses Portal Pelamar.`;
     });
   }
 

@@ -12,13 +12,20 @@ async function getMailConfig(): Promise<{ user: string; pass: string }> {
       (data || []).map((r: { key: string; value: string }) => [r.key, r.value])
     );
 
-    const user = map.mail_gmail_user || process.env.GMAIL_USER || "";
-    const pass = map.mail_gmail_app_password || process.env.GMAIL_APP_PASSWORD || "";
+    const dbUser = (map.mail_gmail_user || "").trim();
+    const dbPass = (map.mail_gmail_app_password || "").replace(/\s+/g, "");
+
+    const envUser = (process.env.GMAIL_USER || "").trim();
+    const envPass = (process.env.GMAIL_APP_PASSWORD || "").replace(/\s+/g, "");
+
+    const user = dbUser || envUser;
+    const pass = dbPass || envPass;
+
     return { user, pass };
   } catch {
     return {
-      user: process.env.GMAIL_USER || "",
-      pass: process.env.GMAIL_APP_PASSWORD || "",
+      user: (process.env.GMAIL_USER || "").trim(),
+      pass: (process.env.GMAIL_APP_PASSWORD || "").replace(/\s+/g, ""),
     };
   }
 }
@@ -53,6 +60,8 @@ export async function sendMail({ to, subject, html }: MailOptions): Promise<void
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user, pass },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
   });
 
   await transporter.sendMail({
@@ -65,13 +74,25 @@ export async function sendMail({ to, subject, html }: MailOptions): Promise<void
 
 export async function testMailConfig(): Promise<{ ok: boolean; error?: string; user?: string }> {
   const { user, pass } = await getMailConfig();
-  if (!user || !pass) return { ok: false, error: "Gmail belum dikonfigurasi." };
+  if (!user || !pass) return { ok: false, error: "Gmail belum dikonfigurasi. Isi email & App Password terlebih dahulu." };
   try {
-    const transporter = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+    });
     await transporter.verify();
     return { ok: true, user };
   } catch (e) {
-    return { ok: false, error: (e as Error).message };
+    const err = e as Error & { code?: string; responseCode?: number };
+    let msg = err.message || "Gagal menghubungkan ke Gmail SMTP.";
+    if (msg.includes("535") || msg.includes("BadCredentials") || msg.includes("Username and Password not accepted")) {
+      msg = "Kredensial ditolak oleh Gmail (Error 535). Pastikan Anda menggunakan Google App Password 16 karakter (bukan password akun biasa) dan 2-Step Verification sudah diaktifkan di akun Google Anda.";
+    } else if (msg.includes("ETIMEDOUT") || msg.includes("ECONNREFUSED")) {
+      msg = "Koneksi ke SMTP Gmail timeout / diblokir jaringan. Periksa koneksi internet Anda.";
+    }
+    return { ok: false, error: msg };
   }
 }
 

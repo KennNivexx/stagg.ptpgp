@@ -41,7 +41,17 @@ export async function saveSystemSetting(key: string, value: string) {
 
 export async function saveMultipleSettings(settings: Record<string, string>) {
   await requireRole("hrd", "superadmin");
-  const rows = Object.entries(settings).map(([key, value]) => ({ key, value, updated_at: new Date().toISOString() }));
+  const cleaned: Record<string, string> = {};
+  for (const [k, v] of Object.entries(settings)) {
+    if (k === "mail_gmail_user") {
+      cleaned[k] = (v || "").trim();
+    } else if (k === "mail_gmail_app_password") {
+      cleaned[k] = (v || "").replace(/\s+/g, "");
+    } else {
+      cleaned[k] = v;
+    }
+  }
+  const rows = Object.entries(cleaned).map(([key, value]) => ({ key, value, updated_at: new Date().toISOString() }));
   const { error } = await supabaseAdmin.from("pengaturan_sistem").upsert(rows, { onConflict: "key" });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
   if (error) { console.error("[admin] saveMultipleSettings error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
