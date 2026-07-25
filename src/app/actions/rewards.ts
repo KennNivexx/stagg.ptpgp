@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { resolveManagerDepartment } from "@/lib/dept-resolve";
+import { sumEmployeeComponentsByType } from "@/app/actions/payroll-components";
 
 const MISSING_REWARDS_SCHEMA = (error: { code?: string; message?: string } | null) =>
   !!error && (error.code === "PGRST204" || /column .* does not exist|could not find the .* column/i.test(error.message || ""));
@@ -20,16 +21,14 @@ export async function getSalaryStructureByEmployee(employeeId: string) {
   return data;
 }
 
+// Basic salary + PTKP status only — the structural fields every employee
+// always has. Tunjangan/potongan line items are dynamic now (see
+// payroll-components.ts: saveEmployeeSalaryComponents) so HRD can add new
+// component types from the UI without a code change.
 export async function saveSalaryStructure(formData: FormData) {
   await requireRole("hrd", "superadmin");
   const employeeId = (formData.get("employee_id") as string || "").trim();
   const basicSalary = parseInt(formData.get("basic_salary") as string || "0", 10) || 0;
-  const transportAllowance = parseInt(formData.get("transport_allowance") as string || "0", 10) || 0;
-  const mealAllowance = parseInt(formData.get("meal_allowance") as string || "0", 10) || 0;
-  const housingAllowance = parseInt(formData.get("housing_allowance") as string || "0", 10) || 0;
-  const positionAllowance = parseInt(formData.get("position_allowance") as string || "0", 10) || 0;
-  const kompensasi = parseInt(formData.get("kompensasi") as string || "0", 10) || 0;
-  const potonganAmalJariyah = parseInt(formData.get("potongan_amal_jariyah") as string || "0", 10) || 0;
   const ptkpStatus = (formData.get("ptkp_status") as string || "TK/0").trim();
   if (!employeeId) return { error: "Pilih karyawan terlebih dahulu." };
 
@@ -39,24 +38,13 @@ export async function saveSalaryStructure(formData: FormData) {
     .eq("employee_id", employeeId)
     .maybeSingle();
 
-  const basePayload = {
+  const { error } = await supabaseAdmin.from("struktur_gaji").upsert({
     id: (existing as { id: string } | null)?.id || ("sal-" + crypto.randomUUID()),
     employee_id: employeeId,
     basic_salary: basicSalary,
-    transport_allowance: transportAllowance,
-    meal_allowance: mealAllowance,
-    housing_allowance: housingAllowance,
-    position_allowance: positionAllowance,
     ptkp_status: ptkpStatus,
     updated_at: new Date().toISOString(),
-  };
-  let { error } = await supabaseAdmin.from("struktur_gaji")
-    .upsert({ ...basePayload, kompensasi, potongan_amal_jariyah: potonganAmalJariyah }, { onConflict: "employee_id" });
-  if (error && MISSING_REWARDS_SCHEMA(error)) {
-    // Migrasi 20260811001_payroll_kompensasi_amal_jariyah.sql belum dijalankan
-    // — simpan komponen lain tanpa kompensasi/potongan amal jariyah dulu.
-    ({ error } = await supabaseAdmin.from("struktur_gaji").upsert(basePayload, { onConflict: "employee_id" }));
-  }
+  }, { onConflict: "employee_id" });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
   if (error) { console.error("[rewards] saveSalaryStructure error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/rewards/salary");
@@ -512,8 +500,8 @@ export async function updateSalaryReviewStatus(id: string, approve: boolean): Pr
 export async function getTotalRewardsStatement(karyawanId: string, year: number) {
   await requireRole("hrd", "superadmin", "director");
 
-  const [{ data: salaryRow }, { data: incentiveRows }, { data: payslipRows }, { data: emp }] = await Promise.all([
-    supabaseAdmin.from("struktur_gaji").select("*").eq("employee_id", karyawanId).maybeSingle(),
+  const [{ data: salaryRow }, { data: incentiveRows }, { data: payslipRows }, { data: emp }, { tunjangan: allowancesMonthly }] = await Promise.all([
+    supabaseAdmin.from("struktur_gaji").select("basic_salary").eq("employee_id", karyawanId).maybeSingle(),
     // period disimpan sebagai teks "MM/YYYY" (mis. "03/2026") — .gte/.lte di
     // sini akan jadi perbandingan string leksikografis yang salah (membanding-
     // kan digit bulan duluan, bukan tahun), jadi bocor data dari tahun lain.
@@ -522,12 +510,11 @@ export async function getTotalRewardsStatement(karyawanId: string, year: number)
       .like("period", `%/${year}`),
     supabaseAdmin.from("penggajian").select("*").eq("employee_id", karyawanId).eq("year", year),
     supabaseAdmin.from("karyawan").select("full_name, position, department").eq("id", karyawanId).maybeSingle(),
+    sumEmployeeComponentsByType(karyawanId),
   ]);
 
   const salary = salaryRow as Record<string, unknown> | null;
   const basicMonthly = Number(salary?.basic_salary) || 0;
-  const allowancesMonthly = (Number(salary?.transport_allowance) || 0) + (Number(salary?.meal_allowance) || 0)
-    + (Number(salary?.housing_allowance) || 0) + (Number(salary?.position_allowance) || 0) + (Number(salary?.kompensasi) || 0);
 
   const incentives = (incentiveRows || []) as { amount: number; type: string; program: string }[];
   const bonusTotal = incentives.filter(i => i.type === "bonus").reduce((s, i) => s + (Number(i.amount) || 0), 0);

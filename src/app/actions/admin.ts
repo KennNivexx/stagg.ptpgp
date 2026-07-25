@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { testMailConfig } from "@/lib/mailer";
+import { sumEmployeeComponentsByType } from "@/app/actions/payroll-components";
 
 export async function testGmailConfig() {
   await requireRole("hrd", "superadmin");
@@ -243,20 +244,14 @@ export async function generatePayslip(formData: FormData) {
   const { data: existing } = await supabaseAdmin.from("penggajian")
     .select("id").eq("employee_id", employeeId).eq("month", month).eq("year", year).maybeSingle();
   if (existing) return { error: "Slip gaji untuk periode ini sudah dibuat." };
-  // select("*") rather than an explicit column list — kompensasi/
-  // potongan_amal_jariyah only exist once migration 20260811001 has run;
-  // "*" degrades gracefully (columns just come back undefined) instead of
-  // erroring out on the whole payslip generation until then.
   const { data: salaryData } = await supabaseAdmin.from("struktur_gaji")
-    .select("*")
+    .select("basic_salary, ptkp_status")
     .eq("employee_id", employeeId).maybeSingle();
   const basic = Number(salaryData?.basic_salary) || 0;
-  const allowances = (Number(salaryData?.transport_allowance) || 0) +
-    (Number(salaryData?.meal_allowance) || 0) +
-    (Number(salaryData?.housing_allowance) || 0) +
-    (Number(salaryData?.position_allowance) || 0) +
-    (Number(salaryData?.kompensasi) || 0);
-  const amalJariyah = Number(salaryData?.potongan_amal_jariyah) || 0;
+  // Dynamic components (tunjangan/potongan) — see payroll-components.ts.
+  // Falls back to the legacy fixed struktur_gaji columns until the dynamic-
+  // components migration has run, so this doesn't hard-break in the meantime.
+  const { tunjangan: allowances, potongan: amalJariyah } = await sumEmployeeComponentsByType(employeeId);
   if (basic === 0) return { error: "Belum ada struktur gaji untuk karyawan ini. Isi di menu Komponen Gaji terlebih dahulu." };
 
   // ── Bonus/insentif yang sudah final (Disetujui/Dibayarkan) untuk periode
@@ -422,11 +417,9 @@ async function computePayrollEntry(employeeId: string, month: number, year: numb
     .select("id").eq("employee_id", employeeId).eq("month", month).eq("year", year).maybeSingle();
   if (existing) return { error: "exists" };
   const { data: sd } = await supabaseAdmin.from("struktur_gaji")
-    .select("*").eq("employee_id", employeeId).maybeSingle();
+    .select("basic_salary, ptkp_status").eq("employee_id", employeeId).maybeSingle();
   const basic = Number(sd?.basic_salary) || 0;
-  const allowances = (Number(sd?.transport_allowance) || 0) + (Number(sd?.meal_allowance) || 0)
-    + (Number(sd?.housing_allowance) || 0) + (Number(sd?.position_allowance) || 0) + (Number(sd?.kompensasi) || 0);
-  const amalJariyah = Number(sd?.potongan_amal_jariyah) || 0;
+  const { tunjangan: allowances, potongan: amalJariyah } = await sumEmployeeComponentsByType(employeeId);
   if (basic === 0) return { error: "Struktur gaji belum diisi." };
   const periodKey = `${String(month).padStart(2, "0")}/${year}`;
   const { data: bonusRows } = await supabaseAdmin.from("insentif").select("amount")

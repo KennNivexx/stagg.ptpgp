@@ -185,6 +185,7 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     items: [
       { href: "/hrd/rewards/payroll", label: "Payroll" },
       { href: "/hrd/rewards/salary", label: "Komponen Gaji" },
+      { href: "/hrd/rewards/komponen-gaji", label: "Jenis Tunjangan & Potongan" },
       { href: "/hrd/rewards/formula", label: "Formula Reward" },
       { href: "/hrd/rewards/bonuses", label: "Bonus" },
       { href: "/hrd/rewards/incentives", label: "Insentif" },

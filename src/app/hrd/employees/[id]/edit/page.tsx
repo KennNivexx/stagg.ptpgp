@@ -46,10 +46,6 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
   });
   const [salaryData, setSalaryData] = useState({
     basic_salary: "",
-    transport_allowance: "",
-    meal_allowance: "",
-    housing_allowance: "",
-    position_allowance: "",
     ptkp_status: "TK/0",
   });
 
@@ -102,10 +98,6 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
         const s = data as Record<string, unknown>;
         setSalaryData({
           basic_salary: s.basic_salary != null ? String(s.basic_salary) : "",
-          transport_allowance: s.transport_allowance != null ? String(s.transport_allowance) : "",
-          meal_allowance: s.meal_allowance != null ? String(s.meal_allowance) : "",
-          housing_allowance: s.housing_allowance != null ? String(s.housing_allowance) : "",
-          position_allowance: s.position_allowance != null ? String(s.position_allowance) : "",
           ptkp_status: s.ptkp_status as string || "TK/0",
         });
       });
@@ -119,13 +111,6 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setSalaryData({ ...salaryData, [e.target.name]: e.target.value });
   };
-
-  const totalSalary =
-    (parseInt(salaryData.basic_salary || "0", 10) || 0) +
-    (parseInt(salaryData.transport_allowance || "0", 10) || 0) +
-    (parseInt(salaryData.meal_allowance || "0", 10) || 0) +
-    (parseInt(salaryData.housing_allowance || "0", 10) || 0) +
-    (parseInt(salaryData.position_allowance || "0", 10) || 0);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -309,7 +294,10 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
           <div className="p-8 border-b border-gray-100 bg-gray-50/50">
             <h2 className="text-lg font-bold text-[#1A2530] mb-1">Penentuan Gaji</h2>
-            <p className="text-xs text-gray-500 mb-6">Komponen gaji ini dipakai sebagai dasar perhitungan payroll bulanan.</p>
+            <p className="text-xs text-gray-500 mb-6">
+              Gaji pokok & status PTKP dasar. Tunjangan dan potongan (yang bisa ditambah jenisnya sendiri) dikelola di{" "}
+              <Link href="/hrd/rewards/salary" className="text-[#CC0000] font-semibold hover:underline">menu Komponen Gaji</Link>.
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Gaji Pokok</label>
@@ -328,26 +316,6 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                   <option value="K/3">K/3 - Kawin, 3 Tanggungan</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Tunjangan Transport</label>
-                <input type="number" name="transport_allowance" min={0} value={salaryData.transport_allowance} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white" placeholder="0" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Tunjangan Makan</label>
-                <input type="number" name="meal_allowance" min={0} value={salaryData.meal_allowance} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white" placeholder="0" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Tunjangan Perumahan</label>
-                <input type="number" name="housing_allowance" min={0} value={salaryData.housing_allowance} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white" placeholder="0" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Tunjangan Jabatan</label>
-                <input type="number" name="position_allowance" min={0} value={salaryData.position_allowance} onChange={handleSalaryChange} className="w-full border border-gray-200 p-3 text-sm focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none transition-colors bg-white" placeholder="0" />
-              </div>
-            </div>
-            <div className="mt-6 p-4 bg-white border border-gray-200 rounded-lg flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-600">Total Gaji Bruto</span>
-              <span className="text-lg font-bold text-[#CC0000]">Rp {totalSalary.toLocaleString("id-ID")}</span>
             </div>
           </div>
 
