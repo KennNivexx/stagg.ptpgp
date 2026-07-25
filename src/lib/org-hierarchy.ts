@@ -44,6 +44,19 @@ export function getLevelLabel(level: number): string {
   }
 }
 
+// Display-only formatting: pads/truncates a dotted org code to a fixed
+// number of segments (company standard is 7, e.g. "1.1.0.0.0.0.0") so codes
+// look consistent across the org chart regardless of how deep that branch
+// actually goes. Deliberately NOT applied to the stored `code`/`parent_code`
+// values themselves — those drive real parent-child matching throughout the
+// app (formasi, jabatan, employee grouping), and normalizing them in the
+// database would risk breaking those relationships across many tables.
+export function formatOrgCode(code: string, segments = 7): string {
+  const parts = code.split(".");
+  while (parts.length < segments) parts.push("0");
+  return parts.slice(0, segments).join(".");
+}
+
 export const LEVEL_COLORS: Record<number, string> = {
   0: "bg-red-100 text-red-700",
   1: "bg-slate-800 text-white",

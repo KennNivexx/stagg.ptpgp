@@ -212,16 +212,35 @@ export default function KpiForm({ employees, evaluations, kpiCatalog }: Props) {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between"><span className="text-slate-500">Karyawan</span><span className="font-bold">{(detail.karyawan as Record<string, string>)?.full_name || "-"}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Periode</span><span className="font-bold">{detail.period as string}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Skor</span>
+              <div className="flex justify-between"><span className="text-slate-500">Skor Target Achievement (KPI)</span>
                 <span className={`px-3 py-1 rounded-lg text-xs font-bold ${scoreColor(Number(detail.score))}`}>{Number(detail.score).toFixed(0)}</span>
               </div>
+              <div className="flex justify-between"><span className="text-slate-500">Skor Culture / Core Values</span>
+                {detail.culture_score != null ? (
+                  <span className={`px-3 py-1 rounded-lg text-xs font-bold ${scoreColor(Number(detail.culture_score))}`}>{Number(detail.culture_score).toFixed(0)}</span>
+                ) : (
+                  <span className="text-xs text-slate-300">Belum ada feedback core values</span>
+                )}
+              </div>
+              <div className="flex justify-between"><span className="text-slate-500">Skor Akhir (Weighted)</span>
+                {detail.final_score != null ? (
+                  <span className={`px-3 py-1 rounded-lg text-xs font-bold ${scoreColor(Number(detail.final_score))}`}>{Number(detail.final_score).toFixed(0)}</span>
+                ) : (
+                  <span className="text-xs text-slate-300">-</span>
+                )}
+              </div>
+              {(detail.ta_weight_used != null || detail.culture_weight_used != null) && (
+                <div className="flex justify-between"><span className="text-slate-500">Bobot TA : Culture</span>
+                  <span className="text-xs font-semibold text-slate-600">{detail.ta_weight_used as number ?? "-"}% : {detail.culture_weight_used as number ?? "-"}%</span>
+                </div>
+              )}
               <div className="flex justify-between"><span className="text-slate-500">Status</span>
                 <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${statusBadge(detail.status as string)}`}>{statusLabel(detail.status as string)}</span>
               </div>
               {!!detail.comments && <div className="flex justify-between"><span className="text-slate-500">Catatan</span><span className="font-medium text-xs text-right max-w-xs">{detail.comments as string}</span></div>}
-              {Array.isArray(detail.metrics) && (detail.metrics as Array<Record<string, unknown>>).length > 0 && (
+              {Array.isArray(detail.metrics) && (detail.metrics as Array<Record<string, unknown>>).length > 0 ? (
                 <div className="pt-3 border-t border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Breakdown KPI Metrics</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Breakdown KPI Metrics (dari KPI Catalog jabatan)</p>
                   <div className="space-y-1.5">
                     {(detail.metrics as Array<{ metric: string; weight: number; value: number }>).map((m, i) => (
                       <div key={i} className="flex items-center justify-between text-xs">
@@ -230,6 +249,10 @@ export default function KpiForm({ employees, evaluations, kpiCatalog }: Props) {
                       </div>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="pt-3 border-t border-slate-100">
+                  <p className="text-[10px] text-slate-400">Evaluasi ini belum pakai rincian dari KPI Catalog jabatan — cuma skor total manual.</p>
                 </div>
               )}
             </div>

@@ -57,6 +57,15 @@ export default function SalaryForm({ employees, salaryRecords, jenisKomponen }: 
     if (employeeId) void loadComponents(employeeId);
   }
 
+  // Row-level "Edit" in the Struktur Gaji Karyawan table — opens the form
+  // pre-loaded for that employee instead of making HRD reopen the form and
+  // re-pick the employee from the dropdown every time.
+  function startEditRow(employeeId: string) {
+    setEditingId("new");
+    handleEmployeeChange(employeeId);
+    setMsg(null);
+  }
+
   function addComponentRow(komponenId: string) {
     if (!komponenId || componentRows.some((r) => r.komponen_id === komponenId)) return;
     setComponentRows((rows) => [...rows, { komponen_id: komponenId, jumlah: "0" }]);
@@ -195,14 +204,14 @@ export default function SalaryForm({ employees, salaryRecords, jenisKomponen }: 
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
-                {["Karyawan", "Gaji Pokok", "Tunjangan", "Potongan", "Status PTKP", "Total Kotor"].map((h) => (
-                  <th key={h} className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-left">{h}</th>
+                {["Karyawan", "Gaji Pokok", "Tunjangan", "Potongan", "Status PTKP", "Total Kotor", ""].map((h) => (
+                  <th key={h} className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase ${h === "" ? "text-right" : "text-left"}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {salaryRecords.length === 0 ? (
-                <tr><td colSpan={6} className="p-0">
+                <tr><td colSpan={7} className="p-0">
                   <EmptyState icon={Wallet} title={'Belum ada struktur gaji. Klik "Edit Komponen Gaji" untuk mulai.'} />
                 </td></tr>
               ) : salaryRecords.map((rec) => {
@@ -225,6 +234,12 @@ export default function SalaryForm({ employees, salaryRecords, jenisKomponen }: 
                     <td className="px-6 py-4 text-xs text-red-600 font-medium">{deductions > 0 ? `-Rp ${fmt(deductions)}` : "-"}</td>
                     <td className="px-6 py-4 text-xs text-slate-600">{(rec.ptkp_status as string) || "TK/0"}</td>
                     <td className="px-6 py-4 text-xs font-extrabold text-[#1A2530]">Rp {fmt(gross)}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => startEditRow(rec.employee_id as string)} title="Edit gaji karyawan ini"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-[#CC0000] hover:bg-red-50 transition-colors">
+                        <Pencil size={13} />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}

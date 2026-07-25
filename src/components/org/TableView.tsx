@@ -3,7 +3,7 @@
 import { useState, useMemo, Fragment } from "react";
 import { Edit3, PlusCircle, Trash2, User, Search, ChevronUp, ChevronDown, UserCheck } from "lucide-react";
 import type { OrgUnit, FlatUnit } from "@/types/org";
-import { getLevelLabel, LEVEL_COLORS, DEFAULT_LEVEL_COLOR, sortByPositionRank } from "@/lib/org-hierarchy";
+import { getLevelLabel, LEVEL_COLORS, DEFAULT_LEVEL_COLOR, sortByPositionRank, formatOrgCode } from "@/lib/org-hierarchy";
 
 interface FlatUnitWithEmployees extends FlatUnit {
   employees: OrgUnit[];
@@ -163,7 +163,7 @@ export default function TableView({ data, onClick, onEdit, onAdd, onDelete }: Ta
                     onClick={() => onClick({ ...u, children: [] } as OrgUnit)}
                   >
                     <td className="py-2.5 px-4">
-                      <span className="text-xs font-mono text-slate-500">{u.code}</span>
+                      <span className="text-xs font-mono text-slate-500">{formatOrgCode(u.code)}</span>
                     </td>
                     <td className="py-2.5 px-4">
                       <span
@@ -232,7 +232,7 @@ export default function TableView({ data, onClick, onEdit, onAdd, onDelete }: Ta
                             <div key={emp.id} className="flex items-center gap-1.5 bg-white border border-emerald-100 rounded-lg px-2.5 py-1.5">
                               <UserCheck size={11} className="text-emerald-500 shrink-0" />
                               <span className="text-xs font-semibold text-slate-700">{emp.name}</span>
-                              <code className="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-mono">{emp.code}</code>
+                              <code className="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-mono">{formatOrgCode(emp.code)}</code>
                             </div>
                           ))}
                         </div>

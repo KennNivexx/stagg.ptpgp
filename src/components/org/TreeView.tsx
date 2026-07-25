@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronRight, ChevronDown, Edit3, PlusCircle, Trash2, User, UserCheck } from "lucide-react";
 import type { OrgUnit } from "@/types/org";
-import { getLevelLabel, LEVEL_COLORS, DEFAULT_LEVEL_COLOR, sortByPositionRank } from "@/lib/org-hierarchy";
+import { getLevelLabel, LEVEL_COLORS, DEFAULT_LEVEL_COLOR, sortByPositionRank, formatOrgCode } from "@/lib/org-hierarchy";
 
 function countMembers(node: OrgUnit): number {
   let count = node.children.length;
@@ -46,7 +46,7 @@ function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodePro
           {node.position && (
             <span className="text-[10px] text-slate-400 truncate">{node.position}</span>
           )}
-          <code className="text-[9px] text-slate-300 font-mono ml-auto shrink-0">{node.code}</code>
+          <code className="text-[9px] text-slate-300 font-mono ml-auto shrink-0">{formatOrgCode(node.code)}</code>
         </div>
       </div>
     );
@@ -74,7 +74,7 @@ function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodePro
         <div className="flex-1 min-w-0 flex items-center gap-3">
           <div className="min-w-0">
             <p className="text-sm font-bold text-slate-800 truncate">{node.name}</p>
-            <p className="text-[10px] text-slate-400 font-mono">{node.code}</p>
+            <p className="text-[10px] text-slate-400 font-mono">{formatOrgCode(node.code)}</p>
           </div>
           {node.leader_name && (
             <div className="flex items-center gap-1.5 text-[11px] shrink-0 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200" title="Kepala unit / pimpinan">
@@ -136,7 +136,7 @@ function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodePro
                 <UserCheck size={11} className="text-emerald-500 shrink-0" />
                 <span className="text-xs font-semibold text-slate-700 truncate">{emp.name}</span>
                 {emp.position && <span className="text-[10px] text-slate-400 truncate">{emp.position}</span>}
-                <code className="text-[9px] text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded font-mono ml-auto shrink-0">{emp.code}</code>
+                <code className="text-[9px] text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded font-mono ml-auto shrink-0">{formatOrgCode(emp.code)}</code>
               </div>
             ))}
           </div>

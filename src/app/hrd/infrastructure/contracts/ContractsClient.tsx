@@ -200,6 +200,10 @@ export default function ContractsClient({ employees: initialEmployees, contracts
                 <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shrink-0 ${statusBadgeColor(remaining)}`}>
                   {remaining <= 0 ? "Berakhir" : `${remaining} hari lagi`}
                 </span>
+                <button onClick={() => openEditContract(emp)} title="Perpanjang atau ubah kontrak"
+                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-black text-white text-[10px] font-bold rounded-lg transition-colors inline-flex items-center gap-1 shrink-0">
+                  <RefreshCw size={10} /> Perpanjang
+                </button>
               </div>
             ))}
           </div>
@@ -334,25 +338,33 @@ export default function ContractsClient({ employees: initialEmployees, contracts
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      {emp.status === "Kontrak" && (
-                        <button onClick={() => handleUpdateStatus(emp.id, "Tetap")} disabled={isUpdating}
-                          className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-lg transition-colors inline-flex items-center gap-1 disabled:opacity-60">
-                          {isUpdating ? <RefreshCw size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
-                          Angkat Tetap
-                        </button>
-                      )}
-                      {emp.status === "Magang" && (
-                        <button onClick={() => handleUpdateStatus(emp.id, "Kontrak")} disabled={isUpdating}
-                          className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded-lg transition-colors inline-flex items-center gap-1 disabled:opacity-60">
-                          {isUpdating ? <RefreshCw size={10} className="animate-spin" /> : <FileText size={10} />}
-                          Jadikan Kontrak
-                        </button>
-                      )}
-                      {emp.status === "Tetap" && (
-                        <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-                          <CheckCircle2 size={10} /> Tetap
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {remaining <= 0 && (
+                          <button onClick={() => openEditContract(emp)} title="Isi tanggal kontrak baru"
+                            className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-colors inline-flex items-center gap-1">
+                            <RefreshCw size={10} /> Perpanjang Kontrak
+                          </button>
+                        )}
+                        {emp.status === "Kontrak" && (
+                          <button onClick={() => handleUpdateStatus(emp.id, "Tetap")} disabled={isUpdating}
+                            className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-lg transition-colors inline-flex items-center gap-1 disabled:opacity-60">
+                            {isUpdating ? <RefreshCw size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
+                            Angkat Tetap
+                          </button>
+                        )}
+                        {emp.status === "Magang" && (
+                          <button onClick={() => handleUpdateStatus(emp.id, "Kontrak")} disabled={isUpdating}
+                            className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded-lg transition-colors inline-flex items-center gap-1 disabled:opacity-60">
+                            {isUpdating ? <RefreshCw size={10} className="animate-spin" /> : <FileText size={10} />}
+                            Jadikan Kontrak
+                          </button>
+                        )}
+                        {emp.status === "Tetap" && remaining > 0 && (
+                          <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                            <CheckCircle2 size={10} /> Tetap
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
