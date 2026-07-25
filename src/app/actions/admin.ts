@@ -243,14 +243,20 @@ export async function generatePayslip(formData: FormData) {
   const { data: existing } = await supabaseAdmin.from("penggajian")
     .select("id").eq("employee_id", employeeId).eq("month", month).eq("year", year).maybeSingle();
   if (existing) return { error: "Slip gaji untuk periode ini sudah dibuat." };
+  // select("*") rather than an explicit column list — kompensasi/
+  // potongan_amal_jariyah only exist once migration 20260811001 has run;
+  // "*" degrades gracefully (columns just come back undefined) instead of
+  // erroring out on the whole payslip generation until then.
   const { data: salaryData } = await supabaseAdmin.from("struktur_gaji")
-    .select("basic_salary, transport_allowance, meal_allowance, housing_allowance, position_allowance, ptkp_status")
+    .select("*")
     .eq("employee_id", employeeId).maybeSingle();
   const basic = Number(salaryData?.basic_salary) || 0;
   const allowances = (Number(salaryData?.transport_allowance) || 0) +
     (Number(salaryData?.meal_allowance) || 0) +
     (Number(salaryData?.housing_allowance) || 0) +
-    (Number(salaryData?.position_allowance) || 0);
+    (Number(salaryData?.position_allowance) || 0) +
+    (Number(salaryData?.kompensasi) || 0);
+  const amalJariyah = Number(salaryData?.potongan_amal_jariyah) || 0;
   if (basic === 0) return { error: "Belum ada struktur gaji untuk karyawan ini. Isi di menu Komponen Gaji terlebih dahulu." };
 
   // ── Bonus/insentif yang sudah final (Disetujui/Dibayarkan) untuk periode
@@ -267,11 +273,11 @@ export async function generatePayslip(formData: FormData) {
 
   const { monthlyTax, bpjsHealth, bpjsEmployment } = await computeTaxAndBpjs(basic, allowances, (salaryData?.ptkp_status as string) || "TK/0");
 
-  // `deductions` represents OTHER non-tax, non-BPJS deductions (e.g. potongan
-  // pinjaman) — currently none are implemented, so it stays 0. Tax and BPJS
-  // each have their own dedicated columns/rows on the payslip so nothing is
-  // double-counted.
-  const deductions = 0;
+  // `deductions` represents OTHER non-tax, non-BPJS deductions — currently
+  // just Potongan Amal Jariyah (a fixed per-employee amount from struktur_gaji,
+  // matching the real PGP payslip format). Tax and BPJS each have their own
+  // dedicated columns/rows on the payslip so nothing is double-counted.
+  const deductions = amalJariyah;
   const netSalary = basic + allowances + bonus - monthlyTax - bpjsHealth - bpjsEmployment - deductions;
 
   const { error } = await supabaseAdmin.from("penggajian").insert({
@@ -419,18 +425,19 @@ async function computePayrollEntry(employeeId: string, month: number, year: numb
     .select("*").eq("employee_id", employeeId).maybeSingle();
   const basic = Number(sd?.basic_salary) || 0;
   const allowances = (Number(sd?.transport_allowance) || 0) + (Number(sd?.meal_allowance) || 0)
-    + (Number(sd?.housing_allowance) || 0) + (Number(sd?.position_allowance) || 0);
+    + (Number(sd?.housing_allowance) || 0) + (Number(sd?.position_allowance) || 0) + (Number(sd?.kompensasi) || 0);
+  const amalJariyah = Number(sd?.potongan_amal_jariyah) || 0;
   if (basic === 0) return { error: "Struktur gaji belum diisi." };
   const periodKey = `${String(month).padStart(2, "0")}/${year}`;
   const { data: bonusRows } = await supabaseAdmin.from("insentif").select("amount")
     .eq("employee_id", employeeId).eq("period", periodKey).in("status", ["Disetujui", "Dibayarkan"]);
   const bonus = (bonusRows || []).reduce((s, r) => s + (Number((r as Record<string, unknown>).amount) || 0), 0);
   const { monthlyTax: tax, bpjsHealth: bpH, bpjsEmployment: bpE } = await computeTaxAndBpjs(basic, allowances, (sd?.ptkp_status as string) || "TK/0");
-  const net = basic + allowances + bonus - tax - bpH - bpE;
+  const net = basic + allowances + bonus - tax - bpH - bpE - amalJariyah;
   const { error } = await supabaseAdmin.from("penggajian").insert({
     id: crypto.randomUUID(), employee_id: employeeId, month, year,
     basic_salary: basic, allowances, bonus, tax, bpjs_health: bpH, bpjs_employment: bpE,
-    deductions: 0, net_salary: net, status: "Draft", created_at: new Date().toISOString(),
+    deductions: amalJariyah, net_salary: net, status: "Draft", created_at: new Date().toISOString(),
   });
   if (error) { console.error("[admin] computePayrollEntry:", error.message); return { error: "Gagal" }; }
   return { success: true };

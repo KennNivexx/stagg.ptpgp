@@ -424,6 +424,7 @@ export default function RequestsClient({ departments, positions, userRole, userN
         <div>
           <h1 className="text-2xl font-bold text-[#1A2530] mb-1">Pengajuan SDM</h1>
           <p className="text-sm text-gray-500">Ajukan dan pantau permintaan penambahan tenaga kerja.</p>
+          <p className="text-xs text-slate-400 mt-1">Alur status: <strong>Draft</strong> (masih bisa diedit) → <strong>Pending</strong> (diajukan) → <strong>Menunggu Finance</strong> (kalau perlu approval budget) → <strong>Direview Direktur</strong> → <strong>Disetujui</strong>/<strong>Ditolak</strong>. Klik salah satu permintaan untuk lihat status approval detail.</p>
         </div>
         <div className="flex items-center gap-2">
           <ExportExcelButton rows={exportRows} filename="permintaan-sdm" sheetName="Permintaan SDM" />

@@ -41,7 +41,7 @@ export default async function SalaryPage() {
     <div className="p-6 lg:p-8 space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Struktur Gaji</h1>
-        <p className="text-sm text-gray-500">Kelola komponen dan struktur penggajian karyawan.</p>
+        <p className="text-sm text-gray-500">Kelola komponen dan struktur penggajian karyawan. Ini langkah pertama sebelum bisa Generate Payroll — tanpa data di sini, slip gaji karyawan tidak bisa dibuat.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

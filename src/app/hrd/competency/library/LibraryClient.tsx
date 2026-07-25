@@ -141,13 +141,20 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
 
   // Kategori yang dianggap relevan untuk tiap dept (berlaku hanya untuk skill tanpa dept tag)
   const DEPT_CATEGORIES: Record<string, string[]> = {
-    "HR & GA":                      ["HR", "Soft Skills", "Manajemen"],
-    "Finance":                      ["Soft Skills", "Manajemen"],
-    "Operational Division":         ["Operasional", "K3", "Teknis", "Soft Skills"],
-    "Procurement Division":         ["Operasional", "K3", "Teknis", "Soft Skills"],
-    "Project Appraisal":            ["Manajemen", "Soft Skills"],
-    "Management Representative":    ["Manajemen", "Soft Skills"],
-    "Health, Safety & Environment": ["K3", "Teknis", "Soft Skills"],
+    "SDM & Aset":                        ["HR", "Soft Skills", "Manajemen"],
+    "Finance / Accounting":              ["Soft Skills", "Manajemen"],
+    "Operasional":                       ["Operasional", "K3", "Teknis", "Soft Skills"],
+    "SCM (Supply Chain Management)":     ["Operasional", "K3", "Teknis", "Soft Skills"],
+    "Quality Control (QC)":              ["Manajemen", "Soft Skills"],
+    "Management Representative":         ["Manajemen", "Soft Skills"],
+    "Health, Safety & Environment":      ["K3", "Teknis", "Soft Skills"],
+    "Marketing":                         ["Manajemen", "Soft Skills"],
+    "PPJK":                              ["Operasional", "Teknis", "Soft Skills"],
+    "General Affairs":                   ["Operasional", "Soft Skills"],
+    "Gudang":                            ["Operasional", "K3", "Teknis"],
+    "Peralatan":                         ["Operasional", "K3", "Teknis"],
+    "Security":                          ["K3", "Soft Skills"],
+    "Direksi":                           ["Manajemen", "Soft Skills"],
   };
 
   const positionsByDept = useMemo(() => {
@@ -601,7 +608,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
       )}
 
       {activeTab === "dept" && (() => {
-        const DEPTS = ["HR & GA", "Finance", "Operational Division", "Procurement Division", "Project Appraisal", "Management Representative", "Health, Safety & Environment"];
+        const DEPTS = ["Direksi", "Marketing", "PPJK", "Finance / Accounting", "SDM & Aset", "General Affairs", "Operasional", "Gudang", "SCM (Supply Chain Management)", "Health, Safety & Environment", "Management Representative", "Quality Control (QC)", "Peralatan", "Security"];
         const q = deptSearch.toLowerCase();
         const filteredSkills = skills.filter((s) => !q || s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
         const byCategory: Record<string, Skill[]> = {};
@@ -855,7 +862,7 @@ export default function LibraryClient({ skills: initialSkills, positionSkills: i
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all"
                   >
                     <option value="">— Semua Departemen —</option>
-                    {["HR & GA", "Finance", "Operational Division", "Procurement Division", "Project Appraisal", "Management Representative", "Health, Safety & Environment"].map((d) => (
+                    {["Direksi", "Marketing", "PPJK", "Finance / Accounting", "SDM & Aset", "General Affairs", "Operasional", "Gudang", "SCM (Supply Chain Management)", "Health, Safety & Environment", "Management Representative", "Quality Control (QC)", "Peralatan", "Security"].map((d) => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>

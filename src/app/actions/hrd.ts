@@ -103,7 +103,7 @@ export async function createEmployee(formData: FormData) {
     }
   }
 
-  const passwordHash = hashPassword(password);
+  const passwordHash = await hashPassword(password);
 
   // authData is only stored in employees.address when the users table does NOT
   // exist. When the users table exists, the address column is left for the
@@ -310,7 +310,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
 
   // Upgrade the existing applicant account to employee (persist, don't delete)
   if (await usersTableExists()) {
-    const passwordHash = hashPassword(password);
+    const passwordHash = await hashPassword(password);
     const { data: existingApplicant } = await supabaseAdmin
       .from("pengguna")
       .select("id")
@@ -531,7 +531,7 @@ export async function updateEmployee(formData: FormData) {
 
       if (!newUserCheck || newUserCheck.length === 0) {
         const newPw = generateNumericPassword();
-        const passwordHash = hashPassword(newPw);
+        const passwordHash = await hashPassword(newPw);
         const { error: userInsertError } = await supabaseAdmin
           .from("pengguna")
           .insert([
@@ -576,7 +576,7 @@ export async function resetEmployeePassword(employeeId: string) {
   const newPassword = generateNumericPassword();
 
   if (await usersTableExists()) {
-    const passwordHash = hashPassword(newPassword);
+    const passwordHash = await hashPassword(newPassword);
 
     const { error } = await supabaseAdmin
       .from("pengguna")
@@ -607,7 +607,7 @@ export async function resetUserPasswordByEmail(userEmail: string) {
   await requireRole("superadmin");
 
   const newPassword = generateNumericPassword();
-  const passwordHash = hashPassword(newPassword);
+  const passwordHash = await hashPassword(newPassword);
 
   const { error } = await supabaseAdmin
     .from("pengguna")
@@ -786,7 +786,7 @@ export async function submitApplication(formData: FormData) {
       const suffix = Array.from(randomBytes, (b) => chars[b % chars.length]).join("");
       tempPassword = `Lamar-${suffix}`;
 
-      const passwordHash = hashPassword(tempPassword);
+      const passwordHash = await hashPassword(tempPassword);
       oneTimeToken = generateOneTimeToken(normalizedEmail);
       const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
@@ -884,7 +884,7 @@ export async function updateEmployeeAsSuperadmin(formData: FormData) {
   const authData: Record<string, unknown> = { role };
 
   if (newPassword) {
-    authData.password_hash = hashPassword(newPassword);
+    authData.password_hash = await hashPassword(newPassword);
   } else {
     const { data: existing } = await supabaseAdmin
       .from("karyawan")
@@ -931,7 +931,7 @@ export async function updateEmployeeAsSuperadmin(formData: FormData) {
         full_name: full_name || undefined,
       };
       if (newPassword) {
-        userUpdates.password_hash = hashPassword(newPassword);
+        userUpdates.password_hash = await hashPassword(newPassword);
       }
       if (role) {
         userUpdates.role = role;

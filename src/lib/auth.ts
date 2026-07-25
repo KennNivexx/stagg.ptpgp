@@ -1,16 +1,22 @@
-import { randomBytes, randomInt, pbkdf2Sync } from "crypto";
+import { randomBytes, randomInt, pbkdf2 } from "crypto";
+import { promisify } from "util";
 
 const PBKDF2_ITERATIONS = 100_000;
+const pbkdf2Async = promisify(pbkdf2);
 
-function hashPassword(password: string): string {
+// Async (non-blocking) PBKDF2 — pbkdf2Sync ties up Node's single event-loop
+// thread for the ~50-100ms the hash takes, so every concurrent request
+// (not just other logins) stalls behind it under load. The async variant
+// runs on libuv's threadpool instead, so the event loop stays free.
+async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
-  const hash = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, 64, "sha512").toString("hex");
+  const hash = (await pbkdf2Async(password, salt, PBKDF2_ITERATIONS, 64, "sha512")).toString("hex");
   return `${salt}:${hash}`;
 }
 
-function verifyPassword(password: string, stored: string): boolean {
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const [salt, hash] = stored.split(":");
-  const verify = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, 64, "sha512").toString("hex");
+  const verify = (await pbkdf2Async(password, salt, PBKDF2_ITERATIONS, 64, "sha512")).toString("hex");
   return hash === verify;
 }
 

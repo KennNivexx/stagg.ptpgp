@@ -271,7 +271,7 @@ export async function resetForgotPassword(email: string, newPassword: string) {
   if (o.step !== "face_verified") return { error: "Verifikasi wajah diperlukan terlebih dahulu." };
   if (new Date(o.expires_at as string) < new Date()) return { error: "Sesi kedaluwarsa. Mulai ulang." };
 
-  const passwordHash = hashPassword(newPassword);
+  const passwordHash = await hashPassword(newPassword);
 
   // Update employees.address auth JSON
   const { data: emp } = await supabaseAdmin

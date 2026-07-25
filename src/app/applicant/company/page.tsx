@@ -8,13 +8,20 @@ const VALUES = [
 ];
 
 const DEPARTMENTS = [
-  "HR & General Affairs",
-  "Finance & Accounting",
-  "Operational Division",
-  "Procurement Division",
-  "Project Appraisal",
-  "Management Representative",
+  "Direksi",
+  "Marketing",
+  "PPJK",
+  "Finance / Accounting",
+  "SDM & Aset",
+  "General Affairs",
+  "Operasional",
+  "Gudang",
+  "SCM (Supply Chain Management)",
   "Health, Safety & Environment",
+  "Management Representative",
+  "Quality Control (QC)",
+  "Peralatan",
+  "Security",
 ];
 
 export default function CompanyInfoPage() {

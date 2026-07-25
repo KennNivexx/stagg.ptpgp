@@ -21,6 +21,8 @@ const emptyFields = {
   transport_allowance: "0",
   meal_allowance: "0",
   position_allowance: "0",
+  kompensasi: "0",
+  potongan_amal_jariyah: "0",
   ptkp_status: "TK/0",
 };
 
@@ -53,6 +55,8 @@ export default function SalaryForm({ employees, salaryRecords }: Props) {
         transport_allowance: String(existing.transport_allowance ?? 0),
         meal_allowance: String(existing.meal_allowance ?? 0),
         position_allowance: String(existing.position_allowance ?? 0),
+        kompensasi: String(existing.kompensasi ?? 0),
+        potongan_amal_jariyah: String(existing.potongan_amal_jariyah ?? 0),
         ptkp_status: String(existing.ptkp_status ?? "TK/0"),
       });
     } else {
@@ -130,6 +134,18 @@ export default function SalaryForm({ employees, salaryRecords }: Props) {
                   className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
               </div>
               <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Kompensasi</label>
+                <input name="kompensasi" type="number" min="0" value={fields.kompensasi}
+                  onChange={(e) => setFields({ ...fields, kompensasi: e.target.value })}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Potongan Amal Jariyah</label>
+                <input name="potongan_amal_jariyah" type="number" min="0" value={fields.potongan_amal_jariyah}
+                  onChange={(e) => setFields({ ...fields, potongan_amal_jariyah: e.target.value })}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
+              </div>
+              <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Status PTKP</label>
                 <select name="ptkp_status" value={fields.ptkp_status}
                   onChange={(e) => setFields({ ...fields, ptkp_status: e.target.value })}
@@ -173,7 +189,10 @@ export default function SalaryForm({ employees, salaryRecords }: Props) {
                 const emp = rec.karyawan as Record<string, string> | undefined;
                 const base = Number(rec.basic_salary) || 0;
                 const allowances = (Number(rec.housing_allowance) || 0) + (Number(rec.transport_allowance) || 0) +
-                  (Number(rec.meal_allowance) || 0) + (Number(rec.position_allowance) || 0);
+                  (Number(rec.meal_allowance) || 0) + (Number(rec.position_allowance) || 0) + (Number(rec.kompensasi) || 0);
+                // "Total Kotor" is gross (basic + allowances) — Potongan Amal Jariyah
+                // is a deduction and belongs in the net figure the payslip computes,
+                // not subtracted from gross here.
                 const gross = base + allowances;
                 return (
                   <tr key={rec.id as string} className="hover:bg-slate-50/30 transition-colors">

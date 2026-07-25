@@ -56,7 +56,7 @@ async function tryEmployeesAuth(email: string, password: string) {
     const parsed = JSON.parse(emp.address as string);
     if (parsed.__auth__) {
       const auth = parsed.__auth__;
-      if (auth.password_hash && verifyPassword(password, auth.password_hash)) {
+      if (auth.password_hash && (await verifyPassword(password, auth.password_hash))) {
         return {
           id: emp.id,
           role: auth.role || "employee",
@@ -95,7 +95,7 @@ async function tryUsersTableAuth(email: string, password: string) {
     }
   }
 
-  if (u.password_hash && verifyPassword(password, u.password_hash)) {
+  if (u.password_hash && (await verifyPassword(password, u.password_hash))) {
     return {
       id: u.id,
       role: u.role,

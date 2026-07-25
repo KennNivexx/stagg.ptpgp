@@ -204,7 +204,7 @@ export default function DeptCareerPage() {
             </div>
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Departemen Tujuan</label>
-              <input name="to_department" type="text" required placeholder="cth. Operational Division" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl" />
+              <input name="to_department" type="text" required placeholder="cth. Operasional" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl" />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Tanggal Efektif</label>

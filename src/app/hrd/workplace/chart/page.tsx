@@ -51,7 +51,7 @@ export default function OrgChartPage() {
     <div className="p-6 lg:p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Organization Chart</h1>
-        <p className="text-sm text-gray-500">Visualisasi struktur unit organisasi. "Kepala" pada tiap kotak dihitung otomatis dari Position Management (Formasi), bukan input manual.</p>
+        <p className="text-sm text-gray-500">Visualisasi struktur unit organisasi. &ldquo;Kepala&rdquo; pada tiap kotak dihitung otomatis dari Position Management (Formasi), bukan input manual.</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 overflow-x-auto">

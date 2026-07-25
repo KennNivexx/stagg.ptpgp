@@ -28,6 +28,8 @@ export async function saveSalaryStructure(formData: FormData) {
   const mealAllowance = parseInt(formData.get("meal_allowance") as string || "0", 10) || 0;
   const housingAllowance = parseInt(formData.get("housing_allowance") as string || "0", 10) || 0;
   const positionAllowance = parseInt(formData.get("position_allowance") as string || "0", 10) || 0;
+  const kompensasi = parseInt(formData.get("kompensasi") as string || "0", 10) || 0;
+  const potonganAmalJariyah = parseInt(formData.get("potongan_amal_jariyah") as string || "0", 10) || 0;
   const ptkpStatus = (formData.get("ptkp_status") as string || "TK/0").trim();
   if (!employeeId) return { error: "Pilih karyawan terlebih dahulu." };
 
@@ -37,7 +39,7 @@ export async function saveSalaryStructure(formData: FormData) {
     .eq("employee_id", employeeId)
     .maybeSingle();
 
-  const { error } = await supabaseAdmin.from("struktur_gaji").upsert({
+  const basePayload = {
     id: (existing as { id: string } | null)?.id || ("sal-" + crypto.randomUUID()),
     employee_id: employeeId,
     basic_salary: basicSalary,
@@ -47,7 +49,14 @@ export async function saveSalaryStructure(formData: FormData) {
     position_allowance: positionAllowance,
     ptkp_status: ptkpStatus,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "employee_id" });
+  };
+  let { error } = await supabaseAdmin.from("struktur_gaji")
+    .upsert({ ...basePayload, kompensasi, potongan_amal_jariyah: potonganAmalJariyah }, { onConflict: "employee_id" });
+  if (error && MISSING_REWARDS_SCHEMA(error)) {
+    // Migrasi 20260811001_payroll_kompensasi_amal_jariyah.sql belum dijalankan
+    // — simpan komponen lain tanpa kompensasi/potongan amal jariyah dulu.
+    ({ error } = await supabaseAdmin.from("struktur_gaji").upsert(basePayload, { onConflict: "employee_id" }));
+  }
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
   if (error) { console.error("[rewards] saveSalaryStructure error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/rewards/salary");
@@ -518,7 +527,7 @@ export async function getTotalRewardsStatement(karyawanId: string, year: number)
   const salary = salaryRow as Record<string, unknown> | null;
   const basicMonthly = Number(salary?.basic_salary) || 0;
   const allowancesMonthly = (Number(salary?.transport_allowance) || 0) + (Number(salary?.meal_allowance) || 0)
-    + (Number(salary?.housing_allowance) || 0) + (Number(salary?.position_allowance) || 0);
+    + (Number(salary?.housing_allowance) || 0) + (Number(salary?.position_allowance) || 0) + (Number(salary?.kompensasi) || 0);
 
   const incentives = (incentiveRows || []) as { amount: number; type: string; program: string }[];
   const bonusTotal = incentives.filter(i => i.type === "bonus").reduce((s, i) => s + (Number(i.amount) || 0), 0);

@@ -1,9 +1,9 @@
 export const EMAIL_TO_DEPT: Record<string, string> = {
-  "hrga@ptpgp.co.id": "HR & GA",
-  "finance@ptpgp.co.id": "Finance",
-  "operational@ptpgp.co.id": "Operational Division",
-  "procurement@ptpgp.co.id": "Procurement Division",
-  "projectappraisal@ptpgp.co.id": "Project Appraisal",
+  "hrga@ptpgp.co.id": "SDM & Aset",
+  "finance@ptpgp.co.id": "Finance / Accounting",
+  "operational@ptpgp.co.id": "Operasional",
+  "procurement@ptpgp.co.id": "SCM (Supply Chain Management)",
+  "projectappraisal@ptpgp.co.id": "Quality Control (QC)",
   "mr@ptpgp.co.id": "Management Representative",
   "hse@ptpgp.co.id": "Health, Safety & Environment",
 };

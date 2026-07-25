@@ -107,6 +107,22 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
         <p className="text-sm text-gray-500">{subtitle}</p>
       </div>
 
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <span className="text-[10px] font-bold text-slate-400 uppercase">Arti status:</span>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700">Draft</span>
+          <span className="text-slate-500">baru dibuat, belum final — masih bisa diedit bonus/potongannya, lalu klik <strong>Setujui</strong></span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700">Disetujui</span>
+          <span className="text-slate-500">sudah dicek HRD, tinggal transfer — lalu klik <strong>Tandai Dibayar</strong></span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700">Dibayar</span>
+          <span className="text-slate-500">selesai, gaji sudah ditransfer ke karyawan</span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-3">
@@ -174,7 +190,8 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
         </div>
 
         {payrolls.length === 0 ? (
-          <EmptyState icon={DollarSign} title="Belum ada data payroll." description="Klik Generate Payroll untuk membuat slip gaji seluruh karyawan aktif." />
+          <EmptyState icon={DollarSign} title="Belum ada data payroll."
+            description="Pastikan Komponen Gaji tiap karyawan sudah diisi (menu Komponen Gaji), lalu klik Generate Payroll di atas untuk membuat slip gaji seluruh karyawan aktif." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

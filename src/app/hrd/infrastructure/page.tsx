@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import Link from "next/link";
 import { Users, UserCheck, FileText, ShieldCheck } from "lucide-react";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 import EmptyState from "@/components/EmptyState";
@@ -57,7 +58,7 @@ export default async function Employee360Hub() {
         ) : (
           <div className="divide-y divide-slate-50">
             {empList.slice(0, 8).map(e => (
-              <a key={e.id as string} href={`/hrd/infrastructure/employees/${e.id}`}
+              <Link key={e.id as string} href={`/hrd/infrastructure/employees/${e.id}`}
                 className="px-6 py-3 flex items-center justify-between hover:bg-slate-50/40 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs border border-slate-200">
@@ -69,15 +70,15 @@ export default async function Employee360Hub() {
                   </div>
                 </div>
                 <span className="text-xs font-bold text-[#CC0000]">Lihat Profil &rarr;</span>
-              </a>
+              </Link>
             ))}
           </div>
         )}
         {empList.length > 8 && (
           <div className="px-6 py-3 border-t border-slate-50">
-            <a href="/hrd/infrastructure/employees" className="text-xs font-bold text-[#CC0000] hover:underline">
+            <Link href="/hrd/infrastructure/employees" className="text-xs font-bold text-[#CC0000] hover:underline">
               Lihat semua {empList.length} karyawan →
-            </a>
+            </Link>
           </div>
         )}
       </div>

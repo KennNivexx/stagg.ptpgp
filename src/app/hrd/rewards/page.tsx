@@ -1,8 +1,16 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { DollarSign, Download, Gift, FileText, Users, Zap } from "lucide-react";
+import Link from "next/link";
+import { DollarSign, Download, Gift, FileText, Users, Zap, Wallet, ClipboardCheck, Award } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 import RewardBudgetPanel from "./RewardBudgetPanel";
+
+const WORKFLOW_STEPS = [
+  { n: 1, icon: Wallet, href: "/hrd/rewards/salary", label: "Atur Komponen Gaji", desc: "Isi gaji pokok & tunjangan tiap karyawan — wajib sebelum slip gaji bisa dibuat." },
+  { n: 2, icon: FileText, href: "/hrd/rewards/payroll", label: "Generate Slip Gaji", desc: "Buat slip gaji per periode. Status awal selalu Draft." },
+  { n: 3, icon: ClipboardCheck, href: "/hrd/rewards/payroll", label: "Setujui & Tandai Dibayar", desc: "Draft → Disetujui setelah dicek, → Dibayar setelah transfer selesai." },
+  { n: 4, icon: Award, href: "/hrd/rewards/bonuses", label: "Kelola Bonus & Penghargaan", desc: "Opsional — tambahan di luar gaji pokok, ikut masuk ke slip gaji berikutnya." },
+];
 
 function currentPeriod() {
   const now = new Date();
@@ -32,6 +40,24 @@ export default async function HRDRewards() {
       <div>
         <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Reward & Recognition</h1>
         <p className="text-sm text-gray-500">Formula reward, salary review, kompensasi, benefit, payroll, dan penghargaan karyawan</p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <h3 className="font-extrabold text-slate-800 text-sm mb-1">Alur Kerja Payroll</h3>
+        <p className="text-xs text-slate-400 mb-4">Ikuti urutan ini kalau baru pertama kali pakai modul ini — tiap langkah butuh langkah sebelumnya selesai duluan.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {WORKFLOW_STEPS.map((s) => (
+            <Link key={s.n} href={s.href}
+              className="relative flex flex-col gap-2 p-4 rounded-xl border border-slate-100 hover:border-[#CC0000]/30 hover:bg-red-50/30 transition-colors">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-[#CC0000] text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">{s.n}</span>
+                <s.icon size={15} className="text-slate-400" />
+              </div>
+              <p className="text-xs font-bold text-slate-800">{s.label}</p>
+              <p className="text-[10px] text-slate-400 leading-snug">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <SectionQuickLinks groupLabel="Reward & Recognition" excludeHref="/hrd/rewards" />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Plus, CheckCircle2, Archive, Send, X } from "lucide-react";
+import { FileText, Plus, CheckCircle2, Archive, Send, X, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
 import { getStrukturVersions, createStrukturVersion, submitForReview, approveStruktur, archiveStruktur, type StrukturVersi } from "@/app/actions/org-sk";
 import EmptyState from "@/components/EmptyState";
 
@@ -12,6 +12,23 @@ const STATUS_STYLE: Record<string, string> = {
   Archived: "bg-slate-50 text-slate-400 border-slate-200",
 };
 
+function VersionCard({ v, actions, highlight }: { v: StrukturVersi; actions?: React.ReactNode; highlight?: boolean }) {
+  return (
+    <div className={`p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between ${highlight ? "bg-emerald-50/50 border-2 border-emerald-200 rounded-2xl" : ""}`}>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="font-extrabold text-slate-800 text-sm">{v.nama}</h3>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${STATUS_STYLE[v.status]}`}>{v.status}</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-50 text-slate-500 border border-slate-200">{v.versi}</span>
+        </div>
+        <p className="text-xs text-slate-400 mt-1">SK: {v.nomor_sk} &bull; Tanggal SK: {v.tanggal_sk} &bull; Berlaku: {v.tanggal_berlaku}</p>
+        {v.keterangan && <p className="text-xs text-slate-500 mt-1">{v.keterangan}</p>}
+      </div>
+      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+    </div>
+  );
+}
+
 /**
  * Struktur Organisasi (SK): versi struktur organisasi yang disahkan lewat SK
  * Direksi — hanya satu versi yang bisa "Approved" (live) di satu waktu.
@@ -20,6 +37,7 @@ export default function StrukturSkPage() {
   const [versions, setVersions] = useState<StrukturVersi[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -68,6 +86,10 @@ export default function StrukturSkPage() {
   };
 
   if (loading) return <div className="p-6 lg:p-8 flex items-center justify-center h-64"><p className="text-sm text-slate-500">Memuat data...</p></div>;
+
+  const activeVersion = versions.find(v => v.status === "Approved") || null;
+  const pendingVersions = versions.filter(v => v.status === "Draft" || v.status === "Review");
+  const archivedVersions = versions.filter(v => v.status === "Archived");
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -128,47 +150,66 @@ export default function StrukturSkPage() {
         </form>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        {versions.length === 0 ? (
+      {versions.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <EmptyState icon={FileText} title="Belum ada versi struktur organisasi." description="Buat versi pertama dengan SK Direksi untuk mulai." />
-        ) : (
-          <div className="divide-y divide-slate-50">
-            {versions.map(v => (
-              <div key={v.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-extrabold text-slate-800 text-sm">{v.nama}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${STATUS_STYLE[v.status]}`}>{v.status}</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-50 text-slate-500 border border-slate-200">{v.versi}</span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">SK: {v.nomor_sk} &bull; Tanggal SK: {v.tanggal_sk} &bull; Berlaku: {v.tanggal_berlaku}</p>
-                  {v.keterangan && <p className="text-xs text-slate-500 mt-1">{v.keterangan}</p>}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {v.status === "Draft" && (
-                    <button onClick={() => doAction(submitForReview, v.id, "Diajukan untuk review.")}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-xl text-xs font-bold transition-colors">
-                      <Send size={13} /> Ajukan Review
-                    </button>
-                  )}
-                  {(v.status === "Draft" || v.status === "Review") && (
-                    <button onClick={() => doAction(approveStruktur, v.id, "Versi struktur disetujui & berlaku.")}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold transition-colors">
-                      <CheckCircle2 size={13} /> Approve
-                    </button>
-                  )}
-                  {v.status === "Approved" && (
-                    <button onClick={() => doAction(archiveStruktur, v.id, "Versi struktur diarsipkan.")}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors">
-                      <Archive size={13} /> Arsipkan
-                    </button>
-                  )}
-                </div>
+        </div>
+      ) : (
+        <>
+          {/* Versi Aktif — satu-satunya versi Approved, ditonjolkan terpisah dari
+              draft/riwayat supaya tidak ada kebingungan "yang mana yang berlaku". */}
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1.5"><ShieldCheck size={12} /> Versi Aktif Saat Ini (Berlaku)</p>
+            {activeVersion ? (
+              <VersionCard v={activeVersion} highlight
+                actions={<button onClick={() => doAction(archiveStruktur, activeVersion.id, "Versi struktur diarsipkan.")}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors">
+                  <Archive size={13} /> Arsipkan
+                </button>} />
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-xs text-amber-700 font-semibold">
+                Belum ada versi struktur organisasi yang disahkan (Approved). Struktur organisasi yang tampil ke seluruh sistem masih memakai data lama sampai salah satu versi di bawah ini disetujui Direktur.
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
+
+          {pendingVersions.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Draft & Sedang Diajukan ({pendingVersions.length})</p>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-50 overflow-hidden">
+                {pendingVersions.map(v => (
+                  <VersionCard key={v.id} v={v} actions={<>
+                    {v.status === "Draft" && (
+                      <button onClick={() => doAction(submitForReview, v.id, "Diajukan untuk review.")}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-xl text-xs font-bold transition-colors">
+                        <Send size={13} /> Ajukan Review
+                      </button>
+                    )}
+                    <button onClick={() => doAction(approveStruktur, v.id, "Versi struktur disetujui & berlaku. Versi aktif sebelumnya otomatis diarsipkan.")}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold transition-colors">
+                      <CheckCircle2 size={13} /> Approve — Jadikan Aktif
+                    </button>
+                  </>} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {archivedVersions.length > 0 && (
+            <div>
+              <button onClick={() => setShowArchived(s => !s)}
+                className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase mb-2 hover:text-slate-600">
+                {showArchived ? <ChevronUp size={12} /> : <ChevronDown size={12} />} Riwayat Versi Lama ({archivedVersions.length})
+              </button>
+              {showArchived && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-50 overflow-hidden opacity-70">
+                  {archivedVersions.map(v => <VersionCard key={v.id} v={v} />)}
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -78,7 +78,7 @@ export async function hireCandidate(formData: FormData) {
   const normalizedEmail = email.toLowerCase().trim();
 
   const password = generateRandomPassword();
-  const passwordHash = hashPassword(password);
+  const passwordHash = await hashPassword(password);
   const oneTimeToken = generateOneTimeToken(normalizedEmail);
   const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
