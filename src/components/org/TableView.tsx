@@ -3,31 +3,7 @@
 import { useState, useMemo, Fragment } from "react";
 import { Edit3, PlusCircle, Trash2, User, Search, ChevronUp, ChevronDown, UserCheck } from "lucide-react";
 import type { OrgUnit, FlatUnit } from "@/types/org";
-
-const LEVEL_COLORS: Record<number, string> = {
-  0: "bg-red-100 text-red-700",
-  1: "bg-slate-800 text-white",
-  2: "bg-red-50 text-red-600 border border-red-200",
-  3: "bg-indigo-50 text-indigo-700 border border-indigo-200",
-  4: "bg-blue-50 text-blue-700 border border-blue-200",
-  5: "bg-cyan-50 text-cyan-700 border border-cyan-200",
-  6: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  7: "bg-amber-50 text-amber-700 border border-amber-200",
-};
-
-function getLevelLabel(level: number): string {
-  switch (level) {
-    case 0: return "Komisaris";
-    case 1: return "Dirut";
-    case 2: return "Wadir";
-    case 3: return "Kadiv";
-    case 4: return "Manager";
-    case 5: return "Asmen";
-    case 6: return "Spv";
-    case 7: return "Staff";
-    default: return "-";
-  }
-}
+import { getLevelLabel, LEVEL_COLORS, DEFAULT_LEVEL_COLOR, sortByPositionRank } from "@/lib/org-hierarchy";
 
 interface FlatUnitWithEmployees extends FlatUnit {
   employees: OrgUnit[];
@@ -198,7 +174,7 @@ export default function TableView({ data, onClick, onEdit, onAdd, onDelete }: Ta
                       </span>
                     </td>
                     <td className="py-2.5 px-4">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full inline-flex items-center ${LEVEL_COLORS[u.level] || "bg-gray-100 text-gray-600"}`}>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full inline-flex items-center ${LEVEL_COLORS[u.level] || DEFAULT_LEVEL_COLOR}`}>
                         {getLevelLabel(u.level)}
                       </span>
                     </td>
@@ -252,7 +228,7 @@ export default function TableView({ data, onClick, onEdit, onAdd, onDelete }: Ta
                     <tr className="border-b border-slate-50 bg-emerald-50/30">
                       <td colSpan={6} className="px-4 py-2" style={{ paddingLeft: `${Math.max(0, u.level) * 16 + 32}px` }}>
                         <div className="flex flex-wrap gap-2">
-                          {[...u.employees].sort((a, b) => a.name.localeCompare(b.name)).map((emp) => (
+                          {sortByPositionRank(u.employees).map((emp) => (
                             <div key={emp.id} className="flex items-center gap-1.5 bg-white border border-emerald-100 rounded-lg px-2.5 py-1.5">
                               <UserCheck size={11} className="text-emerald-500 shrink-0" />
                               <span className="text-xs font-semibold text-slate-700">{emp.name}</span>

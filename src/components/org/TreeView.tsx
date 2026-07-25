@@ -3,31 +3,7 @@
 import { useState } from "react";
 import { ChevronRight, ChevronDown, Edit3, PlusCircle, Trash2, User, UserCheck } from "lucide-react";
 import type { OrgUnit } from "@/types/org";
-
-const LEVEL_COLORS: Record<number, string> = {
-  0: "bg-red-100 text-red-700",
-  1: "bg-slate-800 text-white",
-  2: "bg-red-50 text-red-600 border border-red-200",
-  3: "bg-indigo-50 text-indigo-700 border border-indigo-200",
-  4: "bg-blue-50 text-blue-700 border border-blue-200",
-  5: "bg-cyan-50 text-cyan-700 border border-cyan-200",
-  6: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  7: "bg-amber-50 text-amber-700 border border-amber-200",
-};
-
-function getLevelLabel(level: number): string {
-  switch (level) {
-    case 0: return "Komisaris";
-    case 1: return "Direktur Utama";
-    case 2: return "Wakil Direktur";
-    case 3: return "Kepala Divisi";
-    case 4: return "Manajer Unit";
-    case 5: return "Asisten Manajer";
-    case 6: return "Supervisor";
-    case 7: return "Staf";
-    default: return "Lainnya";
-  }
-}
+import { getLevelLabel, LEVEL_COLORS, DEFAULT_LEVEL_COLOR, sortByPositionRank } from "@/lib/org-hierarchy";
 
 function countMembers(node: OrgUnit): number {
   let count = node.children.length;
@@ -106,7 +82,7 @@ function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodePro
               <span className="truncate max-w-[160px] font-bold text-slate-700">{node.leader_name}</span>
             </div>
           )}
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${LEVEL_COLORS[node.level] || "bg-gray-100 text-gray-600"}`}>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${LEVEL_COLORS[node.level] || DEFAULT_LEVEL_COLOR}`}>
             {getLevelLabel(node.level)}
           </span>
           <div className="flex items-center gap-2 ml-auto shrink-0">
@@ -155,7 +131,7 @@ function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodePro
           style={{ paddingLeft: `${depth * 24 + 12 + 20}px` }}
         >
           <div className="bg-emerald-50/40 border border-emerald-100 rounded-xl divide-y divide-emerald-100/70 overflow-hidden">
-            {[...empChildren].sort((a, b) => a.name.localeCompare(b.name)).map((emp) => (
+            {sortByPositionRank(empChildren).map((emp) => (
               <div key={emp.id} className="flex items-center gap-2 px-3 py-1.5">
                 <UserCheck size={11} className="text-emerald-500 shrink-0" />
                 <span className="text-xs font-semibold text-slate-700 truncate">{emp.name}</span>
