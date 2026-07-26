@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Clipboard, Plus, Target, Calendar, BookOpen, User, CheckCircle } from "lucide-react";
 import { createDevelopmentPlan, updatePlanProgress } from "@/app/actions/career-hrd";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox from "@/components/EmployeeCombobox";
 
 type Employee = { id: string; full_name: string; kode?: string; department: string; position: string };
 type Plan = Record<string, unknown>;
@@ -172,10 +173,7 @@ export default function PlansClient({ employees, initialPlans }: Props) {
             <form ref={formRef} className="p-6 space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Karyawan</label>
-                <select name="employee_id" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000] bg-white">
-                  <option value="">Pilih Karyawan</option>
-                  {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}{e.kode ? ` (${e.kode})` : ""}</option>)}
-                </select>
+                <EmployeeCombobox name="employee_id" employees={employees} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tujuan</label>

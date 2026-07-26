@@ -6,7 +6,7 @@ import { getJenisKomponenGaji } from "@/app/actions/payroll-components";
 export default async function SalaryPage() {
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
-    .select("id, full_name, department, position")
+    .select("id, full_name, department, position, kode_jabatan, nik")
     .neq("status", "Inactive")
     .order("department")
     .order("full_name")
@@ -86,7 +86,7 @@ export default async function SalaryPage() {
       </div>
 
       <SalaryForm
-        employees={(employees || []) as Array<{ id: string; full_name: string; department: string; position: string }>}
+        employees={(employees || []) as Array<{ id: string; full_name: string; department: string; position: string; kode_jabatan?: string | null; nik?: string | null }>}
         salaryRecords={salaryRecords}
         jenisKomponen={jenisKomponen}
       />

@@ -1,12 +1,11 @@
 "use client";
 
-import { ReactNode, useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { ReactNode, useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard, Briefcase,
-  LogOut, Search, Menu, X, ChevronRight, ChevronDown, Clock,
-  Users, LayoutGrid,
+  LayoutDashboard, Briefcase, LogOut, Search, Menu, X, ChevronRight, ChevronDown,
+  Clock, Users, LayoutGrid,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
@@ -15,28 +14,24 @@ import NotificationBell from "@/components/NotificationBell";
 import { MENU_GROUPS, isHrdItemActive, type HrdMenuGroup } from "@/lib/hrd-menu";
 import { GROUP_COLOR_CLASSES, GROUP_COLOR_CLASSES_LIGHT } from "@/lib/menu-colors";
 
-/* ─── Tooltip text per group (for title attribute) ─────────────── */
-const GROUP_TOOLTIPS: Record<string, string> = {
-  "Dashboard": "Ringkasan performa HR dalam satu tampilan",
-  "Perencanaan Tenaga Kerja": "Hitung dan proyeksikan kebutuhan karyawan",
-  "Desain Organisasi": "Atur struktur, departemen, dan jabatan perusahaan",
-  "Employee 360°": "Profil terpadu karyawan — data personal hingga kepegawaian",
-  "Aset & Fasilitas": "Kendaraan, trip, pengadaan, dan dokumen perusahaan",
-  "Workforce Time Management": "Jadwal kerja, absensi, lembur, cuti, timesheet, dan penugasan project/site",
-  "Rekrutmen": "Cari, seleksi, dan terima karyawan baru",
-  "Competency Management": "Kelola standar keahlian dan asesmen karyawan",
-  "Learning & Training Management": "TNA otomatis dari gap kompetensi, training, materi, evaluasi, dan sertifikasi",
-  "Knowledge Management": "SOP & instruksi kerja, kebijakan, basis pengetahuan, video panduan, dan mapping ke kompetensi",
-  "Performance Management": "Framework, KPI, culture, dan skor performa akhir",
-  "Reward & Recognition": "Formula reward, salary review, bonus, insentif, penghargaan, dan payroll",
-  "Career Development": "Jalur karier, promosi, mutasi, rotasi, suksesi, dan rencana pengembangan individu berbasis data",
-  "Succession & Talent": "Siapkan kandidat pengganti posisi strategis berbasis talent review",
-  "Hubungan Karyawan": "Cuti, absensi, keluhan, dan surat peringatan",
-  "Laporan & Analitik": "Laporan rekrutmen, karyawan, payroll, dan lainnya",
-  "Admin & Pengaturan": "Konfigurasi sistem, email, WA bot, user management",
-};
+/* ════════════════════════════════════════════════════════════════════
+   HRD LAYOUT  —  clean horizontal navigation like the reference design
+   • Row 1: brand, search, notifications, profile
+   • Row 2: main module pills (red = active)
+   • Row 3: sub-tabs for the active module
+   ════════════════════════════════════════════════════════════════════ */
 
-/* ─── Mobile bottom nav shortcuts ──────────────────────────────── */
+function groupBySection<T extends { section?: string }>(items: T[]) {
+  const order: string[] = [];
+  const buckets = new Map<string, T[]>();
+  for (const item of items) {
+    const key = item.section || "";
+    if (!buckets.has(key)) { buckets.set(key, []); order.push(key); }
+    buckets.get(key)!.push(item);
+  }
+  return order.map((key) => ({ section: key, items: buckets.get(key)! }));
+}
+
 const BOTTOM_NAV = [
   { href: "/hrd",                        label: "Dashboard", icon: LayoutDashboard },
   { href: "/hrd/infrastructure/employees", label: "Karyawan",  icon: Users },
@@ -44,68 +39,6 @@ const BOTTOM_NAV = [
   { href: "/hrd/recruitment",            label: "Rekrutmen", icon: Briefcase },
 ];
 
-/* ─── Single top-row group pill — short label + icon so all 17 groups stay
-   readable in one tidy, fixed-height row without wrapping, side-scrolling,
-   or an overflow bucket. Full name + description shown on hover via the
-   title tooltip; the dropdown panel header shows the full name too. ── */
-function GroupPill({
-  group, isActive, isOpen, hasUnread, tooltip, onClick, compact = false,
-}: {
-  group: HrdMenuGroup; isActive: boolean; isOpen: boolean; hasUnread: boolean;
-  tooltip?: string; onClick: () => void;
-  /** Icon-only fallback for viewports too narrow to fit all 17 labels
-      legibly (below xl) — still fully reachable via tooltip + click. */
-  compact?: boolean;
-}) {
-  const GroupIcon = group.icon;
-  const showLabel = !compact;
-  return (
-    <button
-      type="button"
-      title={`${group.label}${tooltip ? ` — ${tooltip}` : ""}`}
-      aria-label={group.label}
-      onClick={onClick}
-      className={`relative flex items-center gap-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 ${
-        showLabel ? "px-2 py-1.5" : "p-1.5"
-      } ${
-        isActive
-          ? "bg-red-50 text-pgp-red"
-          : isOpen
-          ? "bg-slate-100 text-slate-800"
-          : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-      }`}
-    >
-      <GroupIcon
-        size={14}
-        className={`shrink-0 ${
-          isActive ? "text-pgp-red" : GROUP_COLOR_CLASSES_LIGHT[group.color] || "text-slate-400"
-        }`}
-      />
-      {/* Full menu name, never abbreviated — group.label is the real name
-          from hrd-menu.ts, not a shortened stand-in. */}
-      {showLabel && group.label}
-      {hasUnread && (
-        <span className={`h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0 ${showLabel ? "" : "absolute top-0.5 right-0.5"}`} aria-hidden="true" />
-      )}
-      {(isActive || isOpen) && (
-        <span className={`absolute bottom-0 left-2 right-2 h-0.5 rounded-full ${isActive ? "bg-pgp-red" : "bg-slate-300"}`} />
-      )}
-    </button>
-  );
-}
-
-/* ─── Dropdown column count helper — more columns for bigger groups keeps
-   panel height in check without ever hiding/removing an item. ─────── */
-function dropdownCols(count: number) {
-  if (count >= 24) return "grid-cols-4";
-  if (count >= 12) return "grid-cols-3";
-  if (count >= 6) return "grid-cols-2";
-  return "grid-cols-1";
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   LAYOUT
-══════════════════════════════════════════════════════════════════ */
 export default function HRDLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
@@ -113,60 +46,44 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
   /* ── State ── */
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [mobileExpandedGroups, setMobileExpandedGroups] = useState<Set<string>>(new Set(["Dashboard"]));
-  const [activeDesktopGroup,   setActiveDesktopGroup]   = useState<string | null>(null);
-  const [isProfileOpen,        setIsProfileOpen]         = useState(false);
-  const [searchQuery,          setSearchQuery]           = useState("");
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  /* ── Refs ── */
-  const navbarRef   = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const profileRef  = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
-  /* ── Session / Notifications ── */
   const { user } = useSession();
   const clientUserName  = user?.name  || "HRD";
   const clientUserEmail = user?.email || "hrd@ptpgp.co.id";
   const { hasUnreadForHref } = useNotifications("hrd");
 
-  /* ── Mobile sidebar: toggle + auto-expand active group ── */
-  const toggleMobileGroup = (label: string) => {
-    setMobileExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label); else next.add(label);
-      return next;
-    });
-  };
+  /* ── Active group & item for desktop sub-tabs ── */
+  const activeGroup = useMemo(
+    () => MENU_GROUPS.find((g) => g.items.some((item) => isHrdItemActive(pathname, item.href))) || null,
+    [pathname]
+  );
+  const activeGroupLabel = activeGroup?.label || "Dashboard";
 
+  /* ── Auto-expand active group in mobile drawer, close desktop on nav ── */
   useEffect(() => {
-    const activeGroup = MENU_GROUPS.find((g) =>
-      g.items.some((item) => isHrdItemActive(pathname, item.href))
-    );
     if (activeGroup) {
       setMobileExpandedGroups((prev) =>
         prev.has(activeGroup.label) ? prev : new Set(prev).add(activeGroup.label)
       );
     }
-    // Close desktop dropdown on navigation
-    setActiveDesktopGroup(null);
     setIsMobileDrawerOpen(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, activeGroup]);
 
-  /* ── Close desktop dropdown + profile when clicking outside ── */
+  /* ── Close profile popover on outside click ── */
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      const insideNav      = navbarRef.current?.contains(target);
-      const insideDropdown = dropdownRef.current?.contains(target);
-      if (!insideNav && !insideDropdown) setActiveDesktopGroup(null);
-      if (profileRef.current && !profileRef.current.contains(target)) setIsProfileOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setIsProfileOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /* ── Search filter (mobile drawer) ── */
-  const query      = searchQuery.trim().toLowerCase();
+  /* ── Search filter for mobile drawer ── */
+  const query = searchQuery.trim().toLowerCase();
   const isSearching = query.length > 0;
 
   const filteredGroups = useMemo(() => {
@@ -189,23 +106,39 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
     if (firstItem) { router.push(firstItem.href); setSearchQuery(""); }
   };
 
-  /* ── Toggle desktop dropdown pill ── */
-  const toggleDesktopGroup = useCallback((label: string) => {
-    setActiveDesktopGroup((prev) => (prev === label ? null : label));
-  }, []);
+  const toggleMobileGroup = (label: string) => {
+    setMobileExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  };
 
-  /* ── Active desktop group items ── */
-  const activeGroupData = useMemo(
-    () => MENU_GROUPS.find((g) => g.label === activeDesktopGroup) ?? null,
-    [activeDesktopGroup]
-  );
+  /* ── Navigate to a module's default page when its pill is clicked ── */
+  const navigateToGroup = (group: HrdMenuGroup) => {
+    const target = group.hubHref || group.items[0]?.href;
+    if (target && target !== pathname) router.push(target);
+  };
 
+  /* ── Sub-tab row: every item is shown (nothing is hidden without being
+     merged into another tab first — see HubTabs-based hub pages), grouped
+     by `section` with a divider between clusters, matching the reference
+     design's "Kepengurusan | Pengunduran Anggota" grouped-tab-row look. ── */
+  const subTabSections = useMemo(() => {
+    if (!activeGroup) return [];
+    const order: string[] = [];
+    const buckets = new Map<string, typeof activeGroup.items>();
+    for (const item of activeGroup.items) {
+      const key = item.section || "";
+      if (!buckets.has(key)) { buckets.set(key, []); order.push(key); }
+      buckets.get(key)!.push(item);
+    }
+    return order.map((key) => ({ section: key, items: buckets.get(key)! }));
+  }, [activeGroup]);
+  const subTabItems = activeGroup?.items || [];
 
-  /* ════════════════════════════════════════════════════════════════
-     RENDER
-  ════════════════════════════════════════════════════════════════ */
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-800">
+    <div className="min-h-screen bg-[#FDFBFA] flex flex-col font-sans text-slate-800">
       {/* Skip link */}
       <a
         href="#main-content"
@@ -214,16 +147,12 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
         Lewati ke konten utama
       </a>
 
-      {/* ═══════════════════════════════════════════════════════════
-          MOBILE DRAWER — visible only on small screens
-      ═══════════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════════════
+          MOBILE DRAWER — hidden on large screens
+      ═══════════════════════════════════════════════════════════════ */}
       {isMobileDrawerOpen && (
-        <div
-          onClick={() => setIsMobileDrawerOpen(false)}
-          className="lg:hidden fixed inset-0 bg-black/40 z-40"
-        />
+        <div onClick={() => setIsMobileDrawerOpen(false)} className="lg:hidden fixed inset-0 bg-black/40 z-40" />
       )}
-
       <aside
         className={`lg:hidden w-72 bg-[#0F172A] text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300 border-r border-slate-800 ${
           isMobileDrawerOpen ? "translate-x-0" : "-translate-x-full"
@@ -233,20 +162,12 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
         <div className="p-5 border-b border-slate-800 shrink-0 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse shrink-0" />
-              <span className="font-extrabold text-base tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-                PTPGP HRIS
-              </span>
+              <span className="h-2.5 w-2.5 rounded-full bg-red-600 shrink-0" />
+              <span className="font-extrabold text-base tracking-wider text-white">PTPGP HRIS</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-0.5">
-              Portal Manajemen
-            </p>
+            <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-0.5">Portal Manajemen</p>
           </div>
-          <button
-            aria-label="Tutup menu"
-            onClick={() => setIsMobileDrawerOpen(false)}
-            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300"
-          >
+          <button aria-label="Tutup menu" onClick={() => setIsMobileDrawerOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300">
             <X size={18} />
           </button>
         </div>
@@ -273,61 +194,49 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
 
         {/* Drawer nav */}
         <nav className="flex-1 overflow-y-auto py-2">
-          {filteredGroups.length === 0 && (
-            <p className="px-5 py-4 text-xs text-slate-500">Tidak ada menu yang cocok.</p>
-          )}
+          {filteredGroups.length === 0 && <p className="px-5 py-4 text-xs text-slate-500">Tidak ada menu yang cocok.</p>}
           {filteredGroups.map((group) => {
             const GroupIcon = group.icon;
-            const hasActive    = group.items.some((item) => isHrdItemActive(pathname, item.href));
+            const hasActive = group.items.some((item) => isHrdItemActive(pathname, item.href));
             const hasGroupUnread = group.items.some((item) => hasUnreadForHref(item.href, "/hrd"));
-            const isExpanded   = isSearching || mobileExpandedGroups.has(group.label);
+            const isExpanded = isSearching || mobileExpandedGroups.has(group.label);
             return (
               <div key={group.label} className="mb-1">
                 <button
                   type="button"
                   onClick={() => toggleMobileGroup(group.label)}
-                  title={GROUP_TOOLTIPS[group.label]}
                   aria-expanded={isExpanded}
-                  className={`w-full flex items-center gap-2 px-5 py-2.5 text-left transition-colors ${
-                    hasActive ? "text-red-400" : "text-slate-500 hover:text-slate-300"
-                  }`}
+                  className={`w-full flex items-center gap-2 px-5 py-2.5 text-left transition-colors ${hasActive ? "text-red-400" : "text-slate-400 hover:text-slate-300"}`}
                 >
                   <GroupIcon size={13} className={`shrink-0 ${hasActive ? "" : GROUP_COLOR_CLASSES[group.color] || ""}`} />
                   <span className="text-[10px] font-bold tracking-widest uppercase">{group.label}</span>
-                  {hasGroupUnread && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
-                  )}
-                  <ChevronDown
-                    size={11}
-                    className={`ml-auto shrink-0 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
-                  />
+                  {hasGroupUnread && <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />}
+                  <ChevronDown size={11} className={`ml-auto shrink-0 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`} />
                 </button>
-                <div
-                  className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
-                  style={{ maxHeight: isExpanded ? "1000px" : "0px" }}
-                >
-                  {group.items.map((item) => {
-                    const isActive = isHrdItemActive(pathname, item.href);
-                    const hasUnread = hasUnreadForHref(item.href, "/hrd");
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setIsMobileDrawerOpen(false)}
-                        className={`flex items-center gap-2 pl-9 pr-4 py-3 text-[11px] font-medium transition-all duration-150 ${
-                          isActive
-                            ? "bg-red-600/20 text-white border-l-2 border-red-500"
-                            : "text-slate-400 hover:text-white hover:bg-slate-800/40 border-l-2 border-transparent"
-                        }`}
-                      >
-                        {isActive && <ChevronRight size={10} className="text-red-400 shrink-0" />}
-                        <span className="truncate">{item.label}</span>
-                        {hasUnread && (
-                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
-                        )}
-                      </Link>
-                    );
-                  })}
+                <div className="overflow-hidden transition-[max-height] duration-300 ease-in-out" style={{ maxHeight: isExpanded ? "1200px" : "0px" }}>
+                  {groupBySection(group.items).map(({ section, items }) => (
+                    <div key={section || "_"}>
+                      {section && <p className="pl-9 pr-4 pt-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-600">{section}</p>}
+                      {items.map((item) => {
+                        const isActive = isHrdItemActive(pathname, item.href);
+                        const hasUnread = hasUnreadForHref(item.href, "/hrd");
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setIsMobileDrawerOpen(false)}
+                            className={`flex items-center gap-2 pl-9 pr-4 py-3 text-[11px] font-medium transition-all duration-150 ${
+                              isActive ? "bg-red-600/20 text-white border-l-2 border-red-500" : "text-slate-400 hover:text-white hover:bg-slate-800/40 border-l-2 border-transparent"
+                            }`}
+                          >
+                            {isActive && <ChevronRight size={10} className="text-red-400 shrink-0" />}
+                            <span className="truncate">{item.label}</span>
+                            {hasUnread && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               </div>
             );
@@ -353,14 +262,12 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* ═══════════════════════════════════════════════════════════
-          DESKTOP + MOBILE HEADER — top navbar
-      ═══════════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════════════
+          DESKTOP + MOBILE HEADER
+      ═══════════════════════════════════════════════════════════════ */}
       <header className="bg-white border-b border-slate-200 z-30 shrink-0 sticky top-0">
-
-        {/* ── Row 1: brand · search · notifications · profile ── */}
+        {/* Row 1: brand · search · notifications · profile */}
         <div className="h-14 flex items-center gap-3 px-4 lg:px-6 border-b border-slate-100">
-          {/* Mobile hamburger */}
           <button
             aria-label={isMobileDrawerOpen ? "Tutup menu" : "Buka menu"}
             onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
@@ -369,9 +276,8 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
             {isMobileDrawerOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          {/* Brand */}
           <Link href="/hrd" className="flex items-center gap-2 shrink-0">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse shrink-0" />
+            <span className="h-2.5 w-2.5 rounded-full bg-red-600 shrink-0" />
             <span className="font-extrabold text-sm tracking-wider text-slate-800">PTPGP HRIS</span>
           </Link>
 
@@ -393,7 +299,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
             )}
           </div>
 
-          {/* Right: notifications + divider + profile */}
+          {/* Right side */}
           <div className="flex items-center gap-3 ml-auto">
             <NotificationBell role="hrd" />
             <div className="h-8 w-px bg-slate-200 hidden sm:block" />
@@ -432,131 +338,90 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        {/* ── Row 2: Desktop nav pills (hidden on mobile) ── */}
-        <div
-          ref={navbarRef}
-          className="hidden lg:block relative"
-        >
-          <div>
-            {/* Always full, un-abbreviated menu names. Centered and wrapped
-                (rather than a single scrolling line) so the row reads as a
-                deliberate, balanced block instead of a cramped strip. */}
-            <div className="flex flex-wrap items-center justify-center gap-1 px-4 py-2">
-              {MENU_GROUPS.map((group) => {
-                const isActive     = group.items.some((item) => isHrdItemActive(pathname, item.href));
-                const isOpen       = activeDesktopGroup === group.label;
-                const hasGroupUnread = group.items.some((item) => hasUnreadForHref(item.href, "/hrd"));
-                return (
-                  <GroupPill
-                    key={group.label}
-                    group={group}
-                    isActive={isActive}
-                    isOpen={isOpen}
-                    hasUnread={hasGroupUnread}
-                    tooltip={GROUP_TOOLTIPS[group.label]}
-                    onClick={() => toggleDesktopGroup(group.label)}
-                  />
-                );
-              })}
-            </div>
+        {/* Row 2: main module pills — desktop only */}
+        <div className="hidden lg:block border-b border-slate-100">
+          <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto scrollbar-hide">
+            {MENU_GROUPS.map((group) => {
+              const GroupIcon = group.icon;
+              const isActive = activeGroupLabel === group.label;
+              const hasUnread = group.items.some((item) => hasUnreadForHref(item.href, "/hrd"));
+              return (
+                <button
+                  key={group.label}
+                  type="button"
+                  onClick={() => navigateToGroup(group)}
+                  title={group.label}
+                  className={`relative flex items-center gap-1.5 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 px-3 py-1.5 ${
+                    isActive
+                      ? "bg-pgp-red text-white shadow-sm"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <GroupIcon size={14} className={isActive ? "text-white" : GROUP_COLOR_CLASSES_LIGHT[group.color] || "text-slate-400"} />
+                  <span className="truncate max-w-[120px]">{group.label}</span>
+                  {hasUnread && (
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isActive ? "bg-white" : "bg-yellow-400"}`} aria-hidden="true" />
+                  )}
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          {/* ── Dropdown panel ── */}
-          {activeGroupData && (
-            <div
-              ref={dropdownRef}
-              className="absolute top-full left-0 right-0 bg-white border-b border-slate-200 shadow-lg z-40"
-            >
-              <div className="max-w-screen-2xl mx-auto px-6 py-4">
-                {/* Panel header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    {(() => {
-                      const GroupIcon = activeGroupData.icon;
-                      return (
-                        <GroupIcon
-                          size={16}
-                          className={GROUP_COLOR_CLASSES_LIGHT[activeGroupData.color] || "text-slate-500"}
-                        />
-                      );
-                    })()}
-                    <span className="text-xs font-extrabold text-slate-700 uppercase tracking-widest">
-                      {activeGroupData.label}
-                    </span>
-                    {activeGroupData.hubHref && (
-                      <Link
-                        href={activeGroupData.hubHref}
-                        onClick={() => setActiveDesktopGroup(null)}
-                        className="ml-2 text-[10px] font-bold text-pgp-red hover:underline flex items-center gap-0.5"
-                      >
-                        Ringkasan <ChevronRight size={10} />
-                      </Link>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveDesktopGroup(null)}
-                    className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                    aria-label="Tutup dropdown"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                {/* Items grid — internal scroll caps panel height for large
-                    groups instead of pushing the dropdown off-screen; every
-                    item stays reachable, none are hidden or removed. */}
-                <div className={`grid ${dropdownCols(activeGroupData.items.length)} gap-px max-h-[60vh] overflow-y-auto pr-1`}>
-                  {activeGroupData.items.map((item) => {
+        {/* Row 3: sub-tabs for active module — desktop only. Grouped by
+            `section` with a vertical divider between clusters (e.g.
+            "Kompensasi Rutin | Reward Non-Rutin"), same idea as the
+            reference design's grouped tab row. Ungrouped items (no
+            `section`) render as one leading cluster with no divider. */}
+        {activeGroup && subTabItems.length > 0 && (
+          <div className="hidden lg:block bg-[#FDFBFA]">
+            <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-hide">
+              {subTabSections.map(({ section, items }, i) => (
+                <div key={section || "_"} className="flex items-center gap-1 shrink-0">
+                  {i > 0 && <span className="h-5 w-[1.5px] bg-slate-800 mx-1.5 shrink-0 rounded-full" aria-hidden="true" />}
+                  {items.map((item) => {
                     const isActive = isHrdItemActive(pathname, item.href);
                     const hasUnread = hasUnreadForHref(item.href, "/hrd");
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
-                        onClick={() => setActiveDesktopGroup(null)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-medium transition-all group ${
+                        className={`relative flex items-center gap-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 px-3 py-1.5 ${
                           isActive
-                            ? "bg-red-50 text-pgp-red"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                            ? "text-pgp-red bg-red-50"
+                            : "text-slate-500 hover:bg-white hover:text-slate-700"
                         }`}
                       >
-                        {isActive && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-pgp-red shrink-0" />
-                        )}
-                        <span className="truncate flex-1">{item.label}</span>
+                        {isActive && <span className="h-1.5 w-1.5 rounded-full bg-pgp-red shrink-0" />}
+                        <span className="truncate max-w-[160px]">{item.label}</span>
                         {hasUnread && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0 ml-auto" aria-hidden="true" />
+                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isActive ? "bg-pgp-red" : "bg-yellow-400"}`} aria-hidden="true" />
                         )}
-                        <ChevronRight
-                          size={10}
-                          className="shrink-0 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all"
-                        />
                       </Link>
                     );
                   })}
                 </div>
-              </div>
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </header>
 
-      {/* ═══════════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════════════════════════════
           MAIN CONTENT
-      ═══════════════════════════════════════════════════════════ */}
+      ═══════════════════════════════════════════════════════════════ */}
       <main
         id="main-content"
-        className="flex-1 overflow-y-auto overflow-x-hidden bg-[#F8FAFC] pb-16 lg:pb-0"
+        className="flex-1 overflow-y-auto overflow-x-hidden bg-[#FDFBFA] pb-20 lg:pb-0"
       >
         <div className="mx-auto w-full max-w-screen-2xl p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </main>
 
-      {/* ═══════════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════════════════════════════
           MOBILE BOTTOM NAV
-      ═══════════════════════════════════════════════════════════ */}
+      ═══════════════════════════════════════════════════════════════ */}
       <nav className="lg:hidden fixed bottom-0 left-0 w-full h-16 bg-[#0F172A] border-t border-slate-800 z-30 flex items-stretch">
         {BOTTOM_NAV.map((item) => {
           const isActive = isHrdItemActive(pathname, item.href);
@@ -566,15 +431,11 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
-                isActive ? "text-red-500" : "text-slate-400"
-              }`}
+              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isActive ? "text-red-500" : "text-slate-400"}`}
             >
               <Icon size={17} />
               {item.label}
-              {hasUnread && (
-                <span className="absolute top-1 right-[calc(50%-14px)] h-1.5 w-1.5 rounded-full bg-yellow-400" aria-hidden="true" />
-              )}
+              {hasUnread && <span className="absolute top-1 right-[calc(50%-14px)] h-1.5 w-1.5 rounded-full bg-yellow-400" aria-hidden="true" />}
             </Link>
           );
         })}

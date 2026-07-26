@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Check, X, Wrench } from "lucide-react";
 import { getKoreksiAbsensi, ajukanKoreksi, reviewKoreksi, getActiveEmployeesForSelect } from "@/app/actions/workforce-time";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox, { type EmployeeOption } from "@/components/EmployeeCombobox";
 
 interface Koreksi {
   id: string; karyawan_nama: string; tanggal: string; jenis_koreksi: string; alasan: string; status: string;
@@ -17,11 +18,12 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function KoreksiAbsensiPage() {
   const [rows, setRows] = useState<Koreksi[]>([]);
-  const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pickerKey, setPickerKey] = useState(0);
 
   const fetchData = async () => {
     const [k, e] = await Promise.all([getKoreksiAbsensi(), getActiveEmployeesForSelect()]);
@@ -35,7 +37,7 @@ export default function KoreksiAbsensiPage() {
     const res = await ajukanKoreksi(new FormData(e.currentTarget));
     setSaving(false);
     if (res.error) { setError(res.error); return; }
-    showSuccess("Koreksi diajukan."); (e.target as HTMLFormElement).reset(); await fetchData();
+    showSuccess("Koreksi diajukan."); (e.target as HTMLFormElement).reset(); setPickerKey((k) => k + 1); await fetchData();
   };
   const handleReview = async (id: string, approve: boolean) => {
     await reviewKoreksi(id, approve);
@@ -51,7 +53,7 @@ export default function KoreksiAbsensiPage() {
       {error && <div className="p-4 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-semibold">{error}</div>}
 
       <form onSubmit={handleAdd} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <select name="karyawan_id" required className="border border-gray-200 p-3 rounded-xl text-sm bg-white"><option value="">Pilih Karyawan</option>{employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}</select>
+        <EmployeeCombobox key={pickerKey} name="karyawan_id" employees={employees} required />
         <input name="tanggal" type="date" required className="border border-gray-200 p-3 rounded-xl text-sm" />
         <input name="jenis_koreksi" placeholder="Jenis (cth: Lupa Absen Masuk)" required className="border border-gray-200 p-3 rounded-xl text-sm" />
         <input name="alasan" placeholder="Alasan" required className="border border-gray-200 p-3 rounded-xl text-sm" />

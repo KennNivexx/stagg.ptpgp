@@ -5,7 +5,7 @@ import IncentivesForm from "./IncentivesForm";
 export default async function IncentivesPage() {
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
-    .select("id, full_name, department, position")
+    .select("id, full_name, department, position, kode_jabatan, nik")
     .limit(100);
 
   const programs = [
@@ -73,7 +73,7 @@ export default async function IncentivesPage() {
       </div>
 
       <IncentivesForm
-        employees={(employees || []) as Array<{ id: string; full_name: string; department: string; position: string }>}
+        employees={(employees || []) as Array<{ id: string; full_name: string; department: string; position: string; kode_jabatan?: string | null; nik?: string | null }>}
         payments={payments}
         programs={programs}
       />

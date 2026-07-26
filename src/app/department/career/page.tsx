@@ -7,8 +7,9 @@ import { getDeptEmployees } from "@/app/actions/skills";
 import { getPromotions, submitPromotion, getMutations, submitMutation } from "@/app/actions/career-hrd";
 import { getDeptCareerAssessments, recomputeDeptCareerAssessments } from "@/app/actions/career-development";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox from "@/components/EmployeeCombobox";
 
-interface Employee { id: string; full_name: string; position: string }
+interface Employee { id: string; full_name: string; position: string; kode_jabatan?: string | null; nik?: string | null; department?: string | null }
 type PromotionRow = Record<string, unknown> & { id: string; status: string; from_position: string; to_position: string; created_at: string; karyawan?: { full_name?: string } };
 type MutationRow = Record<string, unknown> & { id: string; status: string; from_department: string; to_department: string; created_at: string; karyawan?: { full_name?: string } };
 type AssessmentRow = Record<string, unknown> & { id: string; period: string; final_career_score: number | null; karyawan?: { full_name?: string }; career_readiness_rules?: { category_name?: string; color_code?: string } | null };
@@ -169,10 +170,7 @@ export default function DeptCareerPage() {
           <form action={handlePromotion} className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Karyawan</label>
-              <select name="employee_id" required className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white">
-                <option value="">Pilih karyawan</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.full_name} — {e.position}</option>)}
-              </select>
+              <EmployeeCombobox name="employee_id" employees={employees} required />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Posisi Tujuan</label>
@@ -197,10 +195,7 @@ export default function DeptCareerPage() {
           <form action={handleMutation} className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Karyawan</label>
-              <select name="employee_id" required className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white">
-                <option value="">Pilih karyawan</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.full_name} — {e.position}</option>)}
-              </select>
+              <EmployeeCombobox name="employee_id" employees={employees} required />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Departemen Tujuan</label>

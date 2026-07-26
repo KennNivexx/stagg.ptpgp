@@ -6,11 +6,12 @@ import { getMyDept } from "@/app/actions/department";
 import { getDeptEmployees } from "@/app/actions/skills";
 import { getDeptAwards, nominateAward, getDeptBonuses, addBonus } from "@/app/actions/rewards";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox from "@/components/EmployeeCombobox";
 
 const AWARD_CATEGORIES = ["Employee of the Month", "Best Performance", "Long Service Award", "Innovation Award"];
 const BONUS_PROGRAMS = ["Performance Bonus", "Project Bonus", "Attendance Bonus", "Spot Bonus", "Suggestion Reward"];
 
-interface Employee { id: string; full_name: string }
+interface Employee { id: string; full_name: string; kode_jabatan?: string | null; nik?: string | null; department?: string | null; position?: string | null }
 type AwardRow = Record<string, unknown> & { id: string; employee_name: string; category: string; description: string | null; award_date: string };
 type BonusRow = Record<string, unknown> & { id: string; program: string; amount: number; status: string; period: string | null; karyawan?: { full_name?: string } };
 
@@ -114,10 +115,7 @@ export default function DeptRewardsPage() {
           <form action={handleAward} className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-slate-100">
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Karyawan</label>
-              <select name="employee_id" required className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white">
-                <option value="">Pilih karyawan</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
+              <EmployeeCombobox name="employee_id" employees={employees} required />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Kategori</label>
@@ -176,10 +174,7 @@ export default function DeptRewardsPage() {
           <form action={handleBonus} className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-slate-100">
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Karyawan</label>
-              <select name="employee_id" required className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white">
-                <option value="">Pilih karyawan</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
+              <EmployeeCombobox name="employee_id" employees={employees} required />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Program</label>

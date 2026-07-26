@@ -144,10 +144,11 @@ export async function assignKaryawan(formasiId: string, karyawanId: string) {
   }
 
   const [{ data: jabatan }, { data: unit }] = await Promise.all([
-    supabaseAdmin.from("jabatan").select("name").eq("id", f.jabatan_id as string).maybeSingle(),
+    supabaseAdmin.from("jabatan").select("name, code").eq("id", f.jabatan_id as string).maybeSingle(),
     supabaseAdmin.from("unit_organisasi").select("name").eq("id", f.unit_organisasi_id as string).maybeSingle(),
   ]);
-  const jabatanName = (jabatan as { name: string } | null)?.name || "";
+  const jabatanName = (jabatan as { name: string; code?: string } | null)?.name || "";
+  const jabatanCode = (jabatan as { name: string; code?: string } | null)?.code || "";
   const unitName = (unit as { name: string } | null)?.name || "";
   const now = new Date().toISOString();
   const today = now.slice(0, 10);
@@ -158,6 +159,7 @@ export async function assignKaryawan(formasiId: string, karyawanId: string) {
 
   await supabaseAdmin.from("karyawan").update({
     formasi_id: formasiId, position: jabatanName, department: unitName,
+    kode_jabatan: jabatanCode,
   }).eq("id", karyawanId);
 
   await supabaseAdmin.from("riwayat_posisi_karyawan").insert({

@@ -55,7 +55,24 @@ export type AuditAction =
   | "formasi.assign"
   | "formasi.unassign"
   | "careerpath.save"
-  | "careerpath.delete";
+  | "careerpath.delete"
+  | "ga.asset.create"
+  | "ga.asset.update"
+  | "ga.asset.repair_request"
+  | "ga.asset.repair_decision"
+  | "ga.peralatan.create"
+  | "ga.peralatan.fpb_create"
+  | "ga.peralatan.fpb_return"
+  | "ga.peralatan.fpb_extend"
+  | "ga.infrastruktur.create"
+  | "ga.infrastruktur.maintenance_request"
+  | "ga.infrastruktur.maintenance_update"
+  | "ga.housekeeping.checklist_submit"
+  | "ga.housekeeping.audit5r_submit"
+  | "ga.housekeeping.nc_create"
+  | "ga.housekeeping.nc_update"
+  | "meeting.room_booking_status"
+  | "meeting.notulen_approve";
 
 export async function auditLog(params: {
   action: AuditAction;

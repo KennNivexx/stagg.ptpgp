@@ -1,65 +1,50 @@
-"use client";
+import { Database, TrendingUp, BarChart3, Award, FileText, Users, RefreshCw, Crown, Layers, Sigma, ShieldCheck } from "lucide-react";
+import HubTabs, { type HubTab } from "@/components/hrd/HubTabs";
 
-import { useState } from "react";
-import { TrendingUp, Settings, BarChart3, Award, FileText, Plus, Database } from "lucide-react";
+import CareerFrameworkPage from "./framework/page";
+import CareerStreamPage from "./stream/page";
+import CareerLevelPage from "./level/page";
+import PromotionPolicyPage from "./promotion-policy/page";
+import MutationPolicyPage from "./mutation-policy/page";
+import RotationPolicyPage from "./rotation-policy/page";
+import SuccessionPolicyPage from "./succession-policy/page";
+import LeadershipFrameworkPage from "./leadership-framework/page";
+import TalentClassificationPage from "./talent-classification/page";
+import CareerScoreFormulaPage from "./score-formula/page";
+import CareerReadinessRulesPage from "./readiness-rules/page";
 
-const TABS = [
-  { id: "framework", label: "Career Framework", icon: Database },
-  { id: "streams", label: "Career Streams", icon: TrendingUp },
-  { id: "levels", label: "Career Levels", icon: BarChart3 },
-  { id: "policies", label: "Policies", icon: FileText },
-  { id: "scoring", label: "Score Formula", icon: Award },
-];
-
-export default function CareerMasterDataPage() {
-  const [activeTab, setActiveTab] = useState("framework");
-  const ActiveIcon = TABS.find((t) => t.id === activeTab)?.icon;
+export const dynamic = "force-dynamic";
+// Hub page merging the 11 "Master Kebijakan Karier" routes into a single
+// tabbed page. Each tab's content is the original page's own async Server
+// Component output — none of the original routes/logic were modified, they
+// simply stopped being individually linked from the top nav.
+export default async function CareerMasterHubPage() {
+  const tabs: HubTab[] = [
+    { id: "framework", label: "Career Framework", icon: <Database size={14} />, content: await CareerFrameworkPage() },
+    { id: "stream", label: "Career Stream", icon: <TrendingUp size={14} />, content: await CareerStreamPage() },
+    { id: "level", label: "Career Level", icon: <BarChart3 size={14} />, content: await CareerLevelPage() },
+    { id: "promotion-policy", label: "Promotion Policy", icon: <FileText size={14} />, content: await PromotionPolicyPage() },
+    { id: "mutation-policy", label: "Mutation Policy", icon: <RefreshCw size={14} />, content: await MutationPolicyPage() },
+    { id: "rotation-policy", label: "Rotation Policy", icon: <Layers size={14} />, content: await RotationPolicyPage() },
+    { id: "succession-policy", label: "Succession Policy", icon: <Crown size={14} />, content: await SuccessionPolicyPage() },
+    { id: "leadership-framework", label: "Leadership Framework", icon: <ShieldCheck size={14} />, content: await LeadershipFrameworkPage() },
+    { id: "talent-classification", label: "Talent Classification", icon: <Users size={14} />, content: await TalentClassificationPage() },
+    { id: "score-formula", label: "Career Score Formula", icon: <Sigma size={14} />, content: await CareerScoreFormulaPage() },
+    { id: "readiness-rules", label: "Career Readiness Rules", icon: <Award size={14} />, content: await CareerReadinessRulesPage() },
+  ];
 
   return (
-    <div className="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
-      <div>
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-[#1A2530] mb-2 flex items-center gap-3">
-          <Settings className="text-fuchsia-600" />
-          Master Data Karir & Suksesi
+          <Database className="text-fuchsia-600" />
+          Master Kebijakan Karier
         </h1>
         <p className="text-sm text-gray-500">
           Konfigurasi aturan dasar, jalur, jenjang, dan kebijakan yang menjadi pondasi (Single Source of Truth) untuk modul Pengembangan Karir & Manajemen Suksesi.
         </p>
       </div>
-
-      <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-slate-200">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 ${
-              activeTab === tab.id
-                ? "border-fuchsia-600 text-fuchsia-700 bg-fuchsia-50/50"
-                : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-            }`}
-          >
-            <tab.icon size={16} />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm min-h-[400px] flex items-center justify-center p-8">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-            {ActiveIcon && <ActiveIcon size={32} />}
-          </div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">
-            Konfigurasi {TABS.find((t) => t.id === activeTab)?.label}
-          </h3>
-          <p className="text-xs text-slate-500 mb-6">
-            Data master ini langsung terhubung ke database. Fitur antarmuka penuh untuk pengelolaan konfigurasi ini sedang dalam tahap pengembangan akhir.
-          </p>
-          <button className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-xl text-sm font-semibold transition-colors">
-            <Plus size={16} /> Tambah Data Baru
-          </button>
-        </div>
-      </div>
+      <HubTabs tabs={tabs} defaultTab="framework" />
     </div>
   );
 }

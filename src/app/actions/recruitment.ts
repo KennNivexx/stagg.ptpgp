@@ -333,6 +333,7 @@ export async function moveApplicationStatus(applicationId: string, newStatus: st
   revalidatePath("/hrd/recruitment/pipeline");
   revalidatePath("/hrd/recruitment/decisions");
   revalidatePath("/hrd/recruitment/interviews");
+  revalidatePath("/hrd/recruitment/drivers");
   revalidatePath("/applicant/test");
   return { success: true };
 }

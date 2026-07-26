@@ -161,11 +161,11 @@ async function buildTree(): Promise<OrgUnit[]> {
     // persisted back so the code stays stable instead of showing a raw id.
     const { data: empData } = await supabaseAdmin
       .from("karyawan")
-      .select("id, full_name, kode, nik, position, department, email")
+      .select("id, full_name, kode, kode_jabatan, nik, position, department, email")
       .neq("status", "Inactive")
       .order("full_name");
     if (empData) {
-      type EmpRow = { id: string; full_name: string; kode: string | null; nik: string | null; position: string; department: string | null; email: string };
+      type EmpRow = { id: string; full_name: string; kode: string | null; kode_jabatan: string | null; nik: string | null; position: string; department: string | null; email: string };
 
       // Generic role/hierarchy words carry no unit-identifying signal (almost
       // every department has a "Manager" or "Staff") and are excluded so they
@@ -295,7 +295,27 @@ async function buildTree(): Promise<OrgUnit[]> {
         seqByParent.set(parent.code, Math.max(seqByParent.get(parent.code) || 0, usedSeq));
       }
 
-      const toBackfill: { id: string; kode: string }[] = [];
+      // Collect all jabatan codes to resolve kode_jabatan
+      const jabatanIds = new Set<string>();
+      const formasiByEmployee: Record<string, string> = {};
+      const { data: formasiData } = await supabaseAdmin
+        .from("formasi_jabatan")
+        .select("id, jabatan_id, karyawan_id")
+        .eq("status", "Filled");
+      if (formasiData) {
+        const formasiJabatanMap = new Map((formasiData as { id: string; jabatan_id: string; karyawan_id: string | null }[]).map(f => [f.karyawan_id, f.jabatan_id]));
+        for (const e of resolved) {
+          const fjId = formasiJabatanMap.get(e.emp.id);
+          if (fjId) { formasiByEmployee[e.emp.id] = fjId; jabatanIds.add(fjId); }
+        }
+      }
+      const { data: jabatanRows } = await supabaseAdmin
+        .from("jabatan")
+        .select("id, code")
+        .in("id", Array.from(jabatanIds));
+      const jabatanCodeById = new Map((jabatanRows || []).map((j: { id: string; code: string }) => [j.id, j.code]));
+
+      const toBackfill: { id: string; kode: string; kode_jabatan?: string }[] = [];
       for (const { emp, parent, codeConsistent } of resolved) {
         let personalCode = codeConsistent ? emp.kode! : "";
         if (!personalCode) {
@@ -307,6 +327,10 @@ async function buildTree(): Promise<OrgUnit[]> {
           toBackfill.push({ id: emp.id, kode: personalCode });
         }
 
+        // Resolve kode_jabatan from assignment chain
+        const jId = formasiByEmployee[emp.id] || "";
+        const jCode = jabatanCodeById.get(jId) || emp.kode_jabatan || "";
+
         parent.children.push({
           id: emp.id,
           code: personalCode,
@@ -317,11 +341,17 @@ async function buildTree(): Promise<OrgUnit[]> {
           children: [],
           isEmployee: true,
           position: emp.position || "",
+          kode_jabatan: jCode,
         });
       }
 
       if (toBackfill.length > 0) {
-        await Promise.all(toBackfill.map(b => supabaseAdmin.from("karyawan").update({ kode: b.kode }).eq("id", b.id)));
+        await Promise.all(toBackfill.map(b =>
+          supabaseAdmin.from("karyawan").update({
+            kode: b.kode,
+            ...(b.kode_jabatan ? { kode_jabatan: b.kode_jabatan } : {}),
+          }).eq("id", b.id)
+        ));
       }
     }
 
@@ -416,7 +446,7 @@ export async function addOrgUnit(formData: FormData) {
 
   await syncOrgToDepartments();
   revalidatePath("/hrd/workplace/structure");
-  revalidatePath("/hrd/workplace/departments");
+  revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace");
   auditLog({ action: "org.add_unit", targetId: newCode, targetName: unit_name, performedBy: user });
   return { success: true, code: newCode };
@@ -475,7 +505,7 @@ async function createDepartmentUnit(params: {
 
   await syncOrgToDepartments();
   revalidatePath("/hrd/workplace/structure");
-  revalidatePath("/hrd/workplace/departments");
+  revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace");
   return { success: true, code };
 }
@@ -512,7 +542,7 @@ export async function addDepartmentManual(formData: FormData) {
   if (error?.code === "42P01") return { error: "Jalankan migrasi 20260709001_workflow_overhaul.sql terlebih dahulu." };
   if (error) { console.error("[org] addDepartmentManual error:", error.message); return { error: "Gagal mengajukan departemen." }; }
 
-  revalidatePath("/hrd/workplace/departments");
+  revalidatePath("/hrd/workplace/structure");
   return { success: true, pending: true };
 }
 
@@ -548,7 +578,7 @@ export async function reviewDepartmentRequest(id: string, approve: boolean): Pro
     decided_at: new Date().toISOString(),
   }).eq("id", id);
 
-  revalidatePath("/hrd/workplace/departments");
+  revalidatePath("/hrd/workplace/structure");
   revalidatePath("/director/departments");
   return { success: true };
 }
@@ -611,7 +641,7 @@ export async function updateOrgUnit(formData: FormData) {
 
   await syncOrgToDepartments();
   revalidatePath("/hrd/workplace/structure");
-  revalidatePath("/hrd/workplace/departments");
+  revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace");
   auditLog({ action: "org.update_unit", targetId: new_code || unit_code, targetName: unit_name || (unit as Record<string, unknown>).name as string, performedBy: user });
   return { success: true };
@@ -635,7 +665,7 @@ export async function deleteOrgUnit(unitCode: string) {
 
   await syncOrgToDepartments();
   revalidatePath("/hrd/workplace/structure");
-  revalidatePath("/hrd/workplace/departments");
+  revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace");
   auditLog({ action: "org.delete_unit", targetId: unitCode, targetName: (unit as { name: string }).name, performedBy: user });
   return { success: true };
@@ -674,7 +704,7 @@ export async function moveOrgUnit(unitCode: string, newParentCode: string) {
 
   await syncOrgToDepartments();
   revalidatePath("/hrd/workplace/structure");
-  revalidatePath("/hrd/workplace/departments");
+  revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workplace");
   auditLog({ action: "org.move_unit", targetId: newCode, targetName: (unit as { name: string }).name, performedBy: user, detail: `Dipindah ke ${newParentCode}` });
   return { success: true, newCode };

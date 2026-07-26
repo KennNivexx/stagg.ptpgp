@@ -223,6 +223,122 @@ export async function generateOfferLetter(applicationId: string): Promise<{ erro
   return { success: true, content };
 }
 
+// ── PR-SDM-02: Driver / Heavy-Equipment Operator recruitment branch ────────
+// Extends the generic pipeline above (lowongan_kerja / pelamar) instead of a
+// parallel system. Job postings flagged is_driver_position=true, OR whose
+// position name matches the same supir/sopir/driver/operator convention
+// already used by getSupirForAssignment() in vehicles.ts, are treated as
+// driver/operator recruitment and gain two extra branch-specific stages:
+// Tes Mengemudi (QC & pengemudi senior) and, for hazmat/waste-transport
+// postings, a mandatory Tes Pihak Ketiga that can't be skipped even for
+// "penunjukan" (direct referral/appointment) candidates.
+
+const DRIVER_POSITION_PATTERN = /supir|sopir|driver|operator/i;
+
+function isDriverJob(job: { position?: string | null; is_driver_position?: boolean | null }): boolean {
+  return !!job.is_driver_position || DRIVER_POSITION_PATTERN.test(job.position || "");
+}
+
+export async function setJobPostingDriverFlags(
+  jobId: string, isDriverPosition: boolean, isHazmatWasteTransport: boolean
+): Promise<{ error: string } | { success: true }> {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin.from("lowongan_kerja").update({
+    is_driver_position: isDriverPosition,
+    is_hazmat_waste_transport: isHazmatWasteTransport,
+  }).eq("id", jobId);
+  if (error?.code === "42703") return { error: "Jalankan migrasi 20260817001_driver_operator_recruitment_sop terlebih dahulu." };
+  if (error) return { error: "Gagal menyimpan penanda posisi pengemudi/operator." };
+  revalidatePath("/hrd/recruitment/drivers");
+  revalidatePath("/hrd/recruitment");
+  return { success: true };
+}
+
+/** Candidate list scoped to driver/heavy-equipment-operator postings, with
+ * job info attached — same shape as getApplicationsForPipeline() but
+ * filtered, for the /hrd/recruitment/drivers view. */
+export async function getDriverCandidatePipeline() {
+  await requireRole("hrd", "superadmin");
+
+  const { data: jobs, error: jobsError } = await supabaseAdmin
+    .from("lowongan_kerja")
+    .select("id, position, department, is_driver_position, is_hazmat_waste_transport");
+  if (jobsError?.code === "42703") {
+    return { error: "Jalankan migrasi 20260817001_driver_operator_recruitment_sop terlebih dahulu." as string };
+  }
+
+  type JobRow = { id: string; position: string; department: string; is_driver_position: boolean | null; is_hazmat_waste_transport: boolean | null };
+  const driverJobs = ((jobs as JobRow[]) || []).filter(isDriverJob);
+  const jobMap: Record<string, JobRow> = {};
+  driverJobs.forEach(j => { jobMap[j.id] = j; });
+
+  if (driverJobs.length === 0) return { apps: [] as Record<string, unknown>[], jobs: jobMap };
+
+  const { data: apps } = await supabaseAdmin
+    .from("pelamar")
+    .select("*")
+    .in("job_id", driverJobs.map(j => j.id))
+    .order("applied_at", { ascending: false });
+
+  return { apps: (apps as Record<string, unknown>[]) || [], jobs: jobMap };
+}
+
+/** Toggle "penunjukan" (direct referral/appointment) — lets the candidate
+ * skip written test + initial interview straight to the driving test. The
+ * mandatory third-party hazmat test (if the posting requires it) can NOT be
+ * skipped, enforced separately in setHazmatThirdPartyTest's callers via UI,
+ * not here — this flag only concerns the written-test/interview stages. */
+export async function setPenunjukanFlag(applicationId: string, isPenunjukan: boolean): Promise<{ error: string } | { success: true }> {
+  await requireRole("hrd", "superadmin");
+  const { error } = await supabaseAdmin.from("pelamar").update({ is_penunjukan: isPenunjukan }).eq("id", applicationId);
+  if (error?.code === "42703") return { error: "Jalankan migrasi 20260817001_driver_operator_recruitment_sop terlebih dahulu." };
+  if (error) return { error: "Gagal menyimpan status penunjukan." };
+  revalidatePath("/hrd/recruitment/drivers");
+  return { success: true };
+}
+
+/** Driving/competency test — evaluated by QC & pengemudi senior. */
+export async function setDrivingTest(
+  applicationId: string, status: "Proses" | "Lulus" | "Tidak Lulus", evaluators: string, notes: string
+): Promise<{ error: string } | { success: true }> {
+  await requireRole("hrd", "superadmin");
+  if (!evaluators.trim()) return { error: "Nama evaluator (QC & pengemudi senior) wajib diisi." };
+  const { error } = await supabaseAdmin.from("pelamar").update({
+    driving_test_status: status,
+    driving_test_evaluators: evaluators.trim(),
+    driving_test_notes: notes || null,
+    driving_test_at: new Date().toISOString(),
+  }).eq("id", applicationId);
+  if (error?.code === "42703") return { error: "Jalankan migrasi 20260817001_driver_operator_recruitment_sop terlebih dahulu." };
+  if (error) return { error: "Gagal menyimpan hasil tes mengemudi." };
+  revalidatePath("/hrd/recruitment/pipeline");
+  revalidatePath("/hrd/recruitment/drivers");
+  return { success: true };
+}
+
+/** Mandatory third-party competency test for candidates applying to
+ * transport hazardous materials/waste — cannot be skipped even for
+ * penunjukan candidates (that gate is enforced in the UI: the hire button
+ * on /hrd/recruitment/drivers stays disabled until this is "Lulus" whenever
+ * the job posting is flagged is_hazmat_waste_transport). */
+export async function setHazmatThirdPartyTest(
+  applicationId: string, status: "Proses" | "Lulus" | "Tidak Lulus", pihakKetiga: string, notes: string
+): Promise<{ error: string } | { success: true }> {
+  await requireRole("hrd", "superadmin");
+  if (status === "Lulus" && !pihakKetiga.trim()) return { error: "Nama pihak ketiga penguji wajib diisi." };
+  const { error } = await supabaseAdmin.from("pelamar").update({
+    hazmat_test_status: status,
+    hazmat_test_pihak_ketiga: pihakKetiga.trim() || null,
+    hazmat_test_notes: notes || null,
+    hazmat_test_at: new Date().toISOString(),
+  }).eq("id", applicationId);
+  if (error?.code === "42703") return { error: "Jalankan migrasi 20260817001_driver_operator_recruitment_sop terlebih dahulu." };
+  if (error) return { error: "Gagal menyimpan hasil tes kompetensi pihak ketiga." };
+  revalidatePath("/hrd/recruitment/pipeline");
+  revalidatePath("/hrd/recruitment/drivers");
+  return { success: true };
+}
+
 export async function sendOfferLetter(applicationId: string): Promise<{ error: string } | { success: true }> {
   await requireRole("hrd", "superadmin");
   const { data: appRow } = await supabaseAdmin.from("pelamar").select("email, offer_letter_content").eq("id", applicationId).maybeSingle();

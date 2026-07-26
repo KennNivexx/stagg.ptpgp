@@ -249,3 +249,42 @@ export async function markWarningExpired(id: string) {
   revalidatePath("/employee/warnings");
   return { success: true };
 }
+
+/**
+ * Search employees with kode_jabatan & NIK, returns full employee data
+ * including position/jabatan credentials for auto-fill on selection.
+ */
+export async function searchEmployees(query: string) {
+  await requireRole("hrd", "superadmin");
+  const trimmed = query.trim();
+  if (!trimmed) {
+    const { data } = await supabaseAdmin
+      .from("karyawan")
+      .select("id, full_name, kode, kode_jabatan, nik, position, department, email, status, join_date")
+      .neq("status", "Inactive")
+      .order("full_name")
+      .limit(50);
+    return data || [];
+  }
+  const { data } = await supabaseAdmin
+    .from("karyawan")
+    .select("id, full_name, kode, kode_jabatan, nik, position, department, email, status, join_date")
+    .neq("status", "Inactive")
+    .or(`full_name.ilike.%${trimmed}%,nik.ilike.%${trimmed}%,kode.ilike.%${trimmed}%,kode_jabatan.ilike.%${trimmed}%`)
+    .order("full_name")
+    .limit(50);
+  return data || [];
+}
+
+/**
+ * Get single employee with complete data for auto-fill on selection.
+ */
+export async function getEmployeeById(employeeId: string) {
+  await requireRole("hrd", "superadmin");
+  const { data } = await supabaseAdmin
+    .from("karyawan")
+    .select("id, full_name, kode, kode_jabatan, nik, position, department, email, status, join_date, phone, address")
+    .eq("id", employeeId)
+    .maybeSingle();
+  return data || null;
+}

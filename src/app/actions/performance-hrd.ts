@@ -102,51 +102,36 @@ export async function updateKpiStatus(id: string, status: KpiStatus) {
   return { success: true };
 }
 
-export async function saveOkr(formData: FormData) {
-  await requireRole("hrd", "superadmin");
-  const department = (formData.get("department") as string || "").trim();
-  const period = (formData.get("period") as string || "").trim();
-  const objective = (formData.get("objective") as string || "").trim();
-  const keyResults = (formData.get("key_results") as string || "").trim();
-  if (!department || !objective) return { error: "Departemen dan objective wajib diisi." };
-  const { error } = await supabaseAdmin.from("okr").insert({
-    id: "okr-" + crypto.randomUUID(), department,
-    period: period || null, objective,
-    key_results: keyResults || null, progress: 0, status: "On Track",
-    created_at: new Date().toISOString(),
-  });
-  if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
-  if (error) { console.error("[performance-hrd] saveOkr error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
-  revalidatePath("/hrd/performance/okr");
-  return { success: true };
+/**
+ * Kepala Departemen penilaian form: returns all karyawan in the department
+ * with their KPI catalog entries and framework for assessment.
+ */
+export async function getDeptEmployeesForAssessment(department: string) {
+  await requireRole("department_manager", "hrd", "superadmin");
+  const { data } = await supabaseAdmin.from("karyawan")
+    .select("id, full_name, kode_jabatan, position, department")
+    .eq("department", department)
+    .neq("status", "Inactive")
+    .order("full_name");
+  return data || [];
 }
 
-const OKR_STATUSES = ["On Track", "At Risk", "Behind", "Achieved"] as const;
-type OkrStatus = (typeof OKR_STATUSES)[number];
-
-export async function updateOkrProgress(id: string, progress: number, status?: string) {
+/** Get KPI evaluations with employee kode_jabatan */
+export async function getKpiEvaluationsWithJabatan() {
   await requireRole("hrd", "superadmin", "department_manager");
-  if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
-    return { error: "Progress harus di antara 0 dan 100." };
-  }
-  const updateData: Record<string, unknown> = { progress: Math.round(progress) };
-  if (status) {
-    if (!OKR_STATUSES.includes(status as OkrStatus)) return { error: "Status tidak valid." };
-    updateData.status = status;
-  } else if (progress >= 100) {
-    updateData.status = "Achieved";
-  }
-  const { error } = await supabaseAdmin.from("okr").update(updateData).eq("id", id);
-  if (error) { console.error("[performance-hrd] updateOkrProgress error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
-  revalidatePath("/hrd/performance/okr");
-  return { success: true };
+  const { data } = await supabaseAdmin
+    .from("evaluasi_kpi")
+    .select("*, karyawan!inner(full_name, kode_jabatan, department, position)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  return data || [];
 }
 
 export async function getKpiDetail(id: string) {
   await requireRole("hrd", "superadmin", "department_manager");
   const { data } = await supabaseAdmin
     .from("evaluasi_kpi")
-    .select("*, karyawan!inner(full_name, department, position)")
+    .select("*, karyawan!inner(full_name, department, position, kode_jabatan)")
     .eq("id", id)
     .maybeSingle();
   return data || null;
@@ -193,7 +178,7 @@ export async function getFeedbackHistory() {
 
   const { data } = await supabaseAdmin
     .from("umpan_balik_kinerja")
-    .select("*, karyawan!employee_id(full_name, kode, department, position)")
+    .select("*, karyawan!employee_id(full_name, kode, kode_jabatan, department, position)")
     .order("created_at", { ascending: false })
     .limit(50);
 

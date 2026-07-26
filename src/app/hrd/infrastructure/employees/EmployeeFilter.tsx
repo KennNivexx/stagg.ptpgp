@@ -1,17 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Filter } from "lucide-react";
+import { Filter, Search } from "lucide-react";
+import { useState } from "react";
 
 export default function EmployeeFilter({
   deptFilter,
   statusFilter,
+  query,
   deptList,
   statusList,
   activeCounts,
 }: {
   deptFilter: string;
   statusFilter: string;
+  query?: string;
   deptList: string[];
   statusList: string[];
   activeCounts: {
@@ -21,6 +24,7 @@ export default function EmployeeFilter({
   };
 }) {
   const router = useRouter();
+  const [searchText, setSearchText] = useState(query || "");
 
   const handleFilterChange = (key: string, value: string) => {
     const params = new URLSearchParams(window.location.search);
@@ -35,6 +39,17 @@ export default function EmployeeFilter({
 
   return (
     <div className="flex flex-wrap items-center gap-4 mb-6">
+      <div className="relative flex-1 min-w-[240px]">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleFilterChange("q", searchText); }}
+          placeholder="Cari NIK, nama, kode jabatan, departemen, posisi..."
+          className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] outline-none"
+        />
+      </div>
       <div className="flex items-center gap-2">
         <Filter size={14} className="text-gray-400" />
         <div className="flex items-center gap-3">

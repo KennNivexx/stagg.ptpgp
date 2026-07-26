@@ -37,12 +37,41 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
 
   const years = [new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2];
 
-  const { draftCount, approvedCount } = useMemo(() => ({
+  const { draftCount, sdmCount, keuanganCount, approvedCount } = useMemo(() => ({
     draftCount: payrolls.filter(p => p.status === "Draft").length,
+    sdmCount: payrolls.filter(p => p.status === "Verified_SDM").length,
+    keuanganCount: payrolls.filter(p => p.status === "Verified_Keuangan").length,
     approvedCount: payrolls.filter(p => p.status === "Approved").length,
   }), [payrolls]);
 
-  const handleStatusChange = async (id: string, status: "Approved" | "Paid") => {
+  const NEXT_STATUS: Record<string, string> = {
+    Draft: "Verified_SDM",
+    Verified_SDM: "Verified_Keuangan",
+    Verified_Keuangan: "Approved",
+    Approved: "Paid",
+  };
+  const STATUS_LABEL: Record<string, string> = {
+    Draft: "Draft",
+    Verified_SDM: "Diverifikasi SDM & Aset",
+    Verified_Keuangan: "Diverifikasi Keuangan",
+    Approved: "Disetujui Direktur",
+    Paid: "Dibayar",
+  };
+  const STATUS_COLOR: Record<string, string> = {
+    Draft: "bg-amber-50 text-amber-700",
+    Verified_SDM: "bg-sky-50 text-sky-700",
+    Verified_Keuangan: "bg-indigo-50 text-indigo-700",
+    Approved: "bg-blue-50 text-blue-700",
+    Paid: "bg-emerald-50 text-emerald-700",
+  };
+  const ACTION_LABEL: Record<string, string> = {
+    Verified_SDM: "Verifikasi SDM & Aset",
+    Verified_Keuangan: "Verifikasi Keuangan",
+    Approved: "Setujui (Direktur)",
+    Paid: "Tandai Dibayar",
+  };
+
+  const handleStatusChange = async (id: string, status: string) => {
     setActingId(id);
     const result = await updatePayrollStatus(id, status);
     setActingId(null);
@@ -73,8 +102,8 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
     fd.append("status", status);
     const result = await batchUpdatePayrollStatus(fd);
     setBatchSaving(null);
-    if (result?.error) { setMsg({ type: "error", text: result.error }); return; }
-    setMsg({ type: "success", text: `${(result as Record<string, unknown>).updated} payroll diperbarui ke ${status === "Approved" ? "Disetujui" : "Dibayar"}` });
+    if ("error" in result) { setMsg({ type: "error", text: result.error }); return; }
+    setMsg({ type: "success", text: `${result.updated} payroll diperbarui ke status "${STATUS_LABEL[status] || status}"` });
     router.refresh();
   };
 
@@ -108,22 +137,30 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap items-center gap-x-6 gap-y-2">
-        <span className="text-[10px] font-bold text-slate-400 uppercase">Arti status:</span>
+        <span className="text-[10px] font-bold text-slate-400 uppercase">Alur verifikasi (PR-SDM-06):</span>
         <div className="flex items-center gap-1.5 text-xs">
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700">Draft</span>
-          <span className="text-slate-500">baru dibuat, belum final — masih bisa diedit bonus/potongannya, lalu klik <strong>Setujui</strong></span>
+          <span className="text-slate-500">diinput Admin SDM, masih bisa diedit</span>
         </div>
+        <span className="text-slate-300">→</span>
         <div className="flex items-center gap-1.5 text-xs">
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700">Disetujui</span>
-          <span className="text-slate-500">sudah dicek HRD, tinggal transfer — lalu klik <strong>Tandai Dibayar</strong></span>
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700">Diverifikasi SDM & Aset</span>
         </div>
+        <span className="text-slate-300">→</span>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700">Diverifikasi Keuangan</span>
+        </div>
+        <span className="text-slate-300">→</span>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700">Disetujui Direktur</span>
+        </div>
+        <span className="text-slate-300">→</span>
         <div className="flex items-center gap-1.5 text-xs">
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700">Dibayar</span>
-          <span className="text-slate-500">selesai, gaji sudah ditransfer ke karyawan</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Users size={18} /></div>
@@ -153,9 +190,18 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-sky-50 text-sky-600 rounded-xl"><CheckCircle2 size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Perlu Verifikasi</p>
+              <p className="text-xl font-extrabold text-slate-800">{sdmCount + keuanganCount}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><CheckCircle2 size={18} /></div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Approved</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Disetujui Direktur</p>
               <p className="text-xl font-extrabold text-slate-800">{approvedCount}</p>
             </div>
           </div>
@@ -170,9 +216,21 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {draftCount > 0 && (
+              <button onClick={() => handleBatchStatus("Verified_SDM")} disabled={batchSaving !== null}
+                className="px-3 py-2 bg-sky-50 text-sky-700 text-xs font-bold rounded-xl hover:bg-sky-100 transition-colors disabled:opacity-50">
+                {batchSaving === "Verified_SDM" ? "Memproses..." : `Verifikasi SDM Semua (${draftCount})`}
+              </button>
+            )}
+            {sdmCount > 0 && (
+              <button onClick={() => handleBatchStatus("Verified_Keuangan")} disabled={batchSaving !== null}
+                className="px-3 py-2 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-xl hover:bg-indigo-100 transition-colors disabled:opacity-50">
+                {batchSaving === "Verified_Keuangan" ? "Memproses..." : `Verifikasi Keuangan Semua (${sdmCount})`}
+              </button>
+            )}
+            {keuanganCount > 0 && (
               <button onClick={() => handleBatchStatus("Approved")} disabled={batchSaving !== null}
                 className="px-3 py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl hover:bg-blue-100 transition-colors disabled:opacity-50">
-                {batchSaving === "Approved" ? "Memproses..." : `Approve Semua (${draftCount})`}
+                {batchSaving === "Approved" ? "Memproses..." : `Setujui Semua (${keuanganCount})`}
               </button>
             )}
             {approvedCount > 0 && (
@@ -220,31 +278,23 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
                       <td className="px-4 py-3 text-xs text-red-600 font-medium" title="PPh 21 + BPJS Kesehatan + BPJS Ketenagakerjaan">Rp {fmt(totalDeductions)}</td>
                       <td className="px-4 py-3 text-xs font-bold text-slate-800">Rp {fmt(Number(p.net_salary) || 0)}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                          p.status === "Paid" ? "bg-emerald-50 text-emerald-700" :
-                          p.status === "Approved" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"
-                        }`}>
-                          {p.status === "Draft" ? "Draft" : p.status === "Paid" ? "Dibayar" : "Disetujui"}
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${STATUS_COLOR[p.status as string] || "bg-slate-50 text-slate-600"}`}>
+                          {STATUS_LABEL[p.status as string] || String(p.status)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {p.status === "Draft" && (
-                            <>
-                              <button onClick={() => openEdit(p)} title="Edit bonus/potongan"
-                                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
-                                <Edit3 size={13} />
-                              </button>
-                              <button onClick={() => handleStatusChange(p.id as string, "Approved")} disabled={busy}
-                                className="px-2 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md hover:bg-blue-100 disabled:opacity-50">
-                                Setujui
-                              </button>
-                            </>
+                            <button onClick={() => openEdit(p)} title="Edit bonus/potongan"
+                              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                              <Edit3 size={13} />
+                            </button>
                           )}
-                          {p.status === "Approved" && (
-                            <button onClick={() => handleStatusChange(p.id as string, "Paid")} disabled={busy}
-                              className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md hover:bg-emerald-100 disabled:opacity-50 flex items-center gap-1">
-                              <CheckCircle2 size={11} /> Dibayar
+                          {NEXT_STATUS[p.status as string] && (
+                            <button onClick={() => handleStatusChange(p.id as string, NEXT_STATUS[p.status as string])} disabled={busy}
+                              className="px-2 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1">
+                              {NEXT_STATUS[p.status as string] === "Paid" && <CheckCircle2 size={11} />}
+                              {ACTION_LABEL[NEXT_STATUS[p.status as string]]}
                             </button>
                           )}
                           <button onClick={() => window.open(`/api/payslip/${p.id as string}`, "_blank")}

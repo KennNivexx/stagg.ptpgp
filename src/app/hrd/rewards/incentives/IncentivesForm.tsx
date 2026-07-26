@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Gift, Plus, CheckCircle, AlertTriangle } from "lucide-react";
 import { saveIncentivePayment, updateIncentiveStatus, getRewardBudgetStatus } from "@/app/actions/rewards";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox from "@/components/EmployeeCombobox";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
 type IncentivePayment = Record<string, unknown>;
@@ -113,10 +114,8 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
           <form ref={formRef} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Karyawan</label>
-              <select name="employee_id" value={empId} onChange={(e) => setEmpId(e.target.value)} className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
-                <option value="">Pilih karyawan...</option>
-                {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name} - {e.department}</option>)}
-              </select>
+              <EmployeeCombobox name="employee_id" employees={employees} defaultValue={empId}
+                onSelect={(emp) => setEmpId(emp?.id || "")} />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Program</label>
@@ -153,7 +152,11 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
               </div>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Catatan</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Alasan / Keterangan <span className="text-red-500">*</span></label>
+              <input name="alasan" type="text" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="Kenapa dapat insentif ini? Jelaskan rinciannya..." />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Catatan (Opsional)</label>
               <input name="notes" type="text" className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" placeholder="Keterangan tambahan..." />
             </div>
             <div className="md:col-span-2"><Msg m={msg} /></div>
@@ -177,7 +180,7 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
-                {["Karyawan", "Program", "Periode", "Jumlah", "Catatan", "Status", "Aksi"].map((h) => (
+                {["Karyawan", "Program", "Periode", "Jumlah", "Alasan", "Status", "Aksi"].map((h) => (
                   <th key={h} className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-left">{h}</th>
                 ))}
               </tr>
@@ -199,7 +202,9 @@ export default function IncentivesForm({ employees, payments, programs }: Props)
                     <td className="px-6 py-4"><span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[10px] font-bold">{p.program as string}</span></td>
                     <td className="px-6 py-4 text-xs text-slate-600">{p.period as string}</td>
                     <td className="px-6 py-4 text-xs font-extrabold text-emerald-700">Rp {fmt(Number(p.amount) || 0)}</td>
-                    <td className="px-6 py-4 text-xs text-slate-500">{(p.notes as string) || "-"}</td>
+                    <td className="px-6 py-4 text-xs text-slate-600 max-w-[200px] truncate" title={(p.alasan as string) || (p.notes as string) || ""}>
+                      {(p.alasan as string) || (p.notes as string) || "-"}
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${statusStyle(status)}`}>{status}</span>
                     </td>

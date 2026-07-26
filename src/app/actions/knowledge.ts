@@ -253,9 +253,68 @@ export async function getKnowledgeMappingBoard(): Promise<KnowledgeBoardItem[]> 
   ];
 }
 
-/** Resolves Position -> required competencies -> mapped knowledge content,
- * across all 4 tables — used by Employee 360°'s "Mandatory Knowledge"
- * section, keyed off the employee's own jabatan (via Employee Assignment). */
+/** Auto-sends relevant knowledge modules to employees based on their
+ * GAP kompetensi — called after TNA generation or after competency assessment.
+ * Finds employees with skill gaps, looks up mapped knowledge content, and
+ * sends notifications linking them to the relevant modules/quizzes. */
+export async function autoSendKnowledgeToGapEmployees(): Promise<{ sent: number }> {
+  await requireRole("hrd", "superadmin");
+
+  // Find employees with open TNA gaps
+  const { data: tnaRows } = await supabaseAdmin
+    .from("tna_kompetensi")
+    .select("karyawan_id, skill_id")
+    .eq("status", "Open");
+
+  if (!tnaRows || tnaRows.length === 0) return { sent: 0 };
+
+  const skillIds = [...new Set((tnaRows as { skill_id: string }[]).map(r => r.skill_id))];
+  const { data: mappings } = await supabaseAdmin
+    .from("pemetaan_pengetahuan")
+    .select("*")
+    .in("skill_id", skillIds);
+
+  if (!mappings || mappings.length === 0) return { sent: 0 };
+
+  // Group by karyawan_id -> skill_id -> knowledge content
+  const { data: emps } = await supabaseAdmin
+    .from("karyawan")
+    .select("id, email, full_name")
+    .in("id", [...new Set((tnaRows as { karyawan_id: string }[]).map(r => r.karyawan_id))]);
+  const empEmailMap = new Map((emps || []).map((e: { id: string; email: string }) => [e.id, e.email]));
+
+  const { data: skills } = await supabaseAdmin
+    .from("master_kompetensi")
+    .select("id, name, kode_kompetensi")
+    .in("id", skillIds);
+  const skillMap = new Map((skills || []).map((s: { id: string; name: string; kode_kompetensi: string | null }) => [s.id, s]));
+
+  let sent = 0;
+  for (const row of tnaRows as { karyawan_id: string; skill_id: string }[]) {
+    const email = empEmailMap.get(row.karyawan_id);
+    if (!email) continue;
+
+    const relevantMappings = (mappings as { skill_id: string; content_type: string; content_id: string }[])
+      .filter(m => m.skill_id === row.skill_id);
+
+    if (relevantMappings.length === 0) continue;
+
+    const skill = skillMap.get(row.skill_id);
+    const skillName = skill?.name || row.skill_id;
+    const kodeKompetensi = skill?.kode_kompetensi || "";
+
+    await supabaseAdmin.from("notifikasi").insert({
+      id: crypto.randomUUID(),
+      user_email: email,
+      title: `Modul Pembelajaran Tersedia: ${skillName}`,
+      message: `Anda memiliki modul pembelajaran untuk menutup kesenjangan kompetensi "${skillName}" ${kodeKompetensi ? `(Kode: ${kodeKompetensi})` : ""}. Silakan buka akun Anda untuk mengakses materi dan kuis.`,
+      link: "/employee/training",
+    });
+    sent++;
+  }
+
+  return { sent };
+}
 export async function getKnowledgeForJabatan(jabatanId: string): Promise<{ content_type: string; content_id: string; title: string; skill_name: string; mandatory: boolean }[]> {
   if (!jabatanId) return [];
 

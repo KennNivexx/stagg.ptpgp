@@ -1,0 +1,586 @@
+PT PRATAMA GALUH PERKASA
+ Panduan Menu & Modul Sistem HRIS
+Penjelasan setiap menu di navigasi atas aplikasi — apa isinya, untuk apa dipakai, dan fitur apa saja
+ di dalamnya. Modul yang baru ditambahkan ditandai lencana  BARU .
+1. Dashboard
+2. Manpower Request Management
+3. Recruitment Management
+4. Desain Organisasi
+5. Employee 360°
+6. Aset & Fasilitas
+7. Workforce Time Management
+8. Competency Management
+9. Learning & Training Management
+10. Knowledge Management
+11. Performance Management
+12. Reward & Recognition
+13. Career Development
+14. Employee Relations
+15. Laporan & Analitik
+16. Admin & Pengaturan
+17. Riwayat Penggabungan Sub-Menu (sub-menu lama apa saja yang sekarang jadi satu tab)
+Menu diakses dari baris navigasi kedua di bagian atas aplikasi (di bawah logo/pencarian). Klik satu menu untuk membuka
+ sub-tab-nya di baris ketiga.
+
+=====
+1. Dashboard
+Halaman ringkasan begitu login — angka-angka penting HR dalam satu layar.
+Overview Dashboard
+Ringkasan umum: jumlah karyawan, kehadiran hari ini, cuti pending, rekrutmen
+berjalan.
+KPI Dashboard
+Skor KPI tim/departemen dalam satu tampilan.
+Analytics
+Grafik tren HR jangka panjang (headcount, turnover, dll).
+2. Manpower Request Management
+Mengajukan dan menyetujui permintaan tambahan tenaga kerja dari tiap divisi.
+Permintaan Tenaga
+Kerja
+Divisi mengajukan kebutuhan karyawan baru di sini, lalu diverifikasi berjenjang
+sebelum masuk proses rekrutmen.
+
+=====
+3. Recruitment Management
+Semua proses dari buka lowongan sampai karyawan baru diterima.
+Lowongan Kerja
+Buat dan kelola posisi yang sedang dibuka.
+Pipeline Kandidat
+Lihat semua pelamar dan tahap seleksinya (lamaran masuk → tes → interview →
+diterima/ditolak).
+Tes Rekrutmen
+Jadwalkan dan catat hasil tes tertulis/psikotes/kesehatan pelamar.
+Interview
+Jadwal dan catatan hasil wawancara.
+Keputusan Hiring
+Keputusan akhir terima/tolak pelamar.
+Talent Pool
+Kandidat potensial yang disimpan untuk kebutuhan masa depan.
+ BARU   Rekrutmen
+Pengemudi & Operator
+Jalur seleksi khusus untuk supir/operator alat berat — beda dari staff biasa: ada
+tahap tes mengemudi (dinilai QC & pengemudi senior), jalur cepat untuk kandidat
+penunjukan langsung, dan tes wajib pihak ketiga untuk posisi angkutan bahan
+berbahaya.
+4. Desain Organisasi
+Mengatur struktur perusahaan: divisi, jabatan, dan deskripsi kerja.
+Struktur Organisasi (SK)
+Dokumen SK resmi struktur organisasi dari waktu ke waktu (riwayat versi).
+Unit Organisasi
+Peta pohon divisi/departemen perusahaan beserta siapa mengisi posisi apa —
+ditampilkan sebagai diagram pohon dengan karyawan dikelompokkan per level
+jabatan (Direksi/Manajemen/Staff/Pelaksana).
+Master Jabatan
+Daftar semua nama jabatan yang ada di perusahaan beserta kode jabatannya.
+Deskripsi Kerja
+Uraian tugas pokok, wewenang, dan kualifikasi tiap jabatan (job desc).
+Spesifikasi Kerja
+Syarat detail sebuah posisi (pendidikan, pengalaman, kemampuan).
+Grade & Level
+Tingkatan/grade jabatan yang menentukan rentang gaji.
+Position Management
+(Formasi)
+Berapa slot kursi tersedia/terisi per jabatan per divisi.
+Organization Chart
+Bagan organisasi visual keseluruhan perusahaan.
+
+=====
+5. Employee 360°
+Data lengkap satu karyawan dalam satu tempat — dari data pribadi sampai riwayat kerja.
+Data Induk Karyawan
+Daftar semua karyawan dengan data lengkap (NIK, kode jabatan, kontak, dll) — klik
+satu nama untuk lihat profil 360° penuh.
+Kontrak Kerja
+Riwayat dan status kontrak kerja tiap karyawan.
+SIM & Sertifikasi
+SIM, sertifikat kompetensi, dan dokumen legal karyawan beserta tanggal
+kedaluwarsanya.
+6. Aset & Fasilitas
+Mengelola kendaraan perusahaan, aset kantor, peralatan, gedung, dan kebersihan.
+Armada Kendaraan
+Daftar kendaraan operasional perusahaan.
+Data Trip Supir
+Catatan perjalanan yang dilakukan tiap supir.
+Pengadaan Kendaraan
+Pengajuan pembelian/sewa kendaraan baru.
+ BARU   Monitoring
+Kinerja Pengemudi
+Penilaian kinerja supir/operator setiap 3 bulan. Kalau hasilnya "Pelanggaran
+Kritikal", otomatis membuat Surat Peringatan lewat sistem SP yang sama dipakai
+karyawan lain.
+ BARU   Pengendalian
+Aset
+Daftar aset perusahaan (mesin, furnitur, komputer, dll) dengan kode unik otomatis
+dan status kondisinya. Ada alur pengajuan perbaikan/penambahan aset yang perlu
+disetujui Direktur.
+ BARU   Pengendalian
+Peralatan
+Stok peralatan per kendaraan/lokasi, termasuk sistem FIFO warna
+(Hijau/Kuning/Merah) untuk kayu balok yang difumigasi. Setiap pinjam/keluar
+barang tercatat sebagai Form Pengeluaran Barang (FPB).
+ BARU   Pemeliharaan
+Infrastruktur
+Perawatan gedung, jalan, mesin — baik yang terjadwal rutin maupun perbaikan
+mendadak. Statusnya dipantau dari diajukan sampai selesai.
+ BARU   Housekeeping
+& 5R
+Checklist kebersihan harian, audit penerapan prinsip 5R
+(Ringkas-Rapi-Resik-Rawat-Rajin), dan pelaporan ketidaksesuaian yang ditemukan
+saat audit.
+
+=====
+7. Workforce Time Management
+Semua yang berhubungan dengan jam kerja: absensi, cuti, lembur, dan jadwal.
+Absensi & Koreksi
+Rekap kehadiran harian karyawan, plus form koreksi kalau ada absensi yang
+salah/lupa.
+Cuti & Saldo Cuti
+Pengajuan cuti/izin dan sisa saldo cuti tiap karyawan.
+Lembur & Timesheet
+Pencatatan jam lembur dan timesheet kerja.
+Lokasi & Shift Kerja
+Daftar lokasi kerja (kantor/cabang) dan pengaturan shift.
+Perjalanan Dinas
+Pengajuan dan pencatatan perjalanan dinas karyawan.
+Kalender & Penugasan
+Kalender kerja perusahaan dan penugasan karyawan ke proyek/lokasi tertentu.
+Laporan Insiden
+Pelaporan insiden kerja (kecelakaan, near-miss, dll).
+8. Competency Management
+Mengukur dan mengembangkan kemampuan/skill karyawan.
+Pustaka Kompetensi
+Daftar seluruh kompetensi/skill yang dikenal sistem.
+Matriks Keahlian
+Tabel skill tiap karyawan dibanding standar yang seharusnya per jabatan.
+Asesmen Kompetensi
+Proses penilaian skill karyawan.
+Analisis Kesenjangan
+Kesenjangan (gap) antara skill aktual karyawan dan standar jabatannya — otomatis
+memicu rekomendasi training kalau gap-nya besar.
+Laporan Kompetensi
+Ringkasan laporan kompetensi seluruh karyawan.
+Mapping Kompetensi ke
+Pengetahuan
+Menghubungkan tiap skill dengan materi belajar/SOP yang relevan di Knowledge
+Management.
+
+=====
+9. Learning & Training Management
+Perencanaan dan pelaksanaan pelatihan karyawan.
+Training Need Analysis
+(TNA)
+Analisis otomatis kebutuhan training berdasarkan gap kompetensi yang ditemukan.
+Training
+Daftar program pelatihan yang berjalan/terjadwal.
+Materi Kursus
+Bahan ajar untuk tiap pelatihan.
+Kuis & Ujian
+Tes evaluasi setelah pelatihan.
+Sertifikat
+Sertifikat yang diterbitkan setelah pelatihan selesai.
+Evaluasi Pelatihan
+Penilaian efektivitas training oleh atasan setelah karyawan kembali bekerja.
+Analisa Dampak ROTI
+Return on Training Investment — mengukur apakah biaya training sebanding
+hasilnya.
+10. Knowledge Management
+Perpustakaan pengetahuan dan dokumen perusahaan.
+SOP dan Instruksi Kerja
+Semua SOP resmi perusahaan tersimpan di sini.
+Kebijakan Perusahaan
+Kebijakan resmi yang berlaku (peraturan perusahaan, dll).
+Basis Pengetahuan
+Artikel/dokumen pengetahuan umum untuk karyawan.
+Video Tutorial
+Video panduan kerja.
+
+=====
+11. Performance Management
+Menilai dan memantau kinerja karyawan.
+Framework Kinerja
+Kerangka/metodologi penilaian kinerja yang dipakai perusahaan.
+Manajemen KPI
+Target dan pencapaian KPI tiap karyawan/departemen.
+Review Kinerja
+Proses penilaian kinerja berkala.
+Umpan Balik
+Feedback antar karyawan/atasan-bawahan.
+Laporan Kinerja
+Ringkasan hasil kinerja seluruh karyawan.
+12. Reward & Recognition
+Semua hal terkait gaji, tunjangan, bonus, dan penghargaan.
+Payroll, Gaji &
+Tunjangan
+Proses penggajian bulanan — sekarang lewat 4 tahap verifikasi (SDM & Aset →
+Keuangan → Direktur → Dibayar), plus komponen gaji, jenis tunjangan/potongan,
+dan formula reward sebagai tab di halaman yang sama.
+Bonus, Insentif &
+Penghargaan
+Pengajuan dan pencatatan bonus, insentif, serta penghargaan karyawan
+berprestasi.
+Salary Review
+Peninjauan/kenaikan gaji di luar siklus payroll normal — wajib disetujui Direktur.
+Total Rewards & PPh 21
+Ringkasan total kompensasi tiap karyawan dan pengaturan perhitungan pajak PPh
+21.
+
+=====
+13. Career Development
+Jenjang karir, promosi, mutasi, dan perencanaan suksesi.
+Talent Pool & Suksesi
+Karyawan potensial yang disiapkan untuk posisi strategis, termasuk 9-Box Matrix
+dan daftar posisi kritis yang butuh kandidat pengganti.
+Transaksi Karier
+Promosi, mutasi, rotasi, demosi, penugasan sementara/plt — semua transaksi
+perubahan posisi karyawan.
+Pengembangan &
+Riwayat Karier
+Rencana pengembangan individu (IDP), riwayat karir, dan simulasi jalur karir
+karyawan.
+Master Kebijakan Karier
+Aturan dasar sistem karir: kerangka karir, kebijakan promosi/mutasi/rotasi/suksesi.
+Approval Karier
+Semua persetujuan terkait karir (promosi, mutasi, gaji, suksesi) dalam satu tempat
+— persetujuan final promosi sekarang wajib ditandatangani Direktur, sesuai SOP.
+14. Employee Relations
+Hubungan industrial, penanganan kasus, komunikasi internal, dan proses karyawan keluar.
+Manajemen Kasus &
+Hubungan Industrial
+Semua jenis kasus (keluhan, pelanggaran etika, kekerasan, whistleblowing) dan
+hubungan industrial (serikat pekerja, perundingan bipartit/tripartit) dalam satu
+halaman bertab.
+Surat Peringatan
+Riwayat SP1/SP2/SP3 karyawan.
+Komunikasi, Partisipasi
+& Survei
+Pengumuman perusahaan, memo internal, sistem usulan karyawan, polling, dan
+survei kepuasan — semua sebagai tab di satu halaman.
+Resignation &
+Separation
+Proses karyawan keluar: resign, pensiun, habis kontrak, PHK, sampai exit
+interview.
+Dashboard & Analitik ER
+Dashboard eksekutif, tren engagement, analisis risiko karyawan, dan modul AI
+untuk prediksi konflik/sentimen.
+Master Data Employee
+Relations
+Data dasar modul ini: kategori kasus, kebijakan, PKB, code of conduct, dll.
+Approval Employee
+Relations
+Semua persetujuan terkait kasus, investigasi, dan separation dalam satu tempat.
+
+=====
+15. Laporan & Analitik
+Laporan-laporan resmi lintas modul untuk kebutuhan manajemen.
+Laporan Rekrutmen
+Statistik proses rekrutmen.
+Laporan Karyawan
+Data ringkas seluruh karyawan.
+Laporan Payroll
+Ringkasan penggajian per periode.
+Laporan Training
+Statistik pelatihan yang sudah berjalan.
+Laporan Kinerja
+Ringkasan hasil penilaian kinerja.
+Laporan Turnover
+Statistik karyawan keluar-masuk.
+16. Admin & Pengaturan
+Pengaturan sistem dan fitur administratif lintas-modul.
+Pengaturan Perusahaan
+Konfigurasi umum perusahaan (identitas, email, dll).
+Audit Log
+Riwayat semua aktivitas penting yang tercatat di sistem — siapa mengubah apa
+dan kapan.
+ BARU   Tata Kelola
+Rapat
+Booking ruang meeting (dengan deteksi bentrok jadwal otomatis), formulir Daftar
+Hadir digital, dan Notulen Rapat terstruktur — tiga hal ini dipakai lintas-modul untuk
+pelatihan, briefing, sosialisasi, dan rapat apa pun.
+
+=====
+Riwayat Penggabungan Sub-Menu
+Sebelumnya aplikasi ini punya 100+ sub-menu tersebar di 17 menu utama — sebagian besar mengarah ke
+halaman kecil yang isinya cuma satu jenis data. Supaya HRD tidak pusing scroll menu panjang, sub-menu yang
+topiknya sangat berdekatan digabung jadi satu halaman dengan beberapa tab di dalamnya — tidak ada fitur yang
+dihapus, cuma cara aksesnya yang dirapikan. Bagian ini mencatat persis sub-menu apa saja yang tadinya berdiri
+sendiri untuk tiap menu gabungan, supaya kalau ada yang mencari fitur lama, tahu sekarang ada di tab mana.
+Workforce Time Management
+Sekarang: Absensi & Koreksi (2 sub-menu digabung)
+
+Absensi
+
+Koreksi Absensi
+Sekarang: Cuti & Saldo Cuti (2 sub-menu digabung)
+
+Cuti & Izin
+
+Saldo Cuti
+Sekarang: Lembur & Timesheet (2 sub-menu digabung)
+
+Lembur
+
+Timesheet
+Sekarang: Lokasi & Shift Kerja (2 sub-menu digabung)
+
+Lokasi Kerja
+
+Shift Kerja
+Sekarang: Kalender & Penugasan (2 sub-menu digabung)
+
+Kalender Kerja
+
+Penugasan Kerja
+Reward & Recognition
+Sekarang: Payroll, Gaji & Tunjangan (4 sub-menu digabung)
+
+Payroll
+
+Komponen Gaji
+
+Jenis Tunjangan & Potongan
+
+Formula Reward
+Sekarang: Bonus, Insentif & Penghargaan (3 sub-menu digabung)
+
+Bonus
+
+Insentif
+
+Penghargaan
+
+=====
+Sekarang: Total Rewards & PPh 21 (2 sub-menu digabung)
+
+Total Rewards Statement
+
+Konfigurasi PPh 21
+Career Development
+Sekarang: Master Kebijakan Karier (11 sub-menu digabung)
+
+Career Framework
+
+Career Stream
+
+Career Level
+
+Promotion Policy
+
+Mutation Policy
+
+Rotation Policy
+
+Succession Policy
+
+Leadership Framework
+
+Talent Classification
+
+Career Score Formula
+
+Career Readiness Rules
+Sekarang: Talent Pool & Suksesi (8 sub-menu digabung)
+
+Talent Pool
+
+Talent Review
+
+9-Box Matrix
+
+Critical Position (dulu di menu "Succession & Talent" terpisah)
+
+Successor Planning (dulu di menu "Succession & Talent" terpisah)
+
+Pool Suksesi (dulu di menu "Succession & Talent" terpisah)
+
+Penilaian Kesiapan (dulu di menu "Succession & Talent" terpisah)
+
+Leadership Pipeline
+Sekarang: Pengembangan & Riwayat Karier (8 sub-menu digabung)
+
+Career Profile
+
+Career Assessment
+
+Career Readiness
+
+Career Recommendation
+
+Individual Development Plan (IDP)
+
+Career Simulation
+
+Career History
+
+Career Analytics
+Sekarang: Transaksi Karier (7 sub-menu digabung)
+
+Promosi
+
+Mutasi
+
+Rotasi
+
+Demosi
+
+Acting Assignment
+
+Temporary Assignment
+
+Succession Assignment
+
+=====
+Sekarang: Approval Karier (5 sub-menu digabung)
+
+Promotion Approval
+
+Mutation Approval
+
+Salary Approval
+
+Succession Approval
+
+Career Committee
+Employee Relations
+Sekarang: Master Data Employee Relations (12 sub-menu digabung)
+
+Employee Relation Policy
+
+Company Regulation (PP)
+
+Perjanjian Kerja Bersama (PKB)
+
+Code of Conduct
+
+Communication Category
+
+Complaint & Case Category
+
+Investigation Type
+
+Disciplinary Category
+
+Engagement Program
+
+Survey Template
+
+Exit Reason
+
+AI Recommendation Rule
+Sekarang: Komunikasi, Partisipasi & Survei (14 sub-menu digabung)
+
+Company Announcement
+
+Internal Memo
+
+Company News
+
+Policy Distribution
+
+Circular Letter
+
+Emergency Notification
+
+Communication Analytics
+
+Suggestion System
+
+Innovation Proposal
+
+Voice of Employee
+
+Employee Survey
+
+Polling
+
+Employee Feedback
+
+Employee Satisfaction Survey
+
+=====
+Sekarang: Manajemen Kasus & Hubungan Industrial (16 sub-menu digabung)
+
+Semua Kasus
+
+Complaint
+
+Grievance
+
+Ethics Violation
+
+Fraud
+
+Harassment & Bullying
+
+Whistleblowing
+
+Investigation
+
+Corrective Action
+
+Labour Union
+
+Bipartite Meeting
+
+Tripartite Meeting
+
+Negotiation & Mediation
+
+Industrial Dispute
+
+PHI Documentation
+
+Industrial Compliance
+Sekarang: Resignation & Separation (6 sub-menu digabung)
+
+Resignation
+
+Retirement
+
+End of Contract
+
+Termination (PHK)
+
+Exit Interview
+
+Separation Analytics
+Sekarang: Approval Employee Relations (6 sub-menu digabung)
+
+Complaint Approval
+
+Investigation Approval
+
+Corrective Action Approval
+
+Industrial Relations Approval
+
+Separation Approval
+
+Case Closure Approval
+Sekarang: Dashboard & Analitik ER (13 sub-menu digabung)
+
+Executive Dashboard
+
+Employee Engagement Dashboard
+
+Employee Satisfaction Dashboard
+
+Complaint Analytics
+
+Industrial Relations Report
+
+Retention & Turnover Analysis
+
+Employee Risk Dashboard
+
+AI ER Engine
+
+Employee Risk Score
+
+Sentiment Analysis
+
+Engagement Trend
+
+Conflict Prediction
+
+AI Recommendations
+
+=====

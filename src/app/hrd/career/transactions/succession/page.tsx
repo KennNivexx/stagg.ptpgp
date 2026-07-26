@@ -5,7 +5,7 @@ import CareerTransactionClient from "@/components/hrd/CareerTransactionClient";
 export default async function TransactionSuccessionPage() {
   const [rows, { data: employees }, { data: jabatanList }] = await Promise.all([
     getCareerTransactions("Succession Assignment"),
-    supabaseAdmin.from("karyawan").select("id, full_name").neq("status", "Inactive").order("full_name"),
+    supabaseAdmin.from("karyawan").select("id, full_name, kode_jabatan, nik, department, position").neq("status", "Inactive").order("full_name"),
     supabaseAdmin.from("jabatan").select("id, name, department").order("name"),
   ]);
   return (

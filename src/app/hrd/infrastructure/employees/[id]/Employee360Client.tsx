@@ -108,7 +108,12 @@ export default function Employee360Client({ data }: { data: Data }) {
         </div>
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-[#1A2530]">{k.full_name as string}</h1>
-          <p className="text-sm text-gray-500">{(k.position as string) || "—"} &bull; {(k.department as string) || "—"} &bull; {k.email as string}</p>
+          <p className="text-sm text-gray-500">{(k.position as string) || "—"} &bull; {(k.department as string) || "—"}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-mono font-bold">NIK: {(k.nik as string) || "—"}</span>
+            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-[10px] font-mono font-bold">Kode: {(k.kode_jabatan as string) || (k.kode as string) || "—"}</span>
+            <span className="text-xs text-slate-400">{k.email as string}</span>
+          </div>
         </div>
         <span className={`ml-auto px-3 py-1.5 rounded-full text-xs font-extrabold border ${k.status === "Inactive" ? "bg-slate-50 text-slate-500 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
           {(k.status as string) || "Aktif"}

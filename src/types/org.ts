@@ -8,6 +8,8 @@ export interface OrgUnit {
   children: OrgUnit[];
   isEmployee?: boolean;
   position?: string;
+  kode_jabatan?: string;
+  nik?: string;
   jenis_unit?: string;
   singkatan?: string | null;
   deskripsi?: string | null;

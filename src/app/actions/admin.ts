@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { testMailConfig } from "@/lib/mailer";
 import { sumEmployeeComponentsByType } from "@/app/actions/payroll-components";
+import { resolveManagerDepartment } from "@/lib/dept-resolve";
 
 export async function testGmailConfig() {
   await requireRole("hrd", "superadmin");
@@ -337,13 +338,74 @@ export async function getBpjsConfig(): Promise<Record<string, unknown> | null> {
   try { return JSON.parse(data.value as string) as Record<string, unknown>; } catch { return null; }
 }
 
-const PAYROLL_STATUSES = ["Draft", "Approved", "Paid"] as const;
+// Mirrors PR-SDM-06's 3-tier verification chain (Ka Div SDM & Aset -> Spv
+// Keuangan -> Direktur Utama tanda tangan akhir) instead of the old flat
+// Draft -> Approved -> Paid, which let a single hrd/superadmin user push
+// payroll straight through with no finance or director sign-off at all.
+const PAYROLL_STATUSES = ["Draft", "Verified_SDM", "Verified_Keuangan", "Approved", "Paid"] as const;
 type PayrollStatus = (typeof PAYROLL_STATUSES)[number];
 
-export async function updatePayrollStatus(id: string, status: PayrollStatus) {
-  await requireRole("hrd", "superadmin");
-  if (!PAYROLL_STATUSES.includes(status)) return { error: "Status tidak valid." };
+const PAYROLL_TRANSITIONS: Record<PayrollStatus, PayrollStatus | null> = {
+  Draft: "Verified_SDM",
+  Verified_SDM: "Verified_Keuangan",
+  Verified_Keuangan: "Approved",
+  Approved: "Paid",
+  Paid: null,
+};
+
+// Each tier requires a specific verifier: SDM & Aset dept manager (or
+// hrd/superadmin), then Keuangan dept manager (or superadmin), then
+// director/superadmin for the final sign-off. department_manager is scoped
+// by a case-insensitive substring match against their resolved department
+// name, since there's no dedicated "finance" role in this app's auth model
+// (see src/lib/auth-guard.ts) — reusing the existing department_manager +
+// department-name-check pattern already used for promotions/salary review.
+async function assertPayrollTransitionAllowed(nextStatus: PayrollStatus): Promise<{ error: string } | null> {
+  if (nextStatus === "Verified_SDM") {
+    const user = await requireRole("hrd", "superadmin", "department_manager");
+    if (user.role === "department_manager") {
+      const dept = (await resolveManagerDepartment(user.email) || "").toLowerCase();
+      if (!dept.includes("sdm") && !dept.includes("hr") && !dept.includes("aset") && !dept.includes("asset")) {
+        return { error: "Hanya Kepala Divisi SDM & Aset (atau HRD) yang dapat memverifikasi tahap ini." };
+      }
+    }
+    return null;
+  }
+  if (nextStatus === "Verified_Keuangan") {
+    const user = await requireRole("superadmin", "department_manager");
+    if (user.role === "department_manager") {
+      const dept = (await resolveManagerDepartment(user.email) || "").toLowerCase();
+      if (!dept.includes("keuangan") && !dept.includes("finance")) {
+        return { error: "Hanya Supervisor Keuangan yang dapat memverifikasi tahap ini." };
+      }
+    }
+    return null;
+  }
+  if (nextStatus === "Approved") {
+    await requireRole("director", "superadmin");
+    return null;
+  }
+  if (nextStatus === "Paid") {
+    await requireRole("hrd", "superadmin", "director");
+    return null;
+  }
+  return { error: "Status tidak valid." };
+}
+
+export async function updatePayrollStatus(id: string, statusInput: string) {
+  if (!PAYROLL_STATUSES.includes(statusInput as PayrollStatus)) return { error: "Status tidak valid." };
+  const status = statusInput as PayrollStatus;
+  const { data: current } = await supabaseAdmin.from("penggajian").select("status").eq("id", id).maybeSingle();
+  const currentStatus = (current as { status?: PayrollStatus } | null)?.status;
+  if (!currentStatus) return { error: "Data payroll tidak ditemukan." };
+  if (PAYROLL_TRANSITIONS[currentStatus] !== status) {
+    return { error: `Tidak dapat mengubah status dari "${currentStatus}" langsung ke "${status}" — ikuti urutan verifikasi.` };
+  }
+  const guardResult = await assertPayrollTransitionAllowed(status);
+  if (guardResult) return guardResult;
+
   const { error } = await supabaseAdmin.from("penggajian").update({ status }).eq("id", id);
+  if (error?.code === "23514") return { error: "Jalankan migrasi SQL 20260815001 terlebih dahulu." };
   if (error) { console.error("[admin] updatePayrollStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
   revalidatePath("/hrd/payroll");
   revalidatePath("/hrd/rewards/payroll");
@@ -397,13 +459,15 @@ export async function updatePayrollAmounts(formData: FormData) {
 }
 
 export async function batchUpdatePayrollStatus(formData: FormData) {
-  await requireRole("hrd", "superadmin");
   const month = parseInt(formData.get("month") as string || "0", 10);
   const year = parseInt(formData.get("year") as string || "0", 10);
-  const status = (formData.get("status") as string || "").trim();
+  const status = (formData.get("status") as string || "").trim() as PayrollStatus;
   if (!month || !year) return { error: "Pilih bulan dan tahun." };
-  if (!PAYROLL_STATUSES.includes(status as PayrollStatus)) return { error: "Status tidak valid." };
-  const fromStatus = status === "Approved" ? "Draft" : "Approved";
+  if (!PAYROLL_STATUSES.includes(status)) return { error: "Status tidak valid." };
+  const fromStatus = (Object.keys(PAYROLL_TRANSITIONS) as PayrollStatus[]).find((s) => PAYROLL_TRANSITIONS[s] === status);
+  if (!fromStatus) return { error: "Tidak ada tahap sebelumnya untuk status ini." };
+  const guardResult = await assertPayrollTransitionAllowed(status);
+  if (guardResult) return guardResult;
   const { count, error } = await supabaseAdmin.from("penggajian")
     .update({ status }, { count: "exact" }).eq("month", month).eq("year", year).eq("status", fromStatus);
   if (error) { console.error("[admin] batchUpdatePayrollStatus:", error.message); return { error: "Gagal." }; }

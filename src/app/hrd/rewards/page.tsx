@@ -1,9 +1,12 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import Link from "next/link";
-import { DollarSign, Download, Gift, FileText, Users, Zap, Wallet, ClipboardCheck, Award } from "lucide-react";
+import { DollarSign, Download, Gift, FileText, Users, Zap, Wallet, ClipboardCheck, Award, Plus } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 import RewardBudgetPanel from "./RewardBudgetPanel";
+import { HrdPageHeader, HrdStatsCard, HrdCard, HrdActionButton } from "@/components/hrd/HrdUi";
+
+export const dynamic = "force-dynamic";
 
 const WORKFLOW_STEPS = [
   { n: 1, icon: Wallet, href: "/hrd/rewards/salary", label: "Atur Komponen Gaji", desc: "Isi gaji pokok & tunjangan tiap karyawan — wajib sebelum slip gaji bisa dibuat." },
@@ -36,11 +39,13 @@ export default async function HRDRewards() {
   const monthNames = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
   return (
-    <div className="p-6 lg:p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Reward & Recognition</h1>
-        <p className="text-sm text-gray-500">Formula reward, salary review, kompensasi, benefit, payroll, dan penghargaan karyawan</p>
-      </div>
+    <div className="space-y-8">
+      <HrdPageHeader
+        title="Reward & Recognition"
+        subtitle="Formula reward, salary review, kompensasi, benefit, payroll, dan penghargaan karyawan"
+      >
+        <HrdActionButton href="/hrd/rewards/payroll" icon={<Plus size={14} />} variant="primary">Generate Payroll</HrdActionButton>
+      </HrdPageHeader>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
         <h3 className="font-extrabold text-slate-800 text-sm mb-1">Alur Kerja Payroll</h3>
@@ -62,66 +67,13 @@ export default async function HRDRewards() {
 
       <SectionQuickLinks groupLabel="Reward & Recognition" excludeHref="/hrd/rewards" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Users size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Total Karyawan</p>
-              <p className="text-xl font-extrabold text-slate-800">{totalEmployees || 0}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><FileText size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Slip Gaji</p>
-              <p className="text-xl font-extrabold text-slate-800">{payrolls?.length || 0}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><Gift size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Total Tunjangan</p>
-              <p className="text-xl font-extrabold text-slate-800">
-                Rp {(payrolls || []).reduce((s: number, p: Record<string, unknown>) => s + (Number(p.allowances) || 0), 0).toLocaleString("id-ID").split(",")[0]}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-red-50 text-red-600 rounded-xl"><DollarSign size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Total Gaji Bersih</p>
-              <p className="text-xl font-extrabold text-slate-800">
-                Rp {totalNetSalary.toLocaleString("id-ID").split(",")[0]}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl"><Zap size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Saran Reward Pending</p>
-              <p className="text-xl font-extrabold text-slate-800">{pendingSuggestions || 0}</p>
-              <p className="text-[9px] text-slate-400">dari Reward Rule Engine</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Gift size={18} /></div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Budget Terpakai Bulan Ini</p>
-              <p className="text-lg font-extrabold text-slate-800">Rp {budgetUsedThisMonth.toLocaleString("id-ID").split(",")[0]}</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        <HrdStatsCard label="Total Karyawan" value={totalEmployees || 0} icon={<Users size={18} />} color="blue" />
+        <HrdStatsCard label="Slip Gaji" value={payrolls?.length || 0} icon={<FileText size={18} />} color="emerald" />
+        <HrdStatsCard label="Total Tunjangan" value={`Rp ${(payrolls || []).reduce((s: number, p: Record<string, unknown>) => s + (Number(p.allowances) || 0), 0).toLocaleString("id-ID").split(",")[0]}`} icon={<Gift size={18} />} color="amber" />
+        <HrdStatsCard label="Total Gaji Bersih" value={`Rp ${totalNetSalary.toLocaleString("id-ID").split(",")[0]}`} icon={<DollarSign size={18} />} color="red" />
+        <HrdStatsCard label="Saran Reward Pending" value={pendingSuggestions || 0} icon={<Zap size={18} />} color="purple" />
+        <HrdStatsCard label="Budget Terpakai Bulan Ini" value={`Rp ${budgetUsedThisMonth.toLocaleString("id-ID").split(",")[0]}`} icon={<Gift size={18} />} color="indigo" />
       </div>
 
       <RewardBudgetPanel departments={departments} />

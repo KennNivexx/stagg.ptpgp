@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { ChevronRight, ChevronDown, Edit3, PlusCircle, Trash2, User, UserCheck } from "lucide-react";
 import type { OrgUnit } from "@/types/org";
-import { getLevelLabel, LEVEL_COLORS, DEFAULT_LEVEL_COLOR, sortByPositionRank, formatOrgCode } from "@/lib/org-hierarchy";
+import { getLevelLabel, LEVEL_COLORS, DEFAULT_LEVEL_COLOR, groupByRankTier, formatOrgCode } from "@/lib/org-hierarchy";
+
+const RAIL_INDENT = 22; // fixed px offset added at each nesting level — cumulative indent
+                         // comes from ChildRail divs nesting inside one another in the DOM,
+                         // not from multiplying by depth, so this stays a constant.
 
 function countMembers(node: OrgUnit): number {
   let count = node.children.length;
@@ -13,51 +17,38 @@ function countMembers(node: OrgUnit): number {
 
 interface TreeNodeProps {
   node: OrgUnit;
-  depth: number;
   onClick: (n: OrgUnit) => void;
   onEdit: (n: OrgUnit) => void;
   onAdd: (n: OrgUnit) => void;
   onDelete: (n: OrgUnit) => void;
 }
 
-function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodeProps) {
+// Vertical "rail" that visually connects a unit to its children (sub-units
+// and the employee card) — this is what turns the previous flat, padding-only
+// indentation into something that actually reads as a tree.
+function ChildRail({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative" style={{ marginLeft: `${RAIL_INDENT}px` }}>
+      <div className="absolute left-0 top-0 bottom-3 w-px bg-slate-200" />
+      <div className="pl-4">{children}</div>
+    </div>
+  );
+}
+
+function TreeNode({ node, onClick, onEdit, onAdd, onDelete }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(true);
   // Employee leaf nodes don't count toward sub-unit display
   const unitChildren = node.children?.filter(c => !c.isEmployee) || [];
   const empChildren = node.children?.filter(c => c.isEmployee) || [];
   const hasChildren = unitChildren.length > 0;
   const members = countMembers(node);
-
-  // ── Employee leaf node ──────────────────────────────────────────────────────
-  if (node.isEmployee) {
-    return (
-      <div
-        className="flex items-center gap-2 py-1.5 rounded-lg transition-colors"
-        style={{ paddingLeft: `${depth * 24 + 12}px` }}
-      >
-        <div className="w-5 shrink-0 flex items-center justify-center">
-          <div className="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center">
-            <div className="w-1 h-1 rounded-full bg-emerald-500" />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <UserCheck size={12} className="text-emerald-500 shrink-0" />
-          <span className="text-xs font-semibold text-slate-700 truncate">{node.name}</span>
-          {node.position && (
-            <span className="text-[10px] text-slate-400 truncate">{node.position}</span>
-          )}
-          <code className="text-[9px] text-slate-300 font-mono ml-auto shrink-0">{formatOrgCode(node.code)}</code>
-        </div>
-      </div>
-    );
-  }
+  const tiers = groupByRankTier(empChildren);
 
   // ── Org unit node ───────────────────────────────────────────────────────────
   return (
-    <div>
+    <div className="py-0.5">
       <div
         className="group flex items-center gap-2 py-2 px-3 pr-8 rounded-lg transition-colors cursor-pointer hover:bg-slate-50 border border-transparent hover:border-slate-200"
-        style={{ paddingLeft: `${depth * 24 + 12}px` }}
         onClick={() => onClick(node)}
       >
         {hasChildren ? (
@@ -125,26 +116,34 @@ function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodePro
         </div>
       </div>
 
-      {empChildren.length > 0 && (
-        <div
-          className="pb-1.5"
-          style={{ paddingLeft: `${depth * 24 + 12 + 20}px` }}
-        >
-          <div className="bg-emerald-50/40 border border-emerald-100 rounded-xl divide-y divide-emerald-100/70 overflow-hidden">
-            {sortByPositionRank(empChildren).map((emp) => (
-              <div key={emp.id} className="flex items-center gap-2 px-3 py-1.5">
-                <UserCheck size={11} className="text-emerald-500 shrink-0" />
-                <span className="text-xs font-semibold text-slate-700 truncate">{emp.name}</span>
-                {emp.position && <span className="text-[10px] text-slate-400 truncate">{emp.position}</span>}
-                <code className="text-[9px] text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded font-mono ml-auto shrink-0">{formatOrgCode(emp.code)}</code>
+      {tiers.length > 0 && expanded && (
+        <ChildRail>
+          <div className="my-1.5 bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
+            {tiers.map((tier) => (
+              <div key={tier.rank} className="divide-y divide-slate-50">
+                {tiers.length > 1 && (
+                  <p className="px-3 pt-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50/70">
+                    {tier.label}
+                  </p>
+                )}
+                {tier.items.map((emp) => (
+                  <div key={emp.id} className="flex items-center gap-2 px-3 py-1.5">
+                    <UserCheck size={11} className="text-emerald-500 shrink-0" />
+                    <span className="text-xs font-semibold text-slate-700 truncate">{emp.name}</span>
+                    {emp.position && <span className="text-[10px] text-slate-400 truncate">{emp.position}</span>}
+                    <code className="text-[9px] text-indigo-700 bg-indigo-100/80 px-1.5 py-0.5 rounded font-mono ml-auto shrink-0">
+                      {emp.kode_jabatan || formatOrgCode(emp.code)}
+                    </code>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
-        </div>
+        </ChildRail>
       )}
 
       {hasChildren && expanded && (
-        <div>
+        <ChildRail>
           {[...unitChildren].sort((a, b) => {
             const sa = a.code.split(".").map(Number);
             const sb = b.code.split(".").map(Number);
@@ -157,14 +156,13 @@ function TreeNode({ node, depth, onClick, onEdit, onAdd, onDelete }: TreeNodePro
             <TreeNode
               key={child.id}
               node={child}
-              depth={depth + 1}
               onClick={onClick}
               onEdit={onEdit}
               onAdd={onAdd}
               onDelete={onDelete}
             />
           ))}
-        </div>
+        </ChildRail>
       )}
     </div>
   );
@@ -202,7 +200,6 @@ export default function TreeView({ data, onClick, onEdit, onAdd, onDelete }: Tre
           <TreeNode
             key={node.id}
             node={node}
-            depth={0}
             onClick={onClick}
             onEdit={onEdit}
             onAdd={onAdd}

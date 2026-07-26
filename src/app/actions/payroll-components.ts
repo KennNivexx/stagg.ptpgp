@@ -66,7 +66,7 @@ export async function deactivateJenisKomponenGaji(id: string): Promise<{ error: 
   return { success: true };
 }
 
-export interface EmployeeSalaryComponent { komponen_id: string; nama: string; tipe: "tunjangan" | "potongan"; jumlah: number }
+export interface EmployeeSalaryComponent { komponen_id: string; nama: string; tipe: "tunjangan" | "potongan"; jumlah: number; alasan?: string }
 
 /** Sums an employee's dynamic components by tipe — the single source both
  * the salary editor and payroll generation (admin.ts) call, so the two never
@@ -116,7 +116,7 @@ export async function sumEmployeeComponentsByType(employeeId: string): Promise<{
 /** Replaces an employee's full component set in one call (the salary editor
  * submits its whole row list at once) — deletes components no longer present
  * and upserts the rest, so removing a row in the UI actually removes it. */
-export async function saveEmployeeSalaryComponents(employeeId: string, items: { komponen_id: string; jumlah: number }[]): Promise<{ error: string } | { success: true }> {
+export async function saveEmployeeSalaryComponents(employeeId: string, items: { komponen_id: string; jumlah: number; alasan?: string }[]): Promise<{ error: string } | { success: true }> {
   await requireRole("hrd", "superadmin");
   if (!employeeId) return { error: "Pilih karyawan terlebih dahulu." };
 
@@ -133,6 +133,7 @@ export async function saveEmployeeSalaryComponents(employeeId: string, items: { 
     employee_id: employeeId,
     komponen_id: i.komponen_id,
     jumlah: i.jumlah,
+    alasan: i.alasan || null,
     updated_at: new Date().toISOString(),
   }));
   if (rows.length > 0) {

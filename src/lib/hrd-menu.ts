@@ -1,13 +1,24 @@
 import {
   LayoutDashboard, BarChart3, Building2, UserCircle2, Warehouse,
   Briefcase, Award, GraduationCap, BookOpen, TrendingUp,
-  Gift, GitBranch, Heart, FileText, Clock, Settings,
+  Gift, Heart, FileText, Clock, Settings,
   type LucideIcon,
 } from "lucide-react";
 
 export interface HrdMenuItem {
   href: string;
   label: string;
+  /** Optional sub-heading shown inside a group's dropdown when items are
+   * clustered (e.g. "Master Data", "Approval") — lets a large group like
+   * Employee Relations render as scannable clusters instead of one flat
+   * wall of links. Purely a display grouping; has no effect on hrefs or
+   * active-state matching. */
+  section?: string;
+  /** When false, this item is hidden from the dropdown menu but still
+   * visible in the hub page's SectionQuickLinks component. Defaults to
+   * true. Use this to keep the menu compact while preserving full
+   * navigation via each module's "Ringkasan" hub page. */
+  showInDropdown?: boolean;
 }
 
 export interface HrdMenuGroup {
@@ -37,7 +48,6 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     items: [
       { href: "/hrd", label: "Overview Dashboard" },
       { href: "/hrd/dashboard-kpi", label: "KPI Dashboard" },
-      { href: "/hrd/dashboard-okr", label: "OKR Dashboard" },
       { href: "/hrd/dashboard-analytics", label: "Analytics" },
     ],
   },
@@ -60,6 +70,7 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
       { href: "/hrd/recruitment/interviews", label: "Interview" },
       { href: "/hrd/recruitment/decisions", label: "Keputusan Hiring" },
       { href: "/hrd/recruitment/talentpool", label: "Talent Pool" },
+      { href: "/hrd/recruitment/drivers", label: "Rekrutmen Pengemudi & Operator" },
     ],
   },
   {
@@ -70,13 +81,11 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     items: [
       { href: "/hrd/workplace/sk", label: "Struktur Organisasi (SK)" },
       { href: "/hrd/workplace/structure", label: "Unit Organisasi" },
-      { href: "/hrd/workplace/departments", label: "Departemen" },
       { href: "/hrd/workplace/positions", label: "Master Jabatan" },
       { href: "/hrd/workplace/jobdesc", label: "Deskripsi Kerja" },
       { href: "/hrd/workplace/jobspec", label: "Spesifikasi Kerja" },
       { href: "/hrd/workplace/grades", label: "Grade & Level" },
       { href: "/hrd/workplace/formasi", label: "Position Management (Formasi)" },
-      { href: "/hrd/workplace/careerpath", label: "Career Path" },
       { href: "/hrd/workplace/chart", label: "Organization Chart" },
     ],
   },
@@ -92,14 +101,25 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     ],
   },
   {
+    // Renamed from "Aset Kendaraan" and absorbed the General Affair cluster
+    // (SOP-SDM-10 Pengendalian Aset, PR-PRL-01 Pengendalian Peralatan,
+    // PR-SDM-07 Pemeliharaan Infrastruktur, PR-SDM-08 Housekeeping & 5R) —
+    // the source SOP document groups these five together as one GA cluster
+    // managed by the same Supervisor GA / Kepala Divisi SDM & Aset roles,
+    // so a separate top-level menu for them would just re-fragment what the
+    // company itself treats as one function.
     label: "Aset & Fasilitas",
     icon: Warehouse,
     color: "slate",
     items: [
-      { href: "/hrd/infrastructure/vehicles", label: "Armada Kendaraan" },
-      { href: "/hrd/trips", label: "Data Trip Supir" },
-      { href: "/hrd/vehicle-requests", label: "Pengadaan Kendaraan" },
-      { href: "/hrd/infrastructure/documents", label: "Dokumen Perusahaan" },
+      { href: "/hrd/infrastructure/vehicles", label: "Armada Kendaraan", section: "Kendaraan" },
+      { href: "/hrd/trips", label: "Data Trip Supir", section: "Kendaraan" },
+      { href: "/hrd/vehicle-requests", label: "Pengadaan Kendaraan", section: "Kendaraan" },
+      { href: "/hrd/workforce/driver-monitoring", label: "Monitoring Kinerja Pengemudi", section: "Kendaraan" },
+      { href: "/hrd/ga/assets", label: "Pengendalian Aset", section: "General Affair" },
+      { href: "/hrd/ga/peralatan", label: "Pengendalian Peralatan", section: "General Affair" },
+      { href: "/hrd/ga/infrastruktur", label: "Pemeliharaan Infrastruktur", section: "General Affair" },
+      { href: "/hrd/ga/housekeeping", label: "Housekeeping & 5R", section: "General Affair" },
     ],
   },
   {
@@ -108,18 +128,13 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     color: "amber",
     hubHref: "/hrd/workforce-time",
     items: [
-      { href: "/hrd/infrastructure/locations", label: "Lokasi Kerja" },
-      { href: "/hrd/infrastructure/shifts", label: "Shift Kerja" },
-      { href: "/hrd/workforce-time/calendar", label: "Kalender Kerja" },
-      { href: "/hrd/workforce-time/assignments", label: "Penugasan Kerja" },
-      { href: "/hrd/attendance", label: "Absensi" },
-      { href: "/hrd/workforce-time/corrections", label: "Koreksi Absensi" },
-      { href: "/hrd/workforce-time/overtime", label: "Lembur" },
-      { href: "/hrd/workforce-time/timesheet", label: "Timesheet" },
-      { href: "/hrd/leaves", label: "Cuti & Izin" },
-      { href: "/hrd/workforce-time/leave-balance", label: "Saldo Cuti" },
-      { href: "/hrd/business-trips", label: "Perjalanan Dinas" },
-      { href: "/hrd/incidents", label: "Laporan Insiden" },
+      { href: "/hrd/attendance", label: "Absensi & Koreksi", section: "Waktu & Kehadiran" },
+      { href: "/hrd/leaves", label: "Cuti & Saldo Cuti", section: "Waktu & Kehadiran" },
+      { href: "/hrd/workforce-time/overtime", label: "Lembur & Timesheet", section: "Waktu & Kehadiran" },
+      { href: "/hrd/infrastructure/locations", label: "Lokasi & Shift Kerja", section: "Infrastruktur Kerja" },
+      { href: "/hrd/business-trips", label: "Perjalanan Dinas", section: "Infrastruktur Kerja" },
+      { href: "/hrd/workforce-time/calendar", label: "Kalender & Penugasan", section: "Infrastruktur Kerja" },
+      { href: "/hrd/incidents", label: "Laporan Insiden", section: "Infrastruktur Kerja" },
     ],
   },
   {
@@ -133,6 +148,7 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
       { href: "/hrd/competency/assessment", label: "Asesmen Kompetensi" },
       { href: "/hrd/competency/gap", label: "Analisis Kesenjangan" },
       { href: "/hrd/competency/reports", label: "Laporan Kompetensi" },
+      { href: "/hrd/knowledge/mapping", label: "Mapping Kompetensi ke Pengetahuan" },
     ],
   },
   {
@@ -160,7 +176,6 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
       { href: "/hrd/knowledge/policies", label: "Kebijakan Perusahaan" },
       { href: "/hrd/knowledge/base", label: "Basis Pengetahuan" },
       { href: "/hrd/knowledge/videos", label: "Video Tutorial" },
-      { href: "/hrd/knowledge/mapping", label: "Mapping Kompetensi" },
     ],
   },
   {
@@ -171,7 +186,6 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     items: [
       { href: "/hrd/performance/framework", label: "Framework Kinerja" },
       { href: "/hrd/performance/kpi", label: "Manajemen KPI" },
-      { href: "/hrd/performance/okr", label: "Manajemen OKR" },
       { href: "/hrd/performance/reviews", label: "Review Kinerja" },
       { href: "/hrd/performance/feedback", label: "Umpan Balik" },
       { href: "/hrd/performance/reports", label: "Laporan Kinerja" },
@@ -183,79 +197,32 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     color: "green",
     hubHref: "/hrd/rewards",
     items: [
-      { href: "/hrd/rewards/payroll", label: "Payroll" },
-      { href: "/hrd/rewards/salary", label: "Komponen Gaji" },
-      { href: "/hrd/rewards/komponen-gaji", label: "Jenis Tunjangan & Potongan" },
-      { href: "/hrd/rewards/formula", label: "Formula Reward" },
-      { href: "/hrd/rewards/bonuses", label: "Bonus" },
-      { href: "/hrd/rewards/incentives", label: "Insentif" },
-      { href: "/hrd/rewards/awards", label: "Penghargaan" },
-      { href: "/hrd/rewards/salary-review", label: "Salary Review" },
-      { href: "/hrd/rewards/statement", label: "Total Rewards Statement" },
-      { href: "/hrd/rewards/tax", label: "Konfigurasi PPh 21" },
+      { href: "/hrd/rewards/payroll", label: "Payroll, Gaji & Tunjangan", section: "Kompensasi Rutin" },
+      { href: "/hrd/rewards/bonuses", label: "Bonus, Insentif & Penghargaan", section: "Reward Non-Rutin" },
+      { href: "/hrd/rewards/salary-review", label: "Salary Review", section: "Kompensasi Rutin" },
+      { href: "/hrd/rewards/statement", label: "Total Rewards & PPh 21", section: "Reward Non-Rutin" },
+      // "Formula Reward" (/hrd/rewards/formula) intentionally has no entry here —
+      // it's already a tab inside the Payroll hub above, not a separate page.
     ],
   },
   {
+    // Absorbed the former standalone "Succession & Talent" group — its 4
+    // pages (posisi kritis, kandidat suksesor, pool suksesi, penilaian
+    // kesiapan) were already thematically identical to this group's own
+    // Talent Management section, down to sharing 2 literal duplicate hrefs
+    // (succession/positions, succession/candidates) that used to appear
+    // under two different top-level menus with two different labels.
     label: "Career Development",
     icon: TrendingUp,
     color: "fuchsia",
     hubHref: "/hrd/career",
     items: [
-      // MASTER
-      { href: "/hrd/career/master/framework", label: "Career Framework" },
-      { href: "/hrd/career/master/stream", label: "Career Stream" },
-      { href: "/hrd/career/master/level", label: "Career Level" },
-      { href: "/hrd/career/path", label: "Career Path" },
-      { href: "/hrd/career/master/promotion-policy", label: "Promotion Policy" },
-      { href: "/hrd/career/master/mutation-policy", label: "Mutation Policy" },
-      { href: "/hrd/career/master/rotation-policy", label: "Rotation Policy" },
-      { href: "/hrd/career/master/succession-policy", label: "Succession Policy" },
-      { href: "/hrd/career/master/leadership-framework", label: "Leadership Framework" },
-      { href: "/hrd/career/master/talent-classification", label: "Talent Classification" },
-      { href: "/hrd/career/master/score-formula", label: "Career Score Formula" },
-      { href: "/hrd/career/master/readiness-rules", label: "Career Readiness Rules" },
-      // TALENT MANAGEMENT
-      { href: "/hrd/career/talent/pool", label: "Talent Pool" },
-      { href: "/hrd/career/talent/review", label: "Talent Review" },
-      { href: "/hrd/career/9-box", label: "9-Box Matrix" },
-      { href: "/hrd/succession/positions", label: "Critical Position" },
-      { href: "/hrd/succession/candidates", label: "Successor Planning" },
-      { href: "/hrd/career/talent/leadership-pipeline", label: "Leadership Pipeline" },
-      // CAREER DEVELOPMENT
-      { href: "/hrd/career/profile", label: "Career Profile" },
-      { href: "/hrd/career/assessment", label: "Career Assessment" },
-      { href: "/hrd/career/readiness", label: "Career Readiness" },
-      { href: "/hrd/career/recommendation", label: "Career Recommendation" },
-      { href: "/hrd/career/plans", label: "Individual Development Plan (IDP)" },
-      { href: "/hrd/career/simulation", label: "Career Simulation" },
-      { href: "/hrd/career/history", label: "Career History" },
-      { href: "/hrd/career/analytics", label: "Career Analytics" },
-      // TRANSACTION
-      { href: "/hrd/career/transactions/promotion", label: "Promosi" },
-      { href: "/hrd/career/mutations", label: "Mutasi" },
-      { href: "/hrd/career/transactions/rotation", label: "Rotasi" },
-      { href: "/hrd/career/transactions/demotion", label: "Demosi" },
-      { href: "/hrd/career/transactions/acting", label: "Acting Assignment" },
-      { href: "/hrd/career/transactions/temporary", label: "Temporary Assignment" },
-      { href: "/hrd/career/transactions/succession", label: "Succession Assignment" },
-      // APPROVAL
-      { href: "/hrd/career/approval/promotion", label: "Promotion Approval" },
-      { href: "/hrd/career/approval/mutation", label: "Mutation Approval" },
-      { href: "/hrd/career/approval/salary", label: "Salary Approval" },
-      { href: "/hrd/career/approval/succession", label: "Succession Approval" },
-      { href: "/hrd/career/approval/committee", label: "Career Committee" },
-    ],
-  },
-  {
-    label: "Succession & Talent",
-    icon: GitBranch,
-    color: "rose",
-    hubHref: "/hrd/succession",
-    items: [
-      { href: "/hrd/succession/positions", label: "Posisi Kritis" },
-      { href: "/hrd/succession/candidates", label: "Kandidat Suksesor" },
-      { href: "/hrd/succession/talentpool", label: "Pool Suksesi" },
-      { href: "/hrd/succession/readiness", label: "Penilaian Kesiapan" },
+      { href: "/hrd/career/talent", label: "Talent Pool & Suksesi" },
+      { href: "/hrd/career/transactions", label: "Transaksi Karier (Promosi, Mutasi, dll)" },
+      { href: "/hrd/career/development", label: "Pengembangan & Riwayat Karier" },
+      // ── MASTER & APPROVAL (via hub) ──
+      { href: "/hrd/career/master", label: "Master Kebijakan Karier", section: "Master & Approval" },
+      { href: "/hrd/career/approval", label: "Approval Karier", section: "Master & Approval" },
     ],
   },
   {
@@ -264,84 +231,18 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     color: "pink",
     hubHref: "/hrd/relations",
     items: [
-      // ── MASTER DATA ──────────────────────────────────────────
-      { href: "/hrd/relations/master/policy",                label: "Employee Relation Policy" },
-      { href: "/hrd/relations/master/company-regulation",    label: "Company Regulation (PP)" },
-      { href: "/hrd/relations/master/pkb",                   label: "Perjanjian Kerja Bersama (PKB)" },
-      { href: "/hrd/relations/master/code-of-conduct",       label: "Code of Conduct" },
-      { href: "/hrd/relations/master/comm-category",         label: "Communication Category" },
-      { href: "/hrd/relations/master/case-category",         label: "Complaint & Case Category" },
-      { href: "/hrd/relations/master/investigation-type",    label: "Investigation Type" },
-      { href: "/hrd/relations/master/disciplinary-category", label: "Disciplinary Category" },
-      { href: "/hrd/relations/master/engagement-program",    label: "Engagement Program" },
-      { href: "/hrd/relations/master/survey-template",       label: "Survey Template" },
-      { href: "/hrd/relations/master/exit-reason",           label: "Exit Reason" },
-      { href: "/hrd/relations/master/ai-rule",               label: "AI Recommendation Rule" },
-      // ── EMPLOYEE COMMUNICATION ───────────────────────────────
-      { href: "/hrd/relations/communication/announcements",  label: "Company Announcement" },
-      { href: "/hrd/relations/communication/memos",          label: "Internal Memo" },
-      { href: "/hrd/relations/communication/news",           label: "Company News" },
-      { href: "/hrd/relations/communication/policy-dist",    label: "Policy Distribution" },
-      { href: "/hrd/relations/communication/circulars",      label: "Circular Letter" },
-      { href: "/hrd/relations/communication/emergency",      label: "Emergency Notification" },
-      { href: "/hrd/relations/communication/analytics",      label: "Communication Analytics" },
-      // ── EMPLOYEE PARTICIPATION ───────────────────────────────
-      { href: "/hrd/relations/participation/suggestions",    label: "Suggestion System" },
-      { href: "/hrd/relations/participation/innovations",    label: "Innovation Proposal" },
-      { href: "/hrd/relations/participation/voice",          label: "Voice of Employee" },
-      { href: "/hrd/relations/surveys",                      label: "Employee Survey" },
-      { href: "/hrd/relations/participation/polling",        label: "Polling" },
-      { href: "/hrd/relations/participation/feedback",       label: "Employee Feedback" },
-      { href: "/hrd/relations/participation/satisfaction",   label: "Employee Satisfaction Survey" },
-      // ── EMPLOYEE CASE MANAGEMENT ─────────────────────────────
-      { href: "/hrd/relations/cases",                        label: "Semua Kasus" },
-      { href: "/hrd/relations/complaints",                   label: "Complaint" },
-      { href: "/hrd/relations/cases/grievance",              label: "Grievance" },
-      { href: "/hrd/relations/cases/ethics",                 label: "Ethics Violation" },
-      { href: "/hrd/relations/cases/fraud",                  label: "Fraud" },
-      { href: "/hrd/relations/cases/harassment",             label: "Harassment & Bullying" },
-      { href: "/hrd/relations/cases/whistleblowing",         label: "Whistleblowing" },
-      { href: "/hrd/relations/cases/investigation",          label: "Investigation" },
-      { href: "/hrd/relations/cases/corrective-action",      label: "Corrective Action" },
-      // ── INDUSTRIAL RELATIONS ─────────────────────────────────
-      { href: "/hrd/relations/industrial/union",             label: "Labour Union" },
-      { href: "/hrd/relations/industrial/bipartite",         label: "Bipartite Meeting" },
-      { href: "/hrd/relations/industrial/tripartite",        label: "Tripartite Meeting" },
-      { href: "/hrd/relations/industrial/mediation",         label: "Negotiation & Mediation" },
-      { href: "/hrd/relations/industrial/dispute",           label: "Industrial Dispute" },
-      { href: "/hrd/relations/industrial/phi",               label: "PHI Documentation" },
-      { href: "/hrd/relations/industrial/compliance",        label: "Industrial Compliance" },
-      // ── EMPLOYEE SEPARATION ──────────────────────────────────
-      { href: "/hrd/relations/resignations",                 label: "Resignation" },
-      { href: "/hrd/relations/separation/retirement",        label: "Retirement" },
-      { href: "/hrd/relations/separation/end-of-contract",   label: "End of Contract" },
-      { href: "/hrd/relations/separation/termination",       label: "Termination (PHK)" },
-      { href: "/hrd/relations/separation/exit-interview",    label: "Exit Interview" },
-      { href: "/hrd/relations/separation/analytics",         label: "Separation Analytics" },
-      // ── SURAT PERINGATAN (existing) ──────────────────────────
-      { href: "/hrd/relations/warnings",                     label: "Surat Peringatan" },
-      // ── APPROVAL ─────────────────────────────────────────────
-      { href: "/hrd/relations/approval/complaint",           label: "Complaint Approval" },
-      { href: "/hrd/relations/approval/investigation",       label: "Investigation Approval" },
-      { href: "/hrd/relations/approval/corrective-action",   label: "Corrective Action Approval" },
-      { href: "/hrd/relations/approval/industrial",          label: "Industrial Relations Approval" },
-      { href: "/hrd/relations/approval/separation",          label: "Separation Approval" },
-      { href: "/hrd/relations/approval/case-closure",        label: "Case Closure Approval" },
-      // ── ANALYTICS & REPORTS ──────────────────────────────────
-      { href: "/hrd/relations/analytics/executive",          label: "Executive Dashboard" },
-      { href: "/hrd/relations/analytics/engagement",         label: "Employee Engagement Dashboard" },
-      { href: "/hrd/relations/analytics/satisfaction",       label: "Employee Satisfaction Dashboard" },
-      { href: "/hrd/relations/analytics/complaints",         label: "Complaint Analytics" },
-      { href: "/hrd/relations/analytics/industrial",         label: "Industrial Relations Report" },
-      { href: "/hrd/relations/analytics/retention",          label: "Retention & Turnover Analysis" },
-      { href: "/hrd/relations/analytics/risk",               label: "Employee Risk Dashboard" },
-      // ── AI ENGINE ────────────────────────────────────────────
-      { href: "/hrd/relations/ai",                           label: "AI ER Engine" },
-      { href: "/hrd/relations/ai/risk-score",                label: "Employee Risk Score" },
-      { href: "/hrd/relations/ai/sentiment",                 label: "Sentiment Analysis" },
-      { href: "/hrd/relations/ai/engagement-trend",          label: "Engagement Trend" },
-      { href: "/hrd/relations/ai/conflict",                  label: "Conflict Prediction" },
-      { href: "/hrd/relations/ai/recommendations",           label: "AI Recommendations" },
+      // ── MANAJEMEN KASUS (combined hub) ──
+      { href: "/hrd/relations/cases", label: "Manajemen Kasus & Hubungan Industrial", section: "Operasional" },
+      { href: "/hrd/relations/warnings", label: "Surat Peringatan", section: "Operasional" },
+      // ── KOMUNIKASI & SURVEI (combined hub) ──
+      { href: "/hrd/relations/communication", label: "Komunikasi, Partisipasi & Survei", section: "Engagement" },
+      // ── SEPARATION (combined hub) ──
+      { href: "/hrd/relations/separation", label: "Resignation & Separation", section: "Operasional" },
+      // ── ANALITIK ──
+      { href: "/hrd/relations/analytics", label: "Dashboard & Analitik ER", section: "Engagement" },
+      // ── MASTER / APPROVAL (via hub) ──
+      { href: "/hrd/relations/master", label: "Master Data Employee Relations", section: "Master & Approval" },
+      { href: "/hrd/relations/approval", label: "Approval Employee Relations", section: "Master & Approval" },
     ],
   },
   {
@@ -366,6 +267,11 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     items: [
       { href: "/hrd/admin/settings", label: "Pengaturan Perusahaan" },
       { href: "/hrd/admin/audit", label: "Audit Log" },
+      // Tata Kelola Rapat bundles 3 SOPs (Ruang Meeting, Daftar Hadir,
+      // Notulen Rapat) as tabs on one hub page — see /hrd/meetings — since
+      // they're cross-cutting forms used by many other procedures rather
+      // than belonging to any single module.
+      { href: "/hrd/meetings", label: "Tata Kelola Rapat" },
     ],
   },
 ].map((group) => ({

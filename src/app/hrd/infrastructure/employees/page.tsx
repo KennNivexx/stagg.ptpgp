@@ -8,15 +8,17 @@ import EmptyState from "@/components/EmptyState";
 export default async function DataIndukKaryawan({
   searchParams,
 }: {
-  searchParams: Promise<{ dept?: string; status?: string }>;
+  searchParams: Promise<{ dept?: string; status?: string; q?: string }>;
 }) {
   const params = await searchParams;
   const deptFilter = params.dept || "";
   const statusFilter = params.status || "";
+  const query = params.q || "";
 
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
-    .select("*")
+    .select("id, full_name, email, nik, kode, kode_jabatan, department, position, status, join_date, phone, address, agama, last_education, marital_status, spouse_name, children_count, emergency_name, emergency_phone, ktp_address, npwp, bpjs_tk, bpjs_kes")
+    .neq("status", "Inactive")
     .order("full_name", { ascending: true });
 
   const { data: departments } = await supabaseAdmin
@@ -28,6 +30,16 @@ export default async function DataIndukKaryawan({
   const statusList = ["Tetap", "Kontrak", "Magang"];
 
   let filtered = employees || [];
+  if (query) {
+    const q = query.toLowerCase();
+    filtered = filtered.filter((e: Record<string, unknown>) =>
+      ((e.full_name as string) || "").toLowerCase().includes(q) ||
+      ((e.nik as string) || "").toLowerCase().includes(q) ||
+      ((e.kode_jabatan as string) || "").toLowerCase().includes(q) ||
+      ((e.department as string) || "").toLowerCase().includes(q) ||
+      ((e.position as string) || "").toLowerCase().includes(q)
+    );
+  }
   if (deptFilter) {
     filtered = filtered.filter((e: Record<string, unknown>) => e.department === deptFilter);
   }
@@ -55,6 +67,7 @@ export default async function DataIndukKaryawan({
       <EmployeeFilter
         deptFilter={deptFilter}
         statusFilter={statusFilter}
+        query={query}
         deptList={deptList}
         statusList={statusList}
         activeCounts={{

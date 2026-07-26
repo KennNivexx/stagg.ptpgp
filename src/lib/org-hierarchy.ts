@@ -28,6 +28,45 @@ export function sortByPositionRank<T extends { name: string; position?: string }
   });
 }
 
+// Groups an already rank-sorted employee list into rank tiers so the UI can
+// render each tier as its own labeled cluster (Direksi / Manajemen / Staff /
+// Pelaksana) instead of one flat list — employees within a unit have no
+// formal parent/child rows in the DB, so this is what makes seniority
+// legible in the tree without a schema change.
+export const RANK_TIER_LABEL: Record<number, string> = {
+  0: "Direksi",
+  1: "Direksi",
+  2: "Manajemen Senior",
+  3: "Manajemen",
+  4: "Supervisor / Koordinator",
+  5: "Staff",
+  6: "Pelaksana",
+};
+
+export const RANK_TIER_COLOR: Record<number, string> = {
+  0: "text-red-600",
+  1: "text-red-600",
+  2: "text-violet-600",
+  3: "text-indigo-600",
+  4: "text-sky-600",
+  5: "text-slate-500",
+  6: "text-slate-400",
+};
+
+export function groupByRankTier<T extends { name: string; position?: string }>(
+  items: T[]
+): { rank: number; label: string; items: T[] }[] {
+  const sorted = sortByPositionRank(items);
+  const groups: { rank: number; label: string; items: T[] }[] = [];
+  for (const item of sorted) {
+    const rank = positionRank(item.position);
+    const last = groups[groups.length - 1];
+    if (last && last.rank === rank) last.items.push(item);
+    else groups.push({ rank, label: RANK_TIER_LABEL[rank] ?? "Lainnya", items: [item] });
+  }
+  return groups;
+}
+
 // unit_organisasi.level is tree DEPTH (0 = root company, 1 = every division,
 // 2 = a sub-unit like Gudang under Operasional, ...) — NOT an org rank. The
 // 14 real divisions all sit at level 1 side by side, so a fixed rank-title

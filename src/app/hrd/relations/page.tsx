@@ -3,10 +3,13 @@ import {
   Heart, MessageSquare, Users, Briefcase, Scale, LogOut,
   AlertCircle, TrendingUp, CheckCircle2, Clock, Sparkles,
   ChevronRight, Shield, Megaphone, ClipboardList, BarChart3,
-  Brain, FileWarning, Handshake, ArrowRightLeft,
+  Brain, FileWarning, Handshake, ArrowRightLeft, Plus,
 } from "lucide-react";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 import { supabaseAdmin } from "@/lib/supabase";
+import { HrdPageHeader, HrdActionButton } from "@/components/hrd/HrdUi";
+
+export const dynamic = "force-dynamic";
 
 // ─── Domain cards config ──────────────────────────────────────────────────────
 const DOMAINS = [
@@ -149,26 +152,15 @@ export default async function EmployeeRelationsHub() {
   };
 
   return (
-    <div className="p-6 lg:p-8 space-y-8">
+    <div className="space-y-8">
 
       {/* ── Page header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-2 bg-rose-100 rounded-xl">
-              <Heart size={20} className="text-rose-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-[#1A2530]">Employee Relations</h1>
-          </div>
-          <p className="text-sm text-slate-500">
-            Business Engine — Employee Relations &amp; Employee Experience Management · Smart Productive LinkPro®
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-xl px-4 py-2 shrink-0">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          {totalEmployees ?? 0} Karyawan Aktif
-        </div>
-      </div>
+      <HrdPageHeader
+        title="Employee Relations"
+        subtitle="Business Engine — Employee Relations & Employee Experience Management · Smart Productive LinkPro®"
+      >
+        <HrdActionButton href="/hrd/relations/cases/new" icon={<Plus size={14} />} variant="primary">Catat Kasus</HrdActionButton>
+      </HrdPageHeader>
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">

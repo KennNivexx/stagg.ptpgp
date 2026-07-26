@@ -4,7 +4,7 @@ import SalaryReviewClient from "./SalaryReviewClient";
 
 export default async function SalaryReviewPage() {
   const [{ data: employees }, { data: grades }, reviews, meritMatrix] = await Promise.all([
-    supabaseAdmin.from("karyawan").select("id, full_name, department, position").neq("status", "Inactive").order("full_name").limit(200),
+    supabaseAdmin.from("karyawan").select("id, full_name, department, position, kode_jabatan, nik").neq("status", "Inactive").order("full_name").limit(200),
     supabaseAdmin.from("grade_jabatan").select("id, kode, nama").order("urutan"),
     getSalaryReviews().catch(() => []),
     getMeritMatrix().catch(() => []),
@@ -17,7 +17,7 @@ export default async function SalaryReviewPage() {
         <p className="text-sm text-gray-500">Merit Increase, Grade Adjustment, Promotion Adjustment, dan Market Adjustment — dengan rekomendasi otomatis dari Merit Matrix.</p>
       </div>
       <SalaryReviewClient
-        employees={(employees || []) as Array<{ id: string; full_name: string; department: string; position: string }>}
+        employees={(employees || []) as Array<{ id: string; full_name: string; department: string; position: string; kode_jabatan?: string | null; nik?: string | null }>}
         grades={(grades || []) as Array<{ id: string; kode: string; nama: string }>}
         reviews={reviews as Array<Record<string, unknown>>}
         meritMatrix={meritMatrix as Array<Record<string, unknown>>}

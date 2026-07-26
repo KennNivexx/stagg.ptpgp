@@ -1,8 +1,11 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { Building2, MapPin, Users, Clock, Settings } from "lucide-react";
+import { Building2, MapPin, Users, Clock, Settings, Plus } from "lucide-react";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
+import { HrdPageHeader, HrdStatsCard, HrdCard, HrdActionButton } from "@/components/hrd/HrdUi";
+
+export const dynamic = "force-dynamic";
 
 export default async function HRDWorkplace() {
   const [{ data: locations }, { data: employees }, { data: shifts }] = await Promise.all([
@@ -23,59 +26,33 @@ export default async function HRDWorkplace() {
   const topDepts = Object.entries(deptCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   return (
-    <div className="p-6 lg:p-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Workplace Management</h1>
-          <p className="text-sm text-gray-500">Pengelolaan lingkungan kerja, lokasi kantor, dan jadwal shift karyawan</p>
-        </div>
-        <Link href="/hrd/infrastructure/locations"
-          className="px-4 py-2 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
-          <Settings size={14} /> Kelola Lokasi
-        </Link>
-      </div>
+    <div className="space-y-8">
+      <HrdPageHeader
+        title="Desain Organisasi"
+        subtitle="Pengelolaan struktur, jabatan, formasi, dan lingkungan kerja perusahaan."
+      >
+        <HrdActionButton href="/hrd/infrastructure/locations/new" icon={<Plus size={14} />} variant="primary">Tambah Lokasi</HrdActionButton>
+      </HrdPageHeader>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Total Karyawan",  value: empList.length,      icon: Users,    color: "bg-blue-50 text-blue-600" },
-          { label: "Lokasi Kerja",    value: locationList.length, icon: MapPin,   color: "bg-emerald-50 text-emerald-600" },
-          { label: "Jadwal Shift",    value: shiftList.length,    icon: Clock,    color: "bg-purple-50 text-purple-600" },
-          { label: "Departemen",      value: Object.keys(deptCounts).length, icon: Building2, color: "bg-amber-50 text-amber-600" },
-        ].map((s) => (
-          <div key={s.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-xl ${s.color}`}><s.icon size={18} /></div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase">{s.label}</p>
-                <p className="text-xl font-extrabold text-slate-800">{s.value}</p>
-              </div>
-            </div>
-          </div>
-        ))}
+        <HrdStatsCard label="Total Karyawan" value={empList.length} icon={<Users size={18} />} color="blue" />
+        <HrdStatsCard label="Lokasi Kerja" value={locationList.length} icon={<MapPin size={18} />} color="emerald" />
+        <HrdStatsCard label="Jadwal Shift" value={shiftList.length} icon={<Clock size={18} />} color="purple" />
+        <HrdStatsCard label="Departemen" value={Object.keys(deptCounts).length} icon={<Building2 size={18} />} color="amber" />
       </div>
 
-      <SectionQuickLinks groupLabel="Desain Organisasi" excludeHref="/hrd/workplace" />
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><Users size={16} /></div>
-            <div>
-              <h3 className="font-extrabold text-slate-800 text-sm">Karyawan per Departemen</h3>
-              <p className="text-xs text-slate-400">Distribusi headcount saat ini</p>
-            </div>
-          </div>
+        <HrdCard title="Karyawan per Departemen" subtitle="Distribusi headcount saat ini" icon={<Users size={16} />} iconColor="blue">
           {topDepts.length === 0 ? (
-            <EmptyState icon={Users} title="Belum ada data karyawan." className="border-none" />
+            <EmptyState icon={Users} title="Belum ada data karyawan." className="border-none py-8" />
           ) : (
-            <div className="divide-y divide-slate-50">
+            <div className="space-y-3">
               {topDepts.map(([dept, count]) => (
-                <div key={dept} className="px-6 py-3 flex items-center justify-between hover:bg-slate-50/30 transition-colors">
+                <div key={dept} className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-700">{dept}</span>
-                  <div className="flex items-center gap-3">
-                    <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full"
-                        style={{ width: `${Math.min((count / empList.length) * 100, 100)}%` }} />
+                  <div className="flex items-center gap-3 w-40">
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((count / empList.length) * 100, 100)}%` }} />
                     </div>
                     <span className="text-xs font-bold text-slate-600 w-8 text-right">{count}</span>
                   </div>
@@ -83,62 +60,32 @@ export default async function HRDWorkplace() {
               ))}
             </div>
           )}
-        </div>
+        </HrdCard>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-            <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl"><Clock size={16} /></div>
-            <div>
-              <h3 className="font-extrabold text-slate-800 text-sm">Jadwal Shift Aktif</h3>
-              <p className="text-xs text-slate-400">Shift kerja yang terdaftar</p>
-            </div>
-          </div>
+        <HrdCard title="Jadwal Shift Aktif" subtitle="Shift kerja yang terdaftar" icon={<Clock size={16} />} iconColor="purple" action={{ label: "Kelola shift", href: "/hrd/infrastructure/shifts" }}>
           {shiftList.length === 0 ? (
-            <EmptyState
-              icon={Clock}
-              title="Belum ada shift terdaftar."
-              action={{ label: "Tambah shift", href: "/hrd/infrastructure/shifts" }}
-              className="border-none"
-            />
+            <EmptyState icon={Clock} title="Belum ada shift terdaftar." action={{ label: "Tambah shift", href: "/hrd/infrastructure/shifts" }} className="border-none py-8" />
           ) : (
             <div className="divide-y divide-slate-50">
               {shiftList.slice(0, 5).map((shift) => (
-                <div key={shift.id as string} className="px-6 py-3 flex items-center justify-between hover:bg-slate-50/30 transition-colors">
+                <div key={shift.id as string} className="py-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold text-slate-800">{shift.name as string}</p>
                     {((shift.start_time as string) || (shift.end_time as string)) && (
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        {shift.start_time as string} — {shift.end_time as string}
-                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{shift.start_time as string} — {shift.end_time as string}</p>
                     )}
                   </div>
-                  <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-[10px] font-bold">
-                    {shift.type as string || "Reguler"}
-                  </span>
+                  <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-[10px] font-bold">{shift.type as string || "Reguler"}</span>
                 </div>
               ))}
             </div>
           )}
-          {shiftList.length > 0 && (
-            <div className="px-6 py-3 border-t border-slate-50">
-              <Link href="/hrd/infrastructure/shifts" className="text-xs font-bold text-[#CC0000] hover:underline">
-                Kelola semua shift →
-              </Link>
-            </div>
-          )}
-        </div>
+        </HrdCard>
       </div>
 
       {locationList.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><MapPin size={16} /></div>
-            <div>
-              <h3 className="font-extrabold text-slate-800 text-sm">Lokasi Kerja</h3>
-              <p className="text-xs text-slate-400">Kantor dan cabang perusahaan</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+        <HrdCard title="Lokasi Kerja" subtitle="Kantor dan cabang perusahaan" icon={<MapPin size={16} />} iconColor="emerald" action={{ label: "Kelola lokasi", href: "/hrd/infrastructure/locations" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {locationList.map((loc) => (
               <div key={loc.id as string} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <div className="flex items-start gap-3">
@@ -154,8 +101,12 @@ export default async function HRDWorkplace() {
               </div>
             ))}
           </div>
-        </div>
+        </HrdCard>
       )}
+
+      <HrdCard title="Menu Lengkap Desain Organisasi" subtitle="Akses cepat ke semua fitur modul ini" icon={<Settings size={16} />} iconColor="slate">
+        <SectionQuickLinks groupLabel="Desain Organisasi" excludeHref="/hrd/workplace" />
+      </HrdCard>
     </div>
   );
 }

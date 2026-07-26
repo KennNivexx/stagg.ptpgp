@@ -58,11 +58,12 @@ export async function saveIncentivePayment(formData: FormData) {
   const amount = parseInt(formData.get("amount") as string || "0", 10) || 0;
   const period = (formData.get("period") as string || "").trim() || null;
   const notes = (formData.get("notes") as string || "").trim() || null;
+  const alasan = (formData.get("alasan") as string || "").trim() || null;
   if (!employeeId || !program) return { error: "Karyawan dan program wajib diisi." };
   if (amount <= 0) return { error: "Jumlah insentif harus lebih dari 0." };
   const { error } = await supabaseAdmin.from("insentif").insert({
     id: "inc-" + crypto.randomUUID(), employee_id: employeeId,
-    program, amount, period: period || null, notes, type: "incentive", status: "Pending",
+    program, amount, period: period || null, notes, alasan, type: "incentive", status: "Pending",
     created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
@@ -164,6 +165,7 @@ export async function addBonus(formData: FormData) {
   const rawAmount = (formData.get("amount") as string || "0").replace(/\D/g, "");
   const amount = parseInt(rawAmount, 10) || 0;
   const period = (formData.get("period") as string || "").trim();
+  const alasan = (formData.get("alasan") as string || "").trim() || null;
   // A department_manager can only ever propose a bonus — the status they
   // submit is ignored and forced to Pending, so they can't self-approve.
   const status = user.role === "department_manager" ? "Pending" : (formData.get("status") as string || "Pending").trim();
@@ -179,7 +181,7 @@ export async function addBonus(formData: FormData) {
   }
   const { error } = await supabaseAdmin.from("insentif").insert({
     id: "inc-" + crypto.randomUUID(), employee_id: employeeId,
-    program, amount, period: period || null, status, type: "bonus", created_at: new Date().toISOString(),
+    program, amount, period: period || null, alasan, status, type: "bonus", created_at: new Date().toISOString(),
   });
   if (MISSING_REWARDS_SCHEMA(error)) return { error: REWARDS_SCHEMA_ERROR };
   if (error) { console.error("[rewards] addBonus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }

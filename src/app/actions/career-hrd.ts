@@ -192,21 +192,14 @@ export async function submitPromotion(formData: FormData) {
   return { success: true };
 }
 
+// Final sign-off on a promotion (raises salary/position — see the side
+// effects below) is the SOP's "TM tanda tangan Surat Peningkatan Jenjang &
+// Kompensasi" step, not the department manager's performance-review input
+// (that happens earlier, via submitPromotion's criteria/reason). Only
+// director/superadmin may set the terminal status; department_manager can
+// still submit a promotion proposal but no longer approves/rejects it.
 export async function updatePromotionStatus(id: string, status: "Disetujui" | "Ditolak") {
-  const user = await requireRole("hrd", "superadmin", "department_manager");
-
-  const { data: promoRow } = await supabaseAdmin.from("promosi_karir").select("employee_id").eq("id", id).maybeSingle();
-  const promoEmployeeId = (promoRow as { employee_id?: string } | null)?.employee_id;
-  if (user.role === "department_manager" && promoEmployeeId) {
-    const [ownDept, { data: empRow }] = await Promise.all([
-      resolveManagerDepartment(user.email),
-      supabaseAdmin.from("karyawan").select("department").eq("id", promoEmployeeId).maybeSingle(),
-    ]);
-    const empDeptCheck = (empRow as { department?: string } | null)?.department;
-    if (!ownDept || empDeptCheck !== ownDept) {
-      return { error: "Anda hanya dapat memproses promosi untuk karyawan di departemen Anda sendiri." };
-    }
-  }
+  await requireRole("hrd", "superadmin", "director");
 
   if (status === "Disetujui") {
     const { data: promotion, error: fetchError } = await supabaseAdmin

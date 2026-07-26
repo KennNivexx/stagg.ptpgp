@@ -9,7 +9,7 @@ export async function getDeptEmployees(deptName: string) {
 
   const { data, error } = await supabaseAdmin
     .from("karyawan")
-    .select("id, full_name, department, position")
+    .select("id, full_name, department, position, kode_jabatan, nik")
     .eq("department", deptName)
     .neq("status", "Inactive")
     .order("full_name");
@@ -252,9 +252,14 @@ export async function reviewCompetencyRequest(id: string, approve: boolean): Pro
   if (req.status !== "Pending") return { error: `Usulan ini sudah diproses sebelumnya (${req.status}).` };
 
   if (approve) {
+    // Auto-generate kode_kompetensi: KMP + category_prefix + sequence
+    const catPrefix = ((req.category as string) || "UMUM").substring(0, 4).toUpperCase().replace(/\s/g, "");
+    const { count } = await supabaseAdmin.from("master_kompetensi").select("*", { count: "exact", head: true });
+    const kodeKompetensi = `KMP-${catPrefix}-${String((count || 0) + 1).padStart(3, "0")}`;
     const { error: insertErr } = await supabaseAdmin.from("master_kompetensi").insert({
       id: suid(),
       name: req.name, category: req.category, department: req.department,
+      kode_kompetensi: kodeKompetensi,
     });
     if (insertErr) return { error: "Gagal membuat kompetensi." };
   }

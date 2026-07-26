@@ -6,7 +6,7 @@ export default async function EthicsPage() {
   const [rows, categories, { data: employees }] = await Promise.all([
     getCases("Ethics Violation"),
     getCaseCategories(),
-    supabaseAdmin.from("karyawan").select("id, full_name").neq("status", "Inactive").order("full_name"),
+    supabaseAdmin.from("karyawan").select("id, full_name, kode_jabatan, nik, department, position").neq("status", "Inactive").order("full_name"),
   ]);
   return (
     <CaseClient

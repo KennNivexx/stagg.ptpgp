@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, TrendingUp, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 import { saveSalaryReview, updateSalaryReviewStatus, saveMeritMatrix, deleteMeritMatrix, recommendMeritPct } from "@/app/actions/rewards";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox from "@/components/EmployeeCombobox";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
 type Grade = { id: string; kode: string; nama: string };
@@ -27,6 +28,7 @@ export default function SalaryReviewClient({ employees, grades, reviews, meritMa
   const [salaryBefore, setSalaryBefore] = useState("");
   const [salaryAfter, setSalaryAfter] = useState("");
   const [recommending, setRecommending] = useState(false);
+  const [pickerKey, setPickerKey] = useState(0);
 
   const showMsg = (type: "success" | "error", text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 5000); };
 
@@ -49,6 +51,7 @@ export default function SalaryReviewClient({ employees, grades, reviews, meritMa
     if ("error" in res) { showMsg("error", res.error); return; }
     showMsg("success", "Salary Review berhasil diajukan.");
     setSelectedEmployee(""); setSalaryBefore(""); setSalaryAfter("");
+    setPickerKey((k) => k + 1);
     router.refresh();
   };
 
@@ -95,11 +98,8 @@ export default function SalaryReviewClient({ employees, grades, reviews, meritMa
             <form action={handleSaveReview} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Karyawan</label>
-                <select name="employee_id" value={selectedEmployee} onChange={e => setSelectedEmployee(e.target.value)} required
-                  className="w-full border border-gray-200 p-2.5 rounded-xl text-xs bg-white">
-                  <option value="">Pilih karyawan...</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.full_name} — {e.position}</option>)}
-                </select>
+                <EmployeeCombobox key={pickerKey} name="employee_id" employees={employees} defaultValue={selectedEmployee}
+                  required onSelect={(emp) => setSelectedEmployee(emp?.id || "")} />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jenis Review</label>

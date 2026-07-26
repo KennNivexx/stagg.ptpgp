@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Eye, Star, Trash2 } from "lucide-react";
 import { saveKpiEvaluation } from "@/app/actions/performance-hrd";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox from "@/components/EmployeeCombobox";
 
 type Employee = { id: string; full_name: string; kode?: string; department: string; position: string; jabatan_id: string | null };
 type KpiEval = Record<string, unknown>;
@@ -129,11 +130,8 @@ export default function KpiForm({ employees, evaluations, kpiCatalog }: Props) {
           <form ref={formRef} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Karyawan</label>
-              <select name="employee_id" value={selectedEmployeeId} onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
-                <option value="">Pilih karyawan...</option>
-                {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}{e.kode ? ` (${e.kode})` : ""} - {e.department}</option>)}
-              </select>
+              <EmployeeCombobox name="employee_id" employees={employees} defaultValue={selectedEmployeeId}
+                onSelect={(emp) => setSelectedEmployeeId(emp?.id || "")} />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Periode</label>

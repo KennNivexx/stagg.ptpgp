@@ -15,6 +15,7 @@ interface Employee { id: string; full_name: string; department: string; position
 interface BonusEntry {
   id: string; employee_id: string; program: string;
   amount: number; period?: string; status: string; created_at: string;
+  alasan?: string; notes?: string;
   karyawan?: { full_name: string; department: string; position: string; };
 }
 
@@ -36,6 +37,7 @@ export default function BonusesClient({
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [status, setStatus] = useState("Pending");
+  const [alasan, setAlasan] = useState("");
   const [saving, setSaving] = useState(false);
   const [actingId, setActingId] = useState("");
   const [toast, setToast] = useState("");
@@ -64,6 +66,7 @@ export default function BonusesClient({
     fd.append("amount", amount.replace(/\D/g, ""));
     fd.append("period", `${String(month).padStart(2, "0")}/${year}`);
     fd.append("status", status);
+    fd.append("alasan", alasan);
     const result = await addBonus(fd);
     setSaving(false);
     if (result?.error) { showToast(result.error); return; }
@@ -154,6 +157,13 @@ export default function BonusesClient({
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Alasan / Keterangan <span className="text-red-500">*</span></label>
+                <input value={alasan} onChange={e => setAlasan(e.target.value)}
+                  placeholder="Kenapa karyawan ini dapat bonus? Tunjangan apa saja?"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none" />
+                <p className="text-[10px] text-slate-400 mt-1">Wajib diisi — jelaskan alasan pemberian bonus dan rinciannya.</p>
+              </div>
               <button onClick={handleSave} disabled={saving}
                 className="w-full py-2.5 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors disabled:opacity-50">
                 {saving ? "Menyimpan..." : "Simpan"}
@@ -218,7 +228,7 @@ export default function BonusesClient({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/50">
-                  {["Karyawan", "Jenis", "Jumlah", "Periode", "Status", "Aksi"].map(h => (
+                  {["Karyawan", "Jenis", "Jumlah", "Periode", "Alasan", "Status", "Aksi"].map(h => (
                     <th key={h} className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">{h}</th>
                   ))}
                 </tr>
@@ -235,6 +245,9 @@ export default function BonusesClient({
                       <td className="px-6 py-4 text-xs text-slate-600">{b.program}</td>
                       <td className="px-6 py-4 text-xs font-bold text-slate-800">{fmt(Number(b.amount) || 0)}</td>
                       <td className="px-6 py-4 text-xs text-slate-500">{b.period || "-"}</td>
+                      <td className="px-6 py-4 text-xs text-slate-600 max-w-[200px] truncate" title={(b.alasan as string) || (b.notes as string) || ""}>
+                        {(b.alasan as string) || (b.notes as string) || "-"}
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${statusStyle(b.status)}`}>{b.status}</span>
                       </td>

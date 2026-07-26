@@ -2,6 +2,7 @@
 import { useRef, useState, useTransition } from "react";
 import { submitCareerTransaction, type CareerTransactionType } from "@/app/actions/career-development";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox from "@/components/EmployeeCombobox";
 import { FileText, Inbox } from "lucide-react";
 
 type Row = Record<string, unknown> & {
@@ -9,7 +10,7 @@ type Row = Record<string, unknown> & {
   karyawan?: { full_name?: string; department?: string } | null;
   from?: { name?: string } | null; to?: { name?: string } | null;
 };
-type Employee = { id: string; full_name: string };
+type Employee = { id: string; full_name: string; kode_jabatan?: string | null; nik?: string | null; department?: string | null; position?: string | null };
 type Jabatan = { id: string; name: string; department: string };
 
 /** Shared list + submission form for all 6 career_transactions sub-types
@@ -50,10 +51,7 @@ export default function CareerTransactionClient({
         <input type="hidden" name="transaction_type" value={type} />
         <div>
           <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Karyawan</label>
-          <select name="karyawan_id" required className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full">
-            <option value="">Pilih karyawan...</option>
-            {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-          </select>
+          <EmployeeCombobox name="karyawan_id" employees={employees} required />
         </div>
         <div>
           <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Jabatan Tujuan</label>

@@ -3,7 +3,6 @@ import { Users, UserCheck, Shield, AlertTriangle, Crown, Plus } from "lucide-rea
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import { getLatestReadinessByEmployee } from "@/app/actions/succession";
-import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDSuccession() {
   const { data: employees } = await supabaseAdmin
@@ -79,8 +78,6 @@ export default async function HRDSuccession() {
           <Plus size={14} /> Kelola Kandidat
         </Link>
       </div>
-
-      <SectionQuickLinks groupLabel="Suksesi" excludeHref="/hrd/succession" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">

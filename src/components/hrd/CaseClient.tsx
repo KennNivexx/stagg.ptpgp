@@ -2,6 +2,7 @@
 import { useRef, useState, useTransition } from "react";
 import { submitCase, updateCaseStatus, assignCasePic, type CaseType } from "@/app/actions/employee-relations";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox from "@/components/EmployeeCombobox";
 import { ShieldAlert, Inbox } from "lucide-react";
 
 type Row = Record<string, unknown> & {
@@ -11,7 +12,7 @@ type Row = Record<string, unknown> & {
   case_categories?: { name?: string; severity?: string } | null;
 };
 type CategoryOpt = { id: string; name: string };
-type EmployeeOpt = { id: string; full_name: string };
+type EmployeeOpt = { id: string; full_name: string; kode_jabatan?: string | null; nik?: string | null; department?: string | null; position?: string | null };
 
 const WORKFLOW_STAGES = ["Case Created", "Validation", "Investigation", "Evidence Collection", "Interview", "Committee Review", "Decision", "Corrective Action", "Monitoring", "Case Closed", "Rejected"] as const;
 
@@ -81,10 +82,7 @@ export default function CaseClient({
           </div>
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Terkait Karyawan (opsional)</label>
-            <select name="subject_karyawan_id" className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full">
-              <option value="">-</option>
-              {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-            </select>
+            <EmployeeCombobox name="subject_karyawan_id" employees={employees} />
           </div>
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Pelapor</label>
@@ -95,10 +93,7 @@ export default function CaseClient({
           </div>
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">PIC (opsional)</label>
-            <select name="pic_karyawan_id" className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full">
-              <option value="">-</option>
-              {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-            </select>
+            <EmployeeCombobox name="pic_karyawan_id" employees={employees} />
           </div>
           <div className="flex items-center gap-2 pt-6">
             <input type="checkbox" name="anonymous" id="anon" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} className="rounded" />

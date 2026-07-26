@@ -5,6 +5,7 @@ import { Save, Pencil, Wallet, Settings, Trash2 } from "lucide-react";
 import { saveSalaryStructure } from "@/app/actions/rewards";
 import { getEmployeeSalaryComponents, saveEmployeeSalaryComponents, type JenisKomponenGaji } from "@/app/actions/payroll-components";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox from "@/components/EmployeeCombobox";
 import Link from "next/link";
 
 type Employee = { id: string; full_name: string; department: string; position: string };
@@ -121,11 +122,8 @@ export default function SalaryForm({ employees, salaryRecords, jenisKomponen }: 
           <form ref={formRef} className="p-6 space-y-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Karyawan</label>
-              <select name="employee_id" value={selectedEmployeeId} onChange={(e) => handleEmployeeChange(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:border-[#CC0000] outline-none bg-white">
-                <option value="">Pilih karyawan...</option>
-                {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name} - {e.position}</option>)}
-              </select>
+              <EmployeeCombobox name="employee_id" employees={employees} defaultValue={selectedEmployeeId}
+                onSelect={(emp) => handleEmployeeChange(emp?.id || "")} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

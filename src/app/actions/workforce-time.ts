@@ -251,6 +251,41 @@ async function joinKaryawanNames(rows: Record<string, unknown>[]) {
 
 export async function getActiveEmployeesForSelect() {
   await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin.from("karyawan").select("id, full_name, department").neq("status", "Inactive").order("full_name");
+  const { data } = await supabaseAdmin.from("karyawan").select("id, full_name, department, kode_jabatan, nik").neq("status", "Inactive").order("full_name");
   return data || [];
+}
+
+/** Get leave balance for all active employees (sidebar display) */
+export async function getLeaveBalances() {
+  await requireRole("hrd", "superadmin");
+  const currentYear = new Date().getFullYear();
+  const { data: saldo } = await supabaseAdmin.from("saldo_cuti").select("*").eq("tahun", currentYear);
+  const { data: emps } = await supabaseAdmin.from("karyawan").select("id, full_name, kode_jabatan, department").neq("status", "Inactive");
+  const empMap = new Map((emps || []).map((e: { id: string; full_name: string; kode_jabatan: string | null; department: string | null }) => [e.id, e]));
+  const saldoList = (saldo || []) as Record<string, unknown>[];
+  // Group by employee
+  const balanceMap = new Map<string, { total: number; terpakai: number; jenis: Record<string, { total: number; terpakai: number }> }>();
+  for (const s of saldoList) {
+    const empId = s.karyawan_id as string;
+    if (!balanceMap.has(empId)) balanceMap.set(empId, { total: 0, terpakai: 0, jenis: {} });
+    const b = balanceMap.get(empId)!;
+    const th = Number(s.total_hari) || 0;
+    const tp = Number(s.terpakai) || 0;
+    b.total += th;
+    b.terpakai += tp;
+    b.jenis[s.jenis_cuti as string] = { total: th, terpakai: tp };
+  }
+  return Array.from(empMap.entries()).map(([id, emp]) => {
+    const b = balanceMap.get(id);
+    return {
+      employee_id: id,
+      employee_name: emp.full_name,
+      kode_jabatan: emp.kode_jabatan || "",
+      department: emp.department || "",
+      total_hari: b?.total || 12,
+      terpakai: b?.terpakai || 0,
+      sisa: (b?.total || 12) - (b?.terpakai || 0),
+      jenis: b?.jenis || {},
+    };
+  });
 }

@@ -6,7 +6,7 @@ export default async function EndOfContractPage() {
   const [rows, exitReasons, { data: employees }] = await Promise.all([
     getSeparations("End of Contract"),
     getExitReasons(),
-    supabaseAdmin.from("karyawan").select("id, full_name").neq("status", "Inactive").order("full_name"),
+    supabaseAdmin.from("karyawan").select("id, full_name, kode_jabatan, nik, department, position").neq("status", "Inactive").order("full_name"),
   ]);
   return <SeparationClient type="End of Contract" title="End of Contract" description="Berakhirnya kontrak kerja karyawan." initialRows={rows as never} employees={employees || []} exitReasons={exitReasons as never} />;
 }

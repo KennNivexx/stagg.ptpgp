@@ -6,6 +6,7 @@ import { getPenugasanKerja, savePenugasan, selesaikanPenugasan, deletePenugasan,
 import { getOrgStructure } from "@/app/actions/org";
 import type { OrgUnit } from "@/types/org";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox, { type EmployeeOption } from "@/components/EmployeeCombobox";
 
 function flattenUnits(tree: OrgUnit[]): { id: string; name: string }[] {
   const out: { id: string; name: string }[] = [];
@@ -22,7 +23,7 @@ interface Penugasan {
 
 export default function PenugasanKerjaPage() {
   const [rows, setRows] = useState<Penugasan[]>([]);
-  const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [units, setUnits] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,9 +62,9 @@ export default function PenugasanKerjaPage() {
 
       {showForm && (
         <form onSubmit={handleAdd} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <select name="karyawan_id" required className="border border-gray-200 p-3 rounded-xl text-sm bg-white"><option value="">Pilih Karyawan</option>{employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}</select>
+          <EmployeeCombobox name="karyawan_id" employees={employees} required />
           <select name="unit_organisasi_id" className="border border-gray-200 p-3 rounded-xl text-sm bg-white"><option value="">Site/Unit (opsional)</option>{units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
-          <select name="supervisor_karyawan_id" className="border border-gray-200 p-3 rounded-xl text-sm bg-white"><option value="">Supervisor (opsional)</option>{employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}</select>
+          <EmployeeCombobox name="supervisor_karyawan_id" employees={employees} placeholder="Cari nama, NIK, atau kode jabatan (supervisor)..." />
           <input name="nama_project" placeholder="Nama Project" className="border border-gray-200 p-3 rounded-xl text-sm" />
           <input name="nama_klien" placeholder="Nama Klien" className="border border-gray-200 p-3 rounded-xl text-sm" />
           <div />

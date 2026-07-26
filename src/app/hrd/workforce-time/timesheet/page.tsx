@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Trash2, ClipboardList } from "lucide-react";
 import { getTimesheet, saveTimesheet, deleteTimesheet, getActiveEmployeesForSelect } from "@/app/actions/workforce-time";
 import EmptyState from "@/components/EmptyState";
+import EmployeeCombobox, { type EmployeeOption } from "@/components/EmployeeCombobox";
 
 interface Timesheet {
   id: string; karyawan_nama: string; tanggal: string; jam_mulai: string | null; jam_selesai: string | null;
@@ -12,11 +13,12 @@ interface Timesheet {
 
 export default function TimesheetPage() {
   const [rows, setRows] = useState<Timesheet[]>([]);
-  const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pickerKey, setPickerKey] = useState(0);
 
   const fetchData = async () => {
     const [t, e] = await Promise.all([getTimesheet(), getActiveEmployeesForSelect()]);
@@ -30,7 +32,7 @@ export default function TimesheetPage() {
     const res = await saveTimesheet(new FormData(e.currentTarget));
     setSaving(false);
     if (res.error) { setError(res.error); return; }
-    showSuccess("Timesheet disimpan."); (e.target as HTMLFormElement).reset(); await fetchData();
+    showSuccess("Timesheet disimpan."); (e.target as HTMLFormElement).reset(); setPickerKey((k) => k + 1); await fetchData();
   };
   const handleDelete = async (id: string) => { await deleteTimesheet(id); await fetchData(); };
 
@@ -43,7 +45,7 @@ export default function TimesheetPage() {
       {error && <div className="p-4 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-semibold">{error}</div>}
 
       <form onSubmit={handleAdd} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <select name="karyawan_id" required className="border border-gray-200 p-3 rounded-xl text-sm bg-white"><option value="">Pilih Karyawan</option>{employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}</select>
+        <EmployeeCombobox key={pickerKey} name="karyawan_id" employees={employees} required />
         <input name="tanggal" type="date" required className="border border-gray-200 p-3 rounded-xl text-sm" />
         <select name="mode_kerja" className="border border-gray-200 p-3 rounded-xl text-sm bg-white"><option value="Kantor">Kantor</option><option value="WFH">WFH</option><option value="Dinas Luar">Dinas Luar</option></select>
         <input name="jam_mulai" type="time" className="border border-gray-200 p-3 rounded-xl text-sm" />
