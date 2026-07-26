@@ -4,6 +4,7 @@ import MeetingRoomsPage from "./rooms/page";
 import AttendancePage from "./attendance/page";
 import MinutesPage from "./minutes/page";
 
+import { safeTab } from "@/lib/hub-safe";
 export const dynamic = "force-dynamic";
 
 // Merged hub: composes the 3 previously-missing "Tata Kelola Rapat" forms
@@ -14,9 +15,9 @@ export const dynamic = "force-dynamic";
 // MPP discussions). Each sub-route below still works standalone.
 export default async function MeetingGovernanceHub() {
   const tabs: HubTab[] = [
-    { id: "rooms", label: "Ruang Meeting", icon: <DoorOpen size={14} />, content: await MeetingRoomsPage() },
-    { id: "attendance", label: "Daftar Hadir", icon: <ClipboardList size={14} />, content: await AttendancePage() },
-    { id: "minutes", label: "Notulen Rapat", icon: <FileText size={14} />, content: await MinutesPage() },
+    { id: "rooms", label: "Ruang Meeting", icon: <DoorOpen size={14} />, content: await safeTab(() => MeetingRoomsPage(), "Ruang Meeting") },
+    { id: "attendance", label: "Daftar Hadir", icon: <ClipboardList size={14} />, content: await safeTab(() => AttendancePage(), "Daftar Hadir") },
+    { id: "minutes", label: "Notulen Rapat", icon: <FileText size={14} />, content: await safeTab(() => MinutesPage(), "Notulen Rapat") },
   ];
 
   return (

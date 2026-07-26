@@ -3,6 +3,7 @@ import { FileText, Percent } from "lucide-react";
 import StatementClient from "./StatementClient";
 import HubTabs from "@/components/hrd/HubTabs";
 import TaxConfigPage from "../tax/page";
+import { safeTab } from "@/lib/hub-safe";
 
 export const dynamic = "force-dynamic";
 async function StatementTabContent() {
@@ -27,7 +28,7 @@ async function StatementTabContent() {
 // without an await. The original route files remain intact for anyone
 // navigating to them directly.
 export default async function TotalRewardsStatementPage() {
-  const statementContent = await StatementTabContent();
+  const statementContent = await safeTab(() => StatementTabContent(), "Total Rewards Statement");
 
   return (
     <div className="p-6 lg:p-8">

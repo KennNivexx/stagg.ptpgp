@@ -16,25 +16,26 @@ import EngagementTrendPage from "../ai/engagement-trend/page";
 import ConflictPredictionPage from "../ai/conflict/page";
 import AiRecommendationsPage from "../ai/recommendations/page";
 
+import { safeTab } from "@/lib/hub-safe";
 export const dynamic = "force-dynamic";
 export default async function AnalyticsAiHubPage() {
   const analyticsTabs: HubTab[] = [
-    { id: "executive", label: "Executive Dashboard", icon: <BarChart3 size={14} />, content: <>{await ExecutiveDashboardPage()}</> },
-    { id: "engagement", label: "Engagement Analytics", icon: <TrendingUp size={14} />, content: <>{await EngagementDashboardPage()}</> },
-    { id: "satisfaction", label: "Satisfaction Analytics", icon: <Smile size={14} />, content: <>{await SatisfactionDashboardPage()}</> },
-    { id: "complaints", label: "Complaints Analytics", icon: <MessageSquare size={14} />, content: <>{await ComplaintAnalyticsPage()}</> },
-    { id: "industrial", label: "Industrial Relations Analytics", icon: <Scale size={14} />, content: <>{await IndustrialReportPage()}</> },
-    { id: "retention", label: "Retention Analytics", icon: <TrendingDown size={14} />, content: <>{await RetentionAnalysisPage()}</> },
-    { id: "risk", label: "Risk Analytics", icon: <ShieldAlert size={14} />, content: <>{await EmployeeRiskDashboardPage()}</> },
+    { id: "executive", label: "Executive Dashboard", icon: <BarChart3 size={14} />, content: await safeTab(() => ExecutiveDashboardPage(), "Executive Dashboard") },
+    { id: "engagement", label: "Engagement Analytics", icon: <TrendingUp size={14} />, content: await safeTab(() => EngagementDashboardPage(), "Engagement Analytics") },
+    { id: "satisfaction", label: "Satisfaction Analytics", icon: <Smile size={14} />, content: await safeTab(() => SatisfactionDashboardPage(), "Satisfaction Analytics") },
+    { id: "complaints", label: "Complaints Analytics", icon: <MessageSquare size={14} />, content: await safeTab(() => ComplaintAnalyticsPage(), "Complaints Analytics") },
+    { id: "industrial", label: "Industrial Relations Analytics", icon: <Scale size={14} />, content: await safeTab(() => IndustrialReportPage(), "Industrial Relations Analytics") },
+    { id: "retention", label: "Retention Analytics", icon: <TrendingDown size={14} />, content: await safeTab(() => RetentionAnalysisPage(), "Retention Analytics") },
+    { id: "risk", label: "Risk Analytics", icon: <ShieldAlert size={14} />, content: await safeTab(() => EmployeeRiskDashboardPage(), "Risk Analytics") },
   ];
 
   const aiTabs: HubTab[] = [
-    { id: "ai-engine", label: "AI ER Engine", icon: <Bot size={14} />, content: <>{await AiErEnginePage()}</> },
-    { id: "risk-score", label: "Employee Risk Score", icon: <Gauge size={14} />, content: <>{await EmployeeRiskScorePage()}</> },
-    { id: "sentiment", label: "Sentiment Analysis", icon: <Activity size={14} />, content: <>{await SentimentAnalysisPage()}</> },
-    { id: "engagement-trend", label: "Engagement Trend", icon: <LineChart size={14} />, content: <>{await EngagementTrendPage()}</> },
-    { id: "conflict", label: "Conflict Prediction", icon: <Users size={14} />, content: <>{await ConflictPredictionPage()}</> },
-    { id: "recommendations", label: "AI Recommendations", icon: <Sparkles size={14} />, content: <>{await AiRecommendationsPage()}</> },
+    { id: "ai-engine", label: "AI ER Engine", icon: <Bot size={14} />, content: await safeTab(() => AiErEnginePage(), "AI ER Engine") },
+    { id: "risk-score", label: "Employee Risk Score", icon: <Gauge size={14} />, content: await safeTab(() => EmployeeRiskScorePage(), "Employee Risk Score") },
+    { id: "sentiment", label: "Sentiment Analysis", icon: <Activity size={14} />, content: await safeTab(() => SentimentAnalysisPage(), "Sentiment Analysis") },
+    { id: "engagement-trend", label: "Engagement Trend", icon: <LineChart size={14} />, content: await safeTab(() => EngagementTrendPage(), "Engagement Trend") },
+    { id: "conflict", label: "Conflict Prediction", icon: <Users size={14} />, content: await safeTab(() => ConflictPredictionPage(), "Conflict Prediction") },
+    { id: "recommendations", label: "AI Recommendations", icon: <Sparkles size={14} />, content: await safeTab(() => AiRecommendationsPage(), "AI Recommendations") },
   ];
 
   return (

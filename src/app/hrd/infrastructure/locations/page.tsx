@@ -3,6 +3,7 @@ import LocationsClient from "./LocationsClient";
 import HubTabs from "@/components/hrd/HubTabs";
 import ShiftsPage from "../shifts/page";
 import { MapPin, Clock } from "lucide-react";
+import { safeTab } from "@/lib/hub-safe";
 
 export const dynamic = "force-dynamic";
 async function LocationsTabContent() {
@@ -17,8 +18,8 @@ async function LocationsTabContent() {
 // files remain intact for anyone navigating to them directly.
 export default async function LokasiKerjaPage() {
   const [locationsContent, shiftsContent] = await Promise.all([
-    LocationsTabContent(),
-    ShiftsPage(),
+    safeTab(() => LocationsTabContent(), "Lokasi Kerja"),
+    safeTab(() => ShiftsPage(), "Shift Kerja"),
   ]);
 
   return (

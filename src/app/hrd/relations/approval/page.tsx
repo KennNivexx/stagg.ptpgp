@@ -8,6 +8,7 @@ import IndustrialApprovalPage from "./industrial/page";
 import SeparationApprovalPage from "./separation/page";
 import CaseClosureApprovalPage from "./case-closure/page";
 
+import { safeTab } from "@/lib/hub-safe";
 export const dynamic = "force-dynamic";
 // Hub #5 "Approval" — merges the 6 Employee Relations approval routes below
 // into a single tabbed page so the top-nav menu only links here. Each
@@ -20,37 +21,37 @@ export default async function ApprovalHubPage() {
       id: "complaint",
       label: "Complaint Approval",
       icon: <MessageSquare size={14} />,
-      content: <>{await ComplaintApprovalPage()}</>,
+      content: await safeTab(() => ComplaintApprovalPage(), "Tab"),
     },
     {
       id: "investigation",
       label: "Investigation Approval",
       icon: <Search size={14} />,
-      content: <>{await InvestigationApprovalPage()}</>,
+      content: await safeTab(() => InvestigationApprovalPage(), "Tab"),
     },
     {
       id: "corrective-action",
       label: "Corrective Action Approval",
       icon: <ClipboardCheck size={14} />,
-      content: <>{await CorrectiveActionApprovalPage()}</>,
+      content: await safeTab(() => CorrectiveActionApprovalPage(), "Tab"),
     },
     {
       id: "industrial",
       label: "Industrial Relations Approval",
       icon: <Scale size={14} />,
-      content: <>{await IndustrialApprovalPage()}</>,
+      content: await safeTab(() => IndustrialApprovalPage(), "Tab"),
     },
     {
       id: "separation",
       label: "Separation Approval",
       icon: <LogOut size={14} />,
-      content: <>{await SeparationApprovalPage()}</>,
+      content: await safeTab(() => SeparationApprovalPage(), "Tab"),
     },
     {
       id: "case-closure",
       label: "Case Closure Approval",
       icon: <XCircle size={14} />,
-      content: <>{await CaseClosureApprovalPage()}</>,
+      content: await safeTab(() => CaseClosureApprovalPage(), "Tab"),
     },
   ];
 

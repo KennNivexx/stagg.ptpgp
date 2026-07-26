@@ -5,6 +5,7 @@ import HubTabs from "@/components/hrd/HubTabs";
 import SalaryPage from "../salary/page";
 import KomponenGajiPage from "../komponen-gaji/page";
 import RewardFormulaPage from "../formula/page";
+import { safeTab } from "@/lib/hub-safe";
 
 export const dynamic = "force-dynamic";
 async function PayrollTabContent() {
@@ -30,10 +31,10 @@ async function PayrollTabContent() {
 // files remain intact for anyone navigating to them directly.
 export default async function PayrollPage() {
   const [payrollContent, salaryContent, komponenGajiContent, formulaContent] = await Promise.all([
-    PayrollTabContent(),
-    SalaryPage(),
-    KomponenGajiPage(),
-    RewardFormulaPage(),
+    safeTab(() => PayrollTabContent(), "Payroll"),
+    safeTab(() => SalaryPage(), "Komponen Gaji"),
+    safeTab(() => KomponenGajiPage(), "Jenis Tunjangan & Potongan"),
+    safeTab(() => RewardFormulaPage(), "Formula Reward"),
   ]);
 
   return (

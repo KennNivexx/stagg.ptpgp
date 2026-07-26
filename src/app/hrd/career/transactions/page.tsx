@@ -9,19 +9,20 @@ import TransactionActingPage from "./acting/page";
 import TransactionTemporaryPage from "./temporary/page";
 import TransactionSuccessionPage from "./succession/page";
 
+import { safeTab } from "@/lib/hub-safe";
 export const dynamic = "force-dynamic";
 // Hub page merging the 7 "Transaksi Karier" routes into a single tabbed
 // page. Each tab embeds the original route's own async Server Component
 // output unchanged.
 export default async function CareerTransactionsHubPage() {
   const tabs: HubTab[] = [
-    { id: "promotion", label: "Promosi", icon: <TrendingUp size={14} />, content: await TransactionPromotionPage() },
-    { id: "mutation", label: "Mutasi", icon: <RefreshCw size={14} />, content: await MutationsPage() },
-    { id: "rotation", label: "Rotasi", icon: <ArrowRightLeft size={14} />, content: await TransactionRotationPage() },
-    { id: "demotion", label: "Demosi", icon: <TrendingDown size={14} />, content: await TransactionDemotionPage() },
-    { id: "acting", label: "Acting Assignment", icon: <UserCog size={14} />, content: await TransactionActingPage() },
-    { id: "temporary", label: "Temporary Assignment", icon: <Clock size={14} />, content: await TransactionTemporaryPage() },
-    { id: "succession", label: "Succession Assignment", icon: <Crown size={14} />, content: await TransactionSuccessionPage() },
+    { id: "promotion", label: "Promosi", icon: <TrendingUp size={14} />, content: await safeTab(() => TransactionPromotionPage(), "Promosi") },
+    { id: "mutation", label: "Mutasi", icon: <RefreshCw size={14} />, content: await safeTab(() => MutationsPage(), "Mutasi") },
+    { id: "rotation", label: "Rotasi", icon: <ArrowRightLeft size={14} />, content: await safeTab(() => TransactionRotationPage(), "Rotasi") },
+    { id: "demotion", label: "Demosi", icon: <TrendingDown size={14} />, content: await safeTab(() => TransactionDemotionPage(), "Demosi") },
+    { id: "acting", label: "Acting Assignment", icon: <UserCog size={14} />, content: await safeTab(() => TransactionActingPage(), "Acting Assignment") },
+    { id: "temporary", label: "Temporary Assignment", icon: <Clock size={14} />, content: await safeTab(() => TransactionTemporaryPage(), "Temporary Assignment") },
+    { id: "succession", label: "Succession Assignment", icon: <Crown size={14} />, content: await safeTab(() => TransactionSuccessionPage(), "Succession Assignment") },
   ];
 
   return (

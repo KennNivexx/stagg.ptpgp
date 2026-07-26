@@ -5,6 +5,7 @@ import BonusesClient from "./BonusesClient";
 import HubTabs from "@/components/hrd/HubTabs";
 import IncentivesPage from "../incentives/page";
 import AwardsPage from "../awards/page";
+import { safeTab } from "@/lib/hub-safe";
 
 export const dynamic = "force-dynamic";
 async function BonusesTabContent() {
@@ -29,9 +30,9 @@ async function BonusesTabContent() {
 // intact for anyone navigating to them directly.
 export default async function BonusesPage() {
   const [bonusesContent, incentivesContent, awardsContent] = await Promise.all([
-    BonusesTabContent(),
-    IncentivesPage(),
-    AwardsPage(),
+    safeTab(() => BonusesTabContent(), "Bonus"),
+    safeTab(() => IncentivesPage(), "Insentif"),
+    safeTab(() => AwardsPage(), "Penghargaan"),
   ]);
 
   return (

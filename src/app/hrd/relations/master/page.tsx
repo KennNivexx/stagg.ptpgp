@@ -17,6 +17,7 @@ import SurveyTemplatePage from "./survey-template/page";
 import ExitReasonPage from "./exit-reason/page";
 import AIRulePage from "./ai-rule/page";
 
+import { safeTab } from "@/lib/hub-safe";
 export const dynamic = "force-dynamic";
 // Hub #1 "Master Data" — merges the 12 Employee Relations master-data pages
 // (each an independent async Server Component fetching its own rows) into a
@@ -26,18 +27,18 @@ export const dynamic = "force-dynamic";
 // the shared shell.
 export default async function ErMasterDataHub() {
   const tabs: HubTab[] = [
-    { id: "policy", label: "Employee Relation Policy", icon: <FileText size={14} />, content: <>{await ERPolicyPage()}</> },
-    { id: "company-regulation", label: "Company Regulation (PP)", icon: <Scale size={14} />, content: <>{await CompanyRegulationPage()}</> },
-    { id: "pkb", label: "PKB", icon: <Gavel size={14} />, content: <>{await PKBPage()}</> },
-    { id: "code-of-conduct", label: "Code of Conduct", icon: <ShieldCheck size={14} />, content: <>{await CodeOfConductPage()}</> },
-    { id: "comm-category", label: "Communication Category", icon: <MessageSquare size={14} />, content: <>{await CommCategoryPage()}</> },
-    { id: "case-category", label: "Case Category", icon: <Tags size={14} />, content: <>{await CaseCategoryPage()}</> },
-    { id: "investigation-type", label: "Investigation Type", icon: <Search size={14} />, content: <>{await InvestigationTypePage()}</> },
-    { id: "disciplinary-category", label: "Disciplinary Category", icon: <AlertTriangle size={14} />, content: <>{await DisciplinaryCategoryPage()}</> },
-    { id: "engagement-program", label: "Engagement Program", icon: <HeartHandshake size={14} />, content: <>{await EngagementProgramPage()}</> },
-    { id: "survey-template", label: "Survey Template", icon: <ClipboardList size={14} />, content: <>{await SurveyTemplatePage()}</> },
-    { id: "exit-reason", label: "Exit Reason", icon: <LogOut size={14} />, content: <>{await ExitReasonPage()}</> },
-    { id: "ai-rule", label: "AI Recommendation Rule", icon: <Brain size={14} />, content: <>{await AIRulePage()}</> },
+    { id: "policy", label: "Employee Relation Policy", icon: <FileText size={14} />, content: await safeTab(() => ERPolicyPage(), "Employee Relation Policy") },
+    { id: "company-regulation", label: "Company Regulation (PP)", icon: <Scale size={14} />, content: await safeTab(() => CompanyRegulationPage(), "Company Regulation (PP)") },
+    { id: "pkb", label: "PKB", icon: <Gavel size={14} />, content: await safeTab(() => PKBPage(), "PKB") },
+    { id: "code-of-conduct", label: "Code of Conduct", icon: <ShieldCheck size={14} />, content: await safeTab(() => CodeOfConductPage(), "Code of Conduct") },
+    { id: "comm-category", label: "Communication Category", icon: <MessageSquare size={14} />, content: await safeTab(() => CommCategoryPage(), "Communication Category") },
+    { id: "case-category", label: "Case Category", icon: <Tags size={14} />, content: await safeTab(() => CaseCategoryPage(), "Case Category") },
+    { id: "investigation-type", label: "Investigation Type", icon: <Search size={14} />, content: await safeTab(() => InvestigationTypePage(), "Investigation Type") },
+    { id: "disciplinary-category", label: "Disciplinary Category", icon: <AlertTriangle size={14} />, content: await safeTab(() => DisciplinaryCategoryPage(), "Disciplinary Category") },
+    { id: "engagement-program", label: "Engagement Program", icon: <HeartHandshake size={14} />, content: await safeTab(() => EngagementProgramPage(), "Engagement Program") },
+    { id: "survey-template", label: "Survey Template", icon: <ClipboardList size={14} />, content: await safeTab(() => SurveyTemplatePage(), "Survey Template") },
+    { id: "exit-reason", label: "Exit Reason", icon: <LogOut size={14} />, content: await safeTab(() => ExitReasonPage(), "Exit Reason") },
+    { id: "ai-rule", label: "AI Recommendation Rule", icon: <Brain size={14} />, content: await safeTab(() => AIRulePage(), "AI Recommendation Rule") },
   ];
 
   return (

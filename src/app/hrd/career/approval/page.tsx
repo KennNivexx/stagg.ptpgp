@@ -7,17 +7,18 @@ import SalaryApprovalPage from "./salary/page";
 import SuccessionApprovalPage from "./succession/page";
 import CareerCommitteePage from "./committee/page";
 
+import { safeTab } from "@/lib/hub-safe";
 export const dynamic = "force-dynamic";
 // Hub page merging the 5 "Approval Karier" routes into a single tabbed
 // page. Each tab embeds the original route's own async Server Component
 // output unchanged.
 export default async function CareerApprovalHubPage() {
   const tabs: HubTab[] = [
-    { id: "promotion", label: "Promotion Approval", icon: <TrendingUp size={14} />, content: await PromotionApprovalPage() },
-    { id: "mutation", label: "Mutation Approval", icon: <RefreshCw size={14} />, content: await MutationApprovalPage() },
-    { id: "salary", label: "Salary Approval", icon: <DollarSign size={14} />, content: await SalaryApprovalPage() },
-    { id: "succession", label: "Succession Approval", icon: <Crown size={14} />, content: await SuccessionApprovalPage() },
-    { id: "committee", label: "Career Committee", icon: <Users2 size={14} />, content: await CareerCommitteePage() },
+    { id: "promotion", label: "Promotion Approval", icon: <TrendingUp size={14} />, content: await safeTab(() => PromotionApprovalPage(), "Promotion Approval") },
+    { id: "mutation", label: "Mutation Approval", icon: <RefreshCw size={14} />, content: await safeTab(() => MutationApprovalPage(), "Mutation Approval") },
+    { id: "salary", label: "Salary Approval", icon: <DollarSign size={14} />, content: await safeTab(() => SalaryApprovalPage(), "Salary Approval") },
+    { id: "succession", label: "Succession Approval", icon: <Crown size={14} />, content: await safeTab(() => SuccessionApprovalPage(), "Succession Approval") },
+    { id: "committee", label: "Career Committee", icon: <Users2 size={14} />, content: await safeTab(() => CareerCommitteePage(), "Career Committee") },
   ];
 
   return (

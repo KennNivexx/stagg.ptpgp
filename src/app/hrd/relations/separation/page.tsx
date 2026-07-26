@@ -7,15 +7,16 @@ import TerminationPage from "./termination/page";
 import ExitInterviewPage from "./exit-interview/page";
 import SeparationAnalyticsPage from "./analytics/page";
 
+import { safeTab } from "@/lib/hub-safe";
 export const dynamic = "force-dynamic";
 export default async function SeparationHubPage() {
   const tabs: HubTab[] = [
-    { id: "resignations", label: "Resignations", icon: <LogOut size={14} />, content: <>{await ResignationsPage()}</> },
-    { id: "retirement", label: "Retirement", icon: <Clock size={14} />, content: <>{await RetirementPage()}</> },
-    { id: "end-of-contract", label: "End of Contract", icon: <FileX size={14} />, content: <>{await EndOfContractPage()}</> },
-    { id: "termination", label: "Termination", icon: <UserX size={14} />, content: <>{await TerminationPage()}</> },
-    { id: "exit-interview", label: "Exit Interview", icon: <MessageCircleQuestion size={14} />, content: <>{await ExitInterviewPage()}</> },
-    { id: "analytics", label: "Separation Analytics", icon: <BarChart3 size={14} />, content: <>{await SeparationAnalyticsPage()}</> },
+    { id: "resignations", label: "Resignations", icon: <LogOut size={14} />, content: await safeTab(() => ResignationsPage(), "Resignations") },
+    { id: "retirement", label: "Retirement", icon: <Clock size={14} />, content: await safeTab(() => RetirementPage(), "Retirement") },
+    { id: "end-of-contract", label: "End of Contract", icon: <FileX size={14} />, content: await safeTab(() => EndOfContractPage(), "End of Contract") },
+    { id: "termination", label: "Termination", icon: <UserX size={14} />, content: await safeTab(() => TerminationPage(), "Termination") },
+    { id: "exit-interview", label: "Exit Interview", icon: <MessageCircleQuestion size={14} />, content: await safeTab(() => ExitInterviewPage(), "Exit Interview") },
+    { id: "analytics", label: "Separation Analytics", icon: <BarChart3 size={14} />, content: await safeTab(() => SeparationAnalyticsPage(), "Separation Analytics") },
   ];
 
   return (

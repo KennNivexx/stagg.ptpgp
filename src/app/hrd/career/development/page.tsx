@@ -10,20 +10,21 @@ import CareerSimulationPage from "../simulation/page";
 import CareerHistoryPage from "../history/page";
 import CareerAnalyticsPage from "../analytics/page";
 
+import { safeTab } from "@/lib/hub-safe";
 export const dynamic = "force-dynamic";
 // Hub page merging the 8 "Pengembangan Karier" routes into a single tabbed
 // page. Each tab embeds the original route's own async Server Component
 // output unchanged — none of the original files were modified.
 export default async function CareerDevelopmentHubPage() {
   const tabs: HubTab[] = [
-    { id: "profile", label: "Career Profile", icon: <UserCircle2 size={14} />, content: await CareerProfilePage() },
-    { id: "assessment", label: "Career Assessment", icon: <ClipboardCheck size={14} />, content: await CareerAssessmentPage() },
-    { id: "readiness", label: "Career Readiness", icon: <Gauge size={14} />, content: await CareerReadinessPage() },
-    { id: "recommendation", label: "Career Recommendation", icon: <Lightbulb size={14} />, content: await CareerRecommendationPage() },
-    { id: "plans", label: "Individual Development Plan", icon: <ListChecks size={14} />, content: await CareerPlansPage() },
-    { id: "simulation", label: "Career Simulation", icon: <FlaskConical size={14} />, content: await CareerSimulationPage() },
-    { id: "history", label: "Career History", icon: <History size={14} />, content: await CareerHistoryPage() },
-    { id: "analytics", label: "Career Analytics", icon: <LineChart size={14} />, content: await CareerAnalyticsPage() },
+    { id: "profile", label: "Career Profile", icon: <UserCircle2 size={14} />, content: await safeTab(() => CareerProfilePage(), "Career Profile") },
+    { id: "assessment", label: "Career Assessment", icon: <ClipboardCheck size={14} />, content: await safeTab(() => CareerAssessmentPage(), "Career Assessment") },
+    { id: "readiness", label: "Career Readiness", icon: <Gauge size={14} />, content: await safeTab(() => CareerReadinessPage(), "Career Readiness") },
+    { id: "recommendation", label: "Career Recommendation", icon: <Lightbulb size={14} />, content: await safeTab(() => CareerRecommendationPage(), "Career Recommendation") },
+    { id: "plans", label: "Individual Development Plan", icon: <ListChecks size={14} />, content: await safeTab(() => CareerPlansPage(), "Individual Development Plan") },
+    { id: "simulation", label: "Career Simulation", icon: <FlaskConical size={14} />, content: await safeTab(() => CareerSimulationPage(), "Career Simulation") },
+    { id: "history", label: "Career History", icon: <History size={14} />, content: await safeTab(() => CareerHistoryPage(), "Career History") },
+    { id: "analytics", label: "Career Analytics", icon: <LineChart size={14} />, content: await safeTab(() => CareerAnalyticsPage(), "Career Analytics") },
   ];
 
   return (
