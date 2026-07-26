@@ -207,6 +207,7 @@ export async function saveSkill(formData: FormData): Promise<{ error: string } |
   const department = (formData.get("department") as string || "").trim() || null;
   const jenis_kompetensi = (formData.get("jenis_kompetensi") as string || "Hard Skill").trim();
   const kode = (formData.get("kode") as string || "").trim() || null;
+  const kode_perusahaan = (formData.get("kode_perusahaan") as string || "").trim() || null;
   const deskripsi = (formData.get("deskripsi") as string || "").trim() || null;
   const status = (formData.get("status") as string || "Aktif").trim();
 
@@ -214,7 +215,7 @@ export async function saveSkill(formData: FormData): Promise<{ error: string } |
 
   const now = new Date().toISOString();
   if (id) {
-    const { error } = await supabaseAdmin.from("master_kompetensi").update({ name, category, department, jenis_kompetensi, kode, deskripsi, status, updated_at: now }).eq("id", id);
+    const { error } = await supabaseAdmin.from("master_kompetensi").update({ name, category, department, jenis_kompetensi, kode, kode_perusahaan, deskripsi, status, updated_at: now }).eq("id", id);
     if (error) return { error: "Gagal mengupdate skill." };
     revalidatePath("/hrd/competency/library");
     return { success: true };
@@ -224,6 +225,7 @@ export async function saveSkill(formData: FormData): Promise<{ error: string } |
     id: "creq-" + crypto.randomUUID(),
     name, category, department,
     requested_by: user.name || user.email,
+    kode: kode || null,
     status: "Pending",
     created_at: now,
   });

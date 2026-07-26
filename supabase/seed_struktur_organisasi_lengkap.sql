@@ -20,6 +20,10 @@
 DO $$ BEGIN ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS nik TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS kode_jabatan TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE master_kompetensi ADD COLUMN IF NOT EXISTS kode_kompetensi TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE master_kompetensi ADD COLUMN IF NOT EXISTS kode_perusahaan TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE master_kompetensi ADD COLUMN IF NOT EXISTS deskripsi TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE master_kompetensi ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Aktif'; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE usulan_kompetensi ADD COLUMN IF NOT EXISTS kode TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE jabatan ADD COLUMN IF NOT EXISTS parent_code TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE insentif ADD COLUMN IF NOT EXISTS alasan TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE lokasi_kerja ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION; EXCEPTION WHEN duplicate_column THEN NULL; END $$;

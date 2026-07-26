@@ -7,7 +7,7 @@ import { saveTrip, deleteTrip, getDriverHoursSummary, generateTripIncentives, ty
 import { FATIGUE_WARN_HOURS, FATIGUE_CRITICAL_HOURS } from "@/lib/trip-constants";
 import type { Vehicle } from "@/app/actions/vehicles";
 
-type Employee = { id: string; full_name: string; department: string };
+type Employee = { id: string; full_name: string; department: string; kode_jabatan?: string | null; nik?: string | null; position?: string };
 
 const emptyForm = {
   id: "", driver_id: "", vehicle_id: "", origin: "", destination: "",
@@ -239,7 +239,7 @@ export default function TripsClient({ initialTrips, employees, vehicles }: { ini
                   <label className="block text-xs font-bold text-slate-700 mb-1">Supir</label>
                   <select required value={formData.driver_id} onChange={e => setFormData({ ...formData, driver_id: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm">
                     <option value="">Pilih supir</option>
-                    {employees.map(e => <option key={e.id} value={e.id}>{e.full_name} — {e.department}</option>)}
+                    {employees.map(e => <option key={e.id} value={e.id}>{e.full_name} {e.kode_jabatan ? `[${e.kode_jabatan}]` : ""} — {e.department}</option>)}
                   </select>
                 </div>
                 <div>

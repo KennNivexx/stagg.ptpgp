@@ -31,6 +31,10 @@ export default function PenugasanKerjaPage() {
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
+  /* ── Auto-fill state ── */
+  const [selectedEmp, setSelectedEmp] = useState<EmployeeOption | null>(null);
+  const [selectedSpv, setSelectedSpv] = useState<EmployeeOption | null>(null);
+
   const fetchData = async () => {
     const [p, e, tree] = await Promise.all([getPenugasanKerja(), getActiveEmployeesForSelect(), getOrgStructure()]);
     setRows(p as Penugasan[]); setEmployees(e); setUnits(flattenUnits(tree));
@@ -46,6 +50,7 @@ export default function PenugasanKerjaPage() {
     setSaving(false);
     if (res.error) { setError(res.error); return; }
     setShowForm(false); showSuccess("Penugasan ditambahkan."); await fetchData();
+    setSelectedEmp(null); setSelectedSpv(null);
     (e.target as HTMLFormElement).reset();
   };
 
@@ -62,9 +67,27 @@ export default function PenugasanKerjaPage() {
 
       {showForm && (
         <form onSubmit={handleAdd} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <EmployeeCombobox name="karyawan_id" employees={employees} required />
+          <div>
+            <EmployeeCombobox name="karyawan_id" employees={employees} required
+              onSelect={(emp) => setSelectedEmp(emp)}
+            />
+            {selectedEmp && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">{selectedEmp.position || "-"}</span>
+                <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">{selectedEmp.department || "-"}</span>
+                <code className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-lg">{selectedEmp.kode_jabatan || "-"}</code>
+              </div>
+            )}
+          </div>
           <select name="unit_organisasi_id" className="border border-gray-200 p-3 rounded-xl text-sm bg-white"><option value="">Site/Unit (opsional)</option>{units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
-          <EmployeeCombobox name="supervisor_karyawan_id" employees={employees} placeholder="Cari nama, NIK, atau kode jabatan (supervisor)..." />
+          <div>
+            <EmployeeCombobox name="supervisor_karyawan_id" employees={employees} placeholder="Cari nama, NIK, atau kode jabatan (supervisor)..."
+              onSelect={(emp) => setSelectedSpv(emp)}
+            />
+            {selectedSpv && (
+              <code className="block mt-2 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-lg">{selectedSpv.kode_jabatan || "-"}</code>
+            )}
+          </div>
           <input name="nama_project" placeholder="Nama Project" className="border border-gray-200 p-3 rounded-xl text-sm" />
           <input name="nama_klien" placeholder="Nama Klien" className="border border-gray-200 p-3 rounded-xl text-sm" />
           <div />
