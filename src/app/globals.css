@@ -71,6 +71,19 @@ html {
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Softer, more layered shadow scale — overriding Tailwind's default flat
+     single-layer shadows here cascades to every shadow-xs/sm/md/lg/xl/2xl
+     utility used across the whole app (public site + every portal) without
+     touching a single page file. A faint warm tint (vs pure black) reads
+     as more premium than a flat gray shadow. */
+  --shadow-2xs: 0 1px 2px 0 rgb(120 40 20 / 0.04);
+  --shadow-xs: 0 1px 3px 0 rgb(120 40 20 / 0.05), 0 1px 2px -1px rgb(120 40 20 / 0.04);
+  --shadow-sm: 0 2px 6px -1px rgb(120 40 20 / 0.06), 0 1px 3px -1px rgb(120 40 20 / 0.05);
+  --shadow-md: 0 6px 16px -4px rgb(120 40 20 / 0.08), 0 2px 6px -2px rgb(120 40 20 / 0.05);
+  --shadow-lg: 0 14px 28px -8px rgb(120 40 20 / 0.1), 0 4px 10px -4px rgb(120 40 20 / 0.06);
+  --shadow-xl: 0 24px 40px -10px rgb(120 40 20 / 0.12), 0 8px 16px -6px rgb(120 40 20 / 0.07);
+  --shadow-2xl: 0 32px 64px -16px rgb(120 40 20 / 0.18);
 }
 
 :root {
@@ -213,5 +226,37 @@ html {
   }
   html {
     @apply font-sans;
+  }
+
+  /* App-wide polish: brand-tinted text selection, a slimmer/rounder
+     scrollbar than the browser default, and a smooth-but-fast default
+     transition on the interactive elements everywhere already use
+     hover/active states — every page in every portal gets this for free. */
+  ::selection {
+    background-color: var(--color-pgp-red);
+    color: white;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: oklch(0.7 0.02 40 / 0.4);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.55 0.03 40 / 0.55);
+    background-clip: padding-box;
+  }
+
+  button, a, input, select, textarea {
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 }

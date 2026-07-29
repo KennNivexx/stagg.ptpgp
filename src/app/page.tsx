@@ -22,7 +22,7 @@ import CTASection from "@/components/public/CTASection";
 import ContactSection from "@/components/public/ContactSection";
 import TeaserSection from "@/components/public/TeaserSection";
 import ClickSparkWrapper from "@/components/public/ClickSparkWrapper";
-import FloatingWhatsApp from "@/components/public/FloatingWhatsApp";
+import PublicChatWidget from "@/components/public/PublicChatWidget";
 import SplashScreen from "@/components/public/SplashScreen";
 
 async function getSettings() {
@@ -97,7 +97,7 @@ export default async function Home() {
       <ContactSection {...contact} />
       <TeaserSection {...teaser} />
       <PGPFooter info={info} footer={footer} links={links} />
-      <FloatingWhatsApp phoneNumber={(cta.whatsapp_number as string) || (info.company_phone as string)} />
+      <PublicChatWidget />
     </main>
     </ClickSparkWrapper>
     </>
