@@ -19,7 +19,7 @@ export default function SeparationClient({
   type: SeparationType; title: string; description: string; initialRows: Row[];
   employees: Employee[]; exitReasons: ExitReason[];
 }) {
-  const [rows, setRows] = useState(initialRows);
+  const rows = initialRows;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);

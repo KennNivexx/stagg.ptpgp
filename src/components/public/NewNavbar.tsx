@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ArrowUpRight } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 interface NavLink { label: string; url: string; }
@@ -70,9 +70,17 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
             })}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
-            <Link href="/login" className="text-gray-700 hover:text-pgp-red text-xs font-bold px-5 py-2.5 rounded-full border border-gray-300 hover:border-pgp-red transition-all">
+          <div className="hidden md:flex items-center gap-2.5">
+            <Link href="/login" className="text-gray-600 hover:text-pgp-navy text-xs font-semibold px-4 py-2.5 rounded-full transition-colors">
               Login
+            </Link>
+            <Link
+              href="/#contact"
+              onClick={(e) => handleHashClick(e, "/#contact")}
+              className="group flex items-center gap-1.5 bg-pgp-navy hover:bg-pgp-red text-white text-xs font-bold pl-5 pr-4 py-2.5 rounded-full transition-all shadow-sm hover:shadow-lg hover:shadow-pgp-red/20"
+            >
+              Request Quotation
+              <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </Link>
           </div>
 
@@ -102,6 +110,13 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
             <div className="flex gap-2 pt-2 border-t border-gray-100">
               <Link href="/login" onClick={() => setIsOpen(false)} className="flex-1 text-center py-2.5 text-gray-700 border border-gray-300 text-xs font-bold rounded-full">
                 Login
+              </Link>
+              <Link
+                href="/#contact"
+                onClick={(e) => { setIsOpen(false); handleHashClick(e, "/#contact"); }}
+                className="flex-1 text-center py-2.5 bg-pgp-navy text-white text-xs font-bold rounded-full"
+              >
+                Request Quotation
               </Link>
             </div>
           </div>

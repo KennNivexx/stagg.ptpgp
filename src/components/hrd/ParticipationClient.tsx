@@ -15,7 +15,7 @@ export default function ParticipationClient({
   type: ParticipationType; title: string; description: string; initialRows: Row[];
   hasScore?: boolean; scoreLabel?: string;
 }) {
-  const [rows, setRows] = useState(initialRows);
+  const rows = initialRows;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);

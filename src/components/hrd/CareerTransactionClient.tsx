@@ -22,7 +22,7 @@ export default function CareerTransactionClient({
   type: CareerTransactionType; title: string; description: string;
   initialRows: Row[]; employees: Employee[]; jabatanList: Jabatan[];
 }) {
-  const [rows, setRows] = useState(initialRows);
+  const rows = initialRows;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 import ApplicantSidebar from "./ApplicantSidebar";
+import PageBackgroundDecor from "@/components/PageBackgroundDecor";
 
 export default async function ApplicantLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -34,9 +35,10 @@ export default async function ApplicantLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <ApplicantSidebar userName={userName} userEmail={userEmail} />
-      <main className="flex-1 min-w-0 min-h-screen overflow-x-auto">
+      <main className="relative flex-1 min-w-0 min-h-screen overflow-x-auto bg-gradient-to-br from-slate-50 via-white to-orange-50/40">
+        <PageBackgroundDecor />
         <div className="h-14 lg:hidden" aria-hidden="true" />
-        {children}
+        <div className="relative">{children}</div>
       </main>
     </div>
   );

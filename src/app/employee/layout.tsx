@@ -32,6 +32,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import SOSButton from "@/components/SOSButton";
 import { GROUP_COLOR_CLASSES_LIGHT } from "@/lib/menu-colors";
+import PageBackgroundDecor from "@/components/PageBackgroundDecor";
 
 const MENU_GROUPS = [
   {
@@ -290,8 +291,9 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page Content Container */}
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC]">
-          {children}
+        <main id="main-content" className="relative flex-1 overflow-y-auto overflow-x-auto bg-gradient-to-br from-[#F8FAFC] via-white to-orange-50/40">
+          <PageBackgroundDecor />
+          <div className="relative">{children}</div>
         </main>
       </div>
       <SOSButton />

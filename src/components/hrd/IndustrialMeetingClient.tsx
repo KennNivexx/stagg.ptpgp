@@ -9,7 +9,7 @@ type Row = Record<string, unknown> & {
 };
 
 export default function IndustrialMeetingClient({ type, title, description, initialRows }: { type: MeetingType; title: string; description: string; initialRows: Row[] }) {
-  const [rows, setRows] = useState(initialRows);
+  const rows = initialRows;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);

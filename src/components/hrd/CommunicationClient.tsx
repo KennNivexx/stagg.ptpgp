@@ -10,7 +10,7 @@ type Row = Record<string, unknown> & {
 };
 
 export default function CommunicationClient({ type, title, description, initialRows }: { type: CommType; title: string; description: string; initialRows: Row[] }) {
-  const [rows, setRows] = useState(initialRows);
+  const rows = initialRows;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);

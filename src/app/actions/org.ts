@@ -295,27 +295,47 @@ async function buildTree(): Promise<OrgUnit[]> {
         seqByParent.set(parent.code, Math.max(seqByParent.get(parent.code) || 0, usedSeq));
       }
 
-      // Collect all jabatan codes to resolve kode_jabatan
-      const jabatanIds = new Set<string>();
-      const formasiByEmployee: Record<string, string> = {};
-      const { data: formasiData } = await supabaseAdmin
-        .from("formasi_jabatan")
-        .select("id, jabatan_id, karyawan_id")
-        .eq("status", "Filled");
-      if (formasiData) {
-        const formasiJabatanMap = new Map((formasiData as { id: string; jabatan_id: string; karyawan_id: string | null }[]).map(f => [f.karyawan_id, f.jabatan_id]));
-        for (const e of resolved) {
-          const fjId = formasiJabatanMap.get(e.emp.id);
-          if (fjId) { formasiByEmployee[e.emp.id] = fjId; jabatanIds.add(fjId); }
-        }
-      }
-      const { data: jabatanRows } = await supabaseAdmin
+      // Nest employees under their real organizational superior — whoever
+      // holds the parent position in jabatan.parent_code's chain — instead
+      // of flattening every employee as a sibling leaf under the unit.
+      // (formasi_jabatan.karyawan_id is never populated in this schema —
+      // confirmed empty in production — so the reliable source for an
+      // employee's position is karyawan.kode_jabatan directly, already
+      // selected in empData above.)
+      const { data: allJabatanRows } = await supabaseAdmin
         .from("jabatan")
-        .select("id, code")
-        .in("id", Array.from(jabatanIds));
-      const jabatanCodeById = new Map((jabatanRows || []).map((j: { id: string; code: string }) => [j.id, j.code]));
+        .select("code, parent_code");
+      const jabatanParentByCode = new Map(
+        (allJabatanRows || []).map((j: { code: string; parent_code: string | null }) => [j.code, j.parent_code])
+      );
 
-      const toBackfill: { id: string; kode: string; kode_jabatan?: string }[] = [];
+      const employeeIdByJabatanCode = new Map<string, string>();
+      for (const { emp } of resolved) {
+        if (emp.kode_jabatan) employeeIdByJabatanCode.set(emp.kode_jabatan, emp.id);
+      }
+
+      // Walks up the position hierarchy from an employee's own jabatan code
+      // to find the nearest ancestor position that's actually held by
+      // another active employee — that employee is the real superior to
+      // nest under. Falls through to the unit itself (below) when nobody in
+      // the chain is currently staffed, e.g. a vacant intermediate position.
+      function findEmployeeSuperiorId(jCode: string, selfId: string): string | null {
+        const visited = new Set<string>();
+        let current = jabatanParentByCode.get(jCode) ?? null;
+        while (current && !visited.has(current)) {
+          visited.add(current);
+          const holderId = employeeIdByJabatanCode.get(current);
+          if (holderId && holderId !== selfId) return holderId;
+          current = jabatanParentByCode.get(current) ?? null;
+        }
+        return null;
+      }
+
+      const toBackfill: { id: string; kode: string }[] = [];
+      const employeeNodeById = new Map<string, OrgUnit>();
+
+      // Pass 1: create every employee's node before attaching any of them,
+      // so pass 2 can nest one under another regardless of processing order.
       for (const { emp, parent, codeConsistent } of resolved) {
         let personalCode = codeConsistent ? emp.kode! : "";
         if (!personalCode) {
@@ -327,30 +347,41 @@ async function buildTree(): Promise<OrgUnit[]> {
           toBackfill.push({ id: emp.id, kode: personalCode });
         }
 
-        // Resolve kode_jabatan from assignment chain
-        const jId = formasiByEmployee[emp.id] || "";
-        const jCode = jabatanCodeById.get(jId) || emp.kode_jabatan || "";
-
-        parent.children.push({
+        employeeNodeById.set(emp.id, {
           id: emp.id,
           code: personalCode,
           name: emp.full_name,
-          level: parent.level + 1,
+          level: parent.level + 1, // corrected in pass 2 when nested under another employee
           leader_name: emp.position || "",
           leader_email: emp.email || "",
           children: [],
           isEmployee: true,
           position: emp.position || "",
-          kode_jabatan: jCode,
+          kode_jabatan: emp.kode_jabatan || "",
         });
+      }
+
+      // Pass 2: attach each employee to their real superior when the
+      // jabatan chain resolves to another staffed position in this dataset;
+      // otherwise fall back to the unit, exactly like before. This is what
+      // makes a newly added employee automatically show up nested under
+      // whoever holds their position's parent jabatan — no manual tree
+      // editing needed, since the nesting is derived live every render.
+      for (const { emp, parent } of resolved) {
+        const node = employeeNodeById.get(emp.id)!;
+        const superiorId = emp.kode_jabatan ? findEmployeeSuperiorId(emp.kode_jabatan, emp.id) : null;
+        const superiorNode = superiorId ? employeeNodeById.get(superiorId) : undefined;
+        if (superiorNode) {
+          node.level = superiorNode.level + 1;
+          superiorNode.children.push(node);
+        } else {
+          parent.children.push(node);
+        }
       }
 
       if (toBackfill.length > 0) {
         await Promise.all(toBackfill.map(b =>
-          supabaseAdmin.from("karyawan").update({
-            kode: b.kode,
-            ...(b.kode_jabatan ? { kode_jabatan: b.kode_jabatan } : {}),
-          }).eq("id", b.id)
+          supabaseAdmin.from("karyawan").update({ kode: b.kode }).eq("id", b.id)
         ));
       }
     }

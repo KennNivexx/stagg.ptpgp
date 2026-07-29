@@ -5,8 +5,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Briefcase, LogOut, Search, Menu, X, ChevronRight, ChevronDown,
-  Clock, Users, LayoutGrid,
+  Clock, Users, LayoutGrid, Sparkles,
 } from "lucide-react";
+import PageBackgroundDecor from "@/components/PageBackgroundDecor";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -301,6 +302,22 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
 
           {/* Right side */}
           <div className="flex items-center gap-3 ml-auto">
+            {/* Persistent AI entry point — lives in the fixed header (not
+                the scrollable nav-pill row) so it's reachable from every HRD
+                page without hunting through the menu, and never disappears
+                when navigating between modules. */}
+            <Link
+              href="/hrd/assistant"
+              title="HRD Copilot — tanya soal data HR"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
+                pathname === "/hrd/assistant"
+                  ? "bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-sm"
+                  : "bg-gradient-to-r from-red-50 to-orange-50 text-pgp-red border border-red-100 hover:shadow-sm"
+              }`}
+            >
+              <Sparkles size={14} />
+              <span className="hidden sm:inline">AI</span>
+            </Link>
             <NotificationBell role="hrd" />
             <div className="h-8 w-px bg-slate-200 hidden sm:block" />
 
@@ -412,9 +429,11 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
       ═══════════════════════════════════════════════════════════════ */}
       <main
         id="main-content"
-        className="flex-1 overflow-y-auto overflow-x-hidden bg-[#FDFBFA] pb-20 lg:pb-0"
+        className="relative flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-[#FDFBFA] via-white to-orange-50/50 pb-20 lg:pb-0"
       >
-        <div className="mx-auto w-full max-w-screen-2xl p-4 sm:p-6 lg:p-8">
+        <PageBackgroundDecor />
+
+        <div className="relative mx-auto w-full max-w-screen-2xl p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </main>

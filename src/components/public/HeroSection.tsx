@@ -45,7 +45,7 @@ export default function HeroSection({
   };
 
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center pt-20 overflow-hidden">
+    <section className="relative min-h-[90vh] flex items-center justify-center pt-28 pb-20 sm:pb-24 overflow-hidden">
       <div className="absolute inset-0 z-0">
         {bgVideoUrl ? (
           <iframe
@@ -57,7 +57,31 @@ export default function HeroSection({
         ) : bgImageUrl ? (
           <Image src={bgImageUrl} alt="" fill className="object-cover" priority />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+          // Default hero background — brand-colored gradient mesh + faint dot
+          // grid + drifting glow orbs, so the hero has depth and brand
+          // personality even when no CMS image/video has been configured
+          // (the previous fallback was a single flat slate gradient).
+          <div className="relative w-full h-full bg-gradient-to-br from-[#0a0e17] via-[#111827] to-[#1a0805] overflow-hidden">
+            <div
+              className="absolute inset-0 opacity-[0.07]"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle, #fff 1px, transparent 1px)",
+                backgroundSize: "28px 28px",
+              }}
+            />
+            <motion.div
+              className="absolute -top-32 -right-20 w-[36rem] h-[36rem] rounded-full bg-pgp-red/30 blur-[120px]"
+              animate={{ opacity: [0.5, 0.8, 0.5], scale: [1, 1.08, 1] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute -bottom-24 -left-16 w-[28rem] h-[28rem] rounded-full bg-orange-500/20 blur-[110px]"
+              animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.1, 1] }}
+              transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+            />
+            <div className="absolute top-1/3 right-1/4 w-72 h-72 rounded-full bg-blue-500/10 blur-[100px]" />
+          </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-transparent"></div>
       </div>
@@ -69,8 +93,12 @@ export default function HeroSection({
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-              className="inline-block py-1.5 px-4 bg-pgp-red/30 text-orange-400 font-extrabold text-xs tracking-wider uppercase rounded-full mb-6 border border-orange-500/30 backdrop-blur-sm"
+              className="inline-flex items-center gap-2 py-1.5 px-4 bg-white/10 text-orange-300 font-extrabold text-xs tracking-wider uppercase rounded-full mb-6 border border-white/15 backdrop-blur-md"
             >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-orange-400"></span>
+              </span>
               {badge}
             </motion.span>
           )}
@@ -95,20 +123,50 @@ export default function HeroSection({
             transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
             className="flex flex-col sm:flex-row gap-4"
           >
-            <button 
+            <button
               onClick={() => setIsQuoteOpen(true)}
-              className="bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-full font-bold transition-all shadow-lg hover:shadow-pgp-red/25 flex items-center justify-center gap-2 text-sm cursor-pointer"
+              className="group bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-full font-bold transition-all shadow-xl shadow-pgp-red/20 hover:shadow-2xl hover:shadow-pgp-red/30 hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
-              Request Quotation <ArrowRight size={18} />
+              Request Quotation
+              <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
             </button>
-            <Link 
-              href="#contact" 
-              className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-full font-bold transition-all shadow-lg flex items-center justify-center gap-2 text-sm"
+            <Link
+              href="#contact"
+              className="group bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 hover:border-white/40 px-8 py-4 rounded-full font-bold transition-all flex items-center justify-center gap-2 text-sm hover:-translate-y-0.5"
             >
-              Hubungi Kami <MessageSquare size={18} />
+              Hubungi Kami
+              <MessageSquare size={18} className="transition-transform group-hover:scale-110" />
             </Link>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 1, ease: "easeOut" }}
+            className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-10 pt-8 border-t border-white/15"
+          >
+            {[
+              { value: "28+", label: "Tahun Pengalaman" },
+              { value: "500+", label: "Klien Aktif" },
+              { value: "98%", label: "On-Time Delivery" },
+            ].map((stat) => (
+              <div key={stat.label} className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-black text-white">{stat.value}</span>
+                <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wide">{stat.label}</span>
+              </div>
+            ))}
+          </motion.div>
         </div>
+      </div>
+
+      {/* Curved transition into the next (white) section — a flat rectangular
+          cut here is exactly what makes a stacked-sections page read as a
+          template; a smooth curve is a cheap, high-leverage way to make the
+          page feel deliberately designed. */}
+      <div className="absolute bottom-0 left-0 w-full leading-none z-10 pointer-events-none">
+        <svg viewBox="0 0 1440 80" className="w-full h-[50px] sm:h-[70px]" preserveAspectRatio="none">
+          <path d="M0,80 C360,0 1080,0 1440,80 L1440,80 L0,80 Z" fill="white" />
+        </svg>
       </div>
 
       <QuotationModal isOpen={isQuoteOpen} onClose={() => setIsQuoteOpen(false)} />

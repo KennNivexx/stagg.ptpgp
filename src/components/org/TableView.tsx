@@ -9,12 +9,28 @@ interface FlatUnitWithEmployees extends FlatUnit {
   employees: OrgUnit[];
 }
 
+// Employees now nest under their real superior (another employee) rather
+// than always sitting flat under the unit — so collecting a unit's
+// employees for this view has to walk through employee-to-employee nesting
+// too, not just stop at the first level, or anyone with a resolved manager
+// would silently vanish from this table.
+function collectAllEmployees(nodes: OrgUnit[]): OrgUnit[] {
+  const result: OrgUnit[] = [];
+  for (const n of nodes) {
+    if (n.isEmployee) {
+      result.push(n);
+      result.push(...collectAllEmployees(n.children || []));
+    }
+  }
+  return result;
+}
+
 function flattenTree(tree: OrgUnit[]): FlatUnitWithEmployees[] {
   const result: FlatUnitWithEmployees[] = [];
   function walk(units: OrgUnit[]) {
     for (const u of units) {
       const unitChildren = (u.children || []).filter(c => !c.isEmployee);
-      const empChildren = (u.children || []).filter(c => c.isEmployee);
+      const empChildren = collectAllEmployees(u.children || []);
       result.push({
         id: u.id, code: u.code, name: u.name, level: u.level,
         leader_name: u.leader_name, leader_email: u.leader_email,

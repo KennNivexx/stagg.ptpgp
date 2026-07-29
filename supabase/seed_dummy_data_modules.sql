@@ -4,6 +4,37 @@
 -- Copy-paste ke Supabase SQL Editor, jalankan SETELAH seed_struktur_organisasi_lengkap.sql
 -- ============================================================================
 
+-- PART 0: MIGRASI KOLOM — pastikan semua kolom ada sebelum insert
+-- Setiap ALTER berdiri sendiri; IF NOT EXISTS mencegah error duplikat
+ALTER TABLE pelatihan ADD COLUMN IF NOT EXISTS skill_id TEXT;
+ALTER TABLE pelatihan ADD COLUMN IF NOT EXISTS category TEXT;
+ALTER TABLE pelatihan ADD COLUMN IF NOT EXISTS method TEXT DEFAULT 'Offline';
+ALTER TABLE pelatihan ADD COLUMN IF NOT EXISTS provider TEXT;
+ALTER TABLE pelatihan ADD COLUMN IF NOT EXISTS instruktur TEXT;
+ALTER TABLE pelatihan ADD COLUMN IF NOT EXISTS jenis_instruktur TEXT DEFAULT 'Internal';
+ALTER TABLE pelatihan ADD COLUMN IF NOT EXISTS lokasi TEXT;
+ALTER TABLE pelatihan ADD COLUMN IF NOT EXISTS durasi_jam NUMERIC;
+ALTER TABLE evaluasi_pelatihan ADD COLUMN IF NOT EXISTS reaction_score INTEGER;
+ALTER TABLE evaluasi_pelatihan ADD COLUMN IF NOT EXISTS learning_score INTEGER;
+ALTER TABLE evaluasi_pelatihan ADD COLUMN IF NOT EXISTS behavior_score INTEGER;
+ALTER TABLE evaluasi_pelatihan ADD COLUMN IF NOT EXISTS result_score INTEGER;
+ALTER TABLE evaluasi_pelatihan ADD COLUMN IF NOT EXISTS catatan TEXT;
+ALTER TABLE tna_kompetensi ADD COLUMN IF NOT EXISTS skill_id TEXT;
+ALTER TABLE tna_kompetensi ADD COLUMN IF NOT EXISTS current_level INTEGER;
+ALTER TABLE tna_kompetensi ADD COLUMN IF NOT EXISTS required_level INTEGER;
+ALTER TABLE tna_kompetensi ADD COLUMN IF NOT EXISTS gap INTEGER;
+ALTER TABLE tna_kompetensi ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Open';
+ALTER TABLE penggajian ADD COLUMN IF NOT EXISTS department TEXT;
+ALTER TABLE kompetensi_karyawan ADD COLUMN IF NOT EXISTS evidence TEXT;
+ALTER TABLE kompetensi_karyawan ADD COLUMN IF NOT EXISTS assessment_type TEXT DEFAULT 'Supervisor';
+ALTER TABLE trip_supir ADD COLUMN IF NOT EXISTS incentive_generated BOOLEAN DEFAULT FALSE;
+ALTER TABLE artikel_pengetahuan ADD COLUMN IF NOT EXISTS skill_id TEXT;
+ALTER TABLE artikel_pengetahuan ADD COLUMN IF NOT EXISTS mandatory BOOLEAN DEFAULT FALSE;
+ALTER TABLE dokumen_sop ADD COLUMN IF NOT EXISTS skill_id TEXT;
+ALTER TABLE dokumen_sop ADD COLUMN IF NOT EXISTS mandatory BOOLEAN DEFAULT FALSE;
+ALTER TABLE kebijakan_perusahaan ADD COLUMN IF NOT EXISTS skill_id TEXT;
+ALTER TABLE kebijakan_perusahaan ADD COLUMN IF NOT EXISTS mandatory BOOLEAN DEFAULT FALSE;
+
 -- PART 1: MASTER KOMPETENSI — 12 kompetensi dengan kode_kompetensi dan kode_perusahaan
 TRUNCATE TABLE master_kompetensi CASCADE;
 INSERT INTO master_kompetensi (id, name, category, department, jenis_kompetensi, kode_kompetensi, kode_perusahaan, deskripsi, status) VALUES
@@ -88,6 +119,7 @@ INSERT INTO pelatihan (id, title, skill_id, description, date_start, date_end, s
 ('trn-008','Internal Auditor ISO 9001:2015','sk-012','Pelatihan auditor internal: perencanaan audit, pelaksanaan, pelaporan, dan tindak lanjut.','2026-09-01','2026-09-03','Planned','Management Representative','Manajemen','Offline','BSI Group Indonesia','Ir. Sutrisno, Lead Auditor','Eksternal','Kantor Pusat',24,'Disetujui');
 
 -- PART 4: PESERTA PELATIHAN — karyawan di-assign ke training
+DO $$ BEGIN
 INSERT INTO peserta_pelatihan (id, training_id, employee_id, status) VALUES
 ('enr-001','trn-001',(SELECT id FROM karyawan WHERE position='Supir Truk / Driver' AND kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),'Completed'),
 ('enr-002','trn-001',(SELECT id FROM karyawan WHERE position='Supir Truk / Driver' AND kode_jabatan='1.1.3.1.3.1.2' LIMIT 1),'Completed'),
@@ -113,6 +145,8 @@ INSERT INTO peserta_pelatihan (id, training_id, employee_id, status) VALUES
 ('enr-022','trn-007',(SELECT id FROM karyawan WHERE position='Staff General Affairs (GA)' LIMIT 1),'Completed'),
 ('enr-023','trn-008',(SELECT id FROM karyawan WHERE position='MR Coordinator' LIMIT 1),'Enrolled'),
 ('enr-024','trn-008',(SELECT id FROM karyawan WHERE position='Manager MR & Compliance' LIMIT 1),'Enrolled');
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped peserta_pelatihan: %', SQLERRM;
+END $$;
 
 -- PART 5: MATERI PELATIHAN
 INSERT INTO materi_pelatihan (id, training_id, title, type, file_size) VALUES
@@ -147,6 +181,7 @@ INSERT INTO sertifikat_pelatihan (id, training_id, employee_id, certificate_numb
 ('cert-007','trn-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.3' LIMIT 1),'CERT/2026/DD/003','2026-05-12','Terbit');
 
 -- PART 8: EVALUASI PELATIHAN (Kirkpatrick)
+DO $$ BEGIN
 INSERT INTO evaluasi_pelatihan (id, training_id, karyawan_id, reaction_score, learning_score, behavior_score, result_score, catatan) VALUES
 ('evl-001','trn-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),4,4,3,NULL,'Materi sangat aplikatif. Sudah menerapkan teknik defensive driving di lapangan.'),
 ('evl-002','trn-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.2' LIMIT 1),5,4,4,NULL,'Instruktur berpengalaman, studi kasus relevan dengan medan operasional.'),
@@ -154,8 +189,11 @@ INSERT INTO evaluasi_pelatihan (id, training_id, karyawan_id, reaction_score, le
 ('evl-004','trn-004',(SELECT id FROM karyawan WHERE position='HSE Officer' LIMIT 1),5,5,5,NULL,'Pelatihan K3 sangat komprehensif. Langsung bisa implementasi HIRADC di lapangan.'),
 ('evl-005','trn-007',(SELECT id FROM karyawan WHERE position='Customer Service Ekspor-Impor' LIMIT 1),4,3,3,NULL,'Materi komunikasi cukup membantu. Perlu lebih banyak roleplay dan simulasi kasus.'),
 ('evl-006','trn-004',(SELECT id FROM karyawan WHERE position='Safety Inspector' LIMIT 1),4,4,3,NULL,'Modul tanggap darurat sangat bagus. Perlu refreshing berkala setiap 6 bulan.');
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped evaluasi_pelatihan: %', SQLERRM;
+END $$;
 
 -- PART 9: TNA KOMPETENSI — Training Need Analysis
+DO $$ BEGIN
 INSERT INTO tna_kompetensi (id, employee_id, skill_id, current_level, required_level, gap, status, created_at) VALUES
 ('tna-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.3' LIMIT 1),'sk-001',2,3,1,'Open',NOW()),
 ('tna-002',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),'sk-009',1,2,1,'Open',NOW()),
@@ -165,6 +203,8 @@ INSERT INTO tna_kompetensi (id, employee_id, skill_id, current_level, required_l
 ('tna-006',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.2.1.1.1.1' LIMIT 1),'sk-005',2,3,1,'Open',NOW()),
 ('tna-007',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.4.1.1.1.1' LIMIT 1),'sk-006',1,2,1,'Open',NOW()),
 ('tna-008',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.5.1.1.1.2' LIMIT 1),'sk-010',3,4,1,'Open',NOW());
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped tna_kompetensi: %', SQLERRM;
+END $$;
 
 -- PART 10: EVALUASI KPI — Performance
 TRUNCATE TABLE evaluasi_kpi CASCADE;
@@ -185,6 +225,7 @@ INSERT INTO evaluasi_kpi (id, employee_id, period, final_score, status, created_
 ('kpi-014',(SELECT id FROM karyawan WHERE position='Supervisor HR & GA' LIMIT 1),'Q2/2026',84,'Completed','2026-07-02');
 
 -- PART 11: REVIEW KINERJA
+DO $$ BEGIN
 INSERT INTO review_kinerja (id, employee_id, period, reviewer_id, score, catatan, created_at) VALUES
 ('rev-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),'Q2/2026',(SELECT id FROM karyawan WHERE position='Koordinator Armada' LIMIT 1),4,'Pengemudi handal, zero accident, tepat waktu pengiriman. Tingkatkan administrasi trip log.','2026-07-01'),
 ('rev-002',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.1.1.1' LIMIT 1),'Q2/2026',(SELECT id FROM karyawan WHERE position='Manager Kepabeanan (PPJK)' LIMIT 1),5,'Sangat teliti dalam dokumen PIB/PEB, tidak ada reject bea cukai.','2026-07-01'),
@@ -192,29 +233,34 @@ INSERT INTO review_kinerja (id, employee_id, period, reviewer_id, score, catatan
 ('rev-004',(SELECT id FROM karyawan WHERE position='Staff HRD (Rekrutmen)' LIMIT 1),'Q2/2026',(SELECT id FROM karyawan WHERE position='Manager HR & GA' LIMIT 1),4,'Pipeline rekrutmen berjalan baik. Kurangi time-to-hire untuk posisi supir.','2026-07-03'),
 ('rev-005',(SELECT id FROM karyawan WHERE position='HSE Officer' LIMIT 1),'Q2/2026',(SELECT id FROM karyawan WHERE position='Manager HSE' LIMIT 1),5,'Inspeksi K3 rutin, zero lost-time injury. Pertahankan dan lanjutkan program safety talk.','2026-07-01'),
 ('rev-006',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.2.1.1' LIMIT 1),'Q2/2026',(SELECT id FROM karyawan WHERE position='Supervisor Gudang & Cargo' LIMIT 1),3,'Produktivitas bongkar muat perlu ditingkatkan. Beberapa kali keterlambatan administrasi gudang.','2026-07-01');
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped review_kinerja: %', SQLERRM;
+END $$;
 
 -- PART 12: UMPAN BALIK
+DO $$ BEGIN
 INSERT INTO umpan_balik (id, employee_id, from_employee_id, feedback_type, message, created_at) VALUES
 ('fb-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),(SELECT id FROM karyawan WHERE position='Koordinator Armada' LIMIT 1),'Pujian','Selalu bersedia lembur saat ada pengiriman mendesak. Semangat kerja tinggi.','2026-06-15'),
 ('fb-002',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.2.1.1' LIMIT 1),(SELECT id FROM karyawan WHERE position='Supervisor Gudang & Cargo' LIMIT 1),'Perbaikan','Mohon lebih teliti dalam pencatatan stok barang masuk/keluar.','2026-06-20'),
 ('fb-003',(SELECT id FROM karyawan WHERE position='Staff General Affairs (GA)' LIMIT 1),(SELECT id FROM karyawan WHERE position='Manager HR & GA' LIMIT 1),'Pujian','Kantor selalu bersih dan rapi. Housekeeping excellent.','2026-06-25'),
 ('fb-004',(SELECT id FROM karyawan WHERE position='Staff HRD (Rekrutmen)' LIMIT 1),(SELECT id FROM karyawan WHERE position='Supervisor HR & GA' LIMIT 1),'Perbaikan','Percepat proses screening CV untuk posisi supir yang banyak lowongan.','2026-06-18');
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped umpan_balik: %', SQLERRM;
+END $$;
 
 -- PART 13: PENGGAJIAN — Payroll per Juli 2026
 TRUNCATE TABLE penggajian CASCADE;
 INSERT INTO penggajian (id, employee_id, month, year, basic_salary, allowances, deductions, net_salary, status, department) VALUES
-('pay-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),7,2026,4800000,1000000,200000,5600000,'Draft','Divisi Operasional'),
-('pay-002',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.2' LIMIT 1),7,2026,4800000,1000000,150000,5650000,'Draft','Divisi Operasional'),
-('pay-003',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.3' LIMIT 1),7,2026,4800000,800000,200000,5400000,'Draft','Divisi Operasional'),
-('pay-004',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.1.1.1.1.1' LIMIT 1),7,2026,6500000,1500000,300000,7700000,'Draft','Divisi HR & GA'),
-('pay-005',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.1.1.1.1.2' LIMIT 1),7,2026,5500000,1500000,250000,6750000,'Draft','Divisi HR & GA'),
-('pay-006',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.2.1.1.1.1' LIMIT 1),7,2026,7500000,2000000,400000,9100000,'Draft','Divisi Finance & Accounting'),
-('pay-007',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.2.1.1.1.2' LIMIT 1),7,2026,5500000,1500000,250000,6750000,'Draft','Divisi Finance & Accounting'),
-('pay-008',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.1.1.1' LIMIT 1),7,2026,7500000,2000000,350000,9150000,'Draft','Divisi Operasional'),
-('pay-009',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.2.1.1' LIMIT 1),7,2026,4800000,800000,200000,5400000,'Draft','Divisi Operasional'),
-('pay-010',(SELECT id FROM karyawan WHERE position='Manager Armada & Trucking' LIMIT 1),7,2026,16000000,5000000,800000,20200000,'Draft','Divisi Operasional'),
-('pay-011',(SELECT id FROM karyawan WHERE position='Manager HR & GA' LIMIT 1),7,2026,15500000,5000000,750000,19750000,'Draft','Divisi HR & GA'),
-('pay-012',(SELECT id FROM karyawan WHERE position='Manager Finance & Accounting' LIMIT 1),7,2026,16000000,5000000,800000,20200000,'Draft','Divisi Finance & Accounting');
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),7,2026,4800000,1000000,200000,5600000,'Draft','Divisi Operasional'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.2' LIMIT 1),7,2026,4800000,1000000,150000,5650000,'Draft','Divisi Operasional'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.3' LIMIT 1),7,2026,4800000,800000,200000,5400000,'Draft','Divisi Operasional'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE kode_jabatan='1.1.1.1.1.1.1' LIMIT 1),7,2026,6500000,1500000,300000,7700000,'Draft','Divisi HR & GA'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE kode_jabatan='1.1.1.1.1.1.2' LIMIT 1),7,2026,5500000,1500000,250000,6750000,'Draft','Divisi HR & GA'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE kode_jabatan='1.1.2.1.1.1.1' LIMIT 1),7,2026,7500000,2000000,400000,9100000,'Draft','Divisi Finance & Accounting'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE kode_jabatan='1.1.2.1.1.1.2' LIMIT 1),7,2026,5500000,1500000,250000,6750000,'Draft','Divisi Finance & Accounting'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.1.1.1' LIMIT 1),7,2026,7500000,2000000,350000,9150000,'Draft','Divisi Operasional'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.2.1.1' LIMIT 1),7,2026,4800000,800000,200000,5400000,'Draft','Divisi Operasional'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE position='Manager Armada & Trucking' LIMIT 1),7,2026,16000000,5000000,800000,20200000,'Draft','Divisi Operasional'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE position='Manager HR & GA' LIMIT 1),7,2026,15500000,5000000,750000,19750000,'Draft','Divisi HR & GA'),
+(gen_random_uuid(),(SELECT id FROM karyawan WHERE position='Manager Finance & Accounting' LIMIT 1),7,2026,16000000,5000000,800000,20200000,'Draft','Divisi Finance & Accounting');
 
 -- PART 14: INSENTIF — Trip-based & performance incentives
 TRUNCATE TABLE insentif CASCADE;
@@ -245,18 +291,21 @@ INSERT INTO trip_supir (id, driver_id, driver_name, department, vehicle_id, vehi
 ('trip-005',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),'Agus Salim','Divisi Operasional','veh-001','B 9876 CD','Jakarta','Semarang','2026-07-22','2026-07-22 05:30:00',NULL,500,2000,'Berjalan',false,'Pengiriman mesin industri');
 
 -- PART 17: MONITORING KINERJA PENGEMUDI
+DO $$ BEGIN
 INSERT INTO monitoring_kinerja_pengemudi (id, employee_id, employee_name, periode, evaluator, catatan, hasil, tindak_lanjut) VALUES
 ('mkp-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),'Agus Salim','Q2/2026','Koordinator Armada','Pengemudi teladan. Zero accident, selalu tepat waktu, kendaraan terawat. Jam mengemudi dalam batas aman.','Baik',NULL),
 ('mkp-002',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.2' LIMIT 1),'Budi Santoso','Q2/2026','Koordinator Armada','Cukup baik. Ada 1 kali keterlambatan. Perlu briefing tentang manajemen waktu.','Perlu Perbaikan','Briefing/Pelatihan Tambahan'),
 ('mkp-003',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.3' LIMIT 1),'Cecep Supriyadi','Q2/2026','Koordinator Armada','Baik, hanya perlu lebih rajin mencatat logbook perjalanan. Tidak ada masalah keselamatan.','Baik',NULL);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'skipped monitoring_kinerja_pengemudi: %', SQLERRM;
+END $$;
 
 -- PART 18: PENUGASAN KERJA
 TRUNCATE TABLE penugasan_kerja CASCADE;
-INSERT INTO penugasan_kerja (id, karyawan_id, karyawan_nama, unit_organisasi_id, unit_nama, supervisor_karyawan_id, supervisor_nama, nama_project, nama_klien, tanggal_mulai, tanggal_selesai, status) VALUES
-('asg-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),'Agus Salim','unit-ops','Divisi Operasional',(SELECT id FROM karyawan WHERE position='Koordinator Armada' LIMIT 1),'Dedi','Proyek Logistik Nataru','PT Maju Bersama','2026-07-01','2026-09-30','Aktif'),
-('asg-002',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.2' LIMIT 1),'Budi Santoso','unit-ops','Divisi Operasional',(SELECT id FROM karyawan WHERE position='Koordinator Armada' LIMIT 1),'Dedi','Proyek Logistik Nataru','PT Maju Bersama','2026-07-01','2026-09-30','Aktif'),
-('asg-003',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.1.1.1' LIMIT 1),'Rina','unit-ops','Divisi Operasional',(SELECT id FROM karyawan WHERE position='Manager Kepabeanan (PPJK)' LIMIT 1),'Wawan Setiadi','Customs Clearance PLB','PT Global Trade','2026-06-15',NULL,'Aktif'),
-('asg-004',(SELECT id FROM karyawan WHERE position='HSE Officer' LIMIT 1),'Andri','unit-hse','Divisi HSE',(SELECT id FROM karyawan WHERE position='Manager HSE' LIMIT 1),'Rahmat','Safety Audit Proyek','Internal','2026-07-05','2026-07-20','Selesai');
+INSERT INTO penugasan_kerja (id, karyawan_id, unit_organisasi_id, supervisor_karyawan_id, nama_project, nama_klien, tanggal_mulai, tanggal_selesai, status) VALUES
+('pgs-001',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.1' LIMIT 1),'unit-ops',(SELECT id FROM karyawan WHERE position='Koordinator Armada' LIMIT 1),'Proyek Logistik Nataru','PT Maju Bersama','2026-07-01','2026-09-30','Aktif'),
+('pgs-002',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.3.1.2' LIMIT 1),'unit-ops',(SELECT id FROM karyawan WHERE position='Koordinator Armada' LIMIT 1),'Proyek Logistik Nataru','PT Maju Bersama','2026-07-01','2026-09-30','Aktif'),
+('pgs-003',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.3.1.1.1.1' LIMIT 1),'unit-ops',(SELECT id FROM karyawan WHERE position='Manager Kepabeanan (PPJK)' LIMIT 1),'Customs Clearance PLB','PT Global Trade','2026-06-15',NULL,'Aktif'),
+('pgs-004',(SELECT id FROM karyawan WHERE position='HSE Officer' LIMIT 1),'unit-hse',(SELECT id FROM karyawan WHERE position='Manager HSE' LIMIT 1),'Safety Audit Proyek','Internal','2026-07-05','2026-07-20','Selesai');
 
 -- PART 19: KOMPETENSI KARYAWAN — Employee current skill levels
 TRUNCATE TABLE kompetensi_karyawan CASCADE;
@@ -276,17 +325,23 @@ INSERT INTO kompetensi_karyawan (id, employee_id, skill_id, current_level, asses
 ('esk-013',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.5.1.1.1.2' LIMIT 1),'sk-010',3,'staff.hrd1@ptpgp.co.id','Supervisor','QC inspeksi rutin'),
 ('esk-014',(SELECT id FROM karyawan WHERE kode_jabatan='1.1.6.1.1.1.1' LIMIT 1),'sk-012',3,'staff.hrd1@ptpgp.co.id','Supervisor','Pengalaman audit internal');
 
--- PART 20: KNOWLEDGE — Artikel pengetahuan dengan mapping ke kompetensi
-TRUNCATE TABLE pengetahuan CASCADE;
-INSERT INTO pengetahuan (id, title, content, category, skill_id, status, author, published_at) VALUES
-('knw-001','SOP Mengemudi Defensif untuk Armada','Prosedur standar mengemudi defensif: inspeksi pra-operasi, teknik pengereman, jarak aman, prosedur darurat, dan pelaporan insiden.','SOP','sk-001','Published','Manager Armada & Trucking','2026-06-01'),
-('knw-002','Panduan Pengisian PIB Elektronik','Step-by-step pengisian Pemberitahuan Impor Barang (PIB) melalui sistem CEISA. Termasuk kode HS, tarif, dan dokumen pendukung.','SOP','sk-002','Published','Manager Kepabeanan (PPJK)','2026-05-15'),
-('knw-003','Kebijakan K3LH Perusahaan','Dokumen resmi kebijakan Kesehatan, Keselamatan Kerja, dan Lingkungan Hidup PT PGP. Mencakup komitmen manajemen, struktur organisasi K3, dan program kerja.','Kebijakan','sk-004','Published','Manager HSE','2026-01-10'),
-('knw-004','Standar Operasional Gudang (FIFO)','SOP pengelolaan gudang dengan sistem First-In-First-Out. Mencakup penerimaan, penyimpanan, pengambilan, dan pengiriman barang.','SOP','sk-003','Published','Supervisor Gudang & Cargo','2026-04-20'),
-('knw-005','Prosedur Audit Internal ISO 9001','Langkah-langkah audit internal: perencanaan, checklist, pelaksanaan, temuan, dan tindakan perbaikan sesuai ISO 9001:2015.','SOP','sk-012','Published','MR Coordinator','2026-03-01'),
-('knw-006','Template Excel Dashboard HR','Template siap pakai untuk dashboard HR: headcount, turnover, absensi, dan pelatihan. Dilengkapi pivot table dan grafik otomatis.','Panduan','sk-011','Published','Staff HRD (Payroll & Adm)','2026-07-01'),
-('knw-007','Video Tutorial Inspeksi Kendaraan','Video panduan 15 menit: cara melakukan inspeksi kendaraan pra-operasi sesuai checklist keselamatan.','Video','sk-001','Published','HSE Officer','2026-06-10'),
-('knw-008','Kebijakan Anti Korupsi & Kode Etik','Kode etik perusahaan: anti korupsi, gratifikasi, konflik kepentingan, dan whistleblowing. Wajib dibaca seluruh karyawan.','Kebijakan','sk-012','Published','Direktur Utama','2025-12-01');
+-- PART 20: KNOWLEDGE — SOP, Kebijakan, dan Artikel Pengetahuan dengan mapping ke kompetensi
+DO $$ BEGIN TRUNCATE TABLE dokumen_sop CASCADE; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+INSERT INTO dokumen_sop (id, number, title, department, version, description, status, mandatory, skill_id) VALUES
+('sop-001','SOP-OPS-001','SOP Mengemudi Defensif untuk Armada','Operasional','v2.1','Prosedur standar mengemudi defensif: inspeksi pra-operasi, teknik pengereman, jarak aman, prosedur darurat, dan pelaporan insiden.','Published',true,'sk-001'),
+('sop-002','SOP-OPS-002','SOP Pengisian PIB Elektronik','Operasional','v1.3','Step-by-step pengisian Pemberitahuan Impor Barang (PIB) melalui sistem CEISA. Termasuk kode HS, tarif, dan dokumen pendukung.','Published',true,'sk-002'),
+('sop-003','SOP-WH-001','SOP Manajemen Gudang FIFO','Operasional','v1.0','SOP pengelolaan gudang dengan sistem First-In-First-Out. Mencakup penerimaan, penyimpanan, pengambilan, dan pengiriman barang.','Published',true,'sk-003'),
+('sop-004','SOP-MR-001','Prosedur Audit Internal ISO 9001','Management Representative','v2.0','Langkah-langkah audit internal: perencanaan, checklist, pelaksanaan, temuan, dan tindakan perbaikan sesuai ISO 9001:2015.','Published',true,'sk-012');
+
+DO $$ BEGIN TRUNCATE TABLE kebijakan_perusahaan CASCADE; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+INSERT INTO kebijakan_perusahaan (id, title, content, category, status, mandatory, skill_id) VALUES
+('pol-001','Kebijakan K3LH Perusahaan','Dokumen resmi kebijakan Kesehatan, Keselamatan Kerja, dan Lingkungan Hidup PT PGP. Mencakup komitmen manajemen, struktur organisasi K3, dan program kerja.','K3','Published',true,'sk-004'),
+('pol-002','Kebijakan Anti Korupsi & Kode Etik','Kode etik perusahaan: anti korupsi, gratifikasi, konflik kepentingan, dan whistleblowing. Wajib dibaca seluruh karyawan.','Etik','Published',true,'sk-012');
+
+DO $$ BEGIN TRUNCATE TABLE artikel_pengetahuan CASCADE; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+INSERT INTO artikel_pengetahuan (id, title, content, category, status, mandatory, author, skill_id) VALUES
+('art-001','Template Excel Dashboard HR','Template siap pakai untuk dashboard HR: headcount, turnover, absensi, dan pelatihan. Dilengkapi pivot table dan grafik otomatis.','Panduan','Published',false,'Staff HRD','sk-011'),
+('art-002','Panduan Service Excellence','Panduan pelayanan prima, komunikasi efektif, penanganan keluhan, dan customer relationship untuk semua staf front-line.','Panduan','Published',true,'Customer Service','sk-008');
 
 -- PART 21: PENGETAHUAN MAPPING — Connect knowledge to employee gaps
 -- (links are implicit via skill_id above; TNA gaps auto-suggest relevant pengetahuan)

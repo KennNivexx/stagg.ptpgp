@@ -39,7 +39,8 @@ export default function AboutSection({
         <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
           {image_url ? (
             <div className="lg:w-1/2 relative">
-              <div className="aspect-square md:aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl relative z-10">
+              <div className="absolute -inset-3 bg-gradient-to-br from-pgp-red/20 via-orange-300/10 to-transparent rounded-[2rem] -z-10 blur-sm" />
+              <div className="aspect-square md:aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl shadow-pgp-navy/20 ring-1 ring-black/5 relative z-10">
                 <Image
                   src={image_url}
                   alt="Tentang PT Pratama Galuh Perkasa"
@@ -47,10 +48,11 @@ export default function AboutSection({
                   unoptimized
                   className="object-cover"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-pgp-navy/30 via-transparent to-transparent" />
               </div>
               <div className="absolute -bottom-6 -right-6 w-48 h-48 bg-pgp-red/10 rounded-3xl -z-10"></div>
-              <div className="absolute top-12 -left-8 bg-white p-6 rounded-2xl shadow-xl z-20 hidden md:block">
-                <div className="text-4xl font-black text-pgp-navy">{years_experience}</div>
+              <div className="absolute top-12 -left-8 bg-white p-6 rounded-2xl shadow-xl shadow-pgp-navy/10 border border-gray-100 z-20 hidden md:block">
+                <div className="text-4xl font-black bg-gradient-to-br from-pgp-navy to-pgp-red bg-clip-text text-transparent">{years_experience}</div>
                 <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">
                   Tahun Pengalaman
                 </div>

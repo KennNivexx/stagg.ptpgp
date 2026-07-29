@@ -11,6 +11,7 @@ import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
 import { GROUP_COLOR_CLASSES } from "@/lib/menu-colors";
+import PageBackgroundDecor from "@/components/PageBackgroundDecor";
 
 const MENU_GROUPS = [
   {
@@ -278,9 +279,10 @@ export default function DepartmentLayout({ children }: { children: ReactNode }) 
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 lg:h-screen lg:overflow-hidden">
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC]">
+        <main id="main-content" className="relative flex-1 overflow-y-auto overflow-x-auto bg-gradient-to-br from-[#F8FAFC] via-white to-orange-50/40">
+          <PageBackgroundDecor />
           <div className="h-14 lg:hidden" aria-hidden="true" />
-          {children}
+          <div className="relative">{children}</div>
         </main>
       </div>
     </div>

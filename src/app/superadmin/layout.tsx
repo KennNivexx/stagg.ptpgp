@@ -42,6 +42,7 @@ import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import { GROUP_COLOR_CLASSES } from "@/lib/menu-colors";
+import PageBackgroundDecor from "@/components/PageBackgroundDecor";
 import type { LucideIcon } from "lucide-react";
 
 type MenuItem = { href: string; label: string; icon?: LucideIcon };
@@ -318,8 +319,9 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
         </header>
 
         {/* Page Container */}
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-auto bg-[#F8FAFC]">
-          {children}
+        <main id="main-content" className="relative flex-1 overflow-y-auto overflow-x-auto bg-gradient-to-br from-[#F8FAFC] via-white to-orange-50/40">
+          <PageBackgroundDecor />
+          <div className="relative">{children}</div>
         </main>
       </div>
     </div>

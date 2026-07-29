@@ -157,13 +157,20 @@ export default function DriverMonitoringPage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   const load = async () => {
-    const [reviewsRes, driversRes] = await Promise.all([
-      getDriverPerformanceReviews(),
-      getSupirForAssignment(),
-    ]);
-    setReviews(reviewsRes as DriverPerformanceReview[]);
-    setDrivers((driversRes as Driver[]) || []);
-    setLoading(false);
+    setLoading(true);
+    try {
+      const [reviewsRes, driversRes] = await Promise.all([
+        getDriverPerformanceReviews(),
+        getSupirForAssignment(),
+      ]);
+      setReviews(reviewsRes as DriverPerformanceReview[]);
+      setDrivers((driversRes as Driver[]) || []);
+      setErrorMsg("");
+    } catch {
+      setErrorMsg("Gagal memuat data monitoring kinerja pengemudi. Coba muat ulang halaman.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
