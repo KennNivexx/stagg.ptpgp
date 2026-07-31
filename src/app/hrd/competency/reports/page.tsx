@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import ReportsClient from "./ReportsClient";
 
 type Employee = { id: string; full_name: string; department: string; position: string; formasi_id: string | null };
@@ -13,6 +14,7 @@ export type MatrixRow = {
 };
 
 export default async function CompetencyReportsPage() {
+  await requireRole("hrd", "superadmin");
   const [empRes, skillRes, empSkillRes, posSkillRes, formasiRes] = await Promise.all([
     supabaseAdmin.from("karyawan").select("id, full_name, department, position, formasi_id").neq("status", "Inactive").order("full_name", { ascending: true }),
     supabaseAdmin.from("master_kompetensi").select("id, name, category").order("name", { ascending: true }),

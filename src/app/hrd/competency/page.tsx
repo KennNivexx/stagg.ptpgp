@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Users, Award, Star, Target, AlertTriangle, ShieldAlert, Search, Plus } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
@@ -8,7 +9,8 @@ import { HrdPageHeader, HrdStatsCard, HrdCard, HrdActionButton } from "@/compone
 export const dynamic = "force-dynamic";
 
 export default async function HRDCompetency() {
-  const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  await requireRole("hrd", "superadmin");
+  const in30Days = new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
 
   const [skillsRes, posSkillsRes, empSkillsRes, employeesRes, expiringLicensesRes] = await Promise.all([

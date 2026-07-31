@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { BarChart3, ClipboardCheck, Star, TrendingUp, Award } from "lucide-react";
 import ReadinessForm from "./ReadinessForm";
 import { getReadinessAssessments } from "@/app/actions/succession";
@@ -7,6 +8,7 @@ import EmptyState from "@/components/EmptyState";
 export const dynamic = "force-dynamic";
 
 export default async function PenilaianKesiapan() {
+  await requireRole("hrd", "superadmin");
   const { data: candidates } = await supabaseAdmin
     .from("karyawan")
     .select("*")

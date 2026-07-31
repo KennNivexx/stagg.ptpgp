@@ -51,7 +51,7 @@ export default function AboutCMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("about", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("About section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

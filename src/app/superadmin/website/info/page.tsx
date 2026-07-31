@@ -46,7 +46,7 @@ export default function InfoSettingsPage() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("info", form as Record<string, unknown>);
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
       } else {
         setSuccess("Informasi perusahaan berhasil disimpan.");

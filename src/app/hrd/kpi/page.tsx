@@ -1,7 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import KPIClient from "./KPIClient";
 
 export default async function HRDKPI() {
+  await requireRole("hrd", "superadmin", "department_manager");
   const { data: evaluations } = await supabaseAdmin
     .from("evaluasi_kpi")
     .select("*, karyawan!inner(full_name, department, position)")

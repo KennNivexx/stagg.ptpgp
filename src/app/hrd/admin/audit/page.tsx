@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { FileText, Search, Clock, User, Filter } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 
@@ -48,6 +49,7 @@ function getActionLabel(action: string): string {
 }
 
 export default async function AuditLog() {
+  await requireRole("superadmin");
   const { data: logs } = await supabaseAdmin
     .from("log_audit")
     .select("*")

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import {
   Users,
   Shield,
@@ -82,6 +83,7 @@ function StatusItem({
 }
 
 export default async function HRDAdmin() {
+  await requireRole("hrd", "superadmin");
   let dbConnected = false;
   try {
     const { error } = await supabaseAdmin.from("karyawan").select("id", { count: "exact", head: true });

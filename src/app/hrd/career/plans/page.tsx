@@ -1,7 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import PlansClient from "./PlansClient";
 
 export default async function CareerPlansPage() {
+  await requireRole("hrd", "superadmin");
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
     .select("id, full_name, kode, department, position")

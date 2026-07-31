@@ -2,17 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, Send, Bot, User } from "lucide-react";
-import { askHrdCopilot, type CopilotMessage, type CopilotProvider } from "@/app/actions/hrd-copilot";
-
-// Groq is the fast primary tier; these are only shown when a reply actually
-// came from a slower fallback, so a user seeing lag has a concrete reason
-// instead of it looking randomly inconsistent.
-const PROVIDER_LABEL: Record<CopilotProvider, string> = {
-  groq: "Groq",
-  gemini: "Gemini (fallback)",
-  openrouter: "OpenRouter (fallback, lebih lambat)",
-};
+import { Send, User } from "lucide-react";
+import { askHrdCopilot, type CopilotMessage } from "@/app/actions/hrd-copilot";
+import CopilotOrbAvatar from "@/components/hrd/CopilotOrbAvatar";
 
 const SUGGESTED_PROMPTS = [
   "Berapa jumlah karyawan per departemen?",
@@ -30,7 +22,7 @@ const SUGGESTED_PROMPTS = [
 // failure before the last one silently vanished with no record of what
 // happened. Keeping it in `messages` means every turn's outcome persists
 // in the scrollback, whether it succeeded or not.
-type DisplayMessage = CopilotMessage & { isError?: boolean; provider?: CopilotProvider };
+type DisplayMessage = CopilotMessage & { isError?: boolean; slow?: boolean };
 
 export default function AssistantClient() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -65,7 +57,7 @@ export default function AssistantClient() {
       if ("error" in result) {
         setMessages([...nextMessages, { role: "assistant", content: result.error, isError: true }]);
       } else {
-        setMessages([...nextMessages, { role: "assistant", content: result.reply, provider: result.provider }]);
+        setMessages([...nextMessages, { role: "assistant", content: result.reply, slow: result.slow }]);
       }
     } catch {
       // The server action call itself failed (network drop, server
@@ -86,13 +78,7 @@ export default function AssistantClient() {
         transition={{ duration: 0.4 }}
         className="flex items-center gap-3 mb-6 shrink-0"
       >
-        <motion.div
-          className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#CC0000] to-orange-500 flex items-center justify-center shadow-md shadow-red-500/20"
-          animate={{ rotate: [0, -6, 6, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <Sparkles size={18} className="text-white" />
-        </motion.div>
+        <CopilotOrbAvatar size={40} thinking={loading} />
         <div>
           <h1 className="text-xl font-bold text-[#1A2530]">HRD Copilot</h1>
           <p className="text-xs text-gray-500">Tanya soal karyawan, cuti, approval, kehadiran, dan metrik HR — jawaban diambil langsung dari data sistem.</p>
@@ -116,11 +102,11 @@ export default function AssistantClient() {
                 className="h-full flex flex-col items-center justify-center text-center gap-4"
               >
                 <motion.div
-                  className="h-14 w-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-100 flex items-center justify-center"
+                  className="flex items-center justify-center"
                   animate={{ y: [0, -6, 0] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <Bot size={24} className="text-slate-400" />
+                  <CopilotOrbAvatar size={56} />
                 </motion.div>
                 <p className="text-sm text-slate-500 max-w-sm">Mulai percakapan atau coba salah satu pertanyaan berikut:</p>
                 <div className="flex flex-wrap justify-center gap-2 max-w-lg">
@@ -152,8 +138,8 @@ export default function AssistantClient() {
                 transition={{ duration: 0.25, ease: "easeOut" }}
                 className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}
               >
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${m.role === "user" ? "bg-slate-800" : m.isError ? "bg-red-100" : "bg-gradient-to-br from-[#CC0000] to-orange-500"}`}>
-                  {m.role === "user" ? <User size={14} className="text-white" /> : <Bot size={14} className={m.isError ? "text-red-500" : "text-white"} />}
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${m.role === "user" ? "bg-slate-800" : m.isError ? "bg-red-100" : ""}`}>
+                  {m.role === "user" ? <User size={14} className="text-white" /> : m.isError ? <span className="text-red-500 text-sm font-bold">!</span> : <CopilotOrbAvatar size={32} />}
                 </div>
                 <div className={`flex flex-col gap-1 max-w-[75%] ${m.role === "user" ? "items-end" : "items-start"}`}>
                   <div
@@ -163,8 +149,8 @@ export default function AssistantClient() {
                   >
                     {m.content}
                   </div>
-                  {m.provider && m.provider !== "groq" && (
-                    <span className="text-[10px] text-slate-400 px-1">via {PROVIDER_LABEL[m.provider]}</span>
+                  {m.slow && (
+                    <span className="text-[10px] text-slate-400 px-1">Diproses lebih lama dari biasanya — traffic sedang tinggi.</span>
                   )}
                 </div>
               </motion.div>
@@ -180,8 +166,8 @@ export default function AssistantClient() {
                 exit={{ opacity: 0 }}
                 className="flex gap-3"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#CC0000] to-orange-500 flex items-center justify-center shrink-0">
-                  <Bot size={14} className="text-white" />
+                <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden">
+                  <CopilotOrbAvatar size={32} thinking />
                 </div>
                 <div className="bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 flex items-center gap-1.5">
                   {[0, 1, 2].map((d) => (

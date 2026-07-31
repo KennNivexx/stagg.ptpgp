@@ -1,6 +1,7 @@
 import type Groq from "groq-sdk";
 import { SchemaType, type FunctionDeclaration } from "@google/generative-ai";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { searchEmployees } from "@/app/actions/employee";
 import { getLeaves } from "@/app/actions/leaves";
 import { getRelationsExecutiveMetrics } from "@/app/actions/employee-relations";
@@ -136,6 +137,41 @@ export const HRD_COPILOT_TOOLS: Groq.Chat.Completions.ChatCompletionTool[] = [
       name: "get_org_overview",
       description: "Ringkasan struktur organisasi: jumlah departemen/unit, dan jumlah formasi jabatan yang kosong (vacant) vs terisi (filled). Gunakan untuk pertanyaan tentang struktur organisasi, unit kerja, atau formasi jabatan.",
       parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_payroll_overview",
+      description: "Ringkasan penggajian bulan berjalan: total payroll, rata-rata gaji bersih per departemen, dan gaji tertinggi/terendah. Gunakan untuk pertanyaan umum soal penggajian seperti 'berapa total gaji bulan ini' atau 'rata-rata gaji per departemen'.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_payroll",
+      description: "Cari data penggajian (gaji pokok, tunjangan, potongan, gaji bersih) untuk satu karyawan tertentu berdasarkan nama. Gunakan untuk 'berapa gaji si X' atau 'rincian slip gaji Y'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Nama karyawan yang dicari data gajinya." },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_top_performers",
+      description: "Daftar karyawan dengan skor KPI/evaluasi kinerja tertinggi (karyawan terbaik), bisa difilter per departemen. Gunakan untuk pertanyaan seperti 'siapa karyawan terbaik', 'siapa yang berkinerja paling bagus', atau 'top performer di divisi X'.",
+      parameters: {
+        type: "object",
+        properties: {
+          department: { type: "string", description: "Nama departemen untuk membatasi hasil. Kosongkan untuk seluruh perusahaan." },
+        },
+      },
     },
   },
   {
@@ -463,6 +499,92 @@ export async function executeHrdCopilotTool(name: string, rawArgs: string): Prom
           formasi_kosong: vacant,
           formasi_terisi: formasi.length - vacant,
         });
+      }
+
+      case "get_payroll_overview": {
+        await requireRole("hrd", "superadmin", "director", "department_manager");
+        const now = new Date();
+        const { data } = await supabaseAdmin
+          .from("penggajian")
+          .select("net_salary, karyawan!inner(department)")
+          .eq("month", now.getMonth() + 1)
+          .eq("year", now.getFullYear())
+          .limit(500);
+        const rows = (data || []) as unknown as { net_salary: number; karyawan: { department: string | null } | { department: string | null }[] | null }[];
+        if (rows.length === 0) return JSON.stringify({ error: "Belum ada data penggajian bulan ini." });
+        const byDept = new Map<string, number[]>();
+        for (const r of rows) {
+          const karyawan = Array.isArray(r.karyawan) ? r.karyawan[0] : r.karyawan;
+          const dept = karyawan?.department || "(Tanpa Departemen)";
+          if (!byDept.has(dept)) byDept.set(dept, []);
+          byDept.get(dept)!.push(Number(r.net_salary) || 0);
+        }
+        const perDepartemen = Array.from(byDept.entries()).map(([department, salaries]) => ({
+          department,
+          jumlah_karyawan: salaries.length,
+          rata_rata_gaji_bersih: Math.round(salaries.reduce((s, v) => s + v, 0) / salaries.length),
+        })).sort((a, b) => b.rata_rata_gaji_bersih - a.rata_rata_gaji_bersih);
+        const allSalaries = rows.map((r) => Number(r.net_salary) || 0);
+        return JSON.stringify({
+          total_karyawan_tercakup: rows.length,
+          total_payroll_bulan_ini: allSalaries.reduce((s, v) => s + v, 0),
+          gaji_bersih_tertinggi: Math.max(...allSalaries),
+          gaji_bersih_terendah: Math.min(...allSalaries),
+          per_departemen: perDepartemen,
+        });
+      }
+
+      case "search_payroll": {
+        await requireRole("hrd", "superadmin", "director", "department_manager");
+        const query = typeof args.query === "string" ? args.query.trim() : "";
+        if (!query) return JSON.stringify({ error: "Nama karyawan tidak diberikan." });
+        const matches = await searchEmployees(query);
+        if (matches.length === 0) return JSON.stringify({ error: `Karyawan "${query}" tidak ditemukan.` });
+        const ids = matches.slice(0, 5).map((m) => m.id);
+        const { data } = await supabaseAdmin
+          .from("penggajian")
+          .select("employee_id, month, year, basic_salary, allowances, deductions, net_salary, status")
+          .in("employee_id", ids)
+          .order("year", { ascending: false })
+          .order("month", { ascending: false });
+        const rows = (data || []) as { employee_id: string; month: number; year: number; basic_salary: number; allowances: number; deductions: number; net_salary: number; status: string }[];
+        const nameById = new Map(matches.map((m) => [m.id, m.full_name]));
+        if (rows.length === 0) return JSON.stringify({ error: `Belum ada data penggajian untuk "${query}".` });
+        return JSON.stringify(
+          rows.slice(0, LIST_CAP).map((r) => ({
+            nama: nameById.get(r.employee_id), periode: `${r.month}/${r.year}`,
+            gaji_pokok: r.basic_salary, tunjangan: r.allowances, potongan: r.deductions,
+            gaji_bersih: r.net_salary, status: r.status,
+          }))
+        );
+      }
+
+      case "get_top_performers": {
+        const department = typeof args.department === "string" ? args.department.trim() : "";
+        const { data: kpiRows } = await supabaseAdmin
+          .from("evaluasi_kpi")
+          .select("employee_id, final_score, period")
+          .not("final_score", "is", null)
+          .order("final_score", { ascending: false })
+          .limit(200);
+        const rows = (kpiRows || []) as { employee_id: string; final_score: number; period: string }[];
+        if (rows.length === 0) return JSON.stringify({ error: "Belum ada data evaluasi KPI." });
+        const empIds = rows.map((r) => r.employee_id);
+        const { data: empRows } = await supabaseAdmin.from("karyawan").select("id, full_name, department, position").in("id", empIds);
+        const empById = new Map(((empRows || []) as { id: string; full_name: string; department: string; position: string }[]).map((e) => [e.id, e]));
+        let ranked = rows
+          .map((r) => ({ ...r, emp: empById.get(r.employee_id) }))
+          .filter((r) => r.emp);
+        if (department) {
+          const q = department.toLowerCase();
+          ranked = ranked.filter((r) => r.emp!.department.toLowerCase().includes(q));
+        }
+        return JSON.stringify(
+          ranked.slice(0, LIST_CAP).map((r) => ({
+            nama: r.emp!.full_name, posisi: r.emp!.position, departemen: r.emp!.department,
+            skor_kpi: r.final_score, periode: r.period,
+          }))
+        );
       }
 
       default:

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Wallet, DollarSign, Percent, Calculator } from "lucide-react";
 import PayrollClient from "../../payroll/PayrollClient";
 import HubTabs from "@/components/hrd/HubTabs";
@@ -30,6 +31,7 @@ async function PayrollTabContent() {
 // original page's Server Component output untouched; the original route
 // files remain intact for anyone navigating to them directly.
 export default async function PayrollPage() {
+  await requireRole("hrd", "superadmin", "director");
   const [payrollContent, salaryContent, komponenGajiContent, formulaContent] = await Promise.all([
     safeTab(() => PayrollTabContent(), "Payroll"),
     safeTab(() => SalaryPage(), "Komponen Gaji"),

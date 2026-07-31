@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { UserTable } from "./UserTable";
 import { Users } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
@@ -29,6 +30,7 @@ function getRoleLabel(role: string) {
 }
 
 export default async function SuperadminEmployees() {
+  await requireRole("superadmin");
   const { data: users, error } = await supabaseAdmin
     .from("pengguna")
     .select("*")

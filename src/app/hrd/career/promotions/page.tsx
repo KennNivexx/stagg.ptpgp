@@ -1,7 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import PromotionsClient from "./PromotionsClient";
 
 export default async function PromotionsPage() {
+  await requireRole("hrd", "superadmin", "department_manager");
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
     .select("id, full_name, kode, department, position")

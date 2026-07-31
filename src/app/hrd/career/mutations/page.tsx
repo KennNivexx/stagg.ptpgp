@@ -1,7 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import MutationsClient from "./MutationsClient";
 
 export default async function MutationsPage() {
+  await requireRole("hrd", "superadmin", "department_manager");
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
     .select("id, full_name, kode, department, position")

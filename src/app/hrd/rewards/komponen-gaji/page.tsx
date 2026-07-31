@@ -1,7 +1,9 @@
 import { getJenisKomponenGaji } from "@/app/actions/payroll-components";
+import { requireRole } from "@/lib/auth-guard";
 import KomponenGajiClient from "./KomponenGajiClient";
 
 export default async function KomponenGajiPage() {
+  await requireRole("hrd", "superadmin", "director");
   const komponen = await getJenisKomponenGaji(true);
 
   return (

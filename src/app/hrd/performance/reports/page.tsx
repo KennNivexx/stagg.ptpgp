@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import ReportsClient from "./ReportsClient";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ async function fetchAllKpiEvaluations(): Promise<Record<string, unknown>[]> {
 }
 
 export default async function PerformanceReportsPage() {
+  await requireRole("hrd", "superadmin");
   const rows = await fetchAllKpiEvaluations();
 
   const totalEval = rows.length;

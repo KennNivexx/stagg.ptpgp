@@ -157,6 +157,86 @@ export function emailApplicantLoginLink(opts: {
     </div>`;
 }
 
+export function emailInterviewInvite(opts: {
+  name: string;
+  position?: string;
+  date: string;
+  time?: string;
+  interviewer?: string;
+  location?: string;
+  onlineLink?: string;
+  notes?: string;
+}): string {
+  const whereLine = opts.onlineLink
+    ? `<a href="${opts.onlineLink}" style="color:#CC0000;">${opts.onlineLink}</a> (online)`
+    : (opts.location || "Akan diinformasikan lebih lanjut");
+  return `
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+      <div style="background:#1A2530;padding:28px 32px;">
+        <h2 style="color:#fff;margin:0;font-size:20px;font-weight:800;">PT Pratama Galuh Perkasa</h2>
+        <p style="color:rgba(255,255,255,0.6);margin:4px 0 0;font-size:13px;">Undangan Interview</p>
+      </div>
+      <div style="padding:32px;">
+        <p style="margin:0 0 16px;font-size:14px;color:#374151;">Halo, <strong>${opts.name}</strong>,</p>
+        <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6;">
+          Selamat! Anda mengikuti tahap wawancara${opts.position ? ` untuk posisi <strong>${opts.position}</strong>` : ""} di PT Pratama Galuh Perkasa. Berikut detail jadwalnya:
+        </p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:24px;">
+          <table style="width:100%;font-size:13px;color:#374151;border-collapse:collapse;">
+            <tr><td style="padding:4px 0;color:#9ca3af;width:110px;">Tanggal</td><td style="padding:4px 0;font-weight:700;">${opts.date}</td></tr>
+            ${opts.time ? `<tr><td style="padding:4px 0;color:#9ca3af;">Waktu</td><td style="padding:4px 0;font-weight:700;">${opts.time}</td></tr>` : ""}
+            <tr><td style="padding:4px 0;color:#9ca3af;">Lokasi</td><td style="padding:4px 0;font-weight:700;">${whereLine}</td></tr>
+            ${opts.interviewer ? `<tr><td style="padding:4px 0;color:#9ca3af;">Pewawancara</td><td style="padding:4px 0;font-weight:700;">${opts.interviewer}</td></tr>` : ""}
+          </table>
+        </div>
+        ${opts.notes ? `<p style="margin:0 0 16px;font-size:13px;color:#6b7280;line-height:1.6;"><strong>Catatan:</strong> ${opts.notes}</p>` : ""}
+        <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
+          Mohon hadir tepat waktu. Jika ada kendala jadwal, segera hubungi HRD di hrga@ptpgp.co.id.
+        </p>
+      </div>
+    </div>`;
+}
+
+export function emailApplicationRejected(opts: { name: string; position?: string }): string {
+  return `
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+      <div style="background:#1A2530;padding:28px 32px;">
+        <h2 style="color:#fff;margin:0;font-size:20px;font-weight:800;">PT Pratama Galuh Perkasa</h2>
+        <p style="color:rgba(255,255,255,0.6);margin:4px 0 0;font-size:13px;">Informasi Status Lamaran</p>
+      </div>
+      <div style="padding:32px;">
+        <p style="margin:0 0 16px;font-size:14px;color:#374151;">Halo, <strong>${opts.name}</strong>,</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">
+          Terima kasih atas waktu dan minat Anda melamar${opts.position ? ` untuk posisi <strong>${opts.position}</strong>` : ""} di PT Pratama Galuh Perkasa.
+          Setelah melalui proses seleksi, dengan berat hati kami informasikan bahwa Anda belum dapat kami lanjutkan ke tahap berikutnya kali ini.
+        </p>
+        <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">
+          Keputusan ini tidak mengurangi apresiasi kami terhadap kualifikasi Anda. Kami akan menyimpan data Anda dan dengan senang hati menghubungi kembali apabila ada kesempatan yang lebih sesuai di masa mendatang.
+        </p>
+        <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
+          Kami mengucapkan terima kasih dan semoga sukses selalu untuk langkah karier Anda selanjutnya.
+        </p>
+      </div>
+    </div>`;
+}
+
+export function emailOfferLetter(opts: { name: string; contentHtml: string }): string {
+  return `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+      <div style="background:#CC0000;padding:28px 32px;">
+        <h2 style="color:#fff;margin:0;font-size:20px;font-weight:800;">PT Pratama Galuh Perkasa</h2>
+        <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:13px;">Surat Penawaran Kerja</p>
+      </div>
+      <div style="padding:32px;">
+        <p style="margin:0 0 20px;font-size:14px;color:#374151;">Halo, <strong>${opts.name}</strong>,</p>
+        <div style="font-size:13px;color:#374151;line-height:1.7;">${opts.contentHtml}</div>
+        <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;line-height:1.6;">
+          Silakan login ke Portal Pelamar untuk melihat dan merespons surat penawaran ini secara resmi.
+        </p>
+      </div>
+    </div>`;
+}
+
 export function emailEmployeeLoginLink(opts: {
   name: string;
   email: string;

@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getResignations } from "@/app/actions/relations";
 import ResignationsClient from "./ResignationsClient";
 
 export default async function PengunduranDiri() {
+  await requireRole("hrd", "superadmin");
   const [{ count: resignedCount }, resignations] = await Promise.all([
     supabaseAdmin.from("karyawan").select("*", { count: "exact", head: true }).eq("status", "Resigned"),
     getResignations().catch(() => []),

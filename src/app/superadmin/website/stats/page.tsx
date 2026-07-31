@@ -72,7 +72,7 @@ export default function StatsCMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("stats", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("Stats section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

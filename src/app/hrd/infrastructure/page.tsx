@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import Link from "next/link";
 import { Users, UserCheck, FileText, ShieldCheck, Plus, Download } from "lucide-react";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
@@ -8,6 +9,7 @@ import { HrdPageHeader, HrdStatsCard, HrdCard, HrdActionButton } from "@/compone
 export const dynamic = "force-dynamic";
 
 export default async function Employee360Hub() {
+  await requireRole("hrd", "superadmin");
   const [{ data: employees }, { data: contracts }, { data: licenses }] = await Promise.all([
     supabaseAdmin.from("karyawan").select("id, full_name, position, department, status, nik, kode_jabatan, emergency_phone, marital_status, ktp_address").neq("status", "Inactive"),
     supabaseAdmin.from("kontrak_kerja").select("id"),

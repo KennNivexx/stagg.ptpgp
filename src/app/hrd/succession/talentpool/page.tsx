@@ -1,4 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Star, TrendingUp, Users, Filter } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { getTalentPoolEntries } from "@/app/actions/succession";
@@ -7,6 +8,7 @@ import AddToTalentPoolForm from "./AddToTalentPoolForm";
 export const dynamic = "force-dynamic";
 
 export default async function TalentPoolSuksesi({ searchParams }: { searchParams: Promise<{ dept?: string }> }) {
+  await requireRole("hrd", "superadmin");
   const params = await searchParams;
   const filterDept = params?.dept || "";
   const poolEntries = await getTalentPoolEntries();

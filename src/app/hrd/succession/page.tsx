@@ -1,10 +1,12 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Users, UserCheck, Shield, AlertTriangle, Crown, Plus } from "lucide-react";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import { getLatestReadinessByEmployee } from "@/app/actions/succession";
 
 export default async function HRDSuccession() {
+  await requireRole("hrd", "superadmin");
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
     .select("id, full_name, department, position, status")

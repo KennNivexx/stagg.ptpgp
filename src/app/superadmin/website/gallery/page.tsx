@@ -83,7 +83,7 @@ export default function GalleryCMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("gallery", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("Gallery section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

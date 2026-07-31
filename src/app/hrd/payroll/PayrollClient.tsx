@@ -75,7 +75,7 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
     setActingId(id);
     const result = await updatePayrollStatus(id, status);
     setActingId(null);
-    if (result?.error) { setMsg({ type: "error", text: result.error }); return; }
+    if (result && "error" in result) { setMsg({ type: "error", text: result.error }); return; }
     router.refresh();
   };
 

@@ -59,7 +59,7 @@ export default function TeaserCMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("teaser", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("Teaser section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

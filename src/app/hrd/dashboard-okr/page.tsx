@@ -1,10 +1,12 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Users, Target, TrendingUp, Award, Building2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import RadialGauge from "@/components/charts/RadialGauge";
 import RankedBar from "@/components/charts/RankedBar";
 
 export default async function DashboardOKR() {
+  await requireRole("hrd", "superadmin");
   const [
     { data: okrRaw, error: okrError },
     { data: employees },

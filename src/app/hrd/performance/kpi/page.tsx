@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Target, TrendingUp, Award, Users } from "lucide-react";
 import KpiForm from "./KpiForm";
 
 export default async function KPIPage() {
+  await requireRole("hrd", "superadmin");
   const [{ data: evaluations }, { data: employees }, { data: formasiList }, { data: kpiCatalog }] = await Promise.all([
     supabaseAdmin
       .from("evaluasi_kpi")

@@ -44,7 +44,7 @@ export default function FooterSettingsPage() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("footer", form as Record<string, unknown>);
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
       } else {
         setSuccess("Footer berhasil disimpan.");

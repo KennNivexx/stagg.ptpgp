@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getAwards } from "@/app/actions/rewards";
 import AwardsClient from "./AwardsClient";
 
 export default async function AwardsPage() {
+  await requireRole("hrd", "superadmin", "director");
   const [{ data: employees }, awards] = await Promise.all([
     supabaseAdmin.from("karyawan").select("id, full_name, department, position").neq("email", "__settings__@ptpgp.co.id").order("full_name").limit(200),
     getAwards().catch(() => []),

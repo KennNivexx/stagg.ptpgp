@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Users, Search } from "lucide-react";
 import Link from "next/link";
 import EmployeeFilter from "./EmployeeFilter";
@@ -10,6 +11,7 @@ export default async function DataIndukKaryawan({
 }: {
   searchParams: Promise<{ dept?: string; status?: string; q?: string }>;
 }) {
+  await requireRole("hrd", "superadmin");
   const params = await searchParams;
   const deptFilter = params.dept || "";
   const statusFilter = params.status || "";

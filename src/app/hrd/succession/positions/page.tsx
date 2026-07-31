@@ -1,4 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Shield, AlertTriangle, TrendingUp, Users } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { getCriticalPositions } from "@/app/actions/succession";
@@ -7,6 +8,7 @@ import MarkCriticalPositionForm from "./MarkCriticalPositionForm";
 export const dynamic = "force-dynamic";
 
 export default async function PosisiKritis() {
+  await requireRole("hrd", "superadmin");
   const markedPositions = await getCriticalPositions();
 
   const { data: managers } = await supabaseAdmin

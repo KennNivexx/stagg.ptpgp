@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
+import ProfilePhotoUploader from "@/components/ProfilePhotoUploader";
 import { useNotifications } from "@/hooks/useNotifications";
 import { GROUP_COLOR_CLASSES } from "@/lib/menu-colors";
 import PageBackgroundDecor from "@/components/PageBackgroundDecor";
@@ -165,9 +166,7 @@ export default function DirectorLayout({ children }: { children: ReactNode }) {
 
         <div className="p-4 lg:px-2 xl:px-4 border-t border-slate-800 bg-[#0B0F19] shrink-0">
           <div className="flex items-center gap-3 p-2 mb-3 rounded-lg bg-slate-900/40 lg:justify-center xl:justify-start">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-red-600 to-amber-500 flex items-center justify-center text-white font-bold text-sm shadow-inner shrink-0">
-              {clientUserName.charAt(0).toUpperCase()}
-            </div>
+            <ProfilePhotoUploader currentUrl={user?.photo_url} name={clientUserName} size={36} />
             <div className="flex-1 min-w-0 lg:hidden xl:block">
               <p className="text-xs font-semibold text-white truncate">{clientUserName}</p>
               <p className="text-[10px] text-slate-400 truncate">{clientUserEmail}</p>

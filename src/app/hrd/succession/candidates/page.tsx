@@ -1,4 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Users, TrendingUp, Award, Star } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { getLatestReadinessByEmployee, getSuccessionCandidates } from "@/app/actions/succession";
@@ -7,6 +8,7 @@ import AddCandidateForm from "./AddCandidateForm";
 export const dynamic = "force-dynamic";
 
 export default async function KandidatSuksesor() {
+  await requireRole("hrd", "superadmin");
   const { data: managers } = await supabaseAdmin
     .from("karyawan")
     .select("*")

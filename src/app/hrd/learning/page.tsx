@@ -1,11 +1,13 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { GraduationCap, BookOpen, Users, Clock, CheckCircle2, Play, BarChart3, ListChecks, Timer, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDLearning() {
-  const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  await requireRole("hrd", "superadmin", "department_manager");
+  const in30Days = new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
 
   const [{ data: trainings }, { data: enrollments }, { count: openTnaCount }, { data: expiringLicenses }] = await Promise.all([

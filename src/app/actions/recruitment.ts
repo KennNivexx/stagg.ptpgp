@@ -5,8 +5,17 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { hashPassword, generateRandomPassword } from "@/lib/auth";
 import { generateOneTimeToken } from "@/lib/otp-token";
-import { sendMail, emailEmployeeLoginLink } from "@/lib/mailer";
+import { sendMail, emailEmployeeLoginLink, emailInterviewInvite, emailApplicationRejected } from "@/lib/mailer";
 import { openVacancyExternally, insertVacancyWithNumber } from "@/lib/vacancy";
+
+// pelamar.job_id has no FK constraint registered in the schema cache, so a
+// PostgREST embed shorthand fails outright (PGRST200) — resolve manually.
+// Best-effort: returns undefined (not an error) if the posting is gone.
+async function resolveJobPosition(jobId?: string | null): Promise<string | undefined> {
+  if (!jobId) return undefined;
+  const { data } = await supabaseAdmin.from("lowongan_kerja").select("position").eq("id", jobId).maybeSingle();
+  return (data as { position?: string } | null)?.position || undefined;
+}
 
 export async function openVacancyExternallyAction(vacancyId: string) {
   await requireRole("hrd", "superadmin");
@@ -190,6 +199,12 @@ export async function hireCandidate(formData: FormData) {
 export async function rejectApplicant(applicantId: string, applicantEmail: string) {
   await requireRole("hrd", "superadmin");
 
+  const { data: appRow } = await supabaseAdmin
+    .from("pelamar")
+    .select("full_name, job_id")
+    .eq("id", applicantId)
+    .maybeSingle();
+
   const { error } = await supabaseAdmin
     .from("pelamar")
     .update({ status: "Ditolak" })
@@ -205,6 +220,13 @@ export async function rejectApplicant(applicantId: string, applicantEmail: strin
     .update({ expires_at: expiresAt })
     .eq("email", applicantEmail.toLowerCase().trim())
     .eq("role", "applicant");
+
+  const position = await resolveJobPosition((appRow as { job_id?: string } | null)?.job_id);
+  sendMail({
+    to: applicantEmail,
+    subject: "Informasi Status Lamaran Anda — PT Pratama Galuh Perkasa",
+    html: emailApplicationRejected({ name: (appRow as { full_name?: string } | null)?.full_name || "Pelamar", position }),
+  }).catch((err) => console.error("[recruitment] Failed to send rejection email:", err));
 
   revalidatePath("/hrd/recruitment");
   revalidatePath("/applicant");
@@ -363,24 +385,40 @@ export async function scheduleInterview(
       interview_notes: payload.interview_notes || null,
     })
     .eq("id", applicationId)
-    .select("email")
+    .select("email, full_name, job_id")
     .maybeSingle();
   if (error?.code === "PGRST204" || error?.code === "42703") {
     return { error: "Jalankan migrasi 20260706001 terlebih dahulu." };
   }
   if (error) return { error: error.message };
 
-  const applicantEmail = (appRow as { email?: string } | null)?.email;
-  if (applicantEmail) {
+  const app = appRow as { email?: string; full_name?: string; job_id?: string } | null;
+  if (app?.email) {
     const when = [payload.interview_date, payload.interview_time].filter(Boolean).join(" ");
     const where = payload.interview_online_link || payload.interview_location || "";
     await supabaseAdmin.from("notifikasi").insert({
       id: crypto.randomUUID(),
-      user_email: applicantEmail,
+      user_email: app.email,
       title: "Jadwal Interview Ditentukan",
       message: `Interview Anda dijadwalkan pada ${when}${where ? ` — ${where}` : ""}.`,
       link: "/applicant/status",
     });
+
+    const position = await resolveJobPosition(app.job_id);
+    sendMail({
+      to: app.email,
+      subject: "Undangan Interview — PT Pratama Galuh Perkasa",
+      html: emailInterviewInvite({
+        name: app.full_name || "Pelamar",
+        position,
+        date: payload.interview_date,
+        time: payload.interview_time,
+        interviewer: payload.interviewer,
+        location: payload.interview_location,
+        onlineLink: payload.interview_online_link,
+        notes: payload.interview_notes,
+      }),
+    }).catch((err) => console.error("[recruitment] Failed to send interview invite email:", err));
   }
 
   revalidatePath("/hrd/recruitment/interviews");

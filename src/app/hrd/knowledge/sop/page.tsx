@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { BookOpen, FileText, Building } from "lucide-react";
 import SopClient from "./SopClient";
 
 export default async function SOPPage() {
+  await requireRole("hrd", "superadmin");
   const { data: departments } = await supabaseAdmin
     .from("departemen")
     .select("name")

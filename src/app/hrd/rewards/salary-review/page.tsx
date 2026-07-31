@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getSalaryReviews, getMeritMatrix } from "@/app/actions/rewards";
 import SalaryReviewClient from "./SalaryReviewClient";
 
 export default async function SalaryReviewPage() {
+  await requireRole("hrd", "superadmin", "director");
   const [{ data: employees }, { data: grades }, reviews, meritMatrix] = await Promise.all([
     supabaseAdmin.from("karyawan").select("id, full_name, department, position, kode_jabatan, nik").neq("status", "Inactive").order("full_name").limit(200),
     supabaseAdmin.from("grade_jabatan").select("id, kode, nama").order("urutan"),

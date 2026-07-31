@@ -2,6 +2,15 @@ import { cookies } from "next/headers";
 import { getMyApplicationData } from "@/app/actions/applicant";
 import { ClipboardList, Building2, Clock, CheckCircle2, XCircle, AlertCircle, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import FadeIn from "@/components/FadeIn";
+import MiniStepper, { type MiniStepperStage } from "@/components/MiniStepper";
+
+const MINI_STAGES: MiniStepperStage[] = [
+  { key: "Menunggu Review", label: "Lamaran Diterima" },
+  { key: "Tes Tulis & Psikotes", label: "Tahap Tes" },
+  { key: "Interview", label: "Wawancara" },
+  { key: "Diterima", label: "Hasil" },
+];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
   "Menunggu Review": { label: "Menunggu Review", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", icon: Clock },
@@ -26,25 +35,31 @@ export default async function ApplicantDashboard() {
     : "-";
 
   const expiresAt = data?.account?.expires_at ? new Date(data.account.expires_at) : null;
-  const remainingMs = expiresAt ? expiresAt.getTime() - Date.now() : 0;
+  const remainingMs = expiresAt ? expiresAt.getTime() - new Date().getTime() : 0;
   const remainingHours = remainingMs > 0 ? Math.max(1, Math.ceil(remainingMs / (1000 * 60 * 60))) : 0;
+
+  const isRejected = data?.application.status === "Ditolak";
+  const stepperCurrentIndex = data ? MINI_STAGES.findIndex((s) => s.key === data.application.status) : 0;
+  const stepperLastReached = isRejected && data?.application.reached_interview
+    ? MINI_STAGES.findIndex((s) => s.key === "Interview")
+    : 0;
 
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <FadeIn className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
         <h1 className="text-2xl font-extrabold text-slate-900">
           Halo, {userName.split(" ")[0]}! 👋
         </h1>
         <p className="text-sm text-slate-500 mt-1">
           Selamat datang di Portal Pelamar PT Pratama Galuh Perkasa. Pantau perkembangan lamaran Anda di sini.
         </p>
-      </div>
+      </FadeIn>
 
       {data ? (
         <>
           {/* Status card */}
-          <div className={`rounded-2xl border-2 p-6 ${statusInfo?.bg} ${statusInfo?.border}`}>
+          <FadeIn delay={0.05} className={`rounded-2xl border-2 p-6 ${statusInfo?.bg} ${statusInfo?.border}`}>
             <div className="flex items-start gap-4">
               <div className={`p-3 rounded-xl bg-white/60`}>
                 {statusInfo && <statusInfo.icon size={24} className={statusInfo.color} />}
@@ -64,10 +79,15 @@ export default async function ApplicantDashboard() {
                 Lihat Detail <ArrowRight size={12} />
               </Link>
             </div>
-          </div>
+            {!isRejected && (
+              <div className="mt-6 pt-5 border-t border-white/60">
+                <MiniStepper stages={MINI_STAGES} currentIndex={stepperCurrentIndex} />
+              </div>
+            )}
+          </FadeIn>
 
           {/* Info grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FadeIn delay={0.1} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Link href="/applicant/status" className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-md transition-all group">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
@@ -93,26 +113,29 @@ export default async function ApplicantDashboard() {
                 Lihat Profil <ArrowRight size={10} />
               </p>
             </Link>
-          </div>
+          </FadeIn>
 
           {/* Notice if accepted */}
           {data.application.status === "Diterima" && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6">
+            <FadeIn delay={0.15} className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6">
               <h3 className="font-extrabold text-emerald-800 text-sm mb-2">🎉 Selamat, Anda Diterima!</h3>
               <p className="text-xs text-emerald-700">
                 Tim HRD akan segera menghubungi Anda melalui email <strong>{data.application.email}</strong> atau nomor telepon <strong>{data.application.phone || "—"}</strong> untuk informasi onboarding lebih lanjut.
               </p>
-            </div>
+            </FadeIn>
           )}
 
           {/* Notice if rejected */}
           {data.application.status === "Ditolak" && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+            <FadeIn delay={0.15} className="bg-red-50 border border-red-200 rounded-2xl p-6">
               <h3 className="font-extrabold text-red-700 text-sm mb-2">Lamaran Tidak Lolos</h3>
               <p className="text-xs text-red-600 leading-relaxed">
                 Mohon maaf, saat ini lamaran Anda untuk posisi <strong>{data.job?.position || "—"}</strong> belum berhasil.
                 Jangan berkecil hati — masih banyak peluang karir lain yang tersedia.
               </p>
+              <div className="mt-5">
+                <MiniStepper stages={MINI_STAGES} currentIndex={stepperCurrentIndex} rejected lastReachedIndex={stepperLastReached} />
+              </div>
               {expiresAt && remainingHours > 0 && (
                 <div className="mt-4 bg-white/60 border border-red-100 rounded-xl p-3 flex items-center gap-3">
                   <Clock size={18} className="text-red-500 shrink-0" />
@@ -122,19 +145,19 @@ export default async function ApplicantDashboard() {
                   </p>
                 </div>
               )}
-            </div>
+            </FadeIn>
           )}
         </>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
+        <FadeIn className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
           <ClipboardList size={40} className="mx-auto text-slate-300 mb-4" />
           <p className="text-sm text-slate-500">Data lamaran tidak ditemukan.</p>
           <p className="text-xs text-slate-400 mt-1">Silakan hubungi HRD untuk informasi lebih lanjut.</p>
-        </div>
+        </FadeIn>
       )}
 
       {/* Info box */}
-      <div className="bg-pgp-navy rounded-2xl p-6 text-white">
+      <FadeIn delay={0.2} className="bg-pgp-navy rounded-2xl p-6 text-white">
         <h4 className="text-sm font-bold mb-3">ℹ️ Tentang Portal Ini</h4>
         <ul className="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
           <li>Portal ini bersifat <strong className="text-white">sementara</strong> khusus untuk memantau perkembangan lamaran Anda.</li>
@@ -142,7 +165,7 @@ export default async function ApplicantDashboard() {
           <li>Akun akan <strong className="text-white">otomatis dihapus 24 jam</strong> setelah status lamaran ditolak, agar Anda sempat melihat pemberitahuan.</li>
           <li>Untuk pertanyaan, hubungi HRD di <strong className="text-white">hrga@ptpgp.co.id</strong>.</li>
         </ul>
-      </div>
+      </FadeIn>
     </div>
   );
 }

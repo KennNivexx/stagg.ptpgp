@@ -1,7 +1,9 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import AssessmentClient from "./AssessmentClient";
 
 export default async function AsesmenKompetensi() {
+  await requireRole("hrd", "superadmin");
   const { data: employees } = await supabaseAdmin.from("karyawan").select("id, full_name").neq("status", "Inactive");
 
   const { data: employeeSkills } = await supabaseAdmin.from("kompetensi_karyawan")

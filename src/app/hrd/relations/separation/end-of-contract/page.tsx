@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getSeparations, getExitReasons } from "@/app/actions/employee-relations";
 import SeparationClient from "@/components/hrd/SeparationClient";
 
 export default async function EndOfContractPage() {
+  await requireRole("hrd", "superadmin");
   const [rows, exitReasons, { data: employees }] = await Promise.all([
     getSeparations("End of Contract"),
     getExitReasons(),

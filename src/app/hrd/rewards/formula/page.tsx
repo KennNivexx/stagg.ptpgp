@@ -1,7 +1,9 @@
 import { getRewardRules } from "@/app/actions/rewards";
+import { requireRole } from "@/lib/auth-guard";
 import FormulaClient from "./FormulaClient";
 
 export default async function RewardFormulaPage() {
+  await requireRole("hrd", "superadmin", "director");
   const rules = await getRewardRules().catch(() => []);
 
   return (

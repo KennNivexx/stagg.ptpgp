@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Building2, MapPin, Users, Clock, Settings, Plus } from "lucide-react";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
@@ -8,6 +9,7 @@ import { HrdPageHeader, HrdStatsCard, HrdCard, HrdActionButton } from "@/compone
 export const dynamic = "force-dynamic";
 
 export default async function HRDWorkplace() {
+  await requireRole("hrd", "superadmin");
   const [{ data: locations }, { data: employees }, { data: shifts }] = await Promise.all([
     supabaseAdmin.from("lokasi_kerja").select("*").order("name"),
     supabaseAdmin.from("karyawan").select("department, position").neq("status", "Resigned"),

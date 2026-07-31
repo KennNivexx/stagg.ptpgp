@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Users, Mail, Search } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import EmptyState from "@/components/EmptyState";
 
 function getRoleBadge(role: string) {
@@ -29,6 +30,7 @@ export default async function MonitoringEmployees({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await requireRole("superadmin");
   const { q } = await searchParams;
 
   const [{ data: allEmployees, error }, { data: allUsers }] = await Promise.all([

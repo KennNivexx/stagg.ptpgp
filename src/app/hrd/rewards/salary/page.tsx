@@ -1,9 +1,11 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { DollarSign, Users, Briefcase } from "lucide-react";
 import SalaryForm from "./SalaryForm";
 import { getJenisKomponenGaji } from "@/app/actions/payroll-components";
 
 export default async function SalaryPage() {
+  await requireRole("hrd", "superadmin", "director");
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
     .select("id, full_name, department, position, kode_jabatan, nik")

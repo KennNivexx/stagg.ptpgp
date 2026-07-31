@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import Link from "next/link";
 import { DollarSign, Download, Gift, FileText, Users, Zap, Wallet, ClipboardCheck, Award, Plus } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
@@ -21,6 +22,7 @@ function currentPeriod() {
 }
 
 export default async function HRDRewards() {
+  await requireRole("hrd", "superadmin", "director");
   const period = currentPeriod();
   const [{ data: payrolls, error }, { count: totalEmployees }, { count: pendingSuggestions }, { data: allIncentives }, { data: deptRows }] = await Promise.all([
     supabaseAdmin.from("penggajian").select("*, karyawan!inner(full_name, department)").order("year", { ascending: false }).order("month", { ascending: false }).limit(20),

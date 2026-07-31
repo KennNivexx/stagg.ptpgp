@@ -5,6 +5,7 @@ import { User, Mail, Phone, Building, Briefcase, Calendar, ShieldCheck, Save, Ma
 import { getCurrentEmployee } from "@/app/actions/employee";
 import { saveEmployeeProfile, saveBasicProfile } from "@/app/actions/profile";
 import { connectWhatsApp, disconnectWhatsApp, getContactBotUrl } from "@/app/actions/whatsapp";
+import ProfilePhotoUploader from "@/components/ProfilePhotoUploader";
 
 interface Employee {
   id: string; full_name: string; email: string; phone: string; address: string;
@@ -137,8 +138,14 @@ export default function EmployeeProfile() {
       {tab === "profil" ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 flex flex-col items-center text-center">
-            <div className="h-24 w-24 rounded-full bg-slate-900 text-white flex items-center justify-center text-3xl font-extrabold shadow-md mb-4">
-              {initials}
+            <div className="mb-4">
+              <ProfilePhotoUploader
+                currentUrl={profile?.photo_url}
+                name={profile?.full_name || initials}
+                size={96}
+                fallbackClassName="bg-slate-900"
+                onUploaded={(url) => setProfile((p) => (p ? { ...p, photo_url: url } : p))}
+              />
             </div>
             <h2 className="text-lg font-extrabold text-slate-800">{profile?.full_name}</h2>
             <p className="text-xs text-slate-500 mt-1">{profile?.position || "-"}</p>

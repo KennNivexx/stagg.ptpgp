@@ -3,6 +3,7 @@ import {
   ClipboardCheck, FileWarning, Handshake, Users, Gavel, Split, Building2, ShieldCheck,
 } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getCases, getCaseCategories } from "@/app/actions/employee-relations";
 import CaseClient from "@/components/hrd/CaseClient";
 import HubTabs, { type HubTab } from "@/components/hrd/HubTabs";
@@ -50,6 +51,7 @@ async function AllCasesTabContent() {
 }
 
 export default async function CaseManagementHub() {
+  await requireRole("hrd", "superadmin");
   const tabs: HubTab[] = [
     { id: "all", label: "Semua Kasus", icon: <ClipboardList size={14} />, content: await safeTab(() => AllCasesTabContent(), "Semua Kasus") },
     { id: "complaints", label: "Complaints", icon: <MessageSquare size={14} />, content: await safeTab(() => ComplaintsPage(), "Complaints") },

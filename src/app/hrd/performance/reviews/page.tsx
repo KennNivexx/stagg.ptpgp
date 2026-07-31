@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Clipboard, TrendingUp, CheckCircle, Clock } from "lucide-react";
 import ReviewsTable from "./ReviewsTable";
 
 export default async function ReviewsPage() {
+  await requireRole("hrd", "superadmin");
   const { data: evaluations } = await supabaseAdmin
     .from("evaluasi_kpi")
     .select("*, karyawan!inner(full_name, department, position)")

@@ -8,6 +8,7 @@ import {
   Clock, Users, LayoutGrid, Sparkles,
 } from "lucide-react";
 import PageBackgroundDecor from "@/components/PageBackgroundDecor";
+import ProfilePhotoUploader from "@/components/ProfilePhotoUploader";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -247,9 +248,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
         {/* Drawer footer */}
         <div className="p-4 border-t border-slate-800 bg-[#0B0F19] shrink-0">
           <div className="flex items-center gap-3 p-2 mb-3 rounded-lg bg-slate-900/40">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-red-600 to-amber-500 flex items-center justify-center text-white font-bold text-sm shadow-inner shrink-0">
-              {clientUserName.charAt(0).toUpperCase()}
-            </div>
+            <ProfilePhotoUploader currentUrl={user?.photo_url} name={clientUserName} size={36} />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white truncate">{clientUserName}</p>
               <p className="text-[10px] text-slate-400 truncate">{clientUserEmail}</p>
@@ -328,9 +327,7 @@ export default function HRDLayout({ children }: { children: ReactNode }) {
                 aria-expanded={isProfileOpen}
                 className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-slate-100 transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-red-600 to-amber-500 flex items-center justify-center text-white font-bold text-xs shadow-inner shrink-0">
-                  {clientUserName.charAt(0).toUpperCase()}
-                </div>
+                <ProfilePhotoUploader currentUrl={user?.photo_url} name={clientUserName} size={32} editable={false} />
                 <div className="text-left hidden sm:block">
                   <p className="text-xs font-semibold text-slate-800 leading-tight">{clientUserName}</p>
                   <p className="text-[10px] text-emerald-600 font-medium leading-tight">Online</p>

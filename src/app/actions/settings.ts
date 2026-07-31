@@ -25,8 +25,8 @@ export async function getWebsiteSettings() {
 export async function saveWebsiteSettings(
   section: string,
   values: Record<string, unknown>
-) {
-  const user = await requireRole("superadmin");
+): Promise<{ error: string } | { success: true }> {
+  const user = await requireRole("superadmin", "hrd");
 
   const current = await getWebsiteSettings();
   current[section] = values;

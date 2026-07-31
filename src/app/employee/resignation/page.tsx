@@ -26,7 +26,7 @@ export default async function EmployeeResignation() {
   const r = resignation;
 
   const deleteAtRaw = r?.delete_at as string | null | undefined;
-  const deletionScheduled = r?.status === "Disetujui" && !!deleteAtRaw && new Date(deleteAtRaw).getTime() > Date.now();
+  const deletionScheduled = r?.status === "Disetujui" && !!deleteAtRaw && new Date(deleteAtRaw).getTime() > new Date().getTime();
   const deleteAtLabel = deleteAtRaw
     ? new Date(deleteAtRaw).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })
     : "";

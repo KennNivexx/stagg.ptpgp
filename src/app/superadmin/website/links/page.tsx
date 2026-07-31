@@ -95,7 +95,7 @@ export default function LinksSettingsPage() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("links", form as unknown as Record<string, unknown>);
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
       } else {
         setSuccess("Link & navigasi berhasil disimpan.");

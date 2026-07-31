@@ -74,7 +74,7 @@ export default function IndustriesCMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("industries", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("Industries section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

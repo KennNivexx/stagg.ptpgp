@@ -75,7 +75,7 @@ export default function CoverageCMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("coverage", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("Coverage section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

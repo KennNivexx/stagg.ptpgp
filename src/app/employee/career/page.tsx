@@ -77,7 +77,7 @@ export default async function EmployeeCareer() {
 
   // Calculate tenure in months for progress
   const joinDateVal = employee?.join_date ? new Date(employee.join_date as string) : null;
-  const tenureMonths = joinDateVal ? Math.floor((Date.now() - joinDateVal.getTime()) / (1000 * 60 * 60 * 24 * 30)) : 0;
+  const tenureMonths = joinDateVal ? Math.floor((new Date().getTime() - joinDateVal.getTime()) / (1000 * 60 * 60 * 24 * 30)) : 0;
   const progressPct = Math.min(Math.round((tenureMonths / 24) * 100), 100);
 
   const nextCareerPos = currentLevelIdx >= 0 && currentLevelIdx < posList.length - 1

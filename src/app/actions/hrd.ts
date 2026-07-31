@@ -5,7 +5,16 @@ import { revalidatePath } from "next/cache";
 import { hashPassword, generateNumericPassword, generateCompanyEmailUnique } from "@/lib/auth";
 import { generateOneTimeToken } from "@/lib/otp-token";
 import { requireRole } from "@/lib/auth-guard";
-import { sendMail, emailApplicantLoginLink, emailEmployeeLoginLink } from "@/lib/mailer";
+import { sendMail, emailApplicantLoginLink, emailEmployeeLoginLink, emailApplicationRejected } from "@/lib/mailer";
+
+// pelamar.job_id has no FK constraint registered in the schema cache, so a
+// PostgREST embed shorthand fails outright (PGRST200) — resolve manually.
+// Best-effort: returns undefined (not an error) if the posting is gone.
+async function resolveJobPosition(jobId?: string | null): Promise<string | undefined> {
+  if (!jobId) return undefined;
+  const { data } = await supabaseAdmin.from("lowongan_kerja").select("position").eq("id", jobId).maybeSingle();
+  return (data as { position?: string } | null)?.position || undefined;
+}
 import { auditLog } from "@/lib/audit";
 import { computeMatchScoreCore, applyAutoScreening } from "@/lib/recruitment-scoring";
 
@@ -177,10 +186,10 @@ export async function createEmployee(formData: FormData) {
 export async function updateApplicationStatus(applicationId: string, status: string) {
   const user = await requireRole("hrd", "superadmin");
 
-  // Fetch application email before update (needed for account deletion)
+  // Fetch application email before update (needed for account deletion + rejection email)
   const { data: application } = await supabaseAdmin
     .from("pelamar")
-    .select("email, full_name")
+    .select("email, full_name, job_id")
     .eq("id", applicationId)
     .maybeSingle();
 
@@ -209,6 +218,13 @@ export async function updateApplicationStatus(applicationId: string, status: str
         .eq("email", appEmail)
         .eq("role", "applicant")
         .eq("is_temporary", true);
+
+      const position = await resolveJobPosition((application as { job_id?: string }).job_id);
+      sendMail({
+        to: appEmail,
+        subject: "Informasi Status Lamaran Anda — PT Pratama Galuh Perkasa",
+        html: emailApplicationRejected({ name: (application as { full_name?: string }).full_name || "Pelamar", position }),
+      }).catch((err) => console.error("[hrd] Failed to send rejection email:", err));
     }
   }
 

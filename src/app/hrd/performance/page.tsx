@@ -1,9 +1,11 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Target, TrendingUp, Star, Award, Users, Eye, Sparkles } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDPerformance() {
+  await requireRole("hrd", "superadmin");
   const { data: evaluations, error } = await supabaseAdmin
     .from("evaluasi_kpi")
     .select("*, karyawan!inner(full_name, department, position)")

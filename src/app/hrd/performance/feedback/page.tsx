@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getFeedbackHistory, getBudayaPerusahaan } from "@/app/actions/performance-hrd";
 import FeedbackClient from "./FeedbackClient";
 
 export default async function FeedbackPage() {
+  await requireRole("hrd", "superadmin", "department_manager");
   const [{ data: employees }, history, budaya] = await Promise.all([
     supabaseAdmin.from("karyawan").select("id, full_name, kode, department, position").neq("email", "__settings__@ptpgp.co.id").order("full_name").limit(100),
     getFeedbackHistory().catch(() => []),

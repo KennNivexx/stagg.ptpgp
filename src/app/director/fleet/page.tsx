@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getFleetExecutiveSummary } from "@/app/actions/vehicles";
 import { Truck, AlertTriangle, IdCard, Route, Clock, Wallet } from "lucide-react";
 
@@ -10,6 +11,7 @@ function expiryDaysLeft(dateStr: string | null): number | null {
 }
 
 export default async function DirectorFleetPage() {
+  await requireRole("director", "superadmin");
   const fleet = await getFleetExecutiveSummary();
 
   const now = new Date();

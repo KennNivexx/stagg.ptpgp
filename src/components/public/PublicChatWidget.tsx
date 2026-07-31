@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, X, Send, Bot, User } from "lucide-react";
+import { X, Send, User } from "lucide-react";
 import { askPublicChatbot, type PublicChatMessage } from "@/app/actions/public-chatbot";
+import ChatPersonaAvatar from "./ChatPersonaAvatar";
 
 const SUGGESTED_PROMPTS = [
   "Layanan apa saja yang tersedia?",
@@ -64,15 +65,15 @@ export default function PublicChatWidget() {
         whileTap={{ scale: 0.92 }}
       >
         {!isOpen && <span className="absolute inset-0 rounded-full bg-[#CC0000] animate-ping opacity-40" />}
-        <span className="relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#CC0000] to-orange-500 text-white shadow-lg shadow-red-600/30">
+        <span className="relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#CC0000] to-orange-500 text-white shadow-lg shadow-red-600/30 overflow-hidden">
           <AnimatePresence mode="wait" initial={false}>
             {isOpen ? (
               <motion.span key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
                 <X size={24} />
               </motion.span>
             ) : (
-              <motion.span key="ai" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                <Sparkles size={24} />
+              <motion.span key="ai" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }} className="flex items-center justify-center w-full h-full">
+                <ChatPersonaAvatar size={40} />
               </motion.span>
             )}
           </AnimatePresence>
@@ -94,8 +95,8 @@ export default function PublicChatWidget() {
             className="fixed bottom-24 right-6 z-40 w-[calc(100vw-3rem)] max-w-[360px] h-[480px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
           >
             <div className="flex items-center gap-2.5 px-4 py-3.5 bg-gradient-to-r from-[#CC0000] to-orange-500 text-white shrink-0">
-              <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <Sparkles size={16} />
+              <div className="h-8 w-8 rounded-full ring-2 ring-white/40 flex items-center justify-center shrink-0 overflow-hidden">
+                <ChatPersonaAvatar size={32} />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold leading-tight">Asisten PGP</p>
@@ -106,8 +107,8 @@ export default function PublicChatWidget() {
             <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50">
               {messages.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-center gap-3 px-2">
-                  <div className="h-10 w-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
-                    <Bot size={18} className="text-slate-400" />
+                  <div className="h-12 w-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm">
+                    <ChatPersonaAvatar size={44} />
                   </div>
                   <p className="text-xs text-slate-500">Halo! Ada yang bisa saya bantu soal layanan PGP?</p>
                   <div className="flex flex-col gap-1.5 w-full">
@@ -124,25 +125,33 @@ export default function PublicChatWidget() {
                 </div>
               )}
 
-              {messages.map((m, i) => (
-                <div key={i} className={`flex gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-                  <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${m.role === "user" ? "bg-slate-800" : "bg-gradient-to-br from-[#CC0000] to-orange-500"}`}>
-                    {m.role === "user" ? <User size={11} className="text-white" /> : <Bot size={11} className="text-white" />}
-                  </div>
-                  <div
-                    className={`max-w-[80%] rounded-xl px-3 py-2 text-xs whitespace-pre-wrap ${
-                      m.role === "user" ? "bg-slate-800 text-white" : "bg-white text-slate-800 border border-slate-100"
-                    }`}
+              <AnimatePresence initial={false}>
+                {messages.map((m, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                    className={`flex gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}
                   >
-                    {m.content}
-                  </div>
-                </div>
-              ))}
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${m.role === "user" ? "bg-slate-800" : ""}`}>
+                      {m.role === "user" ? <User size={11} className="text-white" /> : <ChatPersonaAvatar size={24} />}
+                    </div>
+                    <div
+                      className={`max-w-[80%] rounded-xl px-3 py-2 text-xs whitespace-pre-wrap ${
+                        m.role === "user" ? "bg-slate-800 text-white" : "bg-white text-slate-800 border border-slate-100"
+                      }`}
+                    >
+                      {m.content}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
 
               {loading && (
                 <div className="flex gap-2">
-                  <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#CC0000] to-orange-500 flex items-center justify-center shrink-0">
-                    <Bot size={11} className="text-white" />
+                  <div className="h-6 w-6 rounded-full flex items-center justify-center shrink-0 overflow-hidden">
+                    <ChatPersonaAvatar size={24} />
                   </div>
                   <div className="bg-white border border-slate-100 rounded-xl px-3 py-2.5 flex items-center gap-1">
                     {[0, 1, 2].map((d) => (

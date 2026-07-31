@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { HrdPageHeader, HrdActionButton } from "@/components/hrd/HrdUi";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,7 @@ const SHORTCUT_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export default async function EmployeeRelationsHub() {
+  await requireRole("hrd", "superadmin");
   // ── Fetch stats from existing tables ────────────────────────────────────────
   const [
     { count: totalEmployees },

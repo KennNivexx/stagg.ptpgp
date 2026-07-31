@@ -392,7 +392,7 @@ async function assertPayrollTransitionAllowed(nextStatus: PayrollStatus): Promis
   return { error: "Status tidak valid." };
 }
 
-export async function updatePayrollStatus(id: string, statusInput: string) {
+export async function updatePayrollStatus(id: string, statusInput: string): Promise<{ error: string } | { success: true }> {
   if (!PAYROLL_STATUSES.includes(statusInput as PayrollStatus)) return { error: "Status tidak valid." };
   const status = statusInput as PayrollStatus;
   const { data: current } = await supabaseAdmin.from("penggajian").select("status").eq("id", id).maybeSingle();
@@ -458,7 +458,7 @@ export async function updatePayrollAmounts(formData: FormData) {
   return { success: true };
 }
 
-export async function batchUpdatePayrollStatus(formData: FormData) {
+export async function batchUpdatePayrollStatus(formData: FormData): Promise<{ error: string } | { success: true; updated: number }> {
   const month = parseInt(formData.get("month") as string || "0", 10);
   const year = parseInt(formData.get("year") as string || "0", 10);
   const status = (formData.get("status") as string || "").trim() as PayrollStatus;

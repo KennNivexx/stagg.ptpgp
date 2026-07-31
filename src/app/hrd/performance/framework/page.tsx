@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getBudayaPerusahaan, getPerformanceFrameworkList } from "@/app/actions/performance-hrd";
 import FrameworkClient from "./FrameworkClient";
 
 export default async function PerformanceFrameworkPage() {
+  await requireRole("hrd", "superadmin", "department_manager");
   const [{ data: positions }, { data: kpiCatalog }, budaya, frameworks] = await Promise.all([
     supabaseAdmin.from("jabatan").select("id, name, department").order("name"),
     supabaseAdmin.from("kpi_jabatan").select("*").order("urutan", { ascending: true }),

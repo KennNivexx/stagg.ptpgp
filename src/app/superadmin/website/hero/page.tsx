@@ -53,7 +53,7 @@ export default function HeroSettingsPage() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("hero", form as Record<string, unknown>);
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
       } else {
         setSuccess("Hero section berhasil disimpan.");

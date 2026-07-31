@@ -1,4 +1,5 @@
 ﻿import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import GapAnalysisClient from "./GapAnalysisClient";
 
 type Employee = {
@@ -42,6 +43,7 @@ type GapRow = {
 };
 
 export default async function GapAnalysisPage() {
+  await requireRole("hrd", "superadmin");
   const [empRes, skillRes, empSkillRes, posSkillRes, formasiRes] = await Promise.all([
     supabaseAdmin
       .from("karyawan")

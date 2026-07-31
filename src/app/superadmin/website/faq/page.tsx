@@ -73,7 +73,7 @@ export default function FAQCMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("faq", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("FAQ section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

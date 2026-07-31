@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { CheckCircle, ArrowRight, Clock, FileText, Users } from "lucide-react";
 import ApprovalsForm from "./ApprovalsForm";
 
 export default async function AlurPersetujuan() {
+  await requireRole("hrd", "superadmin");
   const workflowDefs = [
     { name: "Cuti", icon: Clock, desc: "Persetujuan pengajuan cuti karyawan", steps: ["Karyawan Mengajukan", "Atasan Langsung", "HRD", "Disetujui"], color: "bg-blue-50 text-blue-600" },
     { name: "Lembur", icon: Clock, desc: "Persetujuan pengajuan lembur", steps: ["Karyawan Mengajukan", "Atasan Langsung", "Manager", "Disetujui"], color: "bg-amber-50 text-amber-600" },

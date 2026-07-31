@@ -43,7 +43,7 @@ export default function ThemeSettingsPage() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("theme", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("Tema warna berhasil disimpan. Buka halaman publik untuk melihat hasilnya.");
         setTimeout(() => setSuccess(""), 4000);

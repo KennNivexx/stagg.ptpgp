@@ -19,14 +19,16 @@ export interface CopilotMessage {
 // leaving "why is this slow sometimes" a mystery.
 export type CopilotProvider = "groq" | "gemini" | "openrouter";
 
-const SYSTEM_PROMPT = `Anda adalah HRD Copilot, asisten AI internal untuk staf HRD PT Pratama Galuh Perkasa. Anda mencakup HAMPIR SEMUA modul di aplikasi ini: karyawan & organisasi, jabatan & deskripsi kerja, rekrutmen, kompetensi, pelatihan, kinerja/KPI, reward & recognition, aset & armada, cuti/kehadiran, dan approval lintas modul.
+const SYSTEM_PROMPT = `Anda adalah HRD Copilot, asisten AI internal untuk staf HRD PT Pratama Galuh Perkasa. Anda mencakup HAMPIR SEMUA modul di aplikasi ini: karyawan & organisasi, jabatan & deskripsi kerja, rekrutmen, kompetensi, pelatihan, kinerja/KPI, reward & recognition, aset & armada, cuti/kehadiran, penggajian, dan approval lintas modul.
 Untuk pertanyaan soal JABATAN/POSISI (nama jabatan, kode jabatan, level, grade, siapa kepala unit) gunakan search_jabatan — JANGAN gunakan get_org_overview untuk ini, karena get_org_overview hanya memberi ANGKA ringkasan (jumlah formasi kosong/terisi), bukan daftar nama jabatan. Untuk tugas/tanggung jawab suatu jabatan gunakan get_jobdesc.
+Untuk pertanyaan soal PENGGAJIAN gunakan get_payroll_overview (ringkasan/rata-rata per departemen) atau search_payroll (gaji satu karyawan tertentu) — data ini SUDAH tersedia dan boleh dijawab langsung, jangan menolak dengan alasan "belum bisa diakses".
+Untuk pertanyaan soal KARYAWAN TERBAIK/berkinerja tinggi gunakan get_top_performers (berdasarkan skor KPI/evaluasi kinerja).
 Jawab dalam Bahasa Indonesia, singkat dan langsung ke inti (maksimal beberapa kalimat atau daftar poin pendek).
 Gunakan tools yang tersedia untuk mengambil data nyata sebelum menjawab pertanyaan faktual — jangan mengarang angka.
 PENTING: setiap tool hanya perlu dipanggil SEKALI per pertanyaan. Begitu hasil tool sudah muncul di percakapan, langsung jawab pengguna berdasarkan hasil itu — jangan memanggil tool yang sama lagi dengan argumen yang sama.
 Jika sebuah tool mengembalikan error akses, sampaikan apa adanya ke pengguna, jangan mencoba tool lain untuk data yang sama.
 Jika pertanyaan pengguna masih umum/samar (misalnya "bisa kasih info soal karyawan di sini?" atau "apa saja yang bisa kamu bantu?"), JANGAN memanggil tool dengan argumen kosong/tebakan — langsung panggil tool yang paling relevan dengan cakupan data yang wajar (contoh: pertanyaan umum soal karyawan → get_department_headcount), atau panggil list_hrd_modules jika pertanyaannya soal navigasi/menu, lalu tawarkan ke pengguna topik spesifik apa yang ingin digali lebih lanjut.
-Jika pertanyaan benar-benar di luar cakupan tools yang tersedia (misalnya perlu data payroll rinci per individu atau laporan yang belum ada), katakan dengan jujur bahwa data itu belum bisa diakses lewat asisten ini, dan arahkan ke menu terkait di aplikasi (gunakan list_hrd_modules bila perlu untuk menyebutkan nama menunya).
+Jika pertanyaan benar-benar di luar cakupan tools yang tersedia (misalnya laporan yang belum ada), katakan dengan jujur bahwa data itu belum bisa diakses lewat asisten ini, dan arahkan ke menu terkait di aplikasi (gunakan list_hrd_modules bila perlu untuk menyebutkan nama menunya).
 PENTING soal privasi: pengguna asisten ini SELALU adalah staf HRD/manajemen internal yang login resmi dan memang berwenang melihat data karyawan (termasuk nama, NIK, departemen, dll) sebagai bagian dari pekerjaan mereka — ini BUKAN pengungkapan data ke publik. Jangan pernah menolak menyebutkan nama karyawan atau data dari hasil tool dengan alasan privasi/kerahasiaan data pribadi; itu justru tujuan utama asisten ini.
 PENTING soal saran: jika pengguna meminta saran/rekomendasi terkait HR (misalnya siapa yang layak dipromosikan, tindak lanjut untuk kasus tertentu, prioritas rekrutmen, dll), berikan saran praktis berdasarkan data yang tersedia. Ini bukan nasihat medis/hukum/keuangan, jadi jangan menolak atau memberi disclaimer berlebihan — jawab langsung sebagai rekan kerja HR yang membantu, dengan catatan singkat bahwa keputusan akhir tetap di tangan pengguna.`;
 
@@ -252,13 +254,23 @@ function safeJsonParse(text: string): unknown {
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-export async function askHrdCopilot(history: CopilotMessage[]): Promise<{ reply: string; provider: CopilotProvider } | { error: string }> {
+// Internal tier bookkeeping (provider) never crosses to the client — the
+// product must never reveal which AI vendor answered. `slow` is the only
+// signal the UI gets, and it's provider-agnostic by construction.
+function toClientResult(
+  result: { reply: string; provider: CopilotProvider } | { error: string }
+): { reply: string; slow: boolean } | { error: string } {
+  if ("error" in result) return result;
+  return { reply: result.reply, slow: result.provider !== "groq" };
+}
+
+export async function askHrdCopilot(history: CopilotMessage[]): Promise<{ reply: string; slow: boolean } | { error: string }> {
   await requireRole("hrd", "superadmin", "director", "department_manager");
 
   const trimmedHistory = history.slice(-20); // cap context sent per turn
 
   try {
-    return await runGroq(trimmedHistory);
+    return toClientResult(await runGroq(trimmedHistory));
   } catch (groqErr) {
     // Fall back to Gemini on ANY Groq failure, not just rate-limit (429) —
     // "heavier" questions (broader tool results, longer combined context)
@@ -268,13 +280,13 @@ export async function askHrdCopilot(history: CopilotMessage[]): Promise<{ reply:
     // at all, which is the "tugas berat = gagal" gap this fixes.
     console.error("[hrd-copilot] Groq error, falling back to Gemini:", describeError(groqErr));
     try {
-      return await runGemini(trimmedHistory);
+      return toClientResult(await runGemini(trimmedHistory));
     } catch (geminiErr) {
       console.error("[hrd-copilot] Gemini fallback also failed, falling back to OpenRouter:", describeError(geminiErr));
       // Third tier — a different upstream from both Groq and Google, so all
       // three being rate-limited at once is far less likely than just two.
       try {
-        return await runOpenRouter(trimmedHistory);
+        return toClientResult(await runOpenRouter(trimmedHistory));
       } catch (openRouterErr) {
         console.error("[hrd-copilot] OpenRouter fallback also failed:", describeError(openRouterErr));
         if (isRateLimitError(groqErr) || isRateLimitError(geminiErr) || isRateLimitError(openRouterErr)) {

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import DirectorRequestsClient from "./DirectorRequestsClient";
 
 export interface DirectorRequest {
@@ -20,6 +21,7 @@ export interface DirectorRequest {
 }
 
 export default async function DirectorRequestsPage() {
+  await requireRole("director", "superadmin");
   const { data } = await supabaseAdmin
     .from("permintaan_sdm")
     .select("*")

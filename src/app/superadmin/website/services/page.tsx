@@ -76,7 +76,7 @@ export default function ServicesCMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("services", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("Services section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

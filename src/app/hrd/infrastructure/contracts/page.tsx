@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import ContractsClient from "./ContractsClient";
 import { positionRank } from "@/lib/org-hierarchy";
 
 export default async function ManajemenKontrakKerja() {
+  await requireRole("hrd", "superadmin");
   const [empRes, ctrRes, unitRes] = await Promise.all([
     supabaseAdmin
       .from("karyawan")

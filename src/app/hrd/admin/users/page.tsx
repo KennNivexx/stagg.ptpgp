@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Users, Clock } from "lucide-react";
 import UsersClient from "./UsersClient";
 
 export default async function ManajemenUser() {
+  await requireRole("hrd", "superadmin");
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
     .select("*")

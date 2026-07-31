@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { AlertTriangle, FileText } from "lucide-react";
 import IssueWarningButton from "@/components/IssueWarningButton";
 import { expireOldWarnings } from "@/app/actions/employee";
@@ -7,6 +8,7 @@ import WarningsTable from "./WarningsTable";
 export const dynamic = "force-dynamic";
 
 export default async function SuratPeringatan() {
+  await requireRole("hrd", "superadmin", "department_manager");
   await expireOldWarnings();
 
   const { data: employees } = await supabaseAdmin

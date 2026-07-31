@@ -1,8 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { Gift, Star, TrendingUp } from "lucide-react";
 import IncentivesForm from "./IncentivesForm";
 
 export default async function IncentivesPage() {
+  await requireRole("hrd", "superadmin", "director");
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
     .select("id, full_name, department, position, kode_jabatan, nik")

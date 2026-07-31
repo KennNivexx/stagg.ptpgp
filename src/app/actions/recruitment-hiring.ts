@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { hireCandidateFromPipeline } from "@/app/actions/recruitment";
+import { sendMail, emailOfferLetter } from "@/lib/mailer";
 
 /**
  * Recruitment Management, Round 2 — multi-panel interview scoring, a real
@@ -339,23 +340,34 @@ export async function setHazmatThirdPartyTest(
   return { success: true };
 }
 
-export async function sendOfferLetter(applicationId: string): Promise<{ error: string } | { success: true }> {
+export async function sendOfferLetter(applicationId: string): Promise<{ error: string } | { success: true; warning?: string }> {
   await requireRole("hrd", "superadmin");
-  const { data: appRow } = await supabaseAdmin.from("pelamar").select("email, offer_letter_content").eq("id", applicationId).maybeSingle();
-  const app = appRow as { email?: string; offer_letter_content?: string } | null;
+  const { data: appRow } = await supabaseAdmin.from("pelamar").select("email, full_name, offer_letter_content").eq("id", applicationId).maybeSingle();
+  const app = appRow as { email?: string; full_name?: string; offer_letter_content?: string } | null;
   if (!app?.offer_letter_content) return { error: "Buat offer letter terlebih dahulu." };
 
   await supabaseAdmin.from("pelamar").update({
     offer_letter_status: "Terkirim", offer_letter_sent_at: new Date().toISOString(),
   }).eq("id", applicationId);
 
+  let warning: string | undefined;
   if (app.email) {
     await supabaseAdmin.from("notifikasi").insert({
       id: crypto.randomUUID(), user_email: app.email,
       title: "Surat Penawaran Kerja", message: "Surat penawaran kerja Anda sudah tersedia di Portal Pelamar.",
       link: "/applicant/status",
     });
+    try {
+      await sendMail({
+        to: app.email,
+        subject: "Surat Penawaran Kerja — PT Pratama Galuh Perkasa",
+        html: emailOfferLetter({ name: app.full_name || "Pelamar", contentHtml: app.offer_letter_content }),
+      });
+    } catch (err) {
+      console.error("[recruitment-hiring] Failed to send offer letter email:", err);
+      warning = "Status terkirim, tetapi email offer letter gagal dikirim. Pelamar tetap bisa melihatnya di Portal Pelamar.";
+    }
   }
   revalidatePath("/hrd/recruitment/negotiations");
-  return { success: true };
+  return { success: true, ...(warning ? { warning } : {}) };
 }

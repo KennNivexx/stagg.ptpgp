@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getBonuses } from "@/app/actions/rewards";
 import { Award, Gift, Trophy } from "lucide-react";
 import BonusesClient from "./BonusesClient";
@@ -29,6 +30,7 @@ async function BonusesTabContent() {
 // page's Server Component output untouched; the original route files remain
 // intact for anyone navigating to them directly.
 export default async function BonusesPage() {
+  await requireRole("hrd", "superadmin", "director");
   const [bonusesContent, incentivesContent, awardsContent] = await Promise.all([
     safeTab(() => BonusesTabContent(), "Bonus"),
     safeTab(() => IncentivesPage(), "Insentif"),

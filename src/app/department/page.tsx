@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   Users, Briefcase, Clock, CheckCircle2, Plus, Send, AlertTriangle,
   X, Info, Tag, FileText, BookOpen, ChevronRight, Wallet,
@@ -10,6 +11,8 @@ import { addRequest, editRequest, cancelRequest } from "@/app/actions/requests";
 import { getRequestTypeOptions, getRequestReasonOptions, getEmploymentTypeOptions, runManpowerValidation, type ValidationResult } from "@/app/actions/manpower-validation";
 import { getManpowerApprovalStatus, type ApprovalStep } from "@/app/actions/manpower-approval";
 import EmptyState from "@/components/EmptyState";
+import AnimatedCounter from "@/components/AnimatedCounter";
+import RankedBar from "@/components/charts/RankedBar";
 import { ListChecks, Users2 } from "lucide-react";
 
 interface MasterOption { id: string; code: string; name: string }
@@ -747,6 +750,12 @@ export default function DeptDashboard() {
   const approvedCount = requests.filter(r => r.status === "Disetujui").length;
   const deptPositions = [...new Set(employees.map(e => e.position).filter(Boolean))];
 
+  const statusCounts = new Map<string, number>();
+  for (const r of requests) statusCounts.set(r.status, (statusCounts.get(r.status) || 0) + 1);
+  const statusDistribution = Array.from(statusCounts.entries())
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
+
   if (loading) {
     return (
       <div className="p-6 lg:p-8">
@@ -792,7 +801,7 @@ export default function DeptDashboard() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-pgp-navy mb-1">Dashboard Departemen</h1>
           <p className="text-sm text-gray-500">{deptName || "Departemen tidak ditemukan"}</p>
@@ -803,7 +812,7 @@ export default function DeptDashboard() {
         >
           <Plus size={15} /> Ajukan SDM
         </button>
-      </div>
+      </motion.div>
 
       {/* Banner peringatan jika departemen tidak terdeteksi */}
       {!deptName && !loading && (
@@ -819,24 +828,43 @@ export default function DeptDashboard() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        initial="hidden"
+        animate="show"
+        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
+      >
         {[
           { label: "Total Karyawan", value: employees.length, icon: <Users size={18} />, color: "bg-blue-50 text-blue-600" },
           { label: "Headcount", value: headcount, icon: <Briefcase size={18} />, color: "bg-violet-50 text-violet-600" },
           { label: "Request Pending", value: pendingCount, icon: <Clock size={18} />, color: "bg-amber-50 text-amber-600" },
           { label: "Request Disetujui", value: approvedCount, icon: <CheckCircle2 size={18} />, color: "bg-emerald-50 text-emerald-600" },
         ].map(s => (
-          <div key={s.label} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <motion.div
+            key={s.label}
+            variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } } }}
+            whileHover={{ y: -3, boxShadow: "0 12px 24px -8px rgba(15,23,42,0.12)" }}
+            className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-shadow"
+          >
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-xl ${s.color}`}>{s.icon}</div>
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase">{s.label}</p>
-                <p className="text-xl font-extrabold text-slate-800">{s.value}</p>
+                <p className="text-xl font-extrabold text-slate-800"><AnimatedCounter value={s.value} /></p>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
+
+      {/* Distribusi status permintaan */}
+      {statusDistribution.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.15 }} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h3 className="font-extrabold text-slate-800 text-sm mb-1">Distribusi Status Permintaan SDM</h3>
+          <p className="text-xs text-slate-400 mb-4">Ringkasan status seluruh permintaan yang pernah diajukan departemen ini.</p>
+          <RankedBar data={statusDistribution} valueSuffix=" permintaan" />
+        </motion.div>
+      )}
 
       {/* Riwayat permintaan */}
       {requests.length > 0 && (
@@ -846,8 +874,14 @@ export default function DeptDashboard() {
             <span className="text-[10px] text-slate-400">{requests.length} permintaan</span>
           </div>
           <div className="divide-y divide-slate-50 max-h-64 overflow-y-auto">
-            {requests.map(req => (
-              <div key={req.id} className="px-5 py-3 flex items-start justify-between gap-3">
+            {requests.map((req, i) => (
+              <motion.div
+                key={req.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: Math.min(i * 0.04, 0.4) }}
+                className="px-5 py-3 flex items-start justify-between gap-3"
+              >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-bold text-slate-800">{req.position}</span>
@@ -914,7 +948,7 @@ export default function DeptDashboard() {
                 }`}>
                   {req.status}
                 </span>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>

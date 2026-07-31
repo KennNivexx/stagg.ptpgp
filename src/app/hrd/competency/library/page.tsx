@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import LibraryClient from "./LibraryClient";
 
 type Skill = {
@@ -24,6 +25,7 @@ type PositionSkill = {
 };
 
 export default async function LibraryPage() {
+  await requireRole("hrd", "superadmin");
   const [skillRes, posSkillRes, posRes] = await Promise.all([
     supabaseAdmin.from("master_kompetensi").select("id, name, category, department, jenis_kompetensi").order("category").order("name"),
     supabaseAdmin.from("kompetensi_jabatan").select("position_code, skill_id, required_level, jabatan_id"),

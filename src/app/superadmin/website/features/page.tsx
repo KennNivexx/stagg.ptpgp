@@ -74,7 +74,7 @@ export default function FeaturesCMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("features", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("Features section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

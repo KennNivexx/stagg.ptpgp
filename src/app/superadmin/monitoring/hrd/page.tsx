@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, UserCog, Mail } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import EmptyState from "@/components/EmptyState";
 
 function getStatusBadge(status: string) {
@@ -12,6 +13,7 @@ function getStatusBadge(status: string) {
 }
 
 export default async function MonitoringHRD() {
+  await requireRole("superadmin");
   // Role lives in users.role, not embedded in employees.address — resolve
   // HRD staff by joining users(role='hrd') to employees via email.
   const [{ data: hrdUsers, error }, { data: allEmployees }] = await Promise.all([

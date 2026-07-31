@@ -1,9 +1,11 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { BookOpen, FileText, FolderOpen, Video, ChevronRight, CheckCircle2, ShieldAlert, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import SectionQuickLinks from "@/components/hrd/SectionQuickLinks";
 
 export default async function HRDKnowledge() {
+  await requireRole("hrd", "superadmin");
   const today = new Date().toISOString().slice(0, 10);
 
   const [sopRes, policyRes, articleRes, videoRes] = await Promise.all([

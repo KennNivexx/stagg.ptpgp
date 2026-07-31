@@ -1,9 +1,11 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { TrendingUp, ArrowUp, Briefcase, Building } from "lucide-react";
 import CareerPathForm from "./CareerPathForm";
 import EmptyState from "@/components/EmptyState";
 
 export default async function CareerPathPage() {
+  await requireRole("hrd", "superadmin", "department_manager");
   const { data: departments } = await supabaseAdmin
     .from("departemen")
     .select("name")

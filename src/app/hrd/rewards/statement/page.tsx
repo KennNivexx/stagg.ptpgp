@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { FileText, Percent } from "lucide-react";
 import StatementClient from "./StatementClient";
 import HubTabs from "@/components/hrd/HubTabs";
@@ -28,6 +29,7 @@ async function StatementTabContent() {
 // without an await. The original route files remain intact for anyone
 // navigating to them directly.
 export default async function TotalRewardsStatementPage() {
+  await requireRole("hrd", "superadmin", "director");
   const statementContent = await safeTab(() => StatementTabContent(), "Total Rewards Statement");
 
   return (

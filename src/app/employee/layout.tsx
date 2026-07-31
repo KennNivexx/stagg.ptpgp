@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
+import ProfilePhotoUploader from "@/components/ProfilePhotoUploader";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import SOSButton from "@/components/SOSButton";
@@ -250,9 +251,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
         {/* User Card & Logout */}
         <div className="p-4 lg:px-2 xl:px-4 border-t border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-3 p-2 mb-3 rounded-xl bg-white border border-slate-100 lg:justify-center xl:justify-start">
-            <div className="h-9 w-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
-              {clientUserName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
-            </div>
+            <ProfilePhotoUploader currentUrl={user?.photo_url} name={clientUserName} size={36} fallbackClassName="bg-slate-900" />
             <div className="flex-1 min-w-0 lg:hidden xl:block">
               <p className="text-xs font-bold text-slate-900 truncate">{clientUserName}</p>
               <p className="text-[10px] text-slate-400 truncate">{userRoleLabel}</p>

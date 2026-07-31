@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { requireRole } from "@/lib/auth-guard";
 import { getOrgStructure } from "@/app/actions/org";
 import OrgStructureClient from "./OrgStructureClient";
 import type { OrgUnit } from "@/types/org";
@@ -9,6 +10,7 @@ import type { OrgUnit } from "@/types/org";
 export const dynamic = "force-dynamic";
 
 export default async function OrgStructurePage() {
+  await requireRole("hrd", "superadmin");
   const org = await getOrgStructure();
 
   const { data: employeesData } = await supabaseAdmin

@@ -50,7 +50,7 @@ export default function CTACMS() {
     setSuccess("");
     try {
       const res = await saveWebsiteSettings("cta", form as Record<string, unknown>);
-      if (res.error) setError(res.error);
+      if ("error" in res) setError(res.error);
       else {
         setSuccess("CTA section berhasil disimpan.");
         setTimeout(() => setSuccess(""), 3000);

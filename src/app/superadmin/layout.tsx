@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
+import ProfilePhotoUploader from "@/components/ProfilePhotoUploader";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import { GROUP_COLOR_CLASSES } from "@/lib/menu-colors";
@@ -269,9 +270,7 @@ export default function SuperadminLayout({ children }: { children: ReactNode }) 
         {/* User Profile Card & Logout */}
         <div className="p-4 lg:px-2 xl:px-4 border-t border-slate-800 bg-[#0B0F19]">
           <div className="flex items-center gap-3 p-2 mb-3 rounded-lg bg-slate-900/40 lg:justify-center xl:justify-start">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-sm shadow-inner shrink-0">
-              {userName.charAt(0).toUpperCase()}
-            </div>
+            <ProfilePhotoUploader currentUrl={user?.photo_url} name={userName} size={40} fallbackClassName="bg-gradient-to-br from-amber-500 to-amber-700" />
             <div className="flex-1 min-w-0 lg:hidden xl:block">
               <p className="text-xs font-semibold text-white truncate">{userName}</p>
               <p className="text-[10px] text-slate-400 truncate">{userEmail}</p>
