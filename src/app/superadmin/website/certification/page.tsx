@@ -41,7 +41,7 @@ function ItemList({
         </button>
       </div>
       {items.map((item, idx) => (
-        <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+        <div key={item.name} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">#{idx + 1}</span>
             {items.length > 1 && (

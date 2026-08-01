@@ -75,7 +75,7 @@ export default function CoverageSection({
             </h3>
             <ul className="grid grid-cols-2 gap-y-6 gap-x-4">
               {domestik.map((item, idx) => (
-                <li key={idx} className="flex items-center gap-3 text-zinc-950 text-sm font-bold">
+                <li key={item.region} className="flex items-center gap-3 text-zinc-950 text-sm font-bold">
                   <div className="w-2.5 h-2.5 rounded-full bg-pgp-red"></div> {item.region}
                 </li>
               ))}
@@ -89,7 +89,7 @@ export default function CoverageSection({
             </h3>
             <ul className="grid grid-cols-2 gap-y-6 gap-x-4">
               {internasional.map((item, idx) => (
-                <li key={idx} className="flex items-center gap-3 text-zinc-950 text-sm font-bold">
+                <li key={item.region} className="flex items-center gap-3 text-zinc-950 text-sm font-bold">
                   <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> {item.region}
                 </li>
               ))}

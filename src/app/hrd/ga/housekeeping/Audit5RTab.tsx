@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, X, Save, Sparkles } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { submitAudit5R, type Audit5R } from "@/app/actions/ga-housekeeping";
@@ -13,6 +14,7 @@ export default function Audit5RTab({ initialAudits }: { initialAudits: Audit5R[]
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const router = useRouter();
 
   const flash = (type: "success" | "error", text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 3000); };
 
@@ -27,7 +29,7 @@ export default function Audit5RTab({ initialAudits }: { initialAudits: Audit5R[]
     setShowForm(false);
     setForm(emptyForm);
     flash("success", "Audit 5R berhasil disimpan.");
-    window.location.reload();
+    router.refresh();
   };
 
   return (

@@ -95,7 +95,7 @@ export default function ServicesGridSection({
         {hasImages ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {items.map((service, index) => (
-              <div key={index} className="group bg-white border border-zinc-200/40 rounded-3xl overflow-hidden hover:border-pgp-red/40 hover:shadow-md transition-all duration-300">
+              <div key={service.title} className="group bg-white border border-zinc-200/40 rounded-3xl overflow-hidden hover:border-pgp-red/40 hover:shadow-md transition-all duration-300">
                 <div className="aspect-[16/9] overflow-hidden relative">
                   <Image
                     src={service.image_url || ""}
@@ -121,7 +121,7 @@ export default function ServicesGridSection({
               const IconComponent = service.icon ? iconMap[service.icon] : null;
               return (
               <motion.div
-                key={index}
+                key={service.title}
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-30px" }}

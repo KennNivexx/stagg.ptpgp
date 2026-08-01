@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, KeyRound, Camera } from "lucide-react";
 import { getEmployeeById, updateEmployee, resetEmployeePassword } from "@/app/actions/hrd";
@@ -17,6 +18,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState("");
   const [passwordResult, setPasswordResult] = useState<{ password: string; email: string; phone: string } | null>(null);
+  const router = useRouter();
   const [deptList, setDeptList] = useState<string[]>([]);
   const [faceStatus, setFaceStatus] = useState<Record<string, unknown> | null>(null);
   const [showFaceReg, setShowFaceReg] = useState(false);
@@ -135,7 +137,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
       } else if (salaryRes.error) {
         setError("Data karyawan tersimpan, tetapi gagal menyimpan data gaji: " + salaryRes.error);
       } else {
-        window.location.href = "/hrd/employees";
+        router.push("/hrd/employees");
       }
     } catch {
       setError("Terjadi kesalahan.");

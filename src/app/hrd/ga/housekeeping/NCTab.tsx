@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, X, Save, AlertOctagon } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { createNC, updateNCStatus, type LaporanNC, type Audit5R } from "@/app/actions/ga-housekeeping";
@@ -19,6 +20,7 @@ export default function NCTab({ initialAudits, initialReports }: { initialAudits
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const router = useRouter();
 
   const flash = (type: "success" | "error", text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 3000); };
 
@@ -33,7 +35,7 @@ export default function NCTab({ initialAudits, initialReports }: { initialAudits
     setShowForm(false);
     setForm(emptyForm);
     flash("success", "Laporan ketidaksesuaian berhasil disimpan.");
-    window.location.reload();
+    router.refresh();
   };
 
   const advance = async (id: string, status: "Ditindaklanjuti" | "Ditutup") => {

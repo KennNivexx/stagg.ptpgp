@@ -181,7 +181,7 @@ export default function LinksSettingsPage() {
                 </p>
               )}
               {form[section.key].map((link, idx) => (
-                <div key={idx} className="flex items-start gap-3">
+                <div key={link.label} className="flex items-start gap-3">
                   <div className="pt-3 text-gray-300">
                     <GripVertical size={14} />
                   </div>

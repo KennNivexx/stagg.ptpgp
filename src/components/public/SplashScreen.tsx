@@ -64,6 +64,7 @@ export default function SplashScreen() {
                 animate={{ x: ["-10%", "10%"] }}
                 transition={{ duration: 14, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
               >
+                {/* static list - index key is safe */}
                 {[0, 1, 2].map((i) => (
                   <span key={i} className="block w-40 h-12 rounded-full bg-white/90 blur-md" />
                 ))}
@@ -73,6 +74,7 @@ export default function SplashScreen() {
                 animate={{ x: ["6%", "-14%"] }}
                 transition={{ duration: 19, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
               >
+                {/* static list - index key is safe */}
                 {[0, 1].map((i) => (
                   <span key={i} className="block w-56 h-16 rounded-full bg-white/70 blur-lg" />
                 ))}
@@ -136,6 +138,7 @@ export default function SplashScreen() {
                   animate={{ x: ["0%", "-4%"] }}
                   transition={{ duration: 22, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
                 >
+                  {/* static list - index key is safe */}
                   {BUILDINGS.map((b, i) => (
                     <g key={i}>
                       <rect x={b.x} y={120 - b.h} width={b.w} height={b.h} fill="#8fa3c7" />

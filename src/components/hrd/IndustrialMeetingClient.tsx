@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { submitIndustrialMeeting, type MeetingType } from "@/app/actions/employee-relations";
 import EmptyState from "@/components/EmptyState";
 import { Gavel, Inbox } from "lucide-react";
@@ -12,6 +13,7 @@ export default function IndustrialMeetingClient({ type, title, description, init
   const rows = initialRows;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = (formData: FormData) => {
@@ -20,7 +22,7 @@ export default function IndustrialMeetingClient({ type, title, description, init
       const res = await submitIndustrialMeeting(formData);
       if ("error" in res) { setError(res.error || "Gagal memproses."); return; }
       formRef.current?.reset();
-      window.location.reload();
+      router.refresh();
     });
   };
 

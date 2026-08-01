@@ -11,11 +11,15 @@ import {
 import { submitApplication } from "@/app/actions/hrd";
 import { Job } from "@/types";
 
-type Experience = { company: string; position: string; start: string; end: string; current: boolean; description: string };
-type Education = { school: string; degree: string; field: string; start: string; end: string };
+type Experience = { _key: string; company: string; position: string; start: string; end: string; current: boolean; description: string };
+type Education = { _key: string; school: string; degree: string; field: string; start: string; end: string };
 
-const emptyExperience: Experience = { company: "", position: "", start: "", end: "", current: false, description: "" };
-const emptyEducation: Education = { school: "", degree: "", field: "", start: "", end: "" };
+function makeExperience(): Experience {
+  return { _key: crypto.randomUUID(), company: "", position: "", start: "", end: "", current: false, description: "" };
+}
+function makeEducation(): Education {
+  return { _key: crypto.randomUUID(), school: "", degree: "", field: "", start: "", end: "" };
+}
 
 export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] }) {
   const [jobs] = useState<Job[]>(initialJobs || []);
@@ -88,7 +92,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
   };
 
   const addExperience = () => {
-    setFormData({ ...formData, experiences: [...formData.experiences, { ...emptyExperience }] });
+    setFormData({ ...formData, experiences: [...formData.experiences, makeExperience()] });
   };
 
   const updateExperience = (idx: number, field: keyof Experience, value: string | boolean) => {
@@ -102,7 +106,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
   };
 
   const addEducation = () => {
-    setFormData({ ...formData, educations: [...formData.educations, { ...emptyEducation }] });
+    setFormData({ ...formData, educations: [...formData.educations, makeEducation()] });
   };
 
   const updateEducation = (idx: number, field: keyof Education, value: string) => {
@@ -486,6 +490,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                       <div className="mb-5">
                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tanggung Jawab</h4>
                         <ul className="space-y-1.5">
+                          {/* static list - index key is safe */}
                           {activeJob.job_desk.split("\n").filter(Boolean).map((line, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
                               <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-pgp-red shrink-0" />
@@ -501,6 +506,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                       <div className="mb-6 bg-amber-50 border border-amber-100 rounded-2xl p-5">
                         <h4 className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-3">Persyaratan</h4>
                         <ul className="space-y-2">
+                          {/* static list - index key is safe */}
                           {activeJob.requirements.split("\n").filter(Boolean).map((req, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-amber-900">
                               <CheckCircle2 size={14} className="mt-0.5 text-amber-500 shrink-0" />
@@ -613,7 +619,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                             <p className="text-xs text-gray-400 text-center py-6">Belum ada pengalaman kerja. Klik &quot;Tambah&quot; untuk menambahkan.</p>
                           )}
                           {formData.experiences.map((exp, idx) => (
-                            <div key={idx} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-3 relative">
+                            <div key={exp._key} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-3 relative">
                               <button type="button" onClick={() => removeExperience(idx)}
                                 className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors">
                                 <Trash2 size={14} />
@@ -669,7 +675,7 @@ export default function InteractiveCareer({ initialJobs }: { initialJobs: Job[] 
                             <p className="text-xs text-gray-400 text-center py-6">Belum ada riwayat pendidikan.</p>
                           )}
                           {formData.educations.map((edu, idx) => (
-                            <div key={idx} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-3 relative">
+                            <div key={edu._key} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-3 relative">
                               <button type="button" onClick={() => removeEducation(idx)}
                                 className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors">
                                 <Trash2 size={14} />

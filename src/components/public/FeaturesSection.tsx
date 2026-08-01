@@ -93,7 +93,7 @@ export default function FeaturesSection({
             const fromX = col === 0 ? -40 : col === 2 ? 40 : 0;
             return (
               <motion.div
-                key={index}
+                key={feature.title}
                 initial={{ opacity: 0, x: fromX }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-40px" }}

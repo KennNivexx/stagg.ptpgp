@@ -3,6 +3,7 @@ import { Inter, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import ClientLayout from "@/components/ClientLayout";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -36,12 +37,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={cn("h-full", "antialiased", "scroll-smooth", inter.variable, "font-sans", geist.variable)}>
+    <html lang="id" className={cn("h-full", "antialiased", "scroll-smooth", inter.variable, "font-sans", geist.variable)} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
       </head>
       <body className="min-h-full flex flex-col font-sans">
-        {children}
+        <ClientLayout>{children}</ClientLayout>
         <SpeedInsights />
       </body>
     </html>

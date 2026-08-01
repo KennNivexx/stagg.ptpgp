@@ -173,7 +173,7 @@ export default function GalleryCMS() {
           </div>
           <div className="p-5 space-y-4">
             {form.images.map((img, idx) => (
-              <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+              <div key={img.url} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-500">Gambar #{idx + 1}</span>
                   {form.images.length > 1 && (

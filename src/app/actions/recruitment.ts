@@ -3,10 +3,11 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
-import { hashPassword, generateRandomPassword } from "@/lib/auth";
+import { hashPassword, generateRandomPassword, generateCompanyEmailUnique } from "@/lib/auth";
 import { generateOneTimeToken } from "@/lib/otp-token";
 import { sendMail, emailEmployeeLoginLink, emailInterviewInvite, emailApplicationRejected } from "@/lib/mailer";
 import { openVacancyExternally, insertVacancyWithNumber } from "@/lib/vacancy";
+import { auditLog } from "@/lib/audit";
 
 // pelamar.job_id has no FK constraint registered in the schema cache, so a
 // PostgREST embed shorthand fails outright (PGRST200) — resolve manually.
@@ -37,7 +38,7 @@ export async function getJobPostings() {
 }
 
 export async function hireCandidate(formData: FormData) {
-  await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin");
 
   const job_posting_id = formData.get("job_posting_id") as string;
   const full_name = formData.get("full_name") as string;
@@ -60,6 +61,17 @@ export async function hireCandidate(formData: FormData) {
   }
 
   const dept = department || (jobPosting.department as string);
+
+  const posName = position || (jobPosting.position as string) || "";
+  let kodeJabatan = "";
+  if (posName) {
+    const { data: jabatanRow } = await supabaseAdmin
+      .from("jabatan")
+      .select("code")
+      .eq("name", posName)
+      .maybeSingle();
+    if (jabatanRow) kodeJabatan = (jabatanRow as { code: string }).code;
+  }
 
   let kode = "";
   const { data: orgUnit } = await supabaseAdmin
@@ -86,9 +98,15 @@ export async function hireCandidate(formData: FormData) {
 
   const normalizedEmail = email.toLowerCase().trim();
 
+  const { data: existingEmails } = await supabaseAdmin
+    .from("karyawan")
+    .select("email");
+  const usedEmails = (existingEmails || []).map((e: Record<string, unknown>) => e.email as string);
+  const companyEmail = generateCompanyEmailUnique(full_name, usedEmails);
+
   const password = generateRandomPassword();
   const passwordHash = await hashPassword(password);
-  const oneTimeToken = generateOneTimeToken(normalizedEmail);
+  const oneTimeToken = generateOneTimeToken(companyEmail);
   const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
   const { error: usersCheckError } = await supabaseAdmin
@@ -109,12 +127,13 @@ export async function hireCandidate(formData: FormData) {
     .insert([
       {
         full_name,
-        email: normalizedEmail,
+        email: companyEmail,
         department: dept,
         position: position || jobPosting.position,
         join_date: new Date().toISOString().split("T")[0],
         status: "Tetap",
         kode: kode || null,
+        kode_jabatan: kodeJabatan || null,
         address: addressValue,
       },
     ]);
@@ -123,12 +142,17 @@ export async function hireCandidate(formData: FormData) {
     return { error: empError.message };
   }
 
+  await supabaseAdmin
+    .from("pelamar")
+    .update({ status: "Diterima" })
+    .eq("email", normalizedEmail)
+    .eq("job_id", job_posting_id);
+
   if (hasUsersTable) {
-    // Upsert: if they had an applicant account, upgrade it; otherwise insert
     const { data: existingUser } = await supabaseAdmin
       .from("pengguna")
       .select("id, role")
-      .eq("email", normalizedEmail)
+      .eq("email", companyEmail)
       .maybeSingle();
 
     if (existingUser) {
@@ -141,16 +165,36 @@ export async function hireCandidate(formData: FormData) {
         application_id: null,
         one_time_token: oneTimeToken,
         one_time_token_expires: tokenExpires,
-      }).eq("email", normalizedEmail);
+      }).eq("email", companyEmail);
     } else {
-      await supabaseAdmin.from("pengguna").insert([{
-        email: normalizedEmail,
-        password_hash: passwordHash,
-        role: "employee",
-        full_name,
-        one_time_token: oneTimeToken,
-        one_time_token_expires: tokenExpires,
-      }]);
+      const { data: applicantUser } = await supabaseAdmin
+        .from("pengguna")
+        .select("id, role")
+        .eq("email", normalizedEmail)
+        .maybeSingle();
+
+      if (applicantUser) {
+        await supabaseAdmin.from("pengguna").update({
+          email: companyEmail,
+          password_hash: passwordHash,
+          role: "employee",
+          full_name,
+          is_temporary: false,
+          expires_at: null,
+          application_id: null,
+          one_time_token: oneTimeToken,
+          one_time_token_expires: tokenExpires,
+        }).eq("email", normalizedEmail);
+      } else {
+        await supabaseAdmin.from("pengguna").insert([{
+          email: companyEmail,
+          password_hash: passwordHash,
+          role: "employee",
+          full_name,
+          one_time_token: oneTimeToken,
+          one_time_token_expires: tokenExpires,
+        }]);
+      }
     }
   }
 
@@ -174,16 +218,24 @@ export async function hireCandidate(formData: FormData) {
   revalidatePath("/hrd/workplace/structure");
   revalidatePath("/hrd/workforce/headcount");
 
+  await supabaseAdmin.from("notifikasi").insert({
+    id: crypto.randomUUID(),
+    user_email: companyEmail,
+    title: "Selamat! Anda telah diterima",
+    message: `Anda telah diterima sebagai ${posName || position || (jobPosting.position as string)} di ${dept}.`,
+    link: "/employee",
+  });
+
   // Send welcome email with employee credentials
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://portal.ptpgp.co.id";
   let emailWarning: string | undefined;
   try {
     await sendMail({
-      to: normalizedEmail,
+      to: companyEmail,
       subject: "Selamat! Anda Resmi Bergabung — PT Pratama Galuh Perkasa",
       html: emailEmployeeLoginLink({
         name: full_name,
-        email: normalizedEmail,
+        email: companyEmail,
         loginUrl: `${appUrl}/login/token?t=${oneTimeToken}`,
       }),
     });
@@ -191,6 +243,14 @@ export async function hireCandidate(formData: FormData) {
     console.error("Failed to send employee credentials email:", err);
     emailWarning = "Akun berhasil dibuat tetapi email kredensial gagal dikirim. Beritahu karyawan untuk login dengan email mereka.";
   }
+
+  auditLog({
+    action: "applicant.convert",
+    targetId: job_posting_id,
+    targetName: full_name,
+    performedBy: user,
+    detail: `Direkrut melalui Hire Candidate — ${dept} / ${posName || position || (jobPosting.position as string)}`,
+  });
 
   return { success: true, password, ...(emailWarning ? { warning: emailWarning } : {}) };
 }

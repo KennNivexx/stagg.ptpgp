@@ -93,7 +93,7 @@ export default function GallerySection({
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {photos.map((photo, index) => (
             <button
-              key={index}
+              key={photo.url}
               type="button"
               onClick={() => setActiveIndex(index)}
               className="flex flex-col text-left cursor-zoom-in"

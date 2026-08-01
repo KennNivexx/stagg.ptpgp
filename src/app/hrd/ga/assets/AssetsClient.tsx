@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Boxes, Plus, X, Save, Pencil, Wrench, Search } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import {
@@ -36,6 +37,7 @@ export default function AssetsClient({ initialAssets, initialRepairRequests }: {
   const [repairForm, setRepairForm] = useState({ asset_id: "", jenis_permintaan: "Perbaikan", alasan: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [divisiFilter, setDivisiFilter] = useState("");
 
@@ -78,7 +80,7 @@ export default function AssetsClient({ initialAssets, initialRepairRequests }: {
         kondisi: form.kondisi as Aset["kondisi"], status: form.status as Aset["status"],
       } : a));
     } else {
-      window.location.reload();
+      router.refresh();
     }
   };
 
@@ -93,7 +95,7 @@ export default function AssetsClient({ initialAssets, initialRepairRequests }: {
     setShowRepairForm(false);
     setRepairForm({ asset_id: "", jenis_permintaan: "Perbaikan", alasan: "" });
     flash("success", "Permintaan berhasil diajukan.");
-    window.location.reload();
+    router.refresh();
   };
 
   const handleDecision = async (id: string, decision: "Disetujui" | "Ditolak" | "Selesai") => {

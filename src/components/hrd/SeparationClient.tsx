@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { submitSeparation, type SeparationType } from "@/app/actions/employee-relations";
 import EmptyState from "@/components/EmptyState";
 import EmployeeCombobox from "@/components/EmployeeCombobox";
@@ -22,6 +23,7 @@ export default function SeparationClient({
   const rows = initialRows;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = (formData: FormData) => {
@@ -30,7 +32,7 @@ export default function SeparationClient({
       const res = await submitSeparation(formData);
       if ("error" in res) { setError(res.error || "Gagal memproses."); return; }
       formRef.current?.reset();
-      window.location.reload();
+      router.refresh();
     });
   };
 

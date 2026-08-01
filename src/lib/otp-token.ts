@@ -2,7 +2,7 @@
  * One-time login token utilities.
  * SERVER-ONLY — do not import from client components.
  */
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 function getOtpSecret(): string {
   const secret = process.env.SESSION_SECRET;
@@ -23,8 +23,9 @@ export function verifyOneTimeToken(token: string): { email: string } | null {
   try {
     const [data, sig] = token.split(".");
     if (!data || !sig) return null;
-    const expected = createHmac("sha256", getOtpSecret()).update(data).digest("base64url");
-    if (sig !== expected) return null;
+    const expected = Buffer.from(createHmac("sha256", getOtpSecret()).update(data).digest("base64url"));
+    const actual = Buffer.from(sig);
+    if (expected.length !== actual.length || !timingSafeEqual(actual, expected)) return null;
     const payload = JSON.parse(Buffer.from(data, "base64url").toString("utf-8"));
     if (Date.now() > payload.exp) return null;
     if (!payload.email) return null;

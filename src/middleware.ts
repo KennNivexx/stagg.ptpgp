@@ -17,10 +17,9 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => p.test(pathname));
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  // Resolve session first (needed for both login redirect and role checks)
   const sessionToken = request.cookies.get('session_token')?.value;
 
   let role: string | null = null;

@@ -72,7 +72,9 @@ export type AuditAction =
   | "ga.housekeeping.nc_create"
   | "ga.housekeeping.nc_update"
   | "meeting.room_booking_status"
-  | "meeting.notulen_approve";
+  | "meeting.notulen_approve"
+  | "promotion.submit"
+  | "promotion.approve";
 
 export async function auditLog(params: {
   action: AuditAction;

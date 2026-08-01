@@ -248,6 +248,16 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   const status = formData.get("status") as string || "Tetap";
   const password = (formData.get("password") as string) || generateNumericPassword();
 
+  let kodeJabatan = "";
+  if (position) {
+    const { data: jabatanRow } = await supabaseAdmin
+      .from("jabatan")
+      .select("code")
+      .eq("name", position)
+      .maybeSingle();
+    if (jabatanRow) kodeJabatan = (jabatanRow as { code: string }).code;
+  }
+
   const { data: application, error: appError } = await supabaseAdmin
     .from("pelamar")
     .select("full_name, email, phone")
@@ -259,8 +269,6 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   }
 
   const normalizedEmail = (application.email as string).toLowerCase().trim();
-  const oneTimeToken = generateOneTimeToken(normalizedEmail);
-  const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
   // Check if a non-applicant user already exists with this email
   if (await usersTableExists()) {
@@ -277,6 +285,28 @@ export async function convertApplicantToEmployee(applicationId: string, formData
       }
     }
   }
+
+  // Generate company email based on full name
+  const { data: existingEmails } = await supabaseAdmin
+    .from("karyawan")
+    .select("email");
+  const usedEmails = (existingEmails || []).map((e: Record<string, unknown>) => e.email as string);
+  const companyEmail = generateCompanyEmailUnique(application.full_name as string, usedEmails);
+
+  // Check company email uniqueness in pengguna table
+  if (await usersTableExists()) {
+    const { data: dupUser } = await supabaseAdmin
+      .from("pengguna")
+      .select("id")
+      .eq("email", companyEmail)
+      .maybeSingle();
+    if (dupUser) {
+      return { error: `Email perusahaan ${companyEmail} sudah terdaftar. Tidak dapat mengkonversi pelamar.` };
+    }
+  }
+
+  const oneTimeToken = generateOneTimeToken(companyEmail);
+  const tokenExpires = new Date(Date.now() + 86400000).toISOString();
 
   // Generate sequential org kode: try position → department name in org_units
   let kode = "";
@@ -311,13 +341,14 @@ export async function convertApplicantToEmployee(applicationId: string, formData
     .from("karyawan")
     .insert([{
       full_name: application.full_name,
-      email: normalizedEmail,
+      email: companyEmail,
       phone: application.phone || null,
       department,
       position,
       join_date,
       status,
       ...(kode ? { kode } : {}),
+      ...(kodeJabatan ? { kode_jabatan: kodeJabatan } : {}),
     }]);
 
   if (empError) {
@@ -338,6 +369,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
       const { error: updateError } = await supabaseAdmin
         .from("pengguna")
         .update({
+          email: companyEmail,
           password_hash: passwordHash,
           role: "employee",
           is_temporary: false,
@@ -356,7 +388,7 @@ export async function convertApplicantToEmployee(applicationId: string, formData
       const { error: insertError } = await supabaseAdmin
         .from("pengguna")
         .insert([{
-          email: normalizedEmail,
+          email: companyEmail,
           password_hash: passwordHash,
           role: "employee",
           full_name: application.full_name,
@@ -378,16 +410,24 @@ export async function convertApplicantToEmployee(applicationId: string, formData
   revalidatePath("/hrd/recruitment");
   revalidatePath("/hrd/employees");
 
+  await supabaseAdmin.from("notifikasi").insert({
+    id: crypto.randomUUID(),
+    user_email: companyEmail,
+    title: "Selamat! Anda telah diterima",
+    message: `Anda telah diterima sebagai ${position} di ${department}.`,
+    link: "/employee",
+  });
+
   // Send welcome email with employee credentials
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://portal.ptpgp.co.id";
   let emailWarning: string | undefined;
   try {
     await sendMail({
-      to: normalizedEmail,
+      to: companyEmail,
       subject: "Selamat! Anda Resmi Bergabung — PT Pratama Galuh Perkasa",
       html: emailEmployeeLoginLink({
         name: application.full_name as string,
-        email: normalizedEmail,
+        email: companyEmail,
         loginUrl: `${appUrl}/login/token?t=${oneTimeToken}`,
       }),
     });

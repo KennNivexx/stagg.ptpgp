@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { submitCareerTransaction, type CareerTransactionType } from "@/app/actions/career-development";
 import EmptyState from "@/components/EmptyState";
 import EmployeeCombobox from "@/components/EmployeeCombobox";
@@ -25,6 +26,7 @@ export default function CareerTransactionClient({
   const rows = initialRows;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = (formData: FormData) => {
@@ -33,7 +35,7 @@ export default function CareerTransactionClient({
       const res = await submitCareerTransaction(formData);
       if ("error" in res) { setError(res.error || "Gagal memproses."); return; }
       formRef.current?.reset();
-      window.location.reload();
+      router.refresh();
     });
   };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, X, Save, ClipboardCheck, Trash2 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { submitChecklistKebersihan, type ChecklistKebersihan, type ChecklistItem } from "@/app/actions/ga-housekeeping";
@@ -14,6 +15,7 @@ export default function ChecklistTab({ initialChecklist }: { initialChecklist: C
   const [items, setItems] = useState<ChecklistItem[]>([{ item: "", status: "OK" }]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const router = useRouter();
 
   const flash = (type: "success" | "error", text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 3000); };
 
@@ -35,7 +37,7 @@ export default function ChecklistTab({ initialChecklist }: { initialChecklist: C
     setForm(emptyForm);
     setItems([{ item: "", status: "OK" }]);
     flash("success", "Checklist berhasil disimpan.");
-    window.location.reload();
+    router.refresh();
   };
 
   return (

@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { recomputeAllCareerAssessments } from "@/app/actions/career-development";
 
 export default function RecomputeButton() {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
+  const router = useRouter();
 
   const handleClick = () => {
     const period = new Date().toISOString().slice(0, 7);
@@ -14,7 +16,7 @@ export default function RecomputeButton() {
       const res = await recomputeAllCareerAssessments(period);
       if ("error" in res) { setMessage(res.error); return; }
       setMessage(`${res.count} career score dihitung ulang untuk periode ${period}.`);
-      window.location.reload();
+      router.refresh();
     });
   };
 

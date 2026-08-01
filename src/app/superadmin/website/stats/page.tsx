@@ -171,7 +171,7 @@ export default function StatsCMS() {
             </div>
             {form.stats.map((stat, idx) => (
               <div
-                key={idx}
+                key={stat.label}
                 className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3"
               >
                 <div className="flex items-center justify-between">

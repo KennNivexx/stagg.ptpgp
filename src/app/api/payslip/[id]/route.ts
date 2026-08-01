@@ -7,56 +7,55 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const autoprint = request.nextUrl.searchParams.get("autoprint") === "1";
+  try {
+    const { id } = await params;
+    const autoprint = request.nextUrl.searchParams.get("autoprint") === "1";
 
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session_token")?.value;
-  if (!sessionToken) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get("session_token")?.value;
+    if (!sessionToken) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const session = await verifySession(sessionToken);
-  if (!session?.role) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await verifySession(sessionToken);
+    if (!session?.role) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: slip } = await supabaseAdmin
-    .from("penggajian")
-    .select("*, karyawan!inner(full_name, email, department, position, employee_code)")
-    .eq("id", id)
-    .single();
+    const { data: slip, error: dbError } = await supabaseAdmin
+      .from("penggajian")
+      .select("*, karyawan!inner(full_name, email, department, position, employee_code)")
+      .eq("id", id)
+      .single();
 
-  if (!slip) return NextResponse.json({ error: "Slip tidak ditemukan." }, { status: 404 });
+    if (dbError) {
+      console.error("[payslip] DB error:", dbError.message);
+      return NextResponse.json({ error: "Gagal mengambil data slip gaji." }, { status: 500 });
+    }
 
-  const s = slip as Record<string, unknown>;
-  const emp = s.karyawan as Record<string, unknown>;
+    if (!slip) return NextResponse.json({ error: "Slip tidak ditemukan." }, { status: 404 });
 
-  // Authorization: HRD/superadmin (payroll admins) may view any payslip; an
-  // employee may view ONLY their own. Every other role — applicant,
-  // department_manager, director — has no business reading raw salary data,
-  // so they are rejected even though they hold a valid session.
-  const role = (session.role || "").toLowerCase();
-  const isPayrollAdmin = role === "hrd" || role === "superadmin";
-  const isOwner = role === "employee" && session.email === emp.email;
-  if (!isPayrollAdmin && !isOwner) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+    const s = slip as Record<string, unknown>;
+    const emp = s.karyawan as Record<string, unknown>;
 
-  const monthNames = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  const bulan = monthNames[Number(s.month)] || "-";
-  const tahun = String(s.year || "");
+    const role = (session.role || "").toLowerCase();
+    const isPayrollAdmin = role === "hrd" || role === "superadmin";
+    const isOwner = role === "employee" && session.email === emp.email;
+    if (!isPayrollAdmin && !isOwner) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-  const fmt = (n: unknown) => "Rp " + (Number(n) || 0).toLocaleString("id-ID");
+    const monthNames = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const bulan = monthNames[Number(s.month)] || "-";
+    const tahun = String(s.year || "");
 
-  // Escape any DB-sourced string before interpolating into HTML. Employee names
-  // can originate from the public application form, so they are untrusted and
-  // could otherwise inject markup/script (stored XSS) into this rendered page.
-  const esc = (v: unknown) =>
-    String(v ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
+    const fmt = (n: unknown) => "Rp " + (Number(n) || 0).toLocaleString("id-ID");
 
-  const html = `<!DOCTYPE html>
+    const esc = (v: unknown) =>
+      String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+    const html = `<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
@@ -105,15 +104,18 @@ export async function GET(
   <tr><td>Gaji Pokok</td><td>${fmt(s.basic_salary)}</td></tr>
   <tr><td>Tunjangan</td><td>${fmt(s.allowances)}</td></tr>
   ${s.overtime_pay ? `<tr><td>Lembur</td><td>${fmt(s.overtime_pay)}</td></tr>` : ""}
+  ${s.attendance_allowance ? `<tr><td>Tunjangan Kehadiran</td><td>${fmt(s.attendance_allowance)}</td></tr>` : ""}
   ${s.bonus ? `<tr><td>Bonus</td><td>${fmt(s.bonus)}</td></tr>` : ""}
-  <tr class="total-row"><td>Total Pendapatan</td><td>${fmt((Number(s.basic_salary) || 0) + (Number(s.allowances) || 0) + (Number(s.overtime_pay) || 0) + (Number(s.bonus) || 0))}</td></tr>
+  <tr class="total-row"><td>Total Pendapatan</td><td>${fmt((Number(s.basic_salary) || 0) + (Number(s.allowances) || 0) + (Number(s.overtime_pay) || 0) + (Number(s.attendance_allowance) || 0) + (Number(s.bonus) || 0))}</td></tr>
 
   <tr><td colspan="2" class="section-title" style="margin-top:8px">Potongan</td></tr>
   <tr><td>BPJS Kesehatan</td><td>${fmt(s.bpjs_health)}</td></tr>
   <tr><td>BPJS Ketenagakerjaan</td><td>${fmt(s.bpjs_employment)}</td></tr>
   ${s.tax ? `<tr><td>PPh 21</td><td>${fmt(s.tax)}</td></tr>` : ""}
+  ${s.late_deduction ? `<tr><td>Potongan Keterlambatan</td><td>${fmt(s.late_deduction)}</td></tr>` : ""}
+  ${s.absent_deduction ? `<tr><td>Potongan Ketidakhadiran</td><td>${fmt(s.absent_deduction)}</td></tr>` : ""}
   ${s.deductions ? `<tr><td>Potongan Lain</td><td>${fmt(s.deductions)}</td></tr>` : ""}
-  <tr class="total-row"><td>Total Potongan</td><td>${fmt((Number(s.bpjs_health) || 0) + (Number(s.bpjs_employment) || 0) + (Number(s.tax) || 0) + (Number(s.deductions) || 0))}</td></tr>
+  <tr class="total-row"><td>Total Potongan</td><td>${fmt((Number(s.bpjs_health) || 0) + (Number(s.bpjs_employment) || 0) + (Number(s.tax) || 0) + (Number(s.late_deduction) || 0) + (Number(s.absent_deduction) || 0) + (Number(s.deductions) || 0))}</td></tr>
 
   <tr class="net-row"><td>GAJI BERSIH</td><td>${fmt(s.net_salary)}</td></tr>
 </table>
@@ -140,9 +142,13 @@ ${autoprint ? `<script>window.addEventListener("load", () => window.print());</s
 </body>
 </html>`;
 
-  return new NextResponse(html, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-    },
-  });
+    return new NextResponse(html, {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+      },
+    });
+  } catch (e) {
+    console.error("[payslip] Unhandled error:", e);
+    return NextResponse.json({ error: "Terjadi kesalahan server." }, { status: 500 });
+  }
 }

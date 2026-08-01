@@ -187,7 +187,7 @@ export default function ServicesCMS() {
             </div>
             {form.services.map((svc, idx) => (
               <div
-                key={idx}
+                key={svc.title}
                 className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3"
               >
                 <div className="flex items-center justify-between">

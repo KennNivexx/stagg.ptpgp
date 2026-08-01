@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Building2, Plus, X, Save, Wrench } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import {
@@ -30,6 +31,7 @@ export default function InfrastrukturClient({ initialInfrastruktur, initialMaint
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const router = useRouter();
 
   const grouped = useMemo(() => {
     const map: Record<string, PemeliharaanInfrastruktur[]> = {};
@@ -50,7 +52,7 @@ export default function InfrastrukturClient({ initialInfrastruktur, initialMaint
     if ("error" in result) { flash("error", result.error); return; }
     setShowInfraForm(false);
     flash("success", "Infrastruktur berhasil ditambahkan.");
-    window.location.reload();
+    router.refresh();
   };
 
   const handleReqSubmit = async (e: React.FormEvent) => {
@@ -67,7 +69,7 @@ export default function InfrastrukturClient({ initialInfrastruktur, initialMaint
     setShowReqForm(false);
     setReqForm(emptyReqForm);
     flash("success", "Permintaan pemeliharaan berhasil diajukan.");
-    window.location.reload();
+    router.refresh();
   };
 
   const advance = async (id: string, status: MaintenanceStatus) => {

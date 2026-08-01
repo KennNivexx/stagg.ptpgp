@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { submitCommunication, type CommType } from "@/app/actions/employee-relations";
 import EmptyState from "@/components/EmptyState";
 import { Megaphone, Inbox } from "lucide-react";
@@ -13,6 +14,7 @@ export default function CommunicationClient({ type, title, description, initialR
   const rows = initialRows;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = (formData: FormData) => {
@@ -21,7 +23,7 @@ export default function CommunicationClient({ type, title, description, initialR
       const res = await submitCommunication(formData);
       if ("error" in res) { setError(res.error || "Gagal memproses."); return; }
       formRef.current?.reset();
-      window.location.reload();
+      router.refresh();
     });
   };
 

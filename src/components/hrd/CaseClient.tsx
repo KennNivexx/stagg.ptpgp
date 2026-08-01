@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { submitCase, updateCaseStatus, assignCasePic, type CaseType } from "@/app/actions/employee-relations";
 import EmptyState from "@/components/EmptyState";
 import EmployeeCombobox from "@/components/EmployeeCombobox";
@@ -26,6 +27,7 @@ export default function CaseClient({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = (formData: FormData) => {
@@ -35,7 +37,7 @@ export default function CaseClient({
       if ("error" in res) { setError(res.error || "Gagal memproses."); return; }
       formRef.current?.reset();
       setAnonymous(false);
-      window.location.reload();
+      router.refresh();
     });
   };
 

@@ -416,6 +416,7 @@ export async function GET(request: NextRequest) {
     }
   } catch (e) {
     console.error("Notification fetch error:", e);
+    return NextResponse.json({ error: "Gagal mengambil notifikasi.", notifications: [] }, { status: 500 });
   }
 
   return NextResponse.json({ notifications });

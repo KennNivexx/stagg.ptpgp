@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { CameraOff, MapPin, CheckCircle, AlertTriangle, RefreshCw, UserCheck, UserX, Eye } from "lucide-react";
 import { findBestFaceMatch, type FaceReference } from "@/lib/face-recognition";
 
@@ -72,6 +73,7 @@ export default function CameraCapture({
   const [streamReady, setStreamReady] = useState(false);
   const [location, setLocation] = useState<Location>({ lat: 0, lng: 0, name: "" });
   const [capturing, setCapturing] = useState(false);
+  const router = useRouter();
 
   const [recognizedName, setRecognizedName] = useState("");
   const [recognitionConfidence, setRecognitionConfidence] = useState(0);
@@ -381,7 +383,7 @@ export default function CameraCapture({
         <AlertTriangle size={40} className="mx-auto text-red-400 mb-3" />
         <p className="text-sm text-red-700 font-semibold">{modelError}</p>
         <p className="text-xs text-red-400 mt-2">Coba refresh halaman. Jika masalah berlanjut, hubungi administrator.</p>
-        <button onClick={() => window.location.reload()}
+        <button onClick={() => router.refresh()}
           className="mt-4 px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700">
           Refresh
         </button>

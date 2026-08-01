@@ -72,7 +72,7 @@ export default function FAQSection({
 
         <div className="space-y-4">
           {items.map((faq, index) => (
-            <div key={index} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div key={faq.question} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
               <button 
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                 className="w-full text-left px-8 py-6 flex justify-between items-center focus:outline-none"

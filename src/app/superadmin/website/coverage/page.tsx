@@ -112,7 +112,7 @@ export default function CoverageCMS() {
         </button>
       </div>
       {form[list].map((item, idx) => (
-        <div key={idx} className="flex items-center gap-2">
+        <div key={item.region} className="flex items-center gap-2">
           <input
             type="text"
             placeholder="Nama wilayah / negara"

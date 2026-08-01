@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { supabaseAdmin } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 async function getMailConfig(): Promise<{ user: string; pass: string }> {
   try {
@@ -41,15 +42,8 @@ export async function sendMail({ to, subject, html }: MailOptions): Promise<void
 
   if (!user || !pass) {
     if (process.env.NODE_ENV === "development") {
-      console.warn("⚠️ [DEV MAIL] SMTP Gmail belum dikonfigurasi. Mengalihkan email ke console log:");
-      console.log(`--------------------------------------------------`);
-      console.log(`Kepada: ${to}`);
-      console.log(`Subjek: ${subject}`);
       const urlMatch = html.match(/href="([^"]+)"/);
-      if (urlMatch && urlMatch[1]) {
-        console.log(`Link Login: ${urlMatch[1]}`);
-      }
-      console.log(`--------------------------------------------------`);
+      logger.info("mailer", `DEV: Email to ${to} | Subject: ${subject}${urlMatch ? ` | Link: ${urlMatch[1]}` : ""}`);
       return;
     }
     throw new Error(

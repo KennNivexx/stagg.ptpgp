@@ -77,7 +77,7 @@ export default function CertificationSection({
           {items.map((cert, index) => {
             const IconComponent = cert.icon ? iconMap[cert.icon] : null;
             return (
-              <motion.div key={index}
+              <motion.div key={cert.name}
                 initial={{ opacity: 0, scale: 0.5 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
@@ -111,7 +111,7 @@ export default function CertificationSection({
             {legalItems.map((cert, index) => {
               const IconComponent = cert.icon ? iconMap[cert.icon] : null;
               return (
-                <div key={index} className="flex flex-col items-center gap-4 group cursor-default">
+                <div key={cert.name} className="flex flex-col items-center gap-4 group cursor-default">
                   {cert.logo ? (
                     <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100 group-hover:shadow-lg transition-all duration-300 overflow-hidden">
                       <Image src={cert.logo || ""} alt={cert.name} width={48} height={48} unoptimized className="w-12 h-12 object-contain" />

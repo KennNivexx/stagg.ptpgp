@@ -236,6 +236,119 @@ async function computeTaxAndBpjs(basic: number, allowances: number, ptkpStatus: 
   return { monthlyTax, bpjsHealth, bpjsEmployment };
 }
 
+async function getPayrollConfig(): Promise<Record<string, number | string>> {
+  const { data } = await supabaseAdmin.from("konfigurasi_penggajian").select("key, value");
+  if (!data) return {};
+  const config: Record<string, number | string> = {};
+  for (const row of data as Array<{ key: string; value: unknown }>) {
+    const v = row.value;
+    if (typeof v === "string" && !isNaN(Number(v))) {
+      config[row.key] = Number(v);
+    } else {
+      config[row.key] = String(v ?? "");
+    }
+  }
+  return config;
+}
+
+async function computeAttendancePayrollData(employeeId: string, month: number, year: number) {
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  const { data: attendanceRows } = await supabaseAdmin
+    .from("absensi")
+    .select("date, status, late_minutes, total_hours, absent_marked")
+    .eq("employee_id", employeeId)
+    .gte("date", fmt(firstDay))
+    .lte("date", fmt(lastDay));
+
+  const { data: overtimeRows } = await supabaseAdmin
+    .from("lembur")
+    .select("hours, amount")
+    .eq("karyawan_id", employeeId)
+    .eq("status", "Disetujui")
+    .gte("tanggal", fmt(firstDay))
+    .lte("tanggal", fmt(lastDay));
+
+  const { data: leaveRows } = await supabaseAdmin
+    .from("pengajuan_cuti")
+    .select("start_date, end_date, type")
+    .eq("employee_id", employeeId)
+    .eq("status", "Disetujui");
+
+  const config = await getPayrollConfig();
+  const lateDeductionPerMin = Number(config.late_deduction_per_minute) || 5000;
+  const absentDeductionPerDay = Number(config.absent_deduction_per_day) || 100000;
+  const overtimeRatePerHour = Number(config.overtime_rate_per_hour) || 25000;
+  const attendanceAllowancePerDay = Number(config.attendance_allowance_per_day) || 30000;
+  const workDaysPerMonth = Number(config.work_days_per_month) || 22;
+
+  let attendanceDays = 0;
+  let absentDays = 0;
+  let lateCount = 0;
+  let totalLateMinutes = 0;
+  let totalWorkHours = 0;
+
+  if (attendanceRows) {
+    for (const row of attendanceRows as Array<Record<string, unknown>>) {
+      if (row.absent_marked) {
+        absentDays++;
+      } else {
+        attendanceDays++;
+      }
+      const lateMins = Number(row.late_minutes) || 0;
+      if (lateMins > 0) {
+        lateCount++;
+        totalLateMinutes += lateMins;
+      }
+      totalWorkHours += Number(row.total_hours) || 0;
+    }
+  }
+
+  let overtimeHours = 0;
+  let overtimePay = 0;
+  if (overtimeRows) {
+    for (const row of overtimeRows as Array<Record<string, unknown>>) {
+      overtimeHours += Number(row.hours) || 0;
+      overtimePay += Number(row.amount) || 0;
+    }
+  }
+  if (overtimePay === 0 && overtimeHours > 0) {
+    overtimePay = overtimeHours * overtimeRatePerHour;
+  }
+
+  let unpaidLeaveDays = 0;
+  if (leaveRows) {
+    for (const row of leaveRows as Array<Record<string, unknown>>) {
+      const type = String(row.type || "").toLowerCase();
+      if (type.includes("unpaid") || type.includes("tidak dibayar") || type.includes("alpha")) {
+        const start = new Date(row.start_date as string);
+        const end = new Date(row.end_date as string);
+        unpaidLeaveDays += Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1;
+      }
+    }
+  }
+
+  const lateDeduction = totalLateMinutes * lateDeductionPerMin;
+  const absentDeduction = (absentDays + unpaidLeaveDays) * absentDeductionPerDay;
+  const attendanceAllowance = attendanceDays * attendanceAllowancePerDay;
+
+  return {
+    attendanceDays,
+    absentDays: absentDays + unpaidLeaveDays,
+    lateCount,
+    totalLateMinutes,
+    totalWorkHours,
+    overtimeHours,
+    overtimePay,
+    lateDeduction,
+    absentDeduction,
+    attendanceAllowance,
+    workDaysPerMonth,
+  };
+}
+
 export async function generatePayslip(formData: FormData) {
   await requireRole("hrd", "superadmin");
   const employeeId = (formData.get("employee_id") as string || "").trim();
@@ -249,15 +362,9 @@ export async function generatePayslip(formData: FormData) {
     .select("basic_salary, ptkp_status")
     .eq("employee_id", employeeId).maybeSingle();
   const basic = Number(salaryData?.basic_salary) || 0;
-  // Dynamic components (tunjangan/potongan) — see payroll-components.ts.
-  // Falls back to the legacy fixed struktur_gaji columns until the dynamic-
-  // components migration has run, so this doesn't hard-break in the meantime.
   const { tunjangan: allowances, potongan: amalJariyah } = await sumEmployeeComponentsByType(employeeId);
   if (basic === 0) return { error: "Belum ada struktur gaji untuk karyawan ini. Isi di menu Komponen Gaji terlebih dahulu." };
 
-  // ── Bonus/insentif yang sudah final (Disetujui/Dibayarkan) untuk periode
-  // yang sama — periode disimpan sebagai "MM/YYYY" di form Bonus/Insentif
-  // agar pencocokan dengan month+year di sini bisa diandalkan.
   const periodKey = `${String(month).padStart(2, "0")}/${year}`;
   const { data: bonusRows } = await supabaseAdmin
     .from("insentif")
@@ -267,14 +374,15 @@ export async function generatePayslip(formData: FormData) {
     .in("status", ["Disetujui", "Dibayarkan"]);
   const bonus = (bonusRows || []).reduce((s, r) => s + (Number((r as Record<string, unknown>).amount) || 0), 0);
 
+  const attData = await computeAttendancePayrollData(employeeId, month, year);
+
   const { monthlyTax, bpjsHealth, bpjsEmployment } = await computeTaxAndBpjs(basic, allowances, (salaryData?.ptkp_status as string) || "TK/0");
 
-  // `deductions` represents OTHER non-tax, non-BPJS deductions — currently
-  // just Potongan Amal Jariyah (a fixed per-employee amount from struktur_gaji,
-  // matching the real PGP payslip format). Tax and BPJS each have their own
-  // dedicated columns/rows on the payslip so nothing is double-counted.
   const deductions = amalJariyah;
-  const netSalary = basic + allowances + bonus - monthlyTax - bpjsHealth - bpjsEmployment - deductions;
+  const grossSalary = basic + allowances + bonus + attData.overtimePay + attData.attendanceAllowance;
+  const totalDeductions = monthlyTax + bpjsHealth + bpjsEmployment + deductions + attData.lateDeduction + attData.absentDeduction;
+  const netSalary = grossSalary - totalDeductions;
+  const takeHomePay = netSalary;
 
   const { error } = await supabaseAdmin.from("penggajian").insert({
     id: crypto.randomUUID(),
@@ -287,15 +395,43 @@ export async function generatePayslip(formData: FormData) {
     bpjs_health: bpjsHealth,
     bpjs_employment: bpjsEmployment,
     deductions,
+    overtime_pay: attData.overtimePay,
+    attendance_allowance: attData.attendanceAllowance,
+    late_deduction: attData.lateDeduction,
+    absent_deduction: attData.absentDeduction,
+    gross_salary: grossSalary,
+    take_home_pay: takeHomePay,
+    attendance_days: attData.attendanceDays,
+    absent_days: attData.absentDays,
+    late_count: attData.lateCount,
+    overtime_hours: attData.overtimeHours,
     net_salary: netSalary,
     status: "Draft",
     created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Tabel payroll belum tersedia. Jalankan migrasi terlebih dahulu." };
   if (error?.code === "PGRST204" || /column .* does not exist/i.test(error?.message || "")) {
-    return { error: "Jalankan migrasi 20260704006_rewards_payroll_bonus_schema.sql terlebih dahulu." };
+    return { error: "Jalankan migrasi 20260801002_payroll_attendance_integration.sql terlebih dahulu." };
   }
   if (error) { console.error("[admin] generatePayslip error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+
+  // Notify employee
+  const { data: empData } = await supabaseAdmin.from("karyawan").select("email, full_name").eq("id", employeeId).maybeSingle();
+  const empEmail = (empData as Record<string, unknown> | null)?.email as string | undefined;
+  if (empEmail) {
+    const { data: penggunaRow } = await supabaseAdmin.from("pengguna").select("email").eq("email", empEmail).maybeSingle();
+    const notifyEmail = (penggunaRow as Record<string, unknown> | null)?.email as string || empEmail;
+    await supabaseAdmin.from("notifikasi").insert({
+      id: crypto.randomUUID(),
+      user_email: notifyEmail,
+      title: "Slip Gaji Tersedia",
+      message: `Slip gaji bulan ${month}/${year} telah dibuat. Total: Rp ${netSalary.toLocaleString("id-ID")}`,
+      link: "/employee/payroll",
+      is_read: false,
+      created_at: new Date().toISOString(),
+    });
+  }
+
   revalidatePath("/hrd/payroll");
   revalidatePath("/hrd/rewards/payroll");
   revalidatePath("/hrd/rewards/payslips");
@@ -407,6 +543,29 @@ export async function updatePayrollStatus(id: string, statusInput: string): Prom
   const { error } = await supabaseAdmin.from("penggajian").update({ status }).eq("id", id);
   if (error?.code === "23514") return { error: "Jalankan migrasi SQL 20260815001 terlebih dahulu." };
   if (error) { console.error("[admin] updatePayrollStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+
+  // Notify employee on key status transitions
+  if (status === "Approved" || status === "Paid") {
+    const { data: slipData } = await supabaseAdmin.from("penggajian").select("employee_id, month, year, net_salary").eq("id", id).maybeSingle();
+    if (slipData) {
+      const s = slipData as Record<string, unknown>;
+      const { data: empRow } = await supabaseAdmin.from("karyawan").select("email").eq("id", s.employee_id).maybeSingle();
+      const notifyEmail = (empRow as Record<string, unknown> | null)?.email as string | undefined;
+      if (notifyEmail) {
+        const statusLabel = status === "Approved" ? "disetujui" : "telah dibayarkan";
+        await supabaseAdmin.from("notifikasi").insert({
+          id: crypto.randomUUID(),
+          user_email: notifyEmail,
+          title: `Payroll ${statusLabel === "disetujui" ? "Disetujui" : "Dibayarkan"}`,
+          message: `Slip gaji bulan ${s.month}/${s.year} telah ${statusLabel}. Total: Rp ${(Number(s.net_salary) || 0).toLocaleString("id-ID")}`,
+          link: "/employee/payroll",
+          is_read: false,
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
   revalidatePath("/hrd/payroll");
   revalidatePath("/hrd/rewards/payroll");
   revalidatePath("/hrd/rewards/payslips");
@@ -445,13 +604,20 @@ export async function updatePayrollAmounts(formData: FormData) {
   const deductions = parseFloat(formData.get("deductions") as string || "0") || 0;
   if (!id) return { error: "ID payroll tidak valid." };
   const { data: existing } = await supabaseAdmin.from("penggajian")
-    .select("status, basic_salary, allowances, tax, bpjs_health, bpjs_employment").eq("id", id).maybeSingle();
+    .select("status, basic_salary, allowances, tax, bpjs_health, bpjs_employment, overtime_pay, attendance_allowance, late_deduction, absent_deduction").eq("id", id).maybeSingle();
   if (!existing) return { error: "Data payroll tidak ditemukan." };
   if ((existing as Record<string, unknown>).status !== "Draft") return { error: "Hanya payroll Draft yang dapat diedit." };
   const row = existing as Record<string, unknown>;
-  const net = (Number(row.basic_salary) || 0) + (Number(row.allowances) || 0) + bonus
-    - (Number(row.tax) || 0) - (Number(row.bpjs_health) || 0) - (Number(row.bpjs_employment) || 0) - deductions;
-  const { error } = await supabaseAdmin.from("penggajian").update({ bonus, deductions, net_salary: net }).eq("id", id);
+  const overtimePay = Number(row.overtime_pay) || 0;
+  const attendanceAllowance = Number(row.attendance_allowance) || 0;
+  const lateDeduction = Number(row.late_deduction) || 0;
+  const absentDeduction = Number(row.absent_deduction) || 0;
+  const gross = (Number(row.basic_salary) || 0) + (Number(row.allowances) || 0) + bonus + overtimePay + attendanceAllowance;
+  const totalDeductions = (Number(row.tax) || 0) + (Number(row.bpjs_health) || 0) + (Number(row.bpjs_employment) || 0) + deductions + lateDeduction + absentDeduction;
+  const net = gross - totalDeductions;
+  const { error } = await supabaseAdmin.from("penggajian").update({
+    bonus, deductions, net_salary: net, gross_salary: gross, take_home_pay: net
+  }).eq("id", id);
   if (error) { console.error("[admin] updatePayrollAmounts:", error.message); return { error: "Gagal." }; }
   revalidatePath("/hrd/payroll");
   revalidatePath("/hrd/rewards/payroll");
@@ -489,12 +655,29 @@ async function computePayrollEntry(employeeId: string, month: number, year: numb
   const { data: bonusRows } = await supabaseAdmin.from("insentif").select("amount")
     .eq("employee_id", employeeId).eq("period", periodKey).in("status", ["Disetujui", "Dibayarkan"]);
   const bonus = (bonusRows || []).reduce((s, r) => s + (Number((r as Record<string, unknown>).amount) || 0), 0);
+
+  const attData = await computeAttendancePayrollData(employeeId, month, year);
+
   const { monthlyTax: tax, bpjsHealth: bpH, bpjsEmployment: bpE } = await computeTaxAndBpjs(basic, allowances, (sd?.ptkp_status as string) || "TK/0");
-  const net = basic + allowances + bonus - tax - bpH - bpE - amalJariyah;
+
+  const gross = basic + allowances + bonus + attData.overtimePay + attData.attendanceAllowance;
+  const totalDeductions = tax + bpH + bpE + amalJariyah + attData.lateDeduction + attData.absentDeduction;
+  const net = gross - totalDeductions;
+
   const { error } = await supabaseAdmin.from("penggajian").insert({
     id: crypto.randomUUID(), employee_id: employeeId, month, year,
     basic_salary: basic, allowances, bonus, tax, bpjs_health: bpH, bpjs_employment: bpE,
-    deductions: amalJariyah, net_salary: net, status: "Draft", created_at: new Date().toISOString(),
+    deductions: amalJariyah,
+    overtime_pay: attData.overtimePay,
+    attendance_allowance: attData.attendanceAllowance,
+    late_deduction: attData.lateDeduction,
+    absent_deduction: attData.absentDeduction,
+    gross_salary: gross, take_home_pay: net,
+    attendance_days: attData.attendanceDays,
+    absent_days: attData.absentDays,
+    late_count: attData.lateCount,
+    overtime_hours: attData.overtimeHours,
+    net_salary: net, status: "Draft", created_at: new Date().toISOString(),
   });
   if (error) { console.error("[admin] computePayrollEntry:", error.message); return { error: "Gagal" }; }
   return { success: true };

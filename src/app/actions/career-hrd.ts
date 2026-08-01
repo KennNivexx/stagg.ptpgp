@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { resolveManagerDepartment } from "@/lib/dept-resolve";
+import { auditLog } from "@/lib/audit";
 
 // ── CAREER REQUESTS (lamaran internal & konsultasi karir dari karyawan) ─────
 
@@ -180,14 +181,38 @@ export async function submitPromotion(formData: FormData) {
   const reason = (formData.get("reason") as string || "").trim() || null;
   const criteria = (formData.get("criteria") as string || "").trim() || null;
   if (!employeeId || !toPosition) return { error: "Karyawan dan posisi tujuan wajib diisi." };
+
+  const { data: kpiRows } = await supabaseAdmin
+    .from("evaluasi_kpi")
+    .select("final_score, score")
+    .eq("employee_id", employeeId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (!kpiRows || kpiRows.length === 0) {
+    return { error: "Karyawan belum memiliki evaluasi KPI. Pastikan evaluasi KPI telah dilakukan sebelum mengajukan promosi." };
+  }
+  const kpi = kpiRows[0] as { final_score?: number; score?: number };
+  const kpiScore = kpi.final_score ?? kpi.score ?? 0;
+  if (kpiScore < 50) {
+    return { error: "Karyawan belum memenuhi syarat nilai KPI minimum (50) untuk promosi." };
+  }
+
+  const promotionId = "prm-" + crypto.randomUUID();
   const { error } = await supabaseAdmin.from("promosi_karir").insert({
-    id: "prm-" + crypto.randomUUID(),
+    id: promotionId,
     employee_id: employeeId, from_position: fromPosition, to_position: toPosition,
     effective_date: effectiveDate || null, reason, criteria, status: "Menunggu",
     requested_by: user.email, created_at: new Date().toISOString(),
   });
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL 20260621002 terlebih dahulu." };
   if (error) { console.error("[career-hrd] submitPromotion error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  auditLog({
+    action: "promotion.submit",
+    targetId: promotionId,
+    targetName: `${fromPosition || "—"} → ${toPosition}`,
+    performedBy: user,
+    detail: `Mengajukan promosi karyawan ${employeeId} dari ${fromPosition || "—"} ke ${toPosition}${reason ? ` (alasan: ${reason})` : ""}.`,
+  });
   revalidatePath("/hrd/career/promotions");
   return { success: true };
 }
@@ -199,13 +224,18 @@ export async function submitPromotion(formData: FormData) {
 // director/superadmin may set the terminal status; department_manager can
 // still submit a promotion proposal but no longer approves/rejects it.
 export async function updatePromotionStatus(id: string, status: "Disetujui" | "Ditolak") {
-  await requireRole("hrd", "superadmin", "director");
+  const user = await requireRole("hrd", "superadmin", "director");
+
+  let promoEmployeeId: string | null = null;
+  let promoToPosition: string | null = null;
 
   if (status === "Disetujui") {
     const { data: promotion, error: fetchError } = await supabaseAdmin
       .from("promosi_karir").select("employee_id, to_position").eq("id", id).maybeSingle();
     if (fetchError || !promotion) return { error: "Data promosi tidak ditemukan." };
     const p = promotion as { employee_id: string; to_position: string };
+    promoEmployeeId = p.employee_id;
+    promoToPosition = p.to_position;
 
     const { data: emp } = await supabaseAdmin.from("karyawan").select("department, formasi_id").eq("id", p.employee_id).maybeSingle();
     const empDept = (emp as { department?: string } | null)?.department;
@@ -259,11 +289,34 @@ export async function updatePromotionStatus(id: string, status: "Disetujui" | "D
       console.error("[career-hrd] updatePromotionStatus employee update error:", empError.message);
       return { error: "Gagal memperbarui data jabatan karyawan. Status promosi tidak diubah." };
     }
+
+    const { data: latestKpi } = await supabaseAdmin
+      .from("evaluasi_kpi")
+      .select("id, comments")
+      .eq("employee_id", p.employee_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestKpi) {
+      const kpiRow = latestKpi as { id: string; comments?: string };
+      const existingComment = kpiRow.comments || "";
+      const promotionNote = `\n[${new Date().toISOString().split("T")[0]}] Promosi ke "${p.to_position}" disetujui.`;
+      await supabaseAdmin.from("evaluasi_kpi")
+        .update({ comments: existingComment + promotionNote, updated_at: new Date().toISOString() })
+        .eq("id", kpiRow.id);
+    }
   }
 
   const { error } = await supabaseAdmin.from("promosi_karir").update({ status }).eq("id", id);
   if (error?.code === "42P01") return { error: "Jalankan migrasi SQL." };
   if (error) { console.error("[career-hrd] updatePromotionStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  auditLog({
+    action: "promotion.approve",
+    targetId: id,
+    targetName: promoToPosition || id,
+    performedBy: user,
+    detail: `Menyetujui promosi karyawan ${promoEmployeeId || "—"} ke ${promoToPosition || "—"}.`,
+  });
   revalidatePath("/hrd/career/promotions");
   revalidatePath("/hrd/employees");
   return { success: true };

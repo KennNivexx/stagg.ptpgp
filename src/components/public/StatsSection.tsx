@@ -76,7 +76,7 @@ export default function StatsSection({
           viewport={{ once: true, margin: "-80px" }}
         >
           {items.map((stat, index) => (
-            <motion.div key={index} className="text-center" variants={item}>
+            <motion.div key={stat.label} className="text-center" variants={item}>
               <div className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
                 {stat.value}
               </div>

@@ -185,7 +185,7 @@ export default function IndustriesCMS() {
             </div>
             {form.industries.map((ind, idx) => (
               <div
-                key={idx}
+                key={ind.name}
                 className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3"
               >
                 <div className="flex items-center justify-between">

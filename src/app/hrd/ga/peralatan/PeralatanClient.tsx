@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Package, Plus, X, Save, Search, ArrowLeftRight, CalendarClock } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import {
@@ -33,6 +34,7 @@ export default function PeralatanClient({ initialPeralatan, initialFpbLog }: { i
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [search, setSearch] = useState("");
+  const router = useRouter();
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -52,7 +54,7 @@ export default function PeralatanClient({ initialPeralatan, initialFpbLog }: { i
     if ("error" in result) { flash("error", result.error); return; }
     setShowAddForm(false);
     flash("success", "Peralatan berhasil ditambahkan.");
-    window.location.reload();
+    router.refresh();
   };
 
   const handleFpbSubmit = async (e: React.FormEvent) => {
@@ -66,7 +68,7 @@ export default function PeralatanClient({ initialPeralatan, initialFpbLog }: { i
     setShowFpbForm(false);
     setFpbForm(emptyFpbForm);
     flash("success", "Transaksi berhasil dicatat.");
-    window.location.reload();
+    router.refresh();
   };
 
   const openReturn = (id: string) => { setReturningId(id); setBeritaAcara(""); };
@@ -77,7 +79,7 @@ export default function PeralatanClient({ initialPeralatan, initialFpbLog }: { i
     if ("error" in result) { flash("error", result.error); return; }
     flash("success", "Pengembalian berhasil dicatat.");
     setReturningId(null);
-    window.location.reload();
+    router.refresh();
   };
 
   const openExtend = (id: string, current: string | null) => { setExtendingId(id); setExtendDate(current || ""); };
