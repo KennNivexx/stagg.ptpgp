@@ -29,7 +29,15 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-XSS-Protection", value: "1; mode=block" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          // camera=(self) / geolocation=(self): this app genuinely uses both
+          // (face recognition in CameraCapture.tsx for attendance/login/reset,
+          // and "Gunakan Lokasi Saya" geofencing) — an empty allowlist "()"
+          // means NO origin may use the API at all, which silently overrides
+          // whatever the user allows at the OS/browser level and makes both
+          // features permanently fail with a permission-denied-looking error
+          // no matter what the visitor grants. microphone stays disabled;
+          // nothing in this app calls getUserMedia with audio.
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(self)" },
         ],
       },
     ];
