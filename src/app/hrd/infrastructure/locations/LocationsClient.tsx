@@ -39,15 +39,32 @@ export default function LocationsClient({ initialLocations, employees: initialEm
   const [locating, setLocating] = useState(false);
 
   const useCurrentLocation = () => {
-    if (!navigator.geolocation) { setSaveMsg({ type: "error", text: "GPS tidak didukung di perangkat ini." }); return; }
+    if (!window.isSecureContext) {
+      setSaveMsg({ type: "error", text: "Fitur lokasi otomatis butuh koneksi HTTPS (browser memblokirnya di HTTP). Isi Latitude/Longitude manual di bawah — salin dari Google Maps: klik kanan titik lokasi → klik koordinat yang muncul untuk menyalin." });
+      return;
+    }
+    if (!navigator.geolocation) {
+      setSaveMsg({ type: "error", text: "Lokasi otomatis tidak didukung di browser ini. Isi Latitude/Longitude manual di bawah — salin dari Google Maps: klik kanan titik lokasi → klik koordinat yang muncul untuk menyalin." });
+      return;
+    }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
+        setSaveMsg(null);
         setFormData((f) => ({ ...f, latitude: String(pos.coords.latitude), longitude: String(pos.coords.longitude) }));
       },
-      () => { setLocating(false); setSaveMsg({ type: "error", text: "Gagal mengambil lokasi GPS." }); },
-      { enableHighAccuracy: true, timeout: 15000 }
+      (err) => {
+        setLocating(false);
+        // GeolocationPositionError.code: 1=PERMISSION_DENIED, 2=POSITION_UNAVAILABLE, 3=TIMEOUT
+        const reason = err.code === 1
+          ? "Izin lokasi ditolak. Aktifkan izin lokasi untuk situs ini di pengaturan browser, lalu coba lagi."
+          : err.code === 2
+          ? "Lokasi tidak tersedia (GPS/layanan lokasi perangkat mungkin nonaktif)."
+          : "Waktu pencarian lokasi habis (sinyal lemah).";
+        setSaveMsg({ type: "error", text: `${reason} Sebagai alternatif, isi Latitude/Longitude manual di bawah — salin dari Google Maps: klik kanan titik lokasi → klik koordinat yang muncul untuk menyalin.` });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
   };
 
