@@ -147,6 +147,10 @@ export default function Employee360Client({ data }: { data: Data }) {
               <input name="address" placeholder="Alamat" defaultValue={(dp?.address as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
               <input name="emergency_name" placeholder="Kontak Darurat (Nama)" defaultValue={(dp?.emergency_name as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
               <input name="emergency_phone" placeholder="No. Darurat" defaultValue={(dp?.emergency_phone as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="npwp" placeholder="NPWP" defaultValue={(dp?.npwp as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
+              <input name="bank_name" placeholder="Nama Bank" defaultValue={(dp?.bank_name as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="bank_account_number" placeholder="No. Rekening" defaultValue={(dp?.bank_account_number as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs" />
+              <input name="bank_account_holder" placeholder="Nama Pemilik Rekening" defaultValue={(dp?.bank_account_holder as string) || ""} className="border border-gray-200 p-2 rounded-lg text-xs col-span-2" />
               <button type="submit" disabled={busy} className="col-span-2 mt-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold disabled:opacity-50">Simpan</button>
             </form>
           </Card>

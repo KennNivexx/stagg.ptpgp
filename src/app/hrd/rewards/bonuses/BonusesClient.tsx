@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Gift, Plus, DollarSign, TrendingUp, Star, X, CheckCircle, AlertTriangle } from "lucide-react";
+import { Gift, Plus, DollarSign, TrendingUp, Star, X, CheckCircle, AlertTriangle, Sparkles } from "lucide-react";
 import { addBonus, updateBonusStatus, getRewardBudgetStatus } from "@/app/actions/rewards";
+import { generateThr } from "@/app/actions/admin";
 import EmptyState from "@/components/EmptyState";
 
 const BONUS_TYPES = ["Kinerja", "Proyek", "Tahunan", "Khusus", "Lebaran", "THR"];
@@ -42,7 +43,21 @@ export default function BonusesClient({
   const [actingId, setActingId] = useState("");
   const [toast, setToast] = useState("");
   const [budget, setBudget] = useState<{ budgetAmount: number; usedAmount: number } | null>(null);
+  const [showThrModal, setShowThrModal] = useState(false);
+  const [thrMonth, setThrMonth] = useState(new Date().getMonth() + 1);
+  const [thrYear, setThrYear] = useState(new Date().getFullYear());
+  const [thrGenerating, setThrGenerating] = useState(false);
+  const [thrResult, setThrResult] = useState<{ created: number; skipped: number; totalAmount: number } | null>(null);
   const years = [new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2];
+
+  const handleGenerateThr = async () => {
+    setThrGenerating(true); setThrResult(null);
+    const res = await generateThr(thrMonth, thrYear);
+    setThrGenerating(false);
+    if ("error" in res) { showToast(res.error); return; }
+    setThrResult(res);
+    router.refresh();
+  };
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
@@ -95,6 +110,51 @@ export default function BonusesClient({
       {toast && (
         <div className="fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-bold">
           {toast}
+        </div>
+      )}
+
+      {showThrModal && (
+        <div className="fixed inset-0 z-[999] bg-black/40 flex items-center justify-center p-4" onClick={() => setShowThrModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 bg-slate-900 flex items-center justify-between">
+              <h3 className="text-white font-bold text-sm flex items-center gap-2"><Sparkles size={14} className="text-amber-400" /> Generate THR</h3>
+              <button onClick={() => setShowThrModal(false)}><X size={18} className="text-white/70" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-500">
+                Membuat THR (1x gaji pokok, prorata untuk masa kerja &lt;12 bulan) untuk seluruh karyawan aktif pada periode pembayaran yang dipilih. Karyawan yang sudah punya THR di periode ini akan dilewati.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Bulan Bayar</label>
+                  <select value={thrMonth} onChange={(e) => setThrMonth(parseInt(e.target.value))}
+                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+                    {MONTHS.slice(1).map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tahun</label>
+                  <select value={thrYear} onChange={(e) => setThrYear(parseInt(e.target.value))}
+                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+                    {years.map((y) => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              </div>
+              {thrResult && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
+                  <p className="font-bold">{thrResult.created} THR dibuat, {thrResult.skipped} dilewati.</p>
+                  <p>Total: {fmt(thrResult.totalAmount)}</p>
+                </div>
+              )}
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowThrModal(false)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold">Tutup</button>
+                <button onClick={handleGenerateThr} disabled={thrGenerating}
+                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white rounded-xl text-sm font-bold">
+                  {thrGenerating ? "Memproses..." : "Generate"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -178,10 +238,16 @@ export default function BonusesClient({
           <h1 className="text-2xl font-bold text-[#1A2530] mb-2">Bonus & Insentif</h1>
           <p className="text-sm text-gray-500">Kelola bonus dan insentif khusus karyawan.</p>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
-          <Plus size={14} /> Tambah Bonus
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowThrModal(true); setThrResult(null); }}
+            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2">
+            <Sparkles size={14} className="text-amber-500" /> Generate THR
+          </button>
+          <button onClick={() => setShowModal(true)}
+            className="px-4 py-2 bg-[#CC0000] text-white text-sm font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2">
+            <Plus size={14} /> Tambah Bonus
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

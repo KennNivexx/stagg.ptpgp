@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   LayoutDashboard,
   DollarSign,
+  Wallet,
   GraduationCap,
   BookOpen,
   TrendingUp,
@@ -72,6 +73,7 @@ const MENU_GROUPS = [
     color: "amber",
     items: [
       { href: "/employee/payroll", label: "Gaji & Slip", icon: DollarSign },
+      { href: "/employee/kasbon", label: "Kasbon", icon: Wallet },
       { href: "/employee/training", label: "Pelatihan", icon: GraduationCap },
       { href: "/employee/documents", label: "Dokumen & SOP", icon: BookOpen },
     ],
@@ -118,6 +120,7 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/employee/business-trip": "Ajukan dan lihat perjalanan dinas",
   "/employee/trips": "Rekap trip dan insentif Anda",
   "/employee/payroll": "Slip gaji Anda",
+  "/employee/kasbon": "Pengajuan kasbon dan riwayat cicilan Anda",
   "/employee/training": "Pelatihan yang Anda ikuti",
   "/employee/documents": "Dokumen dan SOP perusahaan",
   "/employee/incidents": "Laporkan insiden yang Anda alami/temukan",

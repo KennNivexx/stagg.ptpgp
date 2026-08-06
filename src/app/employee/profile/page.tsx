@@ -14,6 +14,8 @@ interface Employee {
   blood_type: string; marital_status: string; spouse_name: string;
   children_count: number | null; ktp_address: string; last_education: string;
   emergency_name: string; emergency_phone: string;
+  npwp?: string | null; bank_name?: string | null;
+  bank_account_number?: string | null; bank_account_holder?: string | null;
   photo_url?: string;
   wa_number?: string | null; wa_connected_at?: string | null;
 }
@@ -466,6 +468,45 @@ export default function EmployeeProfile() {
                 <input
                   type="text" name="emergency_phone" defaultValue={profile?.emergency_phone || ""}
                   placeholder="0812..."
+                  className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+                />
+              </div>
+
+              <div className="sm:col-span-2 pt-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Data Payroll</p>
+                <p className="text-[11px] text-slate-400">Digunakan untuk perhitungan PPh 21 dan transfer gaji.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">NPWP</label>
+                <input
+                  type="text" name="npwp" defaultValue={profile?.npwp || ""}
+                  placeholder="00.000.000.0-000.000"
+                  className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nama Bank</label>
+                <input
+                  type="text" name="bank_name" defaultValue={profile?.bank_name || ""}
+                  placeholder="cth. BCA, Mandiri, BRI"
+                  className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nomor Rekening</label>
+                <input
+                  type="text" name="bank_account_number" defaultValue={profile?.bank_account_number || ""}
+                  className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nama Pemilik Rekening</label>
+                <input
+                  type="text" name="bank_account_holder" defaultValue={profile?.bank_account_holder || ""}
                   className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[#CC0000]"
                 />
               </div>

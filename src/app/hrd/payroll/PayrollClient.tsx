@@ -2,9 +2,19 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { DollarSign, Download, FileText, Clock, Users, X, Plus, CheckCircle2, Edit3, Calendar } from "lucide-react";
-import { generateBatchPayroll, updatePayrollStatus, updatePayrollAmounts, batchUpdatePayrollStatus } from "@/app/actions/admin";
+import { DollarSign, Download, FileText, Clock, Users, X, Plus, CheckCircle2, Edit3, Calendar, History, Wallet, Landmark } from "lucide-react";
+import { generateBatchPayroll, updatePayrollStatus, updatePayrollAmounts, batchUpdatePayrollStatus, getPayrollDetail } from "@/app/actions/admin";
+import type { PayrollDetail } from "@/app/actions/admin";
 import EmptyState from "@/components/EmptyState";
+import ExportExcelButton from "@/components/ExportExcelButton";
+
+const HISTORY_ACTION_LABEL: Record<string, string> = {
+  created: "Slip dibuat", edited: "Bonus/Potongan diedit", status_change: "Status diubah", paid: "Ditandai dibayar",
+};
+
+function fmtDateTime(iso: string) {
+  try { return new Date(iso).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }); } catch { return iso; }
+}
 
 type Payroll = Record<string, unknown>;
 
@@ -19,14 +29,17 @@ interface Props {
   totalEmployees: number;
   title?: string;
   subtitle?: string;
+  bankTransferRows?: Record<string, unknown>[];
 }
 
-export default function PayrollClient({ payrolls, totalEmployees, title = "Payroll", subtitle = "Kelola penggajian dan slip gaji seluruh karyawan." }: Props) {
+export default function PayrollClient({ payrolls, totalEmployees, title = "Payroll", subtitle = "Kelola penggajian dan slip gaji seluruh karyawan.", bankTransferRows = [] }: Props) {
   const router = useRouter();
   const [showGen, setShowGen] = useState(false);
   const [showEdit, setShowEdit] = useState<Payroll | null>(null);
   const [editBonus, setEditBonus] = useState("0");
   const [editDeductions, setEditDeductions] = useState("0");
+  const [detail, setDetail] = useState<PayrollDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [genMonth, setGenMonth] = useState(new Date().getMonth() + 1);
   const [genYear, setGenYear] = useState(new Date().getFullYear());
   const [saving, setSaving] = useState(false);
@@ -34,6 +47,11 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const [genResult, setGenResult] = useState<{ created: number; skipped: number; warnings?: string[] } | null>(null);
+  const [payModal, setPayModal] = useState<{ mode: "single"; id: string } | { mode: "batch" } | null>(null);
+  const [payMethod, setPayMethod] = useState("Transfer Bank");
+  const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
+  const [payRef, setPayRef] = useState("");
+  const [payNotes, setPayNotes] = useState("");
 
   const years = [new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2];
 
@@ -72,6 +90,9 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
   };
 
   const handleStatusChange = async (id: string, status: string) => {
+    // "Paid" needs payment metadata (method/tanggal transfer/referensi) —
+    // open the payment modal instead of flipping the status blind.
+    if (status === "Paid") { setPayModal({ mode: "single", id }); setPayRef(""); setPayNotes(""); setMsg(null); return; }
     setActingId(id);
     const result = await updatePayrollStatus(id, status);
     setActingId(null);
@@ -86,13 +107,14 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
     fd.append("year", genYear.toString());
     const result = await generateBatchPayroll(fd);
     setSaving(false);
-    if (result?.error) { setMsg({ type: "error", text: result.error }); return; }
-    setGenResult({ created: (result as Record<string, unknown>).created as number, skipped: (result as Record<string, unknown>).skipped as number, warnings: (result as Record<string, unknown>).warnings as string[] });
-    setMsg({ type: "success", text: `Berhasil! ${(result as Record<string, unknown>).created} slip dibuat${(result as Record<string, unknown>).skipped ? `, ${(result as Record<string, unknown>).skipped} dilewati (sudah ada)` : ""}.` });
+    if ("error" in result) { setMsg({ type: "error", text: result.error }); return; }
+    setGenResult({ created: result.created, skipped: result.skipped, warnings: result.warnings });
+    setMsg({ type: "success", text: `Berhasil! ${result.created} slip dibuat${result.skipped ? `, ${result.skipped} dilewati (sudah ada)` : ""}.` });
     router.refresh();
   };
 
   const handleBatchStatus = async (status: string) => {
+    if (status === "Paid") { setPayModal({ mode: "batch" }); setPayRef(""); setPayNotes(""); setMsg(null); return; }
     setBatchSaving(status); setMsg(null);
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
@@ -107,11 +129,44 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
     router.refresh();
   };
 
+  const handleConfirmPayment = async () => {
+    if (!payModal) return;
+    if (!payMethod.trim()) { setMsg({ type: "error", text: "Metode pembayaran wajib diisi." }); return; }
+    const paymentMeta = { payment_method: payMethod.trim(), transfer_date: payDate, payment_reference: payRef.trim(), payment_notes: payNotes.trim() };
+    setSaving(true); setMsg(null);
+    if (payModal.mode === "single") {
+      setActingId(payModal.id);
+      const result = await updatePayrollStatus(payModal.id, "Paid", paymentMeta);
+      setActingId(null); setSaving(false);
+      if (result && "error" in result) { setMsg({ type: "error", text: result.error }); return; }
+    } else {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const fd = new FormData();
+      fd.append("month", currentMonth.toString());
+      fd.append("year", currentYear.toString());
+      fd.append("status", "Paid");
+      const result = await batchUpdatePayrollStatus(fd, paymentMeta);
+      setSaving(false);
+      if ("error" in result) { setMsg({ type: "error", text: result.error }); return; }
+      setMsg({ type: "success", text: `${result.updated} payroll ditandai Dibayar.` });
+    }
+    setPayModal(null);
+    router.refresh();
+  };
+
   const openEdit = (p: Payroll) => {
     setShowEdit(p);
     setEditBonus(String(Number(p.bonus) || 0));
     setEditDeductions(String(Number(p.deductions) || 0));
     setMsg(null);
+    setDetail(null);
+    setDetailLoading(true);
+    getPayrollDetail(p.id as string).then((result) => {
+      setDetailLoading(false);
+      if ("error" in result) return;
+      setDetail(result);
+    });
   };
 
   const handleEditSave = async () => {
@@ -239,6 +294,9 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
                 {batchSaving === "Paid" ? "Memproses..." : `Tandai Dibayar (${approvedCount})`}
               </button>
             )}
+            {bankTransferRows.length > 0 && (
+              <ExportExcelButton filename="Transfer_Bank_Payroll" sheetName="Transfer Bank" rows={bankTransferRows} label="Export Transfer Bank" />
+            )}
             <button onClick={() => { setShowGen(true); setMsg(null); setGenResult(null); }}
               disabled={totalEmployees === 0}
               className="px-4 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2 disabled:opacity-50">
@@ -363,42 +421,241 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
         </div>
       )}
 
-      {/* Edit Payroll Modal */}
-      {showEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEdit(null)}>
+      {/* Edit Payroll Modal — HRD only views/verifies the computed breakdown and
+          edits Bonus/Potongan Lain; every other figure (tunjangan, lembur,
+          BPJS, pajak, kasbon) is read-only, sourced from other modules. */}
+      {showEdit && (() => {
+        const p = detail?.payroll || showEdit;
+        const emp = detail?.employee || (showEdit.karyawan as Record<string, string> | undefined);
+        const num = (k: string) => Number(p[k]) || 0;
+        const tunjanganComponents = (detail?.components || []).filter((c) => c.tipe === "tunjangan");
+        const scheduledPotongan = (detail?.components || []).filter((c) => c.tipe === "potongan");
+        const extraIncomeRows = [
+          { label: "Tunjangan Kehadiran", value: num("attendance_allowance"), source: "Absensi" },
+          { label: "Tunjangan Shift", value: num("shift_allowance"), source: "Jadwal Shift" },
+        ].filter((r) => r.value > 0);
+        const totalPendapatan = num("gross_salary") || (num("basic_salary") + num("allowances") + num("bonus") + num("kpi_bonus") + num("overtime_pay") + num("attendance_allowance") + num("shift_allowance"));
+        const totalPotongan = num("tax") + num("bpjs_health") + num("bpjs_employment") + num("deductions") + num("kasbon_deduction") + num("late_deduction") + num("absent_deduction") + num("early_leave_deduction");
+        const netDisplay = num("net_salary") || (totalPendapatan - totalPotongan);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEdit(null)}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative z-10 w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 bg-slate-900 flex items-center justify-between shrink-0">
+                <h3 className="text-white font-bold text-sm flex items-center gap-2"><Edit3 size={14} /> Edit Payroll (Draft)</h3>
+                <button onClick={() => setShowEdit(null)} className="w-7 h-7 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center"><X size={14} className="text-white" /></button>
+              </div>
+              <div className="p-6 space-y-5 overflow-y-auto">
+                {/* Informasi Karyawan */}
+                <div className="bg-slate-50 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div><p className="text-[9px] font-bold text-slate-400 uppercase">Nama</p><p className="text-xs font-bold text-slate-800">{emp?.full_name || "-"}</p></div>
+                  <div><p className="text-[9px] font-bold text-slate-400 uppercase">NIK</p><p className="text-xs font-bold text-slate-800">{(detail?.employee?.nik) || "-"}</p></div>
+                  <div><p className="text-[9px] font-bold text-slate-400 uppercase">Jabatan</p><p className="text-xs font-bold text-slate-800">{emp?.position || "-"}</p></div>
+                  <div><p className="text-[9px] font-bold text-slate-400 uppercase">Periode</p><p className="text-xs font-bold text-slate-800">{MONTHS[Number(showEdit.month)]} {String(showEdit.year)}</p></div>
+                </div>
+
+                {detailLoading && <p className="text-xs text-slate-400 text-center py-4">Memuat rincian payroll...</p>}
+
+                {/* Daftar Tunjangan — dilihat dari Komponen Gaji, tidak diinput ulang */}
+                {tunjanganComponents.length > 0 && (
+                  <div>
+                    <h4 className="text-[11px] font-extrabold text-slate-700 uppercase mb-2 flex items-center gap-1.5"><Wallet size={12} /> Daftar Tunjangan</h4>
+                    <div className="border border-slate-100 rounded-xl overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 text-[9px] font-bold text-slate-400 uppercase">
+                            <th className="px-3 py-2 text-left">Nama Tunjangan</th>
+                            <th className="px-3 py-2 text-left">Kena PPh21</th>
+                            <th className="px-3 py-2 text-right">Nominal</th>
+                            <th className="px-3 py-2 text-left">Sumber Data</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {tunjanganComponents.map((c) => (
+                            <tr key={c.komponen_id}>
+                              <td className="px-3 py-2 font-semibold text-slate-700">{c.nama}</td>
+                              <td className="px-3 py-2 text-slate-500">{c.taxable ? "Ya" : "Tidak"}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-emerald-600">Rp {fmt(c.jumlah)}</td>
+                              <td className="px-3 py-2 text-slate-400">Komponen Gaji</td>
+                            </tr>
+                          ))}
+                          {extraIncomeRows.map((r) => (
+                            <tr key={r.label}>
+                              <td className="px-3 py-2 font-semibold text-slate-700">{r.label}</td>
+                              <td className="px-3 py-2 text-slate-500">-</td>
+                              <td className="px-3 py-2 text-right font-semibold text-emerald-600">Rp {fmt(r.value)}</td>
+                              <td className="px-3 py-2 text-slate-400">{r.source}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Ringkasan Payroll — seluruhnya otomatis, HRD hanya memantau */}
+                <div>
+                  <h4 className="text-[11px] font-extrabold text-slate-700 uppercase mb-2 flex items-center gap-1.5"><FileText size={12} /> Ringkasan Payroll (Otomatis)</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="border border-emerald-100 bg-emerald-50/40 rounded-xl p-3 space-y-1.5">
+                      <p className="text-[9px] font-bold text-emerald-700 uppercase mb-1">Pendapatan</p>
+                      {[
+                        ["Gaji Pokok", num("basic_salary")],
+                        ["Total Tunjangan", num("allowances")],
+                        ["Lembur", num("overtime_pay")],
+                        ["Tunjangan Kehadiran", num("attendance_allowance")],
+                        ["Tunjangan Shift", num("shift_allowance")],
+                        ["Bonus KPI", num("kpi_bonus")],
+                      ].filter(([, v]) => (v as number) !== 0).map(([label, v]) => (
+                        <div key={label as string} className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">{label}</span>
+                          <span className="font-semibold text-slate-700">Rp {fmt(v as number)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between text-[11px] pt-1.5 border-t border-emerald-100 font-bold text-emerald-700">
+                        <span>Total Pendapatan</span><span>Rp {fmt(totalPendapatan)}</span>
+                      </div>
+                    </div>
+                    <div className="border border-red-100 bg-red-50/40 rounded-xl p-3 space-y-1.5">
+                      <p className="text-[9px] font-bold text-red-700 uppercase mb-1">Potongan</p>
+                      {[
+                        ["BPJS Kesehatan", num("bpjs_health")],
+                        ["BPJS Ketenagakerjaan", num("bpjs_employment")],
+                        ["PPh 21", num("tax")],
+                        ["Kasbon / Pinjaman", num("kasbon_deduction")],
+                        ["Potongan Lain", num("deductions")],
+                        ["Keterlambatan", num("late_deduction")],
+                        ["Pulang Cepat", num("early_leave_deduction")],
+                        ["Absen Tanpa Keterangan", num("absent_deduction")],
+                      ].filter(([, v]) => (v as number) !== 0).map(([label, v]) => (
+                        <div key={label as string} className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">{label}</span>
+                          <span className="font-semibold text-slate-700">Rp {fmt(v as number)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between text-[11px] pt-1.5 border-t border-red-100 font-bold text-red-700">
+                        <span>Total Potongan</span><span>Rp {fmt(totalPotongan)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {detail?.kasbon && (
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-[11px] text-amber-800 flex items-start gap-2">
+                    <Landmark size={13} className="mt-0.5 shrink-0" />
+                    <span>
+                      Kasbon status <strong>{detail.kasbon.status}</strong> — sisa pokok Rp {fmt(detail.kasbon.sisa_pokok)}.
+                      Potongan cicilan periode ini sudah otomatis masuk ke Ringkasan Payroll dan hanya bisa diubah dari menu Kasbon.
+                    </span>
+                  </div>
+                )}
+                {scheduledPotongan.length > 0 && (
+                  <p className="text-[10px] text-slate-400">
+                    Potongan terjadwal dari Komponen Gaji ({scheduledPotongan.map((c) => c.nama).join(", ")}) sudah termasuk dalam Potongan Lain di bawah.
+                  </p>
+                )}
+
+                {/* Editable — satu-satunya field yang boleh diubah HRD */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Bonus (Rp)</label>
+                    <input type="number" min="0" value={editBonus} onChange={(e) => setEditBonus(e.target.value)}
+                      className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Potongan Lain (Rp)</label>
+                    <input type="number" min="0" value={editDeductions} onChange={(e) => setEditDeductions(e.target.value)}
+                      className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 rounded-xl p-4 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-300 uppercase">Take Home Pay</span>
+                  <span className="text-lg font-extrabold text-white">Rp {fmt(netDisplay)}</span>
+                </div>
+
+                {/* Riwayat Perubahan Payroll */}
+                {(detail?.history?.length || 0) > 0 && (
+                  <div>
+                    <h4 className="text-[11px] font-extrabold text-slate-700 uppercase mb-2 flex items-center gap-1.5"><History size={12} /> Riwayat Perubahan</h4>
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                      {detail!.history.map((h) => (
+                        <div key={h.id as string} className="flex items-start justify-between text-[10px] bg-slate-50 rounded-lg px-3 py-2">
+                          <div>
+                            <span className="font-bold text-slate-700">{HISTORY_ACTION_LABEL[h.action as string] || String(h.action)}</span>
+                            <span className="text-slate-400"> oleh {String(h.changed_by_name || "-")}</span>
+                          </div>
+                          <span className="text-slate-400 shrink-0 ml-2">{fmtDateTime(h.changed_at as string)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-slate-50 rounded-xl p-3 text-[10px] text-slate-500">
+                  Gaji bersih akan dihitung ulang otomatis. PPh 21, BPJS, tunjangan, lembur, dan kasbon tidak dapat diedit di sini (dihitung sistem dari modul lain).
+                </div>
+                {msg && (
+                  <div className={`p-3 rounded-xl text-xs font-semibold ${msg.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{msg.text}</div>
+                )}
+              </div>
+              <div className="flex gap-3 p-6 pt-0 shrink-0">
+                <button onClick={() => setShowEdit(null)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold">Batal</button>
+                <button onClick={handleEditSave} disabled={saving}
+                  className="flex-1 py-2.5 bg-[#CC0000] hover:bg-[#aa0000] disabled:opacity-60 text-white rounded-xl text-sm font-bold">
+                  {saving ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {/* Payment Confirmation Modal — collects transfer metadata before "Paid" */}
+      {payModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setPayModal(null)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 bg-slate-900 flex items-center justify-between">
-              <h3 className="text-white font-bold text-sm flex items-center gap-2"><Edit3 size={14} /> Edit Payroll (Draft)</h3>
-              <button onClick={() => setShowEdit(null)} className="w-7 h-7 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center"><X size={14} className="text-white" /></button>
+            <div className="px-6 py-4 bg-emerald-700 flex items-center justify-between">
+              <h3 className="text-white font-bold text-sm flex items-center gap-2"><CheckCircle2 size={14} /> Konfirmasi Pembayaran</h3>
+              <button onClick={() => setPayModal(null)} className="w-7 h-7 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center"><X size={14} className="text-white" /></button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-600">
-                <strong>{(showEdit.karyawan as Record<string, string>)?.full_name}</strong> — {MONTHS[Number(showEdit.month)]} {String(showEdit.year)}
+              <p className="text-xs text-slate-500">
+                {payModal.mode === "batch" ? "Menandai semua payroll Disetujui bulan ini sebagai Dibayar." : "Menandai slip gaji ini sebagai Dibayar."}
               </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Bonus (Rp)</label>
-                  <input type="number" min="0" value={editBonus} onChange={(e) => setEditBonus(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Potongan Lain (Rp)</label>
-                  <input type="number" min="0" value={editDeductions} onChange={(e) => setEditDeductions(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
-                </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Metode Pembayaran <span className="text-red-500">*</span></label>
+                <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)}
+                  className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none bg-white">
+                  <option>Transfer Bank</option>
+                  <option>Tunai</option>
+                  <option>Cek/Giro</option>
+                </select>
               </div>
-              <div className="bg-slate-50 rounded-xl p-3 text-[10px] text-slate-500">
-                Gaji bersih akan dihitung ulang otomatis. PPh 21 dan BPJS tidak dapat diedit (dihitung sistem).
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tanggal Transfer</label>
+                <input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)}
+                  className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Nomor Referensi</label>
+                <input type="text" value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder="cth. TRX-20260830-001"
+                  className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Catatan</label>
+                <textarea value={payNotes} onChange={(e) => setPayNotes(e.target.value)} rows={2}
+                  className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#CC0000] outline-none resize-none" />
               </div>
               {msg && (
                 <div className={`p-3 rounded-xl text-xs font-semibold ${msg.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{msg.text}</div>
               )}
               <div className="flex gap-3 pt-1">
-                <button onClick={() => setShowEdit(null)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold">Batal</button>
-                <button onClick={handleEditSave} disabled={saving}
-                  className="flex-1 py-2.5 bg-[#CC0000] hover:bg-[#aa0000] disabled:opacity-60 text-white rounded-xl text-sm font-bold">
-                  {saving ? "Menyimpan..." : "Simpan"}
+                <button onClick={() => setPayModal(null)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold">Batal</button>
+                <button onClick={handleConfirmPayment} disabled={saving}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold">
+                  {saving ? "Memproses..." : "Konfirmasi Dibayar"}
                 </button>
               </div>
             </div>

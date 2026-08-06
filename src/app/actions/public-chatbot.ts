@@ -1,6 +1,8 @@
 "use server";
 
+import { headers } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
+import { rateLimit } from "@/lib/rate-limit";
 import { getGroqClient, HRD_COPILOT_MODEL } from "@/lib/groq";
 import { getGeminiClient, GEMINI_COPILOT_MODEL } from "@/lib/gemini";
 import { getOpenRouterApiKey, OPENROUTER_BASE_URL, OPENROUTER_COPILOT_MODEL } from "@/lib/openrouter";
@@ -132,6 +134,17 @@ async function runOpenRouter(systemPrompt: string, history: PublicChatMessage[])
 }
 
 export async function askPublicChatbot(history: PublicChatMessage[]): Promise<{ reply: string } | { error: string }> {
+  // Public, unauthenticated endpoint calling paid AI APIs — the only one in
+  // the app with no rate limit before this, so it could be spammed to burn
+  // through the Groq/Gemini/OpenRouter quota. Keyed by IP only (no email to
+  // key on, unlike login) with a generous but real cap.
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
+  const rl = await rateLimit(`public-chatbot:${ip}`, 20, 10 * 60 * 1000);
+  if (rl.limited) {
+    return { error: "Terlalu banyak pertanyaan dalam waktu singkat. Silakan coba lagi dalam beberapa menit." };
+  }
+
   const trimmedHistory = history.slice(-20);
   const context = await getCompanyContext();
   const systemPrompt = buildSystemPrompt(context);

@@ -15,6 +15,9 @@ export default function KomponenGajiClient({ initialKomponen }: { initialKompone
   const [nama, setNama] = useState("");
   const [tipe, setTipe] = useState<"tunjangan" | "potongan">("tunjangan");
   const [deskripsi, setDeskripsi] = useState("");
+  const [taxable, setTaxable] = useState(true);
+  const [formulaType, setFormulaType] = useState<"fixed" | "percent_of_basic">("fixed");
+  const [formulaPercent, setFormulaPercent] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -23,13 +26,18 @@ export default function KomponenGajiClient({ initialKomponen }: { initialKompone
 
   async function handleAdd() {
     if (!nama.trim()) return;
+    if (formulaType === "percent_of_basic" && (!formulaPercent || Number(formulaPercent) <= 0)) {
+      setMsg({ type: "error", text: "Isi persentase (lebih dari 0) untuk formula % dari gaji pokok." });
+      return;
+    }
     setSaving(true); setMsg(null);
     const fd = new FormData();
     fd.set("nama", nama.trim()); fd.set("tipe", tipe); fd.set("deskripsi", deskripsi.trim());
+    fd.set("taxable", String(taxable)); fd.set("formula_type", formulaType); fd.set("formula_percent", formulaPercent);
     const res = await saveJenisKomponenGaji(fd);
     setSaving(false);
     if ("error" in res) { setMsg({ type: "error", text: res.error }); return; }
-    setNama(""); setDeskripsi("");
+    setNama(""); setDeskripsi(""); setFormulaType("fixed"); setFormulaPercent(""); setTaxable(true);
     setMsg({ type: "success", text: `Jenis ${tipe === "tunjangan" ? "tunjangan" : "potongan"} "${nama}" berhasil ditambahkan.` });
     router.refresh();
   }
@@ -58,6 +66,25 @@ export default function KomponenGajiClient({ initialKomponen }: { initialKompone
         </div>
         <input value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} placeholder="Keterangan (opsional)"
           className="w-full border border-gray-200 p-2.5 rounded-xl text-sm mb-3 focus:border-[#CC0000] outline-none" />
+
+        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr_auto] gap-3 mb-3 items-center">
+          <select value={formulaType} onChange={(e) => setFormulaType(e.target.value as "fixed" | "percent_of_basic")}
+            className="border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:border-[#CC0000] outline-none">
+            <option value="fixed">Nominal Tetap (Rp)</option>
+            <option value="percent_of_basic">% dari Gaji Pokok</option>
+          </select>
+          {formulaType === "percent_of_basic" ? (
+            <input type="number" min="0" step="0.1" value={formulaPercent} onChange={(e) => setFormulaPercent(e.target.value)}
+              placeholder="cth. 10 (artinya 10% dari gaji pokok)"
+              className="border border-gray-200 p-2.5 rounded-xl text-sm focus:border-[#CC0000] outline-none" />
+          ) : (
+            <p className="text-[11px] text-slate-400 self-center">Nilai rupiah diisi per karyawan di menu Struktur Gaji.</p>
+          )}
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 whitespace-nowrap">
+            <input type="checkbox" checked={taxable} onChange={(e) => setTaxable(e.target.checked)} />
+            Kena PPh 21
+          </label>
+        </div>
         <Msg m={msg} />
         <button onClick={handleAdd} disabled={saving || !nama.trim()}
           className="mt-3 flex items-center gap-2 px-4 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] disabled:opacity-50">
@@ -80,7 +107,19 @@ export default function KomponenGajiClient({ initialKomponen }: { initialKompone
                   <div>
                     <p className="text-sm font-bold text-slate-800">{k.nama}</p>
                     {k.deskripsi && <p className="text-[11px] text-slate-400">{k.deskripsi}</p>}
-                    {!k.is_active && <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Nonaktif</p>}
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      {k.formula_type === "percent_of_basic" && (
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          {k.formula_percent}% Gaji Pokok
+                        </span>
+                      )}
+                      {!k.taxable && (
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 text-slate-500 border border-slate-200">
+                          Bebas PPh 21
+                        </span>
+                      )}
+                      {!k.is_active && <span className="text-[10px] text-slate-400 font-semibold">Nonaktif</span>}
+                    </div>
                   </div>
                   {k.is_active && (
                     <button onClick={() => handleDeactivate(k.id, k.nama)} disabled={saving}
@@ -108,7 +147,19 @@ export default function KomponenGajiClient({ initialKomponen }: { initialKompone
                   <div>
                     <p className="text-sm font-bold text-slate-800">{k.nama}</p>
                     {k.deskripsi && <p className="text-[11px] text-slate-400">{k.deskripsi}</p>}
-                    {!k.is_active && <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Nonaktif</p>}
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      {k.formula_type === "percent_of_basic" && (
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          {k.formula_percent}% Gaji Pokok
+                        </span>
+                      )}
+                      {!k.taxable && (
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 text-slate-500 border border-slate-200">
+                          Bebas PPh 21
+                        </span>
+                      )}
+                      {!k.is_active && <span className="text-[10px] text-slate-400 font-semibold">Nonaktif</span>}
+                    </div>
                   </div>
                   {k.is_active && (
                     <button onClick={() => handleDeactivate(k.id, k.nama)} disabled={saving}

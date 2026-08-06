@@ -198,6 +198,8 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     hubHref: "/hrd/rewards",
     items: [
       { href: "/hrd/rewards/payroll", label: "Payroll, Gaji & Tunjangan", section: "Kompensasi Rutin" },
+      { href: "/hrd/rewards/periode", label: "Periode Payroll", section: "Kompensasi Rutin" },
+      { href: "/hrd/rewards/kasbon", label: "Kasbon Karyawan", section: "Kompensasi Rutin" },
       { href: "/hrd/rewards/bonuses", label: "Bonus, Insentif & Penghargaan", section: "Reward Non-Rutin" },
       { href: "/hrd/rewards/salary-review", label: "Salary Review", section: "Kompensasi Rutin" },
       { href: "/hrd/rewards/statement", label: "Total Rewards & PPh 21", section: "Reward Non-Rutin" },

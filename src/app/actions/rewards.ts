@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { resolveManagerDepartment } from "@/lib/dept-resolve";
-import { sumEmployeeComponentsByType } from "@/app/actions/payroll-components";
+import { sumEmployeeComponentsByTypeCore as sumEmployeeComponentsByType } from "@/lib/payroll-components-core";
 
 const MISSING_REWARDS_SCHEMA = (error: { code?: string; message?: string } | null) =>
   !!error && (error.code === "PGRST204" || /column .* does not exist|could not find the .* column/i.test(error.message || ""));
@@ -502,8 +502,14 @@ export async function updateSalaryReviewStatus(id: string, approve: boolean): Pr
 export async function getTotalRewardsStatement(karyawanId: string, year: number) {
   await requireRole("hrd", "superadmin", "director");
 
-  const [{ data: salaryRow }, { data: incentiveRows }, { data: payslipRows }, { data: emp }, { tunjangan: allowancesMonthly }] = await Promise.all([
-    supabaseAdmin.from("struktur_gaji").select("basic_salary").eq("employee_id", karyawanId).maybeSingle(),
+  // basic_salary must be resolved BEFORE summing components — 'percent_of_basic'
+  // component types are computed against it, so passing 0 (as this did while
+  // both ran inside one Promise.all) silently zeroed every percentage-based
+  // allowance here while payroll itself paid the real value.
+  const { data: salaryRow } = await supabaseAdmin.from("struktur_gaji").select("basic_salary").eq("employee_id", karyawanId).maybeSingle();
+  const basicForComponents = Number((salaryRow as { basic_salary?: number } | null)?.basic_salary) || 0;
+
+  const [{ data: incentiveRows }, { data: payslipRows }, { data: emp }, { tunjangan: allowancesMonthly }] = await Promise.all([
     // period disimpan sebagai teks "MM/YYYY" (mis. "03/2026") — .gte/.lte di
     // sini akan jadi perbandingan string leksikografis yang salah (membanding-
     // kan digit bulan duluan, bukan tahun), jadi bocor data dari tahun lain.
@@ -512,7 +518,7 @@ export async function getTotalRewardsStatement(karyawanId: string, year: number)
       .like("period", `%/${year}`),
     supabaseAdmin.from("penggajian").select("*").eq("employee_id", karyawanId).eq("year", year),
     supabaseAdmin.from("karyawan").select("full_name, position, department").eq("id", karyawanId).maybeSingle(),
-    sumEmployeeComponentsByType(karyawanId),
+    sumEmployeeComponentsByType(karyawanId, basicForComponents),
   ]);
 
   const salary = salaryRow as Record<string, unknown> | null;

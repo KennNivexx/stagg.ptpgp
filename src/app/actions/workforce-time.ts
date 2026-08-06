@@ -148,9 +148,31 @@ export async function ajukanLembur(formData: FormData) {
 
 export async function reviewLembur(id: string, approve: boolean) {
   const user = await requireRole("hrd", "superadmin");
-  await supabaseAdmin.from("lembur").update({
-    status: approve ? "Disetujui" : "Ditolak", reviewed_by: user.name || user.email,
-  }).eq("id", id);
+  const updatePayload: Record<string, unknown> = { status: approve ? "Disetujui" : "Ditolak", reviewed_by: user.name || user.email };
+
+  // Approving here was previously a pure status flip — `lembur.hours`/`amount`
+  // (what admin.ts's payroll engine actually sums into Lembur pay) were never
+  // computed, so an approved overtime request never once reached anyone's
+  // payslip even though the UI implied it would. jam_mulai/jam_selesai are
+  // "HH:MM" strings with no date, so duration is computed on a fixed
+  // reference day (midnight rollover only wraps overnight shifts, doesn't
+  // span multiple calendar days).
+  if (approve) {
+    const { data: row } = await supabaseAdmin.from("lembur").select("jam_mulai, jam_selesai").eq("id", id).maybeSingle();
+    const r = row as { jam_mulai: string | null; jam_selesai: string | null } | null;
+    if (r?.jam_mulai && r?.jam_selesai) {
+      const toMinutes = (t: string) => { const [h, m] = t.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+      let minutes = toMinutes(r.jam_selesai) - toMinutes(r.jam_mulai);
+      if (minutes < 0) minutes += 24 * 60; // overnight shift (e.g. 22:00 -> 02:00)
+      const hours = Math.round((minutes / 60) * 100) / 100;
+      const { data: rateRow } = await supabaseAdmin.from("konfigurasi_penggajian").select("value").eq("key", "overtime_rate_per_hour").maybeSingle();
+      const ratePerHour = Number((rateRow as { value?: unknown } | null)?.value) || 25000;
+      updatePayload.hours = hours;
+      updatePayload.amount = Math.round(hours * ratePerHour);
+    }
+  }
+
+  await supabaseAdmin.from("lembur").update(updatePayload).eq("id", id);
   revalidateWtm();
   return { success: true };
 }

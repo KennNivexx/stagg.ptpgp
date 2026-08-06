@@ -10,6 +10,7 @@ export async function GET(
   try {
     const { id } = await params;
     const autoprint = request.nextUrl.searchParams.get("autoprint") === "1";
+    const asJson = request.nextUrl.searchParams.get("format") === "json";
 
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get("session_token")?.value;
@@ -39,6 +40,32 @@ export async function GET(
     const isOwner = role === "employee" && session.email === emp.email;
     if (!isPayrollAdmin && !isOwner) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // JSON branch for the client-rendered PDF exporter (PayslipTemplate.tsx +
+    // html-to-image + jsPDF) — the HTML branch below stays as-is for "Lihat"
+    // and browser print-to-PDF, unchanged.
+    //
+    // Explicitly projected, NOT `s` wholesale: the row is fetched with
+    // select("*"), which now includes HRD-authored internal fields added by
+    // migration 20260818004 (payment_notes / payment_reference). The payslip
+    // template never renders those, so shipping them would be an invisible
+    // leak to the employee. Only fields the template actually draws are sent.
+    if (asJson) {
+      return NextResponse.json({
+        slip: {
+          id: s.id, month: s.month, year: s.year,
+          basic_salary: s.basic_salary, allowances: s.allowances, bonus: s.bonus,
+          overtime_pay: s.overtime_pay, attendance_allowance: s.attendance_allowance,
+          tax: s.tax, bpjs_health: s.bpjs_health, bpjs_employment: s.bpjs_employment,
+          deductions: s.deductions, late_deduction: s.late_deduction, absent_deduction: s.absent_deduction,
+          net_salary: s.net_salary, status: s.status, transfer_date: s.transfer_date,
+        },
+        karyawan: {
+          full_name: emp.full_name, department: emp.department,
+          position: emp.position, employee_code: emp.employee_code,
+        },
+      });
     }
 
     const monthNames = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];

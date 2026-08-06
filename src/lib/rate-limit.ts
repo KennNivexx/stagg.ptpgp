@@ -4,8 +4,14 @@ let redisClient: { limit: (key: string) => Promise<{ success: boolean; remaining
 
 async function initRedis() {
   if (redisClient) return;
-  const url = process.env.UPSTASH_REDIS_URL;
-  const token = process.env.UPSTASH_REDIS_TOKEN;
+  // Upstash's own dashboard/docs always name these UPSTASH_REDIS_REST_URL /
+  // UPSTASH_REDIS_REST_TOKEN (the ".env" snippet you copy when creating a
+  // database uses exactly that) — this previously only checked a
+  // non-standard UPSTASH_REDIS_URL/UPSTASH_REDIS_TOKEN pair that nothing
+  // ever sets, so Redis was silently never reachable even once credentials
+  // existed elsewhere. Both pairs are checked, REST-suffixed preferred.
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.UPSTASH_REDIS_TOKEN;
   if (!url || !token) return;
   try {
     const { Redis } = await import("@upstash/redis");

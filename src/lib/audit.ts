@@ -74,7 +74,14 @@ export type AuditAction =
   | "meeting.room_booking_status"
   | "meeting.notulen_approve"
   | "promotion.submit"
-  | "promotion.approve";
+  | "promotion.approve"
+  | "payroll.generate"
+  | "payroll.edit"
+  | "payroll.status_change"
+  | "payroll.paid"
+  | "kasbon.request"
+  | "kasbon.approve"
+  | "kasbon.reject";
 
 export async function auditLog(params: {
   action: AuditAction;

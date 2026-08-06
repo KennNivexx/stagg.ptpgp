@@ -6,10 +6,12 @@ export default function ExportExcelButton({
   rows,
   filename,
   sheetName = "Sheet1",
+  label = "Ekspor Excel",
 }: {
   rows: Array<Record<string, unknown>>;
   filename: string;
   sheetName?: string;
+  label?: string;
 }) {
   const handleExport = async () => {
     const XLSX = await import("xlsx");
@@ -26,7 +28,7 @@ export default function ExportExcelButton({
       className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
       title={rows.length === 0 ? "Tidak ada data untuk diekspor" : "Ekspor ke Excel"}
     >
-      <FileSpreadsheet size={14} /> Ekspor Excel
+      <FileSpreadsheet size={14} /> {label}
     </button>
   );
 }

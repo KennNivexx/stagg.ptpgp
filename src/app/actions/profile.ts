@@ -34,6 +34,10 @@ export async function saveEmployeeProfile(formData: FormData) {
   const last_education = (formData.get("last_education") as string || "").trim() || null;
   const emergency_name = (formData.get("emergency_name") as string || "").trim() || null;
   const emergency_phone = (formData.get("emergency_phone") as string || "").trim() || null;
+  const npwp = (formData.get("npwp") as string || "").trim() || null;
+  const bank_name = (formData.get("bank_name") as string || "").trim() || null;
+  const bank_account_number = (formData.get("bank_account_number") as string || "").trim() || null;
+  const bank_account_holder = (formData.get("bank_account_holder") as string || "").trim() || null;
 
   // Moved to the standalone data_pribadi_karyawan table (keyed by email, no
   // FK) so HRD's Employee 360° profile and this self-service form read/write
@@ -44,9 +48,13 @@ export async function saveEmployeeProfile(formData: FormData) {
   const { error } = await supabaseAdmin.from("data_pribadi_karyawan").upsert({
     id, email, nik, birth_place, birth_date, religion, blood_type, marital_status,
     spouse_name, children_count, ktp_address, last_education, emergency_name, emergency_phone,
+    npwp, bank_name, bank_account_number, bank_account_holder,
     updated_at: new Date().toISOString(),
   }, { onConflict: "email" });
 
+  if (error?.code === "PGRST204" || /column .* does not exist/i.test(error?.message || "")) {
+    return { error: "Jalankan migrasi 20260818003_karyawan_payroll_master_data.sql terlebih dahulu." };
+  }
   if (error?.code === "42P01") return { error: "Jalankan migrasi 20260713001_data_pribadi_standalone.sql terlebih dahulu." };
   if (error) { console.error("[profile] saveEmployeeProfile error:", error.message); return { error: "Terjadi kesalahan internal. Silakan coba lagi." }; }
 

@@ -50,6 +50,8 @@ export async function getCurrentEmployee() {
     spouse_name: pick("spouse_name"), children_count: pick("children_count"),
     ktp_address: pick("ktp_address"), last_education: pick("last_education"),
     emergency_name: pick("emergency_name"), emergency_phone: pick("emergency_phone"),
+    npwp: pick("npwp"), bank_name: pick("bank_name"),
+    bank_account_number: pick("bank_account_number"), bank_account_holder: pick("bank_account_holder"),
   };
 }
 
