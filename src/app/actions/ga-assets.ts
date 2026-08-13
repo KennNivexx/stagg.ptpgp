@@ -148,8 +148,15 @@ export async function requestAssetRepair(formData: FormData): Promise<{ error: s
   return { success: true };
 }
 
+// Realization/decision is Direktur's alone per SOP-SDM-10 ("diverifikasi dan
+// direalisasikan oleh Direktur") — previously this also accepted "hrd",
+// which meant HRD could approve/reject/complete its own request end-to-end
+// with no director involvement at all, the exact two-tier separation the
+// SOP comment on requestAssetRepair() describes but never enforced.
+// superadmin stays as the standing break-glass override used everywhere
+// else in this app.
 export async function decideAssetRepair(id: string, decision: "Disetujui" | "Ditolak" | "Selesai"): Promise<{ error: string } | { success: true }> {
-  const user = await requireRole("hrd", "superadmin", "director");
+  const user = await requireRole("director", "superadmin");
   if (!["Disetujui", "Ditolak", "Selesai"].includes(decision)) return { error: "Keputusan tidak valid." };
 
   const { error } = await supabaseAdmin.from("permintaan_perbaikan_aset").update({

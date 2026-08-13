@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { hireCandidateFromPipeline } from "@/app/actions/recruitment";
 import { sendMail, emailOfferLetter } from "@/lib/mailer";
+import { auditLog } from "@/lib/audit";
 
 /**
  * Recruitment Management, Round 2 — multi-panel interview scoring, a real
@@ -129,6 +130,12 @@ export async function decideHiringApprovalStep(
     approved_by: user.name || user.email, approved_at: new Date().toISOString(),
     notes: notes || null,
   }).eq("application_id", applicationId).eq("step_number", stepNumber);
+
+  await auditLog({
+    action: "hiring.approval_decision", targetId: applicationId,
+    performedBy: user,
+    detail: `Tahap ${stepNumber} (${step.approver_role}) ${approved ? "disetujui" : "ditolak"}${notes ? ` — ${notes}` : ""}.`,
+  });
 
   if (!approved) {
     await supabaseAdmin.from("pelamar").update({ status: "Ditolak" }).eq("id", applicationId);
@@ -341,7 +348,7 @@ export async function setHazmatThirdPartyTest(
 }
 
 export async function sendOfferLetter(applicationId: string): Promise<{ error: string } | { success: true; warning?: string }> {
-  await requireRole("hrd", "superadmin");
+  const actor = await requireRole("hrd", "superadmin");
   const { data: appRow } = await supabaseAdmin.from("pelamar").select("email, full_name, offer_letter_content").eq("id", applicationId).maybeSingle();
   const app = appRow as { email?: string; full_name?: string; offer_letter_content?: string } | null;
   if (!app?.offer_letter_content) return { error: "Buat offer letter terlebih dahulu." };
@@ -349,6 +356,8 @@ export async function sendOfferLetter(applicationId: string): Promise<{ error: s
   await supabaseAdmin.from("pelamar").update({
     offer_letter_status: "Terkirim", offer_letter_sent_at: new Date().toISOString(),
   }).eq("id", applicationId);
+
+  await auditLog({ action: "offer.status_change", targetId: applicationId, targetName: app.full_name, performedBy: actor, detail: "Offer letter dikirim ke kandidat." });
 
   let warning: string | undefined;
   if (app.email) {

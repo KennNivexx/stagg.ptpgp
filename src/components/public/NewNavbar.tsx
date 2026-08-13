@@ -41,16 +41,20 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
   const navLinks = linkSettings?.navbar?.length ? linkSettings.navbar : defaultLinks;
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-100/60 h-[72px] flex items-center shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-[#FBF8F4]/90 backdrop-blur-md border-b border-[#1A1612]/[0.06] h-[76px] flex items-center">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 w-full">
         <div className="flex justify-between items-center h-full">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-2">
-              <Image src="/images/logo.png" alt={companyName || "PT Pratama Galuh Perkasa"} width={56} height={56} className="h-10 sm:h-14 w-auto" priority />
+            <Link href="/" className="flex items-center gap-2.5">
+              <Image src="/images/logo.png" alt={companyName || "PT Pratama Galuh Perkasa"} width={56} height={56} className="h-9 sm:h-11 w-auto" priority />
+              <span className="hidden sm:block h-6 w-px bg-[#1A1612]/10" />
+              <span className="hidden sm:block text-[11px] font-bold uppercase tracking-[0.14em] text-[#1A1612]/60">
+                {companyName || "Pratama Galuh Perkasa"}
+              </span>
             </Link>
           </div>
-          
-          <div className="hidden md:flex items-center space-x-8 h-full">
+
+          <div className="hidden md:flex items-center gap-9 h-full">
             {navLinks.map((link, idx) => {
               const isHash = link.url.includes("#");
               const linkPath = link.url.split("#")[0];
@@ -60,24 +64,25 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
                 key={link.url + link.label}
                 href={link.url}
                 onClick={isHash ? (e) => handleHashClick(e, link.url) : undefined}
-                className={`text-sm font-medium transition-colors ${
-                  isActive ? "text-pgp-red" : "text-gray-700 hover:text-pgp-red"
+                className={`relative text-[13px] font-bold uppercase tracking-wider transition-colors py-1 ${
+                  isActive ? "text-[#1A1612]" : "text-[#1A1612]/55 hover:text-[#1A1612]"
                 }`}
               >
                 {link.label}
+                <span className={`absolute -bottom-0.5 left-0 h-[2px] bg-pgp-red transition-all ${isActive ? "w-full" : "w-0"}`} />
               </Link>
               );
             })}
           </div>
 
-          <div className="hidden md:flex items-center gap-2.5">
-            <Link href="/login" className="text-gray-600 hover:text-pgp-navy text-xs font-semibold px-4 py-2.5 rounded-full transition-colors">
+          <div className="hidden md:flex items-center gap-3">
+            <Link href="/login" className="text-[#1A1612]/70 hover:text-[#1A1612] text-xs font-bold px-3 py-2.5 transition-colors">
               Login
             </Link>
             <Link
               href="/#contact"
               onClick={(e) => handleHashClick(e, "/#contact")}
-              className="group flex items-center gap-1.5 bg-pgp-navy hover:bg-pgp-red text-white text-xs font-bold pl-5 pr-4 py-2.5 rounded-full transition-all shadow-sm hover:shadow-lg hover:shadow-pgp-red/20"
+              className="group flex items-center gap-1.5 bg-pgp-red hover:bg-pgp-red-hover text-white text-xs font-extrabold pl-5 pr-4 py-3 rounded-lg transition-all shadow-[0_4px_14px_-2px_rgba(221,44,0,0.35)] hover:shadow-[0_6px_20px_-2px_rgba(221,44,0,0.45)] hover:-translate-y-0.5"
             >
               Request Quotation
               <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -86,14 +91,14 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
 
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100"
+            className="md:hidden p-2 rounded-lg text-[#1A1612] hover:bg-[#1A1612]/5"
           >
             {isOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
         {isOpen && (
-          <div className="md:hidden absolute top-[72px] left-0 w-full bg-white border-b border-gray-100 shadow-lg px-4 py-4 space-y-2">
+          <div className="md:hidden absolute top-[76px] left-0 w-full bg-[#FBF8F4] border-b border-[#1A1612]/10 shadow-lg px-5 py-4 space-y-1">
             {navLinks.map((link) => {
               const isHash = link.url.includes("#");
               return (
@@ -101,20 +106,20 @@ export default function NewNavbar({ links: linkSettings, companyName }: NavbarPr
                 key={link.url + link.label}
                 href={link.url}
                 onClick={(e) => { setIsOpen(false); if (isHash) handleHashClick(e, link.url); }}
-                className="block px-4 py-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-pgp-red"
+                className="block px-4 py-3 rounded-lg text-sm font-bold text-[#1A1612]/75 hover:bg-[#1A1612]/5 hover:text-pgp-red"
               >
                 {link.label}
               </Link>
               );
             })}
-            <div className="flex gap-2 pt-2 border-t border-gray-100">
-              <Link href="/login" onClick={() => setIsOpen(false)} className="flex-1 text-center py-2.5 text-gray-700 border border-gray-300 text-xs font-bold rounded-full">
+            <div className="flex gap-2 pt-3 border-t border-[#1A1612]/10">
+              <Link href="/login" onClick={() => setIsOpen(false)} className="flex-1 text-center py-3 text-[#1A1612] border border-[#1A1612]/15 text-xs font-bold rounded-lg">
                 Login
               </Link>
               <Link
                 href="/#contact"
                 onClick={(e) => { setIsOpen(false); handleHashClick(e, "/#contact"); }}
-                className="flex-1 text-center py-2.5 bg-pgp-navy text-white text-xs font-bold rounded-full"
+                className="flex-1 text-center py-3 bg-pgp-red text-white text-xs font-bold rounded-lg"
               >
                 Request Quotation
               </Link>

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { MapPin } from "lucide-react";
+import { Eyebrow } from "./ui/PublicPrimitives";
 
 interface CoverageItem {
   region: string;
@@ -49,48 +50,44 @@ export default function CoverageSection({
   return (
     <motion.section
       id="coverage"
-      className="py-24 bg-gradient-to-b from-white to-slate-50 text-pgp-navy overflow-hidden relative border-y border-zinc-200/40 scroll-mt-[72px]"
+      className="py-20 lg:py-28 bg-white overflow-hidden relative scroll-mt-[72px]"
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6 }}
     >
-      <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}></div>
-
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-pgp-red font-extrabold text-xs tracking-widest uppercase mb-4 block">
-            {subtitle}
-          </span>
-          <h2 className="text-3xl md:text-4xl font-black mb-6 tracking-tight text-zinc-950">
+      <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-14 sm:mb-16">
+          <Eyebrow number="04">{subtitle}</Eyebrow>
+          <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-extrabold text-[#1A1612] tracking-tight leading-[1.08]">
             {title}
           </h2>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-12">
-          <div className="lg:w-1/2 bg-white border border-orange-100/50 rounded-3xl p-10 shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="text-xl font-extrabold mb-8 flex items-center gap-3 text-zinc-950">
-              <span className="w-9 h-9 rounded-xl bg-orange-50 text-pgp-red flex items-center justify-center border border-orange-100/50"><MapPin size={18}/></span>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="lg:w-1/2 bg-[#F7F3EE] rounded-2xl p-8 sm:p-10 hover:shadow-md transition-shadow">
+            <h3 className="text-lg font-extrabold mb-8 flex items-center gap-3 text-[#1A1612]">
+              <span className="w-9 h-9 rounded-xl bg-white text-pgp-red flex items-center justify-center shadow-sm"><MapPin size={18}/></span>
               Domestik (Indonesia)
             </h3>
             <ul className="grid grid-cols-2 gap-y-6 gap-x-4">
               {domestik.map((item, idx) => (
-                <li key={item.region} className="flex items-center gap-3 text-zinc-950 text-sm font-bold">
+                <li key={item.region} className="flex items-center gap-3 text-[#1A1612] text-sm font-bold">
                   <div className="w-2.5 h-2.5 rounded-full bg-pgp-red"></div> {item.region}
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="lg:w-1/2 bg-white border border-blue-100/50 rounded-3xl p-10 shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="text-xl font-extrabold mb-8 flex items-center gap-3 text-zinc-950">
-              <span className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50"><Globe size={18}/></span>
+          <div className="lg:w-1/2 bg-[#1A1612] rounded-2xl p-8 sm:p-10 hover:shadow-md transition-shadow">
+            <h3 className="text-lg font-extrabold mb-8 flex items-center gap-3 text-white">
+              <span className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Globe size={18}/></span>
               Internasional
             </h3>
             <ul className="grid grid-cols-2 gap-y-6 gap-x-4">
               {internasional.map((item, idx) => (
-                <li key={item.region} className="flex items-center gap-3 text-zinc-950 text-sm font-bold">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> {item.region}
+                <li key={item.region} className="flex items-center gap-3 text-white text-sm font-bold">
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/60"></div> {item.region}
                 </li>
               ))}
             </ul>

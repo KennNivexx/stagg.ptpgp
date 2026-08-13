@@ -1,8 +1,21 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { TrendingUp, Target, ArrowUp, Briefcase, GraduationCap, CheckCircle } from "lucide-react";
+import { TrendingUp, Target, ArrowUp, Briefcase, GraduationCap, CheckCircle, ClipboardCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-guard";
 import { ApplyButton, ConsultationButton } from "./CareerActionButtons";
+import { getMyCareerTransactions } from "@/app/actions/career-development";
+
+const TX_STATUS_STYLE: Record<string, string> = {
+  "In Review": "bg-amber-50 text-amber-700",
+  Approved: "bg-emerald-50 text-emerald-700",
+  Rejected: "bg-red-50 text-red-700",
+};
+
+const STEP_STATUS_STYLE: Record<string, string> = {
+  Pending: "bg-slate-100 text-slate-500",
+  Approved: "bg-emerald-50 text-emerald-700",
+  Rejected: "bg-red-50 text-red-700",
+};
 
 export default async function EmployeeCareer() {
   let userEmail: string;
@@ -66,6 +79,8 @@ export default async function EmployeeCareer() {
       jobDept: employee?.department || "",
     });
   }
+
+  const myTransactions = await getMyCareerTransactions();
 
   // Fetch active trainings for development plan
   const { data: activeTrainings } = await supabaseAdmin
@@ -182,6 +197,50 @@ export default async function EmployeeCareer() {
               </div>
             </div>
           </div>
+
+          {myTransactions.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+              <div className="p-6 border-b border-slate-100">
+                <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                  <ClipboardCheck size={16} className="text-[#CC0000]" />
+                  Status Transaksi Karir Saya
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Promosi, mutasi, atau penugasan yang sedang/telah diproses untuk Anda</p>
+              </div>
+              <div className="divide-y divide-slate-50">
+                {myTransactions.map((t) => {
+                  const tx = t as Record<string, unknown>;
+                  const to = tx.to as { name?: string } | null;
+                  const approvals = (tx.approvals || []) as { step_number: number; approver_role: string; status: string }[];
+                  return (
+                    <div key={tx.id as string} className="p-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-xs font-bold text-slate-800">
+                          {tx.transaction_type as string}{to?.name ? ` — ${to.name}` : ""}
+                        </h4>
+                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold ${TX_STATUS_STYLE[tx.status as string] || "bg-slate-100 text-slate-500"}`}>
+                          {tx.status as string}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mb-2">
+                        Efektif {tx.effective_date ? new Date(tx.effective_date as string).toLocaleDateString("id-ID") : "-"}
+                        {tx.reason ? ` — ${tx.reason as string}` : ""}
+                      </p>
+                      {approvals.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {approvals.map((a) => (
+                            <span key={a.step_number} className={`px-2 py-1 rounded-lg text-[9px] font-semibold ${STEP_STATUS_STYLE[a.status] || "bg-slate-100 text-slate-500"}`}>
+                              {a.approver_role}: {a.status}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">

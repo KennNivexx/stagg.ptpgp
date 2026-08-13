@@ -88,20 +88,20 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
   const socialLinks = links?.social?.length ? links.social : [];
 
   return (
-    <footer className="bg-zinc-50 pt-16 pb-8 border-t border-zinc-200/60">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <footer className="bg-[#1A1612] pt-16 pb-8">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16 mb-16">
-          
+
           <div className="lg:col-span-1">
             <Link href="/" className="inline-block mb-4">
               <Image
                 src="/images/logo.png"
                 alt={companyName}
                 width={64} height={64}
-                className="h-16 w-auto"
+                className="h-16 w-auto brightness-0 invert"
               />
             </Link>
-            <p className="text-zinc-600 text-xs leading-relaxed mb-6 font-light">
+            <p className="text-white/50 text-xs leading-relaxed mb-6">
               {companyDesc}
             </p>
             {socialLinks.length > 0 && (
@@ -115,9 +115,9 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={s.label}
-                      className="text-zinc-500 hover:text-pgp-red transition-colors"
+                      className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:bg-pgp-red hover:text-white transition-colors"
                     >
-                      <Icon size={16} />
+                      <Icon size={14} />
                     </a>
                   );
                 })}
@@ -126,13 +126,13 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
           </div>
 
           <div>
-            <h3 className="text-xs font-bold text-pgp-navy uppercase tracking-widest mb-6">Company</h3>
+            <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.18em] mb-6">Company</h3>
             <ul className="space-y-4">
               {quickLinks.map((l) => {
                 const isHash = l.url.includes("#");
                 return (
                 <li key={l.url + l.label}>
-                  <Link href={l.url} onClick={isHash ? (e) => handleHashClick(e, l.url) : undefined} className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">{l.label}</Link>
+                  <Link href={l.url} onClick={isHash ? (e) => handleHashClick(e, l.url) : undefined} className="text-white/50 text-xs hover:text-white transition-colors">{l.label}</Link>
                 </li>
                 );
               })}
@@ -140,13 +140,13 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
           </div>
 
           <div>
-            <h3 className="text-xs font-bold text-pgp-navy uppercase tracking-widest mb-6">Services</h3>
+            <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.18em] mb-6">Services</h3>
             <ul className="space-y-4">
               {supportLinks.map((l) => {
                 const isHash = l.url.includes("#");
                 return (
                 <li key={l.url + l.label}>
-                  <Link href={l.url} onClick={isHash ? (e) => handleHashClick(e, l.url) : undefined} className="text-zinc-600 text-xs hover:text-pgp-red transition-colors">{l.label}</Link>
+                  <Link href={l.url} onClick={isHash ? (e) => handleHashClick(e, l.url) : undefined} className="text-white/50 text-xs hover:text-white transition-colors">{l.label}</Link>
                 </li>
                 );
               })}
@@ -154,22 +154,22 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
           </div>
 
           <div>
-            <h3 className="text-xs font-bold text-pgp-navy uppercase tracking-widest mb-6">Kontak</h3>
+            <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.18em] mb-6">Kontak</h3>
             <ul className="space-y-4">
               <li className="flex items-center gap-2">
                 <Phone size={12} className="text-pgp-red" />
-                <span className="text-zinc-600 text-xs">{companyPhone}</span>
+                <span className="text-white/50 text-xs">{companyPhone}</span>
               </li>
               {info?.company_email && (
                 <li className="flex items-center gap-2">
                   <Mail size={12} className="text-pgp-red" />
-                  <span className="text-zinc-600 text-xs">{info.company_email}</span>
+                  <span className="text-white/50 text-xs">{info.company_email}</span>
                 </li>
               )}
               {info?.company_address && (
                 <li className="flex items-center gap-2">
                   <MapPin size={12} className="text-pgp-red" />
-                  <span className="text-zinc-600 text-xs">{info.company_address}</span>
+                  <span className="text-white/50 text-xs">{info.company_address}</span>
                 </li>
               )}
             </ul>
@@ -177,8 +177,8 @@ export default function PGPFooter({ info, footer, links }: FooterProps) {
 
         </div>
 
-        <div className="border-t border-zinc-200/80 pt-6 text-center">
-          <p className="text-zinc-500 text-[10px] font-bold">{copyright}</p>
+        <div className="border-t border-white/10 pt-6 text-center">
+          <p className="text-white/30 text-[10px] font-bold">{copyright}</p>
         </div>
       </div>
     </footer>

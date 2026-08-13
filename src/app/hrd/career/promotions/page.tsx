@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/auth-guard";
 import PromotionsClient from "./PromotionsClient";
 
 export default async function PromotionsPage() {
-  await requireRole("hrd", "superadmin", "department_manager");
+  const actor = await requireRole("hrd", "superadmin", "department_manager", "director");
   const { data: employees } = await supabaseAdmin
     .from("karyawan")
     .select("id, full_name, kode, department, position")
@@ -29,6 +29,7 @@ export default async function PromotionsPage() {
     <PromotionsClient
       employees={employees || []}
       initialPromotions={promotions}
+      currentRole={actor.role}
     />
   );
 }

@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { auditLog } from "@/lib/audit";
 
 export async function getCurrentEmployee() {
   const user = await requireRole("employee", "hrd", "superadmin");
@@ -56,7 +57,7 @@ export async function getCurrentEmployee() {
 }
 
 export async function submitComplaint(formData: FormData) {
-  const user = await requireRole("employee", "hrd", "superadmin");
+  const user = await requireRole("employee", "hrd", "superadmin", "department_manager");
 
   const subject = formData.get("subject") as string;
   const category = formData.get("category") as string;
@@ -89,7 +90,7 @@ export async function submitComplaint(formData: FormData) {
 }
 
 export async function submitResignation(formData: FormData) {
-  const user = await requireRole("employee", "hrd", "superadmin");
+  const user = await requireRole("employee", "hrd", "superadmin", "department_manager");
 
   const reason = formData.get("reason") as string;
   const lastDay = formData.get("last_day") as string;
@@ -115,6 +116,11 @@ export async function submitResignation(formData: FormData) {
     console.error("[employee] submitResignation error:", error.message);
     return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
+
+  await auditLog({
+    action: "resignation.submit", targetId: user.id, targetName: user.name,
+    performedBy: user, detail: `Mengajukan pengunduran diri, hari terakhir kerja ${lastDay}.`,
+  });
 
   revalidatePath("/employee/resignation");
   revalidatePath("/hrd/relations/resignations");
@@ -213,6 +219,11 @@ export async function issueWarning(formData: FormData) {
     console.error("[employee] issueWarning error:", error.message);
     return { error: "Terjadi kesalahan internal. Silakan coba lagi." };
   }
+
+  await auditLog({
+    action: "warning.issue", targetId: employeeId, targetName: employeeName,
+    performedBy: user, detail: `${spLevel} diterbitkan untuk ${employeeName} — ${reason}`,
+  });
 
   revalidatePath("/hrd/relations/warnings");
   revalidatePath("/employee/warnings");

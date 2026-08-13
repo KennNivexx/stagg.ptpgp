@@ -8,7 +8,12 @@ import { submitLeaveForEmployee } from "@/lib/leaves-core";
 const uid = () => crypto.randomUUID();
 
 export async function submitLeave(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin", "employee");
+  // department_manager submits their OWN leave here same as any employee —
+  // approving a subordinate's leave (updateLeaveStatus below) is a
+  // different, separate action. Previously excluded, which meant a Kepala
+  // Divisi had no way to request their own cuti at all (kasbon already
+  // allowed this same role for the same "acting as an employee" reason).
+  const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
   const result = await submitLeaveForEmployee({
     employeeId: user.id,
     employeeEmail: user.email,
@@ -55,6 +60,44 @@ export async function updateLeaveStatus(id: string, status: string): Promise<{ e
   }
 
   await supabaseAdmin.from("pengajuan_cuti").update({ status, approved_by: user.name, updated_at: new Date().toISOString() }).eq("id", id);
+
+  // Saldo Cuti (leave balance) was previously a completely separate,
+  // manually-maintained number — approving a request here never touched it,
+  // so the "sisa cuti" HRD sees was only ever as accurate as someone's last
+  // manual edit. Only "Cuti Tahunan" maps to a tracked balance (saldo_cuti's
+  // own default jenis_cuti is "Tahunan"; Cuti Sakit/Izin Khusus have no
+  // agreed balance semantics in this app, so deducting from an invented
+  // bucket for those would be fabricating policy, not fixing a bug).
+  if (status === "Disetujui" && l.type === "Cuti Tahunan") {
+    try {
+      const empEmailForBalance = await getEmployeeEmail(l.employee_id as string);
+      const { data: karyawanRow } = empEmailForBalance
+        ? await supabaseAdmin.from("karyawan").select("id").eq("email", empEmailForBalance).maybeSingle()
+        : { data: null };
+      const karyawanId = (karyawanRow as { id?: string } | null)?.id;
+      if (karyawanId) {
+        const start = new Date(l.start_date as string);
+        const end = new Date(l.end_date as string);
+        const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1);
+        const tahun = start.getFullYear();
+        const { data: existingSaldo } = await supabaseAdmin.from("saldo_cuti")
+          .select("id, terpakai").eq("karyawan_id", karyawanId).eq("tahun", tahun).eq("jenis_cuti", "Tahunan").maybeSingle();
+        const saldo = existingSaldo as { id: string; terpakai: number } | null;
+        if (saldo) {
+          await supabaseAdmin.from("saldo_cuti").update({ terpakai: (Number(saldo.terpakai) || 0) + days }).eq("id", saldo.id);
+        } else {
+          await supabaseAdmin.from("saldo_cuti").insert({
+            id: crypto.randomUUID(), karyawan_id: karyawanId, tahun, jenis_cuti: "Tahunan", total_hari: 12, terpakai: days,
+          });
+        }
+      }
+    } catch (e) {
+      // Non-fatal — the leave approval itself must not fail because the
+      // balance bookkeeping had a problem; HRD can still correct it manually
+      // via Saldo Cuti.
+      console.error("[leaves] updateLeaveStatus: gagal memotong saldo cuti otomatis:", (e as Error).message);
+    }
+  }
 
   // Notify employee
   const empEmail = await getEmployeeEmail(l.employee_id as string);

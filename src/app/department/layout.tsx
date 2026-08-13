@@ -38,6 +38,8 @@ const MENU_GROUPS = [
     items: [
       { href: "/department/attendance", label: "Absensi" },
       { href: "/department/leaves", label: "Cuti & Izin" },
+      { href: "/department/overtime", label: "Lembur" },
+      { href: "/department/corrections", label: "Koreksi Absensi" },
       { href: "/department/shifts", label: "Shift Kerja" },
       { href: "/department/locations", label: "Lokasi Kerja" },
       { href: "/department/trips", label: "Lembur & Biaya Trip" },
@@ -147,6 +149,8 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/department/career": "Talent pool, promosi, dan mutasi tim Anda",
   "/department/rewards": "Bonus dan penghargaan tim Anda",
   "/department/leaves": "Persetujuan cuti & izin karyawan",
+  "/department/overtime": "Persetujuan lembur karyawan",
+  "/department/corrections": "Persetujuan koreksi absensi karyawan",
   "/department/business-trips": "Laporan perjalanan dinas tim",
   "/department/incidents": "Laporan insiden di departemen",
   "/department/fleet": "Armada kendaraan dan SIM tim",

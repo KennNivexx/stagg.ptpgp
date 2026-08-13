@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { auditLog } from "@/lib/audit";
 
 const uid = () => "tr-" + crypto.randomUUID();
 
@@ -192,7 +193,7 @@ export async function getTrainingEnrollments(trainingId: string) {
  * "Perlu Mengulang" so the employee must retry, per the explicit spec:
  * lulus → sertifikat, tidak lolos → mengulang. */
 export async function markEnrollmentResult(id: string, passed: boolean): Promise<{ error: string } | { success: true }> {
-  await requireRole("hrd", "superadmin");
+  const actor = await requireRole("hrd", "superadmin");
   if (!id) return { error: "ID peserta wajib diisi." };
 
   const { error } = await supabaseAdmin
@@ -200,6 +201,8 @@ export async function markEnrollmentResult(id: string, passed: boolean): Promise
     .update({ status: passed ? "Completed" : "Perlu Mengulang" })
     .eq("id", id);
   if (error) return { error: "Gagal memperbarui status peserta." };
+
+  await auditLog({ action: "training.enrollment_result", targetId: id, performedBy: actor, detail: passed ? "Ditandai lulus (Completed)." : "Ditandai perlu mengulang." });
 
   revalidatePath("/hrd/learning/trainings");
   revalidatePath("/employee/training");
@@ -877,7 +880,7 @@ export async function getTrainingCertificates() {
 }
 
 export async function issueCertificate(formData: FormData) {
-  await requireRole("hrd", "superadmin");
+  const actor = await requireRole("hrd", "superadmin");
   const training_id = (formData.get("training_id") as string || "").trim();
   const employee_id = (formData.get("employee_id") as string || "").trim();
   const certificate_number = (formData.get("certificate_number") as string || "").trim();
@@ -890,6 +893,7 @@ export async function issueCertificate(formData: FormData) {
   });
   if (error?.code === "42P01" || error?.code === "PGRST205") return { error: "Jalankan migrasi 20260703002_training_requests_roi.sql terlebih dahulu." };
   if (error) return { error: "Gagal menerbitkan sertifikat." };
+  await auditLog({ action: "training.certificate_issue", targetId: employee_id, targetName: certificate_number, performedBy: actor, detail: `Sertifikat ${certificate_number} diterbitkan untuk training ${training_id}.` });
   revalidatePath("/hrd/learning/certificates");
   return { success: true };
 }

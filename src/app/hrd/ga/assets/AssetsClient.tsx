@@ -27,7 +27,11 @@ const emptyAssetForm = {
   id: "", nama_aset: "", jenis: "", divisi: "", penanggung_jawab: "", jumlah: "1", kondisi: "Baik", status: "Aktif",
 };
 
-export default function AssetsClient({ initialAssets, initialRepairRequests }: { initialAssets: Aset[]; initialRepairRequests: PermintaanPerbaikanAset[] }) {
+export default function AssetsClient({ initialAssets, initialRepairRequests, currentRole }: { initialAssets: Aset[]; initialRepairRequests: PermintaanPerbaikanAset[]; currentRole: string }) {
+  // Realisasi permintaan (Setujui/Tolak) adalah wewenang Direktur per SOP —
+  // server sudah menegakkannya di decideAssetRepair(); tombol disembunyikan
+  // di sini juga supaya HRD tidak mengklik lalu ditolak sistem.
+  const canDecide = currentRole === "director" || currentRole === "superadmin";
   const [tab, setTab] = useState<"list" | "repair">("list");
   const [assets, setAssets] = useState<Aset[]>(initialAssets);
   const [repairs, setRepairs] = useState<PermintaanPerbaikanAset[]>(initialRepairRequests);
@@ -207,13 +211,16 @@ export default function AssetsClient({ initialAssets, initialRepairRequests }: {
                       <td className="px-4 py-3 text-slate-600">{r.requested_by || "-"}</td>
                       <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${STATUS_REPAIR_STYLE[r.status]}`}>{r.status}</span></td>
                       <td className="px-4 py-3 text-right">
-                        {r.status === "Diajukan" && (
+                        {!canDecide && (r.status === "Diajukan" || r.status === "Disetujui") && (
+                          <span className="text-[10px] text-slate-400 italic">Menunggu Direktur</span>
+                        )}
+                        {canDecide && r.status === "Diajukan" && (
                           <div className="flex justify-end gap-1.5">
                             <button onClick={() => handleDecision(r.id, "Disetujui")} className="px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100">Setujui</button>
                             <button onClick={() => handleDecision(r.id, "Ditolak")} className="px-2 py-1 rounded-lg text-[10px] font-bold bg-red-50 text-red-700 hover:bg-red-100">Tolak</button>
                           </div>
                         )}
-                        {r.status === "Disetujui" && (
+                        {canDecide && r.status === "Disetujui" && (
                           <button onClick={() => handleDecision(r.id, "Selesai")} className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">Tandai Selesai</button>
                         )}
                       </td>

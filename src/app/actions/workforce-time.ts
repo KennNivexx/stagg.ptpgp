@@ -6,7 +6,38 @@ import { requireRole } from "@/lib/auth-guard";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const MISSING = "Jalankan migrasi 20260713003_workforce_time_management.sql terlebih dahulu.";
-const revalidateWtm = () => { revalidatePath("/hrd/workforce-time"); };
+const revalidateWtm = () => {
+  revalidatePath("/hrd/workforce-time");
+  revalidatePath("/employee/overtime");
+  revalidatePath("/employee/corrections");
+  revalidatePath("/department/overtime");
+  revalidatePath("/department/corrections");
+};
+
+/** koreksi_absensi.karyawan_id / lembur.karyawan_id are keyed to karyawan.id
+ * (confirmed by admin.ts's payroll engine, which reads lembur.karyawan_id
+ * while iterating the karyawan table) — a DIFFERENT id space than the
+ * session's pengguna.id (session.id), so a self-submitting employee/manager
+ * must be resolved by email, never trusted from client-supplied form input. */
+async function resolveOwnKaryawanId(email: string): Promise<string | null> {
+  const { data } = await supabaseAdmin.from("karyawan").select("id").eq("email", email).maybeSingle();
+  return (data as { id?: string } | null)?.id || null;
+}
+
+async function resolveOwnDepartment(email: string): Promise<string | null> {
+  const { data } = await supabaseAdmin.from("karyawan").select("department").eq("email", email).maybeSingle();
+  return (data as { department?: string } | null)?.department || null;
+}
+
+/** All karyawan.id values in a department — used to scope a
+ * department_manager's list/review access to their own team, mirroring the
+ * `department` column filter getLeaves() already does directly (koreksi_absensi/
+ * lembur have no denormalized department column, so this resolves it via karyawan). */
+async function deptEmployeeIds(department: string | null): Promise<string[]> {
+  if (!department) return [];
+  const { data } = await supabaseAdmin.from("karyawan").select("id").eq("department", department);
+  return ((data || []) as { id: string }[]).map((r) => r.id);
+}
 
 /* ─────── Kalender Kerja ─────── */
 export async function getKalenderKerja() {
@@ -93,21 +124,42 @@ export async function deletePenugasan(id: string) {
 }
 
 /* ─────── Koreksi Absensi ─────── */
+/** Every "koreksi"/"lembur" list+approve function below was previously
+ * hrd/superadmin-only, even though the exact same menu group's Cuti feature
+ * (getLeaves/updateLeaveStatus above) already lets employees submit their own
+ * and department_manager approve their team's. That inconsistency meant an
+ * employee who worked overtime, or needed an attendance correction, could
+ * never submit it themselves — HRD had to do it FOR them with no request to
+ * act on — and their Kepala Divisi had no way to approve it either. */
 export async function getKoreksiAbsensi() {
-  await requireRole("hrd", "superadmin");
-  const { data: rows } = await supabaseAdmin.from("koreksi_absensi").select("*").order("created_at", { ascending: false });
+  const user = await requireRole("hrd", "superadmin", "department_manager", "employee");
+  let q = supabaseAdmin.from("koreksi_absensi").select("*").order("created_at", { ascending: false });
+  if (user.role === "employee") {
+    const ownId = await resolveOwnKaryawanId(user.email);
+    q = q.eq("karyawan_id", ownId || "__none__");
+  } else if (user.role === "department_manager") {
+    const ids = await deptEmployeeIds(await resolveOwnDepartment(user.email));
+    q = q.in("karyawan_id", ids.length ? ids : ["__none__"]);
+  }
+  const { data: rows } = await q;
   return joinKaryawanNames(rows || []);
 }
 
 export async function ajukanKoreksi(formData: FormData) {
-  await requireRole("hrd", "superadmin");
-  const karyawan_id = (formData.get("karyawan_id") as string || "").trim();
+  const user = await requireRole("hrd", "superadmin", "department_manager", "employee");
+  // employee/department_manager submit only about themselves — never trust a
+  // client-supplied karyawan_id for those roles; hrd/superadmin keep the
+  // existing "pick any employee" administrative form behavior.
+  let karyawan_id = (formData.get("karyawan_id") as string || "").trim();
+  if (user.role === "employee" || user.role === "department_manager") {
+    karyawan_id = (await resolveOwnKaryawanId(user.email)) || "";
+  }
   const tanggal = (formData.get("tanggal") as string || "").trim();
   const jenis_koreksi = (formData.get("jenis_koreksi") as string || "").trim();
   const alasan = (formData.get("alasan") as string || "").trim();
   if (!karyawan_id || !tanggal || !jenis_koreksi || !alasan) return { error: "Semua field wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("koreksi_absensi").insert({ id: uid("kor"), karyawan_id, tanggal, jenis_koreksi, alasan });
+  const { error } = await supabaseAdmin.from("koreksi_absensi").insert({ id: uid("kor"), karyawan_id, tanggal, jenis_koreksi, alasan, status: "Pending" });
   if (error?.code === "42P01") return { error: MISSING };
   if (error) return { error: "Gagal mengajukan koreksi." };
   revalidateWtm();
@@ -115,7 +167,14 @@ export async function ajukanKoreksi(formData: FormData) {
 }
 
 export async function reviewKoreksi(id: string, approve: boolean) {
-  const user = await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
+  if (user.role === "department_manager") {
+    const { data: row } = await supabaseAdmin.from("koreksi_absensi").select("karyawan_id").eq("id", id).maybeSingle();
+    const ids = await deptEmployeeIds(await resolveOwnDepartment(user.email));
+    if (!ids.includes((row as { karyawan_id?: string } | null)?.karyawan_id || "")) {
+      return { error: "Anda hanya dapat memproses koreksi karyawan di departemen Anda sendiri." };
+    }
+  }
   await supabaseAdmin.from("koreksi_absensi").update({
     status: approve ? "Disetujui" : "Ditolak", reviewed_by: user.name || user.email,
   }).eq("id", id);
@@ -125,21 +184,32 @@ export async function reviewKoreksi(id: string, approve: boolean) {
 
 /* ─────── Lembur ─────── */
 export async function getLembur() {
-  await requireRole("hrd", "superadmin");
-  const { data: rows } = await supabaseAdmin.from("lembur").select("*").order("created_at", { ascending: false });
+  const user = await requireRole("hrd", "superadmin", "department_manager", "employee");
+  let q = supabaseAdmin.from("lembur").select("*").order("created_at", { ascending: false });
+  if (user.role === "employee") {
+    const ownId = await resolveOwnKaryawanId(user.email);
+    q = q.eq("karyawan_id", ownId || "__none__");
+  } else if (user.role === "department_manager") {
+    const ids = await deptEmployeeIds(await resolveOwnDepartment(user.email));
+    q = q.in("karyawan_id", ids.length ? ids : ["__none__"]);
+  }
+  const { data: rows } = await q;
   return joinKaryawanNames(rows || []);
 }
 
 export async function ajukanLembur(formData: FormData) {
-  await requireRole("hrd", "superadmin");
-  const karyawan_id = (formData.get("karyawan_id") as string || "").trim();
+  const user = await requireRole("hrd", "superadmin", "department_manager", "employee");
+  let karyawan_id = (formData.get("karyawan_id") as string || "").trim();
+  if (user.role === "employee" || user.role === "department_manager") {
+    karyawan_id = (await resolveOwnKaryawanId(user.email)) || "";
+  }
   const tanggal = (formData.get("tanggal") as string || "").trim();
   const jam_mulai = (formData.get("jam_mulai") as string || "").trim() || null;
   const jam_selesai = (formData.get("jam_selesai") as string || "").trim() || null;
   const alasan = (formData.get("alasan") as string || "").trim() || null;
   if (!karyawan_id || !tanggal) return { error: "Karyawan dan tanggal wajib diisi." };
 
-  const { error } = await supabaseAdmin.from("lembur").insert({ id: uid("lbr"), karyawan_id, tanggal, jam_mulai, jam_selesai, alasan });
+  const { error } = await supabaseAdmin.from("lembur").insert({ id: uid("lbr"), karyawan_id, tanggal, jam_mulai, jam_selesai, alasan, status: "Pending" });
   if (error?.code === "42P01") return { error: MISSING };
   if (error) return { error: "Gagal mengajukan lembur." };
   revalidateWtm();
@@ -147,7 +217,14 @@ export async function ajukanLembur(formData: FormData) {
 }
 
 export async function reviewLembur(id: string, approve: boolean) {
-  const user = await requireRole("hrd", "superadmin");
+  const user = await requireRole("hrd", "superadmin", "department_manager");
+  if (user.role === "department_manager") {
+    const { data: row } = await supabaseAdmin.from("lembur").select("karyawan_id").eq("id", id).maybeSingle();
+    const ids = await deptEmployeeIds(await resolveOwnDepartment(user.email));
+    if (!ids.includes((row as { karyawan_id?: string } | null)?.karyawan_id || "")) {
+      return { error: "Anda hanya dapat memproses lembur karyawan di departemen Anda sendiri." };
+    }
+  }
   const updatePayload: Record<string, unknown> = { status: approve ? "Disetujui" : "Ditolak", reviewed_by: user.name || user.email };
 
   // Approving here was previously a pure status flip — `lembur.hours`/`amount`

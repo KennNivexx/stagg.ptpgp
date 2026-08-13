@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
+import { Eyebrow } from "./ui/PublicPrimitives";
 
 interface FAQItem {
   question: string;
@@ -54,30 +55,28 @@ export default function FAQSection({
   return (
     <motion.section
       id="faq"
-      className="py-24 bg-[#FCFAF6] scroll-mt-[72px]"
+      className="py-20 lg:py-28 bg-white scroll-mt-[72px]"
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6 }}
     >
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
-            {subtitle}
-          </span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-pgp-navy tracking-tight">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center text-center mb-14 sm:mb-16">
+          <Eyebrow number="09">{subtitle}</Eyebrow>
+          <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-extrabold text-[#1A1612] tracking-tight leading-[1.08]">
             {title}
           </h2>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {items.map((faq, index) => (
-            <div key={faq.question} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <button 
+            <div key={faq.question} className="bg-[#F7F3EE] rounded-2xl overflow-hidden">
+              <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="w-full text-left px-8 py-6 flex justify-between items-center focus:outline-none"
+                className="w-full text-left px-6 sm:px-8 py-5 sm:py-6 flex justify-between items-center focus:outline-none"
               >
-                <span className="font-bold text-pgp-navy pr-8">{faq.question}</span>
+                <span className="font-bold text-[#1A1612] pr-8">{faq.question}</span>
                 <ChevronDown 
                   size={20} 
                   className={`text-gray-400 transition-transform duration-300 ${openIndex === index ? "rotate-180 text-pgp-red" : ""}`} 

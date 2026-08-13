@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArrowRight, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import QuotationModal from "./QuotationModal";
+import { StatCounter } from "./ui/PublicPrimitives";
 
 interface HeroProps {
   badge?: string;
@@ -30,7 +31,7 @@ export default function HeroSection({
     if (titleHighlight && title.includes(titleHighlight)) {
       const parts = title.split(titleHighlight);
       return (
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-tight mb-6 tracking-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold text-white leading-[0.98] mb-7 tracking-tight">
             {parts[0]}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pgp-red">{titleHighlight}</span>
             {parts[1]}
@@ -38,7 +39,7 @@ export default function HeroSection({
       );
     }
     return (
-      <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-tight mb-6 tracking-tight">
+      <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold text-white leading-[0.98] mb-7 tracking-tight">
         {title}
       </h1>
     );
@@ -89,18 +90,19 @@ export default function HeroSection({
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="max-w-3xl space-y-0">
           {badge && (
-            <motion.span
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-              className="inline-flex items-center gap-2 py-1.5 px-4 bg-white/10 text-orange-300 font-extrabold text-xs tracking-wider uppercase rounded-full mb-6 border border-white/15 backdrop-blur-md"
+              className="flex items-center gap-2.5 mb-6 text-white/70"
             >
-              <span className="relative flex h-1.5 w-1.5">
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-orange-400"></span>
               </span>
-              {badge}
-            </motion.span>
+              <span className="h-px w-6 bg-current opacity-40" />
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em]">{badge}</span>
+            </motion.div>
           )}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -125,14 +127,14 @@ export default function HeroSection({
           >
             <button
               onClick={() => setIsQuoteOpen(true)}
-              className="group bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-full font-bold transition-all shadow-xl shadow-pgp-red/20 hover:shadow-2xl hover:shadow-pgp-red/30 hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm cursor-pointer"
+              className="group bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-xl font-extrabold transition-all shadow-[0_10px_30px_-6px_rgba(221,44,0,0.5)] hover:shadow-[0_14px_36px_-6px_rgba(221,44,0,0.6)] hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               Request Quotation
               <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
             </button>
             <Link
               href="#contact"
-              className="group bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 hover:border-white/40 px-8 py-4 rounded-full font-bold transition-all flex items-center justify-center gap-2 text-sm hover:-translate-y-0.5"
+              className="group bg-white/[0.08] hover:bg-white/[0.14] backdrop-blur-md text-white border border-white/20 hover:border-white/35 px-8 py-4 rounded-xl font-extrabold transition-all flex items-center justify-center gap-2 text-sm hover:-translate-y-0.5"
             >
               Hubungi Kami
               <MessageSquare size={18} className="transition-transform group-hover:scale-110" />
@@ -143,17 +145,14 @@ export default function HeroSection({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 1, ease: "easeOut" }}
-            className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-10 pt-8 border-t border-white/15"
+            className="flex flex-wrap gap-x-10 gap-y-6 mt-10 pt-8 border-t border-white/15"
           >
             {[
               { value: "28+", label: "Tahun Pengalaman" },
               { value: "500+", label: "Klien Aktif" },
               { value: "98%", label: "On-Time Delivery" },
             ].map((stat) => (
-              <div key={stat.label} className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-white">{stat.value}</span>
-                <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wide">{stat.label}</span>
-              </div>
+              <StatCounter key={stat.label} value={stat.value} label={stat.label} tone="dark" size="sm" />
             ))}
           </motion.div>
         </div>

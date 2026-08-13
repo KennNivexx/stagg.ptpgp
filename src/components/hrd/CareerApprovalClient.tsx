@@ -12,9 +12,16 @@ type Row = Record<string, unknown> & {
   } | null;
 };
 
-export default function CareerApprovalClient({ title, description, initialRows }: { title: string; description: string; initialRows: Row[] }) {
+export default function CareerApprovalClient({ title, description, initialRows, currentRole }: { title: string; description: string; initialRows: Row[]; currentRole: string }) {
   const [rows, setRows] = useState(initialRows);
   const [pending, startTransition] = useTransition();
+
+  // "Career Committee" is director-only (see ROLE_FOR_CAREER_APPROVER in
+  // career-development.ts) — server already enforces this, hiding the
+  // button here just avoids HRD clicking Setujui and getting rejected.
+  // Every other step (e.g. "Department Head") still allows hrd as a
+  // fallback approver, so those buttons stay visible as before.
+  const canDecideRow = (r: Row) => r.approver_role !== "Career Committee" || currentRole === "director" || currentRole === "superadmin";
 
   const decide = (id: string, status: "Approved" | "Rejected") => {
     startTransition(async () => {
@@ -62,11 +69,14 @@ export default function CareerApprovalClient({ title, description, initialRows }
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${r.status === "Approved" ? "bg-slate-800 text-white" : r.status === "Rejected" ? "bg-red-50 text-pgp-red" : "bg-slate-100 text-slate-600"}`}>{r.status}</span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {r.status === "Pending" && (
+                        {r.status === "Pending" && canDecideRow(r) && (
                           <div className="flex gap-1.5 justify-end">
                             <button disabled={pending} onClick={() => decide(r.id, "Approved")} className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50">Setujui</button>
                             <button disabled={pending} onClick={() => decide(r.id, "Rejected")} className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-red-50 text-pgp-red hover:bg-red-100 disabled:opacity-50">Tolak</button>
                           </div>
+                        )}
+                        {r.status === "Pending" && !canDecideRow(r) && (
+                          <span className="text-[10px] text-slate-400 italic">Menunggu Direktur</span>
                         )}
                       </td>
                     </tr>

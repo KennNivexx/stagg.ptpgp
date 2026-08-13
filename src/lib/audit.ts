@@ -81,7 +81,19 @@ export type AuditAction =
   | "payroll.paid"
   | "kasbon.request"
   | "kasbon.approve"
-  | "kasbon.reject";
+  | "kasbon.reject"
+  | "warning.issue"
+  | "resignation.submit"
+  | "hiring.approval_decision"
+  | "offer.status_change"
+  | "career.approval_decision"
+  | "career.transaction_submit"
+  | "case.status_change"
+  | "case.pic_assign"
+  | "er.approval_decision"
+  | "training.certificate_issue"
+  | "training.enrollment_result"
+  | "kpi.status_change";
 
 export async function auditLog(params: {
   action: AuditAction;

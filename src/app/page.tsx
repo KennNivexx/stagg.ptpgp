@@ -1,8 +1,14 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { Plus_Jakarta_Sans } from "next/font/google";
 
 // Always render fresh so superadmin edits (text/images/settings) appear immediately.
 // The settings fetch must not be served from Next's Data Cache.
 export const dynamic = "force-dynamic";
+
+// Scoped to the public marketing site only (applied via className below, not
+// on <html>/<body> in the root layout) — the internal HRD/employee/director
+// portals keep their existing Geist typography untouched.
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-jakarta" });
 
 import NewNavbar from "@/components/public/NewNavbar";
 import PGPFooter from "@/components/public/PGPFooter";
@@ -66,7 +72,7 @@ export default async function Home() {
     <>
     <SplashScreen />
     <ClickSparkWrapper>
-    <main className="min-h-screen font-sans bg-[#FCF9F6]">
+    <main className={`min-h-screen bg-[#FCF9F6] ${jakarta.className}`}>
       <ThemeStyle
         primary={theme.primary as string}
         primaryHover={theme.primary_hover as string}

@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { resolveManagerDepartment } from "@/lib/dept-resolve";
+import { auditLog } from "@/lib/audit";
 
 /** Employee Relations & Experience — master data + engine tables from
  * 20260724001_employee_relations.sql. Menu items under "Employee Relations"
@@ -244,19 +245,21 @@ export async function getDeptCases(department: string) {
 }
 
 export async function updateCaseStatus(id: string, status: (typeof CASE_WORKFLOW)[number]) {
-  await requireRole("hrd", "superadmin");
+  const actor = await requireRole("hrd", "superadmin");
   if (!CASE_WORKFLOW.includes(status)) return { error: "Status tidak valid." };
   const { error } = await supabaseAdmin.from("employee_cases").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) { console.error("[employee-relations] updateCaseStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  await auditLog({ action: "case.status_change", targetId: id, performedBy: actor, detail: `Status kasus diubah ke "${status}".` });
   revalidatePath("/hrd/relations/cases");
   return { success: true };
 }
 
 export async function assignCasePic(id: string, picKaryawanId: string) {
-  await requireRole("hrd", "superadmin");
+  const actor = await requireRole("hrd", "superadmin");
   const { error } = await supabaseAdmin.from("employee_cases")
     .update({ pic_karyawan_id: picKaryawanId || null, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) { console.error("[employee-relations] assignCasePic error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  await auditLog({ action: "case.pic_assign", targetId: id, targetName: picKaryawanId, performedBy: actor, detail: `PIC investigasi ditetapkan.` });
   revalidatePath("/hrd/relations/cases");
   return { success: true };
 }
@@ -386,11 +389,15 @@ export async function getErApprovals(category: "Complaint" | "Investigation" | "
 }
 
 export async function decideErApproval(id: string, decision: "Approved" | "Rejected", notes = "") {
-  await requireRole("hrd", "superadmin", "director");
+  const actor = await requireRole("hrd", "superadmin", "director");
   const { error } = await supabaseAdmin.from("er_approvals").update({
     status: decision, notes, decided_at: new Date().toISOString(),
   }).eq("id", id);
   if (error) { console.error("[employee-relations] decideErApproval error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  await auditLog({
+    action: "er.approval_decision",
+    targetId: id, performedBy: actor, detail: `Persetujuan ER ${decision === "Approved" ? "disetujui" : "ditolak"}${notes ? ` — ${notes}` : ""}.`,
+  });
   revalidatePath("/hrd/relations/approval");
   return { success: true };
 }

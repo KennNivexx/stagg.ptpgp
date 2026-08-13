@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { Eyebrow } from "./ui/PublicPrimitives";
 
 interface AboutProps {
   show?: boolean;
@@ -52,8 +53,8 @@ export default function AboutSection({
               </div>
               <div className="absolute -bottom-6 -right-6 w-48 h-48 bg-pgp-red/10 rounded-3xl -z-10"></div>
               <div className="absolute top-12 -left-8 bg-white p-6 rounded-2xl shadow-xl shadow-pgp-navy/10 border border-gray-100 z-20 hidden md:block">
-                <div className="text-4xl font-black bg-gradient-to-br from-pgp-navy to-pgp-red bg-clip-text text-transparent">{years_experience}</div>
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">
+                <div className="text-4xl font-extrabold text-[#1A1612]">{years_experience}</div>
+                <div className="text-xs font-bold text-[#8A8478] uppercase tracking-widest mt-1">
                   Tahun Pengalaman
                 </div>
               </div>
@@ -61,13 +62,11 @@ export default function AboutSection({
           ) : null}
 
           <div className="lg:w-1/2">
-            <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
-              Tentang Perusahaan
-            </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-pgp-navy mb-6 tracking-tight leading-tight">
+            <Eyebrow number="01">Tentang Perusahaan</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-extrabold text-[#1A1612] mb-6 tracking-tight leading-[1.08]">
               {title}
             </h2>
-            <div className="space-y-4 text-gray-600 leading-relaxed font-light">
+            <div className="space-y-4 text-[#5B5650] leading-relaxed">
               {paragraphs.map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
@@ -75,14 +74,14 @@ export default function AboutSection({
 
             <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="border-l-2 border-pgp-red pl-4">
-                <div className="font-bold text-pgp-navy mb-1">Visi Kami</div>
-                <div className="text-sm text-gray-500">
+                <div className="font-bold text-[#1A1612] mb-1">Visi Kami</div>
+                <div className="text-sm text-[#8A8478]">
                   {vision_text}
                 </div>
               </div>
               <div className="border-l-2 border-pgp-red pl-4">
-                <div className="font-bold text-pgp-navy mb-1">Misi Kami</div>
-                <div className="text-sm text-gray-500">
+                <div className="font-bold text-[#1A1612] mb-1">Misi Kami</div>
+                <div className="text-sm text-[#8A8478]">
                   {mission_text}
                 </div>
               </div>

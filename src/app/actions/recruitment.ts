@@ -60,6 +60,38 @@ export async function hireCandidate(formData: FormData) {
     return { error: "Lowongan tidak ditemukan." };
   }
 
+  // hireCandidate is a directly-callable server action — every exported
+  // function in a "use server" file is a public RPC regardless of which UI
+  // calls it. hireCandidateFromPipeline() enforces the 4-step Hiring
+  // Approval gate (HR -> Department Head -> Finance -> Director) before
+  // calling this function, but that protection is USELESS if this function
+  // itself has no gate — the legacy manual "Hire" button on
+  // /hrd/recruitment/[jobId]/hire (HireForm.tsx) calls hireCandidate()
+  // directly and previously bypassed the entire approval chain, and so
+  // could anyone replaying this action id directly. The check is enforced
+  // HERE, at the one place every hire path converges, instead of trusting
+  // every caller to check first. Requiring a matching `pelamar` row (rather
+  // than only checking the gate when one happens to exist) closes a second
+  // hole: an email/job_posting_id pair that matches no real applicant would
+  // otherwise skip the gate entirely instead of being rejected outright —
+  // every real caller (this legacy form and the pipeline) always supplies
+  // values sourced from an actual pelamar row, so this can't break either.
+  const normalizedEmailForGate = email.toLowerCase().trim();
+  const { data: pelamarRow } = await supabaseAdmin
+    .from("pelamar").select("id").eq("email", normalizedEmailForGate).eq("job_id", job_posting_id).maybeSingle();
+  if (!pelamarRow) {
+    return { error: "Lamaran untuk kandidat ini tidak ditemukan pada lowongan tersebut." };
+  }
+  const { data: steps } = await supabaseAdmin.from("hiring_approval_steps")
+    .select("step_number, status").eq("application_id", (pelamarRow as { id: string }).id).order("step_number");
+  if (!steps || steps.length === 0) {
+    return { error: "Mulai dan selesaikan Hiring Approval (HR → Department Head → Finance → Director) terlebih dahulu sebelum merekrut kandidat ini." };
+  }
+  const notApproved = steps.find(s => s.status !== "Approved");
+  if (notApproved) {
+    return { error: `Hiring Approval belum selesai — tahap ${notApproved.step_number} berstatus "${notApproved.status}".` };
+  }
+
   const dept = department || (jobPosting.department as string);
 
   const posName = position || (jobPosting.position as string) || "";
@@ -122,7 +154,8 @@ export async function hireCandidate(formData: FormData) {
     ? ""
     : JSON.stringify({ __auth__: { password_hash: passwordHash, role: "employee" } });
 
-  const { error: empError } = await supabaseAdmin
+  const joinDate = new Date().toISOString().split("T")[0];
+  const { data: newEmployee, error: empError } = await supabaseAdmin
     .from("karyawan")
     .insert([
       {
@@ -130,16 +163,40 @@ export async function hireCandidate(formData: FormData) {
         email: companyEmail,
         department: dept,
         position: position || jobPosting.position,
-        join_date: new Date().toISOString().split("T")[0],
+        join_date: joinDate,
         status: "Tetap",
         kode: kode || null,
         kode_jabatan: kodeJabatan || null,
         address: addressValue,
       },
-    ]);
+    ])
+    .select("id")
+    .single();
 
   if (empError) {
     return { error: empError.message };
+  }
+
+  // Employee 360° previously "gave birth" to a Data Induk Karyawan row on
+  // hire but never a Kontrak Kerja — HRD had to remember to create one
+  // separately via /hrd/infrastructure/contracts with nothing prompting
+  // them, so real hires silently had no contract on file. end_date is left
+  // null rather than guessed — the Kontrak Kerja list already renders a
+  // missing end date as "-" and HRD fills in the real duration; inventing a
+  // fixed-term length here would be fabricating a number nobody actually
+  // decided yet.
+  const newEmployeeId = (newEmployee as { id?: string } | null)?.id;
+  if (newEmployeeId) {
+    const { error: contractErr } = await supabaseAdmin.from("kontrak_kerja").insert({
+      id: "ctr-" + crypto.randomUUID(),
+      employee_id: newEmployeeId,
+      contract_type: "Kontrak",
+      start_date: joinDate,
+      end_date: null,
+      notes: "Dibuat otomatis saat hire — durasi/jenis kontrak final perlu dilengkapi HRD.",
+      created_at: new Date().toISOString(),
+    });
+    if (contractErr) console.error("[recruitment] hireCandidate: gagal membuat kontrak kerja otomatis:", contractErr.message);
   }
 
   await supabaseAdmin

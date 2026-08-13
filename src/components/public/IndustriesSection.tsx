@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ShoppingCart, Store, Factory, Car, Pickaxe, HardHat, Droplets, Laptop, LucideIcon } from "lucide-react";
 import LogoLoop from "./LogoLoop";
+import { Eyebrow } from "./ui/PublicPrimitives";
 
 const iconMap: Record<string, LucideIcon> = {
   shoppingCart: ShoppingCart,
@@ -73,14 +74,12 @@ export default function IndustriesSection({
       transition={{ duration: 0.6 }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
-            {subtitle}
-          </span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-pgp-navy tracking-tight">
+        <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-12">
+          <Eyebrow number="05">{subtitle}</Eyebrow>
+          <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-extrabold text-[#1A1612] tracking-tight leading-[1.08]">
             {title}
           </h2>
-          <p className="text-sm text-gray-400 mt-3 font-light">
+          <p className="text-sm text-[#8A8478] mt-3">
             Berpengalaman melayani berbagai sektor industri di seluruh Indonesia
           </p>
         </div>

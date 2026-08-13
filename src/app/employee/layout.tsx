@@ -26,6 +26,8 @@ import {
   AlertTriangle,
   Route,
   ChevronDown,
+  Clock3,
+  Wrench,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useSession } from "@/hooks/useSession";
@@ -63,6 +65,8 @@ const MENU_GROUPS = [
     items: [
       { href: "/employee/attendance", label: "Absensi", icon: Calendar },
       { href: "/employee/leaves", label: "Cuti & Izin", icon: FileText },
+      { href: "/employee/overtime", label: "Lembur", icon: Clock3 },
+      { href: "/employee/corrections", label: "Koreksi Absensi", icon: Wrench },
       { href: "/employee/business-trip", label: "Perjalanan Dinas", icon: Plane },
       { href: "/employee/trips", label: "Trip & Insentif", icon: Route },
     ],
@@ -117,6 +121,8 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/employee/jobdesc": "Deskripsi pekerjaan jabatan Anda",
   "/employee/attendance": "Riwayat absensi Anda",
   "/employee/leaves": "Ajukan dan pantau cuti & izin",
+  "/employee/overtime": "Ajukan dan pantau lembur Anda",
+  "/employee/corrections": "Ajukan koreksi jam masuk/pulang",
   "/employee/business-trip": "Ajukan dan lihat perjalanan dinas",
   "/employee/trips": "Rekap trip dan insentif Anda",
   "/employee/payroll": "Slip gaji Anda",

@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { requireRole } from "@/lib/auth-guard";
+import { requireRole, requireAuth } from "@/lib/auth-guard";
 import { Wallet, DollarSign, Percent, Calculator } from "lucide-react";
 import PayrollClient from "../../payroll/PayrollClient";
 import HubTabs from "@/components/hrd/HubTabs";
@@ -10,6 +10,7 @@ import { safeTab } from "@/lib/hub-safe";
 
 export const dynamic = "force-dynamic";
 async function PayrollTabContent() {
+  const { role: currentRole } = await requireAuth();
   const [{ data: payrolls }, { data: employees }, { count: totalEmployees }] = await Promise.all([
     supabaseAdmin.from("penggajian").select("*, karyawan!inner(full_name, department, position)").order("year", { ascending: false }).order("month", { ascending: false }).limit(50),
     supabaseAdmin.from("karyawan").select("id, full_name, department, position").neq("status", "Resigned").order("full_name"),
@@ -48,6 +49,7 @@ async function PayrollTabContent() {
       employees={(employees || []) as { id: string; full_name: string; department: string; position: string }[]}
       totalEmployees={totalEmployees || 0}
       bankTransferRows={bankTransferRows}
+      currentRole={currentRole}
     />
   );
 }

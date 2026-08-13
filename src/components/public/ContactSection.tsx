@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Phone, Mail, Send, CheckCircle, AlertCircle } from "lucide-react";
+import { Eyebrow } from "./ui/PublicPrimitives";
 import { submitContact } from "@/app/actions/contact";
 
 interface ContactProps {
@@ -66,11 +67,14 @@ export default function ContactSection({
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6 }}
     >
-      <div className="bg-[#FFFDFB] py-12 lg:py-20 border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row gap-8">
-            <div className="lg:w-[60%] bg-white p-8 md:p-10 border border-[#EBE5DE] shadow-sm">
-              <h2 className="text-pgp-navy text-xl font-bold mb-8">
+      <div className="bg-white py-20 lg:py-28">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="mb-10 sm:mb-14">
+            <Eyebrow number="10">Hubungi Kami</Eyebrow>
+          </div>
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="lg:w-[60%] bg-[#F7F3EE] rounded-2xl p-8 md:p-10">
+              <h2 className="text-[#1A1612] text-xl font-extrabold mb-8">
                 {contact_title}
               </h2>
 
@@ -86,7 +90,7 @@ export default function ContactSection({
                       name="name"
                       required
                       placeholder="John Doe"
-                      className="w-full border border-[#EBE5DE] p-3 text-sm text-[#333] focus:outline-none focus:border-pgp-red transition-colors"
+                      className="w-full border border-[#EBE5DE] rounded-xl p-3 text-sm text-[#333] focus:outline-none focus:border-pgp-red transition-colors"
                     />
                   </div>
                   <div>
@@ -99,7 +103,7 @@ export default function ContactSection({
                       name="email"
                       required
                       placeholder="john@company.com"
-                      className="w-full border border-[#EBE5DE] p-3 text-sm text-[#333] focus:outline-none focus:border-pgp-red transition-colors"
+                      className="w-full border border-[#EBE5DE] rounded-xl p-3 text-sm text-[#333] focus:outline-none focus:border-pgp-red transition-colors"
                     />
                   </div>
                 </div>
@@ -114,7 +118,7 @@ export default function ContactSection({
                       type="text"
                       name="company"
                       placeholder="Nama Perusahaan"
-                      className="w-full border border-[#EBE5DE] p-3 text-sm text-[#333] focus:outline-none focus:border-pgp-red transition-colors"
+                      className="w-full border border-[#EBE5DE] rounded-xl p-3 text-sm text-[#333] focus:outline-none focus:border-pgp-red transition-colors"
                     />
                   </div>
                   <div>
@@ -166,7 +170,7 @@ export default function ContactSection({
                   <button
                     type="submit"
                     disabled={status === "loading"}
-                    className="bg-pgp-red hover:bg-pgp-red/80 disabled:opacity-60 text-white font-bold text-sm px-8 py-3.5 flex items-center justify-center gap-2 transition-colors"
+                    className="bg-pgp-red hover:bg-pgp-red-hover disabled:opacity-60 text-white font-extrabold text-sm px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors"
                   >
                     {status === "loading" ? "Mengirim..." : "Kirim Pesan"}
                     <Send size={14} />
@@ -175,9 +179,9 @@ export default function ContactSection({
               </form>
             </div>
 
-            <div className="lg:w-[40%] flex flex-col gap-8">
-              <div className="bg-white p-8 border border-[#EBE5DE] shadow-sm flex-1">
-                <h2 className="text-pgp-navy text-xl font-bold mb-8">
+            <div className="lg:w-[40%] flex flex-col gap-6">
+              <div className="bg-[#F7F3EE] rounded-2xl p-8 flex-1">
+                <h2 className="text-[#1A1612] text-xl font-extrabold mb-8">
                   Informasi Kontak
                 </h2>
 
@@ -185,8 +189,8 @@ export default function ContactSection({
                   <div className="flex items-start gap-4">
                     <MapPin className="text-pgp-red shrink-0 mt-0.5" size={20} />
                     <div>
-                      <h3 className="text-pgp-navy text-sm font-bold mb-1">{address1_label}</h3>
-                      <p className="text-[#666] text-sm leading-relaxed">{address1}</p>
+                      <h3 className="text-[#1A1612] text-sm font-bold mb-1">{address1_label}</h3>
+                      <p className="text-[#5B5650] text-sm leading-relaxed">{address1}</p>
                     </div>
                   </div>
 
@@ -194,8 +198,8 @@ export default function ContactSection({
                     <div className="flex items-start gap-4">
                       <MapPin className="text-pgp-red shrink-0 mt-0.5" size={20} />
                       <div>
-                        <h3 className="text-pgp-navy text-sm font-bold mb-1">{address2_label}</h3>
-                        <p className="text-[#666] text-sm leading-relaxed">{address2}</p>
+                        <h3 className="text-[#1A1612] text-sm font-bold mb-1">{address2_label}</h3>
+                        <p className="text-[#5B5650] text-sm leading-relaxed">{address2}</p>
                       </div>
                     </div>
                   )}
@@ -203,23 +207,23 @@ export default function ContactSection({
                   <div className="flex items-start gap-4">
                     <Phone className="text-pgp-red shrink-0 mt-0.5" size={20} />
                     <div>
-                      <h3 className="text-pgp-navy text-sm font-bold mb-1">Telepon</h3>
-                      <p className="text-[#666] text-sm">{phone}</p>
+                      <h3 className="text-[#1A1612] text-sm font-bold mb-1">Telepon</h3>
+                      <p className="text-[#5B5650] text-sm">{phone}</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-4">
                     <Mail className="text-pgp-red shrink-0 mt-0.5" size={20} />
                     <div>
-                      <h3 className="text-pgp-navy text-sm font-bold mb-1">Email</h3>
-                      <p className="text-[#666] text-sm">{email}</p>
+                      <h3 className="text-[#1A1612] text-sm font-bold mb-1">Email</h3>
+                      <p className="text-[#5B5650] text-sm">{email}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-pgp-navy p-8 text-white">
-                <h2 className="text-xl font-bold mb-6">Jam Operasional</h2>
+              <div className="bg-[#1A1612] rounded-2xl p-8 text-white">
+                <h2 className="text-xl font-extrabold mb-6">Jam Operasional</h2>
                 <div className="space-y-4 text-sm">
                   <div className="flex justify-between items-center border-b border-white/10 pb-3">
                     <span className="text-gray-300">Senin - Jumat</span>

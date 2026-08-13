@@ -12,6 +12,7 @@ type Promotion = Record<string, unknown>;
 interface Props {
   employees: Employee[];
   initialPromotions: Promotion[];
+  currentRole: string;
 }
 
 function Msg({ m }: { m: { type: "success" | "error"; text: string } | null }) {
@@ -19,8 +20,12 @@ function Msg({ m }: { m: { type: "success" | "error"; text: string } | null }) {
   return <div className={`p-3 rounded-xl text-xs font-medium ${m.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{m.text}</div>;
 }
 
-export default function PromotionsClient({ employees, initialPromotions }: Props) {
+export default function PromotionsClient({ employees, initialPromotions, currentRole }: Props) {
   const router = useRouter();
+  // Final sign-off is director/superadmin-only (see updatePromotionStatus) —
+  // hide Setujui/Tolak for everyone else so HRD/dept managers don't click
+  // and get a permission error.
+  const canDecide = currentRole === "director" || currentRole === "superadmin";
   const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -121,11 +126,14 @@ export default function PromotionsClient({ employees, initialPromotions }: Props
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          {p.status === "Menunggu" && (
+                          {p.status === "Menunggu" && canDecide && (
                             <div className="flex items-center justify-end gap-1">
                               <button onClick={() => handleStatus(p.id as string, "Disetujui")} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600" title="Setujui"><CheckCircle size={12} /></button>
                               <button onClick={() => handleStatus(p.id as string, "Ditolak")} className="p-1.5 hover:bg-red-50 rounded-lg text-red-600" title="Tolak"><XCircle size={12} /></button>
                             </div>
+                          )}
+                          {p.status === "Menunggu" && !canDecide && (
+                            <span className="text-[10px] text-slate-400 italic">Menunggu Direktur</span>
                           )}
                         </td>
                       </tr>

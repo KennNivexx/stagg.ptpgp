@@ -30,9 +30,26 @@ interface Props {
   title?: string;
   subtitle?: string;
   bankTransferRows?: Record<string, unknown>[];
+  currentRole?: string;
 }
 
-export default function PayrollClient({ payrolls, totalEmployees, title = "Payroll", subtitle = "Kelola penggajian dan slip gaji seluruh karyawan.", bankTransferRows = [] }: Props) {
+// Mirrors assertPayrollTransitionAllowed() in admin.ts — a role NOT in a
+// tier's list is REJECTED unconditionally by the server (department_manager
+// tiers additionally get scoped by department server-side, which this
+// client can't replicate, so department_manager is left permissive here;
+// the server still enforces it correctly either way). This only hides
+// buttons the viewer is guaranteed to be rejected for — e.g. hrd clicking
+// "Verifikasi Keuangan Semua" previously crashed the whole page with an
+// uncaught ForbiddenError instead of a friendly inline message.
+const ALLOWED_ROLES_FOR_STATUS: Record<string, string[]> = {
+  Verified_SDM: ["hrd", "superadmin", "department_manager"],
+  Verified_Keuangan: ["superadmin", "department_manager"],
+  Approved: ["director", "superadmin"],
+  Paid: ["hrd", "superadmin", "director"],
+};
+
+export default function PayrollClient({ payrolls, totalEmployees, title = "Payroll", subtitle = "Kelola penggajian dan slip gaji seluruh karyawan.", bankTransferRows = [], currentRole = "" }: Props) {
+  const canAct = (status: string) => (ALLOWED_ROLES_FOR_STATUS[status] || []).includes(currentRole);
   const router = useRouter();
   const [showGen, setShowGen] = useState(false);
   const [showEdit, setShowEdit] = useState<Payroll | null>(null);
@@ -270,25 +287,25 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
             <p className="text-xs text-slate-400 mt-0.5">Riwayat penggajian seluruh karyawan</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {draftCount > 0 && (
+            {draftCount > 0 && canAct("Verified_SDM") && (
               <button onClick={() => handleBatchStatus("Verified_SDM")} disabled={batchSaving !== null}
                 className="px-3 py-2 bg-sky-50 text-sky-700 text-xs font-bold rounded-xl hover:bg-sky-100 transition-colors disabled:opacity-50">
                 {batchSaving === "Verified_SDM" ? "Memproses..." : `Verifikasi SDM Semua (${draftCount})`}
               </button>
             )}
-            {sdmCount > 0 && (
+            {sdmCount > 0 && canAct("Verified_Keuangan") && (
               <button onClick={() => handleBatchStatus("Verified_Keuangan")} disabled={batchSaving !== null}
                 className="px-3 py-2 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-xl hover:bg-indigo-100 transition-colors disabled:opacity-50">
                 {batchSaving === "Verified_Keuangan" ? "Memproses..." : `Verifikasi Keuangan Semua (${sdmCount})`}
               </button>
             )}
-            {keuanganCount > 0 && (
+            {keuanganCount > 0 && canAct("Approved") && (
               <button onClick={() => handleBatchStatus("Approved")} disabled={batchSaving !== null}
                 className="px-3 py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl hover:bg-blue-100 transition-colors disabled:opacity-50">
                 {batchSaving === "Approved" ? "Memproses..." : `Setujui Semua (${keuanganCount})`}
               </button>
             )}
-            {approvedCount > 0 && (
+            {approvedCount > 0 && canAct("Paid") && (
               <button onClick={() => handleBatchStatus("Paid")} disabled={batchSaving !== null}
                 className="px-3 py-2 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-xl hover:bg-emerald-100 transition-colors disabled:opacity-50">
                 {batchSaving === "Paid" ? "Memproses..." : `Tandai Dibayar (${approvedCount})`}
@@ -297,11 +314,13 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
             {bankTransferRows.length > 0 && (
               <ExportExcelButton filename="Transfer_Bank_Payroll" sheetName="Transfer Bank" rows={bankTransferRows} label="Export Transfer Bank" />
             )}
-            <button onClick={() => { setShowGen(true); setMsg(null); setGenResult(null); }}
-              disabled={totalEmployees === 0}
-              className="px-4 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2 disabled:opacity-50">
-              <Plus size={14} /> Generate Payroll
-            </button>
+            {(currentRole === "hrd" || currentRole === "superadmin") && (
+              <button onClick={() => { setShowGen(true); setMsg(null); setGenResult(null); }}
+                disabled={totalEmployees === 0}
+                className="px-4 py-2 bg-[#CC0000] text-white text-xs font-bold rounded-xl hover:bg-[#aa0000] transition-colors flex items-center gap-2 disabled:opacity-50">
+                <Plus size={14} /> Generate Payroll
+              </button>
+            )}
           </div>
         </div>
 
@@ -342,18 +361,21 @@ export default function PayrollClient({ payrolls, totalEmployees, title = "Payro
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {p.status === "Draft" && (
+                          {p.status === "Draft" && (currentRole === "hrd" || currentRole === "superadmin") && (
                             <button onClick={() => openEdit(p)} title="Edit bonus/potongan"
                               className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
                               <Edit3 size={13} />
                             </button>
                           )}
-                          {NEXT_STATUS[p.status as string] && (
+                          {NEXT_STATUS[p.status as string] && canAct(NEXT_STATUS[p.status as string]) && (
                             <button onClick={() => handleStatusChange(p.id as string, NEXT_STATUS[p.status as string])} disabled={busy}
                               className="px-2 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1">
                               {NEXT_STATUS[p.status as string] === "Paid" && <CheckCircle2 size={11} />}
                               {ACTION_LABEL[NEXT_STATUS[p.status as string]]}
                             </button>
+                          )}
+                          {NEXT_STATUS[p.status as string] && !canAct(NEXT_STATUS[p.status as string]) && (
+                            <span className="text-[10px] text-slate-400 italic">Menunggu {ACTION_LABEL[NEXT_STATUS[p.status as string]]}</span>
                           )}
                           <button onClick={() => window.open(`/api/payslip/${p.id as string}`, "_blank")}
                             className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors" title="Slip PDF">

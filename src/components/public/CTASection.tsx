@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import QuotationModal from "./QuotationModal";
+import { Eyebrow } from "./ui/PublicPrimitives";
 
 const container = {
   hidden: {},
@@ -41,7 +42,7 @@ export default function CTASection({
   return (
     <motion.section
       id="cta"
-      className="py-16 lg:py-24 bg-orange-50/25 border-y border-orange-500/5 relative overflow-hidden scroll-mt-[72px]"
+      className="py-20 lg:py-28 bg-[#F7F3EE] border-y border-[#1A1612]/[0.06] relative overflow-hidden scroll-mt-[72px]"
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, margin: "-80px" }}
@@ -59,11 +60,14 @@ export default function CTASection({
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-        <motion.h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-pgp-navy mb-6 tracking-tight" variants={item}>
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8 text-center relative z-10">
+        <motion.div variants={item} className="flex justify-center">
+          <Eyebrow number="MULAI">Langkah berikutnya</Eyebrow>
+        </motion.div>
+        <motion.h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-extrabold text-[#1A1612] mb-6 tracking-tight leading-[1.05]" variants={item}>
           {title}
         </motion.h2>
-        <motion.p className="text-base md:text-lg lg:text-xl text-zinc-600 font-light mb-12" variants={item}>
+        <motion.p className="text-base md:text-lg text-[#5B5650] mb-12 max-w-xl mx-auto" variants={item}>
           {subtitle}
         </motion.p>
 
@@ -71,14 +75,14 @@ export default function CTASection({
           {button_url ? (
             <a
               href={button_url}
-              className="bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-full font-bold transition-all shadow-lg hover:shadow-pgp-red/20 flex items-center justify-center gap-2"
+              className="bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-xl font-extrabold transition-all shadow-[0_10px_30px_-6px_rgba(221,44,0,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2"
             >
               {button_text} <ArrowRight size={18} />
             </a>
           ) : (
             <button
               onClick={() => setIsQuoteOpen(true)}
-              className="bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-full font-bold transition-all shadow-lg hover:shadow-pgp-red/20 flex items-center justify-center gap-2 cursor-pointer"
+              className="bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-xl font-extrabold transition-all shadow-[0_10px_30px_-6px_rgba(221,44,0,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer"
             >
               {button_text} <ArrowRight size={18} />
             </button>
@@ -87,7 +91,7 @@ export default function CTASection({
             href={`https://wa.me/${whatsapp_number}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-bold transition-all shadow-lg flex items-center justify-center gap-2"
+            className="bg-[#1A1612] hover:bg-[#1A1612]/85 text-white px-8 py-4 rounded-xl font-extrabold transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2"
           >
             {whatsapp_text} <MessageCircle size={18} />
           </a>

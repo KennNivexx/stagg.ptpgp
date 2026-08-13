@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { resolveManagerDepartment } from "@/lib/dept-resolve";
+import { auditLog } from "@/lib/audit";
 
 /** Career Development & Succession — master data + engine tables introduced
  * in 20260720001/20260721001/20260722001. Menu items in hrd-menu.ts under
@@ -405,7 +406,7 @@ export async function getCareerTransactions(type: CareerTransactionType) {
 }
 
 export async function submitCareerTransaction(formData: FormData) {
-  await requireRole("hrd", "superadmin", "department_manager");
+  const actor = await requireRole("hrd", "superadmin", "department_manager");
   const type = (formData.get("transaction_type") as string || "").trim() as CareerTransactionType;
   const karyawanId = (formData.get("karyawan_id") as string || "").trim();
   const targetJabatanId = (formData.get("target_jabatan_id") as string || "").trim();
@@ -445,8 +446,49 @@ export async function submitCareerTransaction(formData: FormData) {
     { id: "capp-" + crypto.randomUUID(), transaction_id: transactionId, step_number: 2, approver_role: "Career Committee", status: "Pending", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
   ]);
 
+  await auditLog({
+    action: "career.transaction_submit", targetId: transactionId, targetName: karyawanId,
+    performedBy: actor, detail: `${type} diajukan untuk karyawan ${karyawanId}, efektif ${effectiveDate}.`,
+  });
+
   revalidatePath("/hrd/career/transactions");
   return { success: true };
+}
+
+/** Employees previously had zero visibility into career_transactions/
+ * career_approvals submitted about them — submitCareerTransaction() creates
+ * a real approval chain, but nothing ever surfaced its status on the
+ * employee-facing career page, so a promotion/mutation could sit "In Review"
+ * indefinitely with the subject unaware it existed. Self-scoped by resolving
+ * the session email to karyawan.id (same id space career_transactions.karyawan_id
+ * uses), never trusting a client-supplied id. */
+export async function getMyCareerTransactions() {
+  const user = await requireRole("employee", "department_manager", "hrd", "superadmin");
+  const { data: emp } = await supabaseAdmin.from("karyawan").select("id").eq("email", user.email).maybeSingle();
+  const karyawanId = (emp as { id?: string } | null)?.id;
+  if (!karyawanId) return [];
+
+  const { data: txs } = await supabaseAdmin
+    .from("career_transactions")
+    .select("*, to:jabatan!career_transactions_target_jabatan_id_fkey(name)")
+    .eq("karyawan_id", karyawanId)
+    .order("created_at", { ascending: false });
+  const list = (txs || []) as Record<string, unknown>[];
+  if (list.length === 0) return [];
+
+  const ids = list.map((t) => t.id as string);
+  const { data: approvals } = await supabaseAdmin
+    .from("career_approvals")
+    .select("transaction_id, step_number, approver_role, status")
+    .in("transaction_id", ids)
+    .order("step_number", { ascending: true });
+  const approvalsByTx = new Map<string, { step_number: number; approver_role: string; status: string }[]>();
+  for (const a of (approvals || []) as { transaction_id: string; step_number: number; approver_role: string; status: string }[]) {
+    const arr = approvalsByTx.get(a.transaction_id) || [];
+    arr.push(a);
+    approvalsByTx.set(a.transaction_id, arr);
+  }
+  return list.map((t) => ({ ...t, approvals: approvalsByTx.get(t.id as string) || [] }));
 }
 
 // ── APPROVALS (career_approvals routed via its parent career_transactions'
@@ -484,6 +526,18 @@ export async function getCareerCommitteeApprovals() {
 // Maps the spec's named approval roles onto roles that actually exist in
 // this app's auth system (see manpower-approval.ts / recruitment-hiring.ts
 // for the same pattern) — no invented "HR Business Partner" account.
+//
+// "Career Committee" is the actual FINAL step submitCareerTransaction()
+// inserts for every transaction (step 2, after "Department Head") — it
+// previously included "hrd", which meant HRD alone could clear BOTH steps
+// (it's also the fallback approver for "Department Head") with no
+// department_manager or director ever involved. That's the exact promotion
+// self-approval gap this codebase's own narrative describes as requiring
+// Director sign-off but never enforced. Fixed to director-only, matching
+// the same fix already applied to ga-assets.ts's decideAssetRepair().
+// "Finance"/"HR Director"/"Managing Director"/"Division Head"/"HR Business
+// Partner" are currently dead entries — no code path ever inserts a
+// career_approvals row with those approver_role values — left as-is.
 const ROLE_FOR_CAREER_APPROVER: Record<string, string[]> = {
   "Department Head": ["department_manager", "hrd", "superadmin"],
   "Division Head": ["department_manager", "hrd", "superadmin"],
@@ -492,7 +546,7 @@ const ROLE_FOR_CAREER_APPROVER: Record<string, string[]> = {
   "Finance": ["hrd", "director", "superadmin"],
   "Managing Director": ["director", "superadmin"],
   "Director": ["director", "superadmin"],
-  "Career Committee": ["hrd", "director", "superadmin"],
+  "Career Committee": ["director", "superadmin"],
 };
 
 /** Applies a fully-approved career_transactions row's effect: updates the
@@ -570,6 +624,12 @@ export async function decideCareerApproval(id: string, decision: "Approved" | "R
     status: decision, notes, approved_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   }).eq("id", id);
   if (error) { console.error("[career-development] decideCareerApproval error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+
+  await auditLog({
+    action: "career.approval_decision", targetId: step.transaction_id,
+    performedBy: user,
+    detail: `Tahap ${step.step_number} (${step.approver_role}) ${decision === "Approved" ? "disetujui" : "ditolak"}${notes ? ` — ${notes}` : ""}.`,
+  });
 
   if (decision === "Rejected") {
     await supabaseAdmin.from("career_transactions").update({ status: "Rejected", updated_at: new Date().toISOString() }).eq("id", step.transaction_id);

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { Shield, Award, FileText, CheckCircle, LucideIcon } from "lucide-react";
+import { Eyebrow } from "./ui/PublicPrimitives";
 
 const iconMap: Record<string, LucideIcon> = {
   shield: Shield,
@@ -54,18 +55,16 @@ export default function CertificationSection({
 
   return (
     <motion.section
-      className="py-24 bg-white border-t border-gray-100"
+      className="py-20 lg:py-28 bg-white"
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6 }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
-            {subtitle}
-          </span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-pgp-navy tracking-tight">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-14 sm:mb-16">
+          <Eyebrow number="08">{subtitle}</Eyebrow>
+          <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-extrabold text-[#1A1612] tracking-tight leading-[1.08]">
             {title}
           </h2>
         </div>

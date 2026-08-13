@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { auditLog } from "@/lib/audit";
 
 export interface KpiMetric { metric: string; weight: number; value: number }
 
@@ -89,13 +90,14 @@ const KPI_STATUSES = ["Draft", "Reviewed", "Approved"] as const;
 type KpiStatus = (typeof KPI_STATUSES)[number];
 
 export async function updateKpiStatus(id: string, status: KpiStatus) {
-  await requireRole("hrd", "superadmin", "department_manager");
+  const actor = await requireRole("hrd", "superadmin", "department_manager");
   if (!KPI_STATUSES.includes(status)) return { error: "Status tidak valid." };
   const { error } = await supabaseAdmin
     .from("evaluasi_kpi")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) { console.error("[performance-hrd] updateKpiStatus error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  await auditLog({ action: "kpi.status_change", targetId: id, performedBy: actor, detail: `Status evaluasi KPI diubah ke "${status}".` });
   revalidatePath("/hrd/performance/kpi");
   revalidatePath("/hrd/performance/reviews");
   revalidatePath("/hrd/performance/reports");

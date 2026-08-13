@@ -1,9 +1,14 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import NewNavbar from "@/components/public/NewNavbar";
 import PGPFooter from "@/components/public/PGPFooter";
 import AnimatedCareerWrapper from "@/components/public/AnimatedCareerWrapper";
 
 export const revalidate = 60;
+
+// Matches the homepage's typography (src/app/page.tsx) so the public site
+// reads as one consistent brand, not two different templates.
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-jakarta" });
 
 export default async function CareerPage(props: { searchParams: Promise<{ filter?: string }> }) {
   const searchParams = await props.searchParams;
@@ -31,7 +36,7 @@ export default async function CareerPage(props: { searchParams: Promise<{ filter
   }));
 
   return (
-    <main className="min-h-screen bg-[#FDFDFD] pt-[72px]">
+    <main className={`min-h-screen bg-[#FDFDFD] pt-[72px] ${jakarta.className}`}>
       <NewNavbar />
       <AnimatedCareerWrapper jobs={mappedJobs} />
       <PGPFooter />

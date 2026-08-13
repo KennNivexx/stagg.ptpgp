@@ -8,7 +8,10 @@ import { submitBusinessTripForEmployee } from "@/lib/business-trips-core";
 const uid = () => crypto.randomUUID();
 
 export async function submitBusinessTrip(formData: FormData) {
-  const user = await requireRole("hrd", "superadmin", "employee");
+  // Same reasoning as submitLeave() in leaves.ts — a Kepala Divisi submits
+  // their OWN business trip here; approving a subordinate's is the separate
+  // updateBusinessTripStatus action below.
+  const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
   const result = await submitBusinessTripForEmployee({
     employeeId: user.id,
     employeeEmail: user.email,

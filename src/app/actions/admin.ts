@@ -347,20 +347,26 @@ async function computeAttendancePayrollData(employeeId: string, month: number, y
     .eq("employee_id", employeeId)
     .eq("status", "Disetujui");
 
-  // Shift allowance (Tunjangan Shift) — graceful no-op if shift_schedules
+  // Shift allowance (Tunjangan Shift) — graceful no-op if jadwal_shift
   // was never deployed (its own migration, 20260707001, is independent of
-  // this payroll work): sums shifts.bonus_amount for every day this
+  // this payroll work): sums shift_kerja.bonus_amount for every day this
   // employee was scheduled on a bonus-eligible shift in the period.
+  //
+  // Tables were renamed shift_schedules->jadwal_shift and shifts->shift_kerja
+  // by 20260710008_rename_tables_phase1_narrow.sql (metadata-only rename,
+  // FKs preserved by OID) — this query previously still used the pre-rename
+  // names, so it always hit the "table not found" no-op path and Tunjangan
+  // Shift was permanently Rp 0 in production regardless of shift data.
   let shiftAllowance = 0;
   const { data: shiftRows, error: shiftErr } = await supabaseAdmin
-    .from("shift_schedules")
-    .select("shift_date, shifts!inner(has_bonus, bonus_amount)")
+    .from("jadwal_shift")
+    .select("shift_date, shift_kerja!inner(has_bonus, bonus_amount)")
     .eq("employee_id", employeeId)
     .gte("shift_date", fmt(firstDay))
     .lte("shift_date", fmt(lastDay));
   if (!shiftErr) {
-    for (const r of (shiftRows || []) as unknown as { shifts: { has_bonus: boolean; bonus_amount: number } | { has_bonus: boolean; bonus_amount: number }[] }[]) {
-      const s = Array.isArray(r.shifts) ? r.shifts[0] : r.shifts;
+    for (const r of (shiftRows || []) as unknown as { shift_kerja: { has_bonus: boolean; bonus_amount: number } | { has_bonus: boolean; bonus_amount: number }[] }[]) {
+      const s = Array.isArray(r.shift_kerja) ? r.shift_kerja[0] : r.shift_kerja;
       if (s?.has_bonus) shiftAllowance += Number(s.bonus_amount) || 0;
     }
   }
@@ -805,9 +811,23 @@ const PAYROLL_TRANSITIONS: Record<PayrollStatus, PayrollStatus | null> = {
 // name, since there's no dedicated "finance" role in this app's auth model
 // (see src/lib/auth-guard.ts) — reusing the existing department_manager +
 // department-name-check pattern already used for promotions/salary review.
+//
+// Uses requireAuth() + a manual role check per tier instead of
+// requireRole(allowedRoles) — requireRole() THROWS on a role mismatch
+// (ForbiddenError), and that throw was never caught here, so an HRD user
+// clicking "Verifikasi Keuangan Semua" (a real button the payroll list
+// shows regardless of viewer role) crashed the whole page with a raw
+// Next.js error overlay instead of the friendly inline error every other
+// validation failure in this function already returns. requireAuth() still
+// throws for a genuinely logged-out caller (correct — that should redirect
+// to login, not show an inline message), only the role-mismatch case is
+// now a normal `{error}` return.
 async function assertPayrollTransitionAllowed(nextStatus: PayrollStatus): Promise<{ error: string } | null> {
+  const user = await requireAuth();
   if (nextStatus === "Verified_SDM") {
-    const user = await requireRole("hrd", "superadmin", "department_manager");
+    if (!["hrd", "superadmin", "department_manager"].includes(user.role)) {
+      return { error: "Hanya Kepala Divisi SDM & Aset (atau HRD) yang dapat memverifikasi tahap ini." };
+    }
     if (user.role === "department_manager") {
       const dept = (await resolveManagerDepartment(user.email) || "").toLowerCase();
       if (!dept.includes("sdm") && !dept.includes("hr") && !dept.includes("aset") && !dept.includes("asset")) {
@@ -817,7 +837,9 @@ async function assertPayrollTransitionAllowed(nextStatus: PayrollStatus): Promis
     return null;
   }
   if (nextStatus === "Verified_Keuangan") {
-    const user = await requireRole("superadmin", "department_manager");
+    if (!["superadmin", "department_manager"].includes(user.role)) {
+      return { error: "Hanya Supervisor Keuangan (atau superadmin) yang dapat memverifikasi tahap ini." };
+    }
     if (user.role === "department_manager") {
       const dept = (await resolveManagerDepartment(user.email) || "").toLowerCase();
       if (!dept.includes("keuangan") && !dept.includes("finance")) {
@@ -827,11 +849,15 @@ async function assertPayrollTransitionAllowed(nextStatus: PayrollStatus): Promis
     return null;
   }
   if (nextStatus === "Approved") {
-    await requireRole("director", "superadmin");
+    if (!["director", "superadmin"].includes(user.role)) {
+      return { error: "Hanya Direktur yang dapat menyetujui tahap ini." };
+    }
     return null;
   }
   if (nextStatus === "Paid") {
-    await requireRole("hrd", "superadmin", "director");
+    if (!["hrd", "superadmin", "director"].includes(user.role)) {
+      return { error: "Anda tidak memiliki izin untuk menandai status Dibayar." };
+    }
     return null;
   }
   return { error: "Status tidak valid." };

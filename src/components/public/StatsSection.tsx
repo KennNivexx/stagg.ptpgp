@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { Container, Eyebrow, StatCounter, Reveal } from "./ui/PublicPrimitives";
 
 interface StatItem {
   label: string;
@@ -18,75 +18,39 @@ const defaultStats: StatItem[] = [
   { value: "28+", label: "Tahun Pengalaman" },
   { value: "500+", label: "Klien Aktif" },
   { value: "50.000+", label: "Pengiriman" },
-  { value: "98%", label: "On-Time Delivery" }
+  { value: "98%", label: "On-Time Delivery" },
 ];
 
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.12 } },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-};
-
-export default function StatsSection({
-  show = true,
-  title = "",
-  stats = defaultStats,
-}: StatsProps) {
+export default function StatsSection({ show = true, title = "", stats = defaultStats }: StatsProps) {
   if (!show) return null;
-
   const items = stats?.length ? stats : defaultStats;
 
   return (
-    <motion.section
-      className="relative bg-pgp-red py-16 lg:py-20 overflow-hidden"
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.6 }}
-    >
-      {/* Curved edges match the Hero->About transition so the red band reads
-          as an intentional accent panel, not a flat rectangle dropped
-          between two white sections. */}
-      <div className="absolute top-0 left-0 w-full leading-none pointer-events-none">
-        <svg viewBox="0 0 1440 60" className="w-full h-[36px] sm:h-[50px] -translate-y-full" preserveAspectRatio="none">
-          <path d="M0,60 C360,60 1080,0 1440,0 L1440,60 L0,60 Z" fill="#dd2c00" />
-        </svg>
+    <section className="relative bg-[#F7F3EE] py-20 sm:py-24 lg:py-28 overflow-hidden">
+      {/* Faint oversized watermark number — the quiet "we track this for
+          real" texture that a flat color band can't convey on its own. */}
+      <div className="absolute -right-8 -top-10 select-none pointer-events-none text-[#1A1612]/[0.03] font-extrabold text-[16rem] leading-none tracking-tighter">
+        #
       </div>
-      <div className="absolute bottom-0 left-0 w-full leading-none pointer-events-none">
-        <svg viewBox="0 0 1440 60" className="w-full h-[36px] sm:h-[50px] translate-y-full" preserveAspectRatio="none">
-          <path d="M0,0 C360,0 1080,60 1440,60 L1440,0 L0,0 Z" fill="#dd2c00" />
-        </svg>
-      </div>
-      <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {title && (
-          <h2 className="text-2xl md:text-3xl font-extrabold text-white text-center mb-10 tracking-tight">
-            {title}
-          </h2>
-        )}
-        <motion.div
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8 md:divide-x md:divide-white/20"
-          variants={container}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-80px" }}
-        >
+
+      <Container className="relative">
+        <Reveal>
+          <div className="flex flex-col items-center text-center mb-14 sm:mb-16">
+            <Eyebrow number="DAMPAK">Bukan estimasi</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#1A1612] tracking-tight leading-[1.08] max-w-2xl">
+              {title || "Angka yang benar-benar kami kerjakan"}
+            </h2>
+          </div>
+        </Reveal>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-12 gap-x-6 sm:gap-x-10">
           {items.map((stat, index) => (
-            <motion.div key={stat.label} className="text-center" variants={item}>
-              <div className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
-                {stat.value}
-              </div>
-              <div className="text-xs font-bold text-red-200 uppercase tracking-widest">
-                {stat.label}
-              </div>
-            </motion.div>
+            <Reveal key={stat.label} delay={index * 0.08} className="text-center md:text-left border-t border-[#1A1612]/10 pt-6 md:border-t-0 md:pt-0">
+              <StatCounter value={stat.value} label={stat.label} index={index + 1} tone="light" />
+            </Reveal>
           ))}
-        </motion.div>
-      </div>
-    </motion.section>
+        </div>
+      </Container>
+    </section>
   );
 }

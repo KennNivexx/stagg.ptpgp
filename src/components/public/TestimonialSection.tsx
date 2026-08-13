@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { Quote, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eyebrow } from "./ui/PublicPrimitives";
 
 interface TestimonialItem {
   name: string;
@@ -55,18 +56,16 @@ export default function TestimonialSection({
 
   return (
     <motion.section
-      className="py-16 lg:py-24 bg-[#FCF9F6] text-pgp-navy"
+      className="py-20 lg:py-28 bg-[#F7F3EE]"
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6 }}
     >
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
-            Testimoni Klien
-          </span>
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-pgp-navy">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-12">
+          <Eyebrow number="07">Testimoni Klien</Eyebrow>
+          <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-extrabold tracking-tight text-[#1A1612] leading-[1.08]">
             {title}
           </h2>
         </div>
@@ -83,7 +82,7 @@ export default function TestimonialSection({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
                   transition={{ duration: 0.4, ease: "easeInOut" }}
-                  className="bg-zinc-50/70 border border-zinc-100 p-6 md:p-10 rounded-3xl relative shadow-sm mx-auto max-w-2xl text-center"
+                  className="bg-white p-6 md:p-10 rounded-3xl relative shadow-sm mx-auto max-w-2xl text-center"
                 >
                   <Quote size={48} className="text-pgp-red/10 absolute top-8 left-1/2 -translate-x-1/2" />
                   <p className="text-base sm:text-lg md:text-xl text-zinc-600 font-light leading-relaxed mb-8 italic relative z-10 pt-8">

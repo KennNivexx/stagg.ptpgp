@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { PackageCheck, Truck, Ship, Plane, Warehouse, HardHat, LucideIcon } from "lucide-react";
+import { Eyebrow } from "./ui/PublicPrimitives";
 
 const iconMap: Record<string, LucideIcon> = {
   packageCheck: PackageCheck,
@@ -83,10 +84,8 @@ export default function ServicesGridSection({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 lg:mb-16">
           <div className="max-w-2xl">
-            <span className="text-pgp-red font-bold text-xs tracking-widest uppercase mb-4 block">
-              {subtitle}
-            </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-pgp-navy tracking-tight">
+            <Eyebrow number="03">{subtitle}</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-extrabold text-[#1A1612] tracking-tight leading-[1.08]">
               {title}
             </h2>
           </div>

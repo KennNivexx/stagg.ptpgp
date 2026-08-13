@@ -224,7 +224,13 @@ export async function submitPromotion(formData: FormData) {
 // director/superadmin may set the terminal status; department_manager can
 // still submit a promotion proposal but no longer approves/rejects it.
 export async function updatePromotionStatus(id: string, status: "Disetujui" | "Ditolak") {
-  const user = await requireRole("hrd", "superadmin", "director");
+  // "hrd" was previously included here too, directly contradicting the
+  // comment above ("Only director/superadmin may set the terminal status")
+  // — since submitPromotion() also lets hrd originate a promotion, that
+  // gap let HRD submit and approve the same promotion alone. Same class of
+  // bug as career-development.ts's "Career Committee" step and
+  // ga-assets.ts's decideAssetRepair(), fixed the same way.
+  const user = await requireRole("superadmin", "director");
 
   let promoEmployeeId: string | null = null;
   let promoToPosition: string | null = null;
