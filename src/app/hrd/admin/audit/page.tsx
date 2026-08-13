@@ -13,6 +13,11 @@ function getModuleFromAction(action: string): string {
   if (action.startsWith("attendance.")) return "Kehadiran";
   if (action.startsWith("settings.")) return "Pengaturan";
   if (action.startsWith("position.") || action.startsWith("jobdesc.") || action.startsWith("jobspec.")) return "Jabatan";
+  if (action.startsWith("absence_correction.")) return "Koreksi Absensi";
+  if (action.startsWith("overtime.")) return "Lembur";
+  if (action.startsWith("payroll.")) return "Payroll";
+  if (action.startsWith("hiring.") || action.startsWith("offer.")) return "Rekrutmen";
+  if (action.startsWith("ai_assistant.")) return "AI Assistant";
   return "Sistem";
 }
 
@@ -44,6 +49,14 @@ function getActionLabel(action: string): string {
     "request.delete": "Permintaan SDM dihapus",
     "attendance.clock_in": "Clock-in",
     "attendance.clock_out": "Clock-out",
+    "absence_correction.decision": "Koreksi absensi diputuskan",
+    "overtime.decision": "Lembur diputuskan",
+    "payroll.generate": "Payroll digenerate",
+    "payroll.status_change": "Status payroll diubah",
+    "payroll.paid": "Payroll dibayarkan",
+    "hiring.approval_decision": "Approval hiring diputuskan",
+    "offer.status_change": "Status offer letter diubah",
+    "ai_assistant.write_action": "Tindakan dieksekusi oleh AI Assistant",
   };
   return labels[action] || action;
 }

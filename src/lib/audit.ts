@@ -32,7 +32,6 @@ export type AuditAction =
   | "attendance.clock_in"
   | "attendance.clock_out"
   | "leave.submit"
-  | "leave.status_change"
   | "face.register"
   | "face.remove"
   | "face.change_request"
@@ -93,7 +92,10 @@ export type AuditAction =
   | "er.approval_decision"
   | "training.certificate_issue"
   | "training.enrollment_result"
-  | "kpi.status_change";
+  | "kpi.status_change"
+  | "absence_correction.decision"
+  | "overtime.decision"
+  | "ai_assistant.write_action";
 
 export async function auditLog(params: {
   action: AuditAction;

@@ -5,12 +5,20 @@ import { getGroqClient, HRD_COPILOT_MODEL } from "@/lib/groq";
 import { HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
 import { getGeminiClient, GEMINI_COPILOT_MODEL } from "@/lib/gemini";
 import { getOpenRouterApiKey, OPENROUTER_BASE_URL, OPENROUTER_COPILOT_MODEL } from "@/lib/openrouter";
-import { HRD_COPILOT_TOOLS, HRD_COPILOT_TOOLS_GEMINI, executeHrdCopilotTool } from "@/lib/hrd-copilot-tools";
+import { executeHrdCopilotTool, toolsForRole, toolsForRoleGemini, WRITE_TOOL_NAMES, type ToolProposalResult } from "@/lib/hrd-copilot-tools";
+import { executeConfirmedWriteAction } from "@/lib/hrd-copilot-actions";
+import { rateLimit } from "@/lib/rate-limit";
 import type Groq from "groq-sdk";
 
 export interface CopilotMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+export interface PendingAction {
+  toolName: string;
+  args: Record<string, string>;
+  summary: string;
 }
 
 // Groq is the fast primary tier; Gemini and especially the OpenRouter free
@@ -46,7 +54,12 @@ Jika pengguna bertanya dari mana suatu data berasal (mis. "diambil dari mana itu
 - Data aset/kendaraan/armada → menu "Aset & Fasilitas"
 - Data jabatan/deskripsi kerja/struktur organisasi → menu "Desain Organisasi"
 - Data payroll/gaji/slip gaji → menu "Reward & Recognition > Payroll, Gaji & Tunjangan"
-Contoh jawaban yang benar: "Data ini sama dengan yang tampil di menu Employee Relations > Dashboard & Analitik ER." Jika ragu menu mana yang paling tepat, gunakan list_hrd_modules untuk memastikan nama menu yang akurat sebelum menjawab.`;
+Contoh jawaban yang benar: "Data ini sama dengan yang tampil di menu Employee Relations > Dashboard & Analitik ER." Jika ragu menu mana yang paling tepat, gunakan list_hrd_modules untuk memastikan nama menu yang akurat sebelum menjawab.
+
+PENTING soal bahasa tidak baku: pengguna sering menulis dengan singkatan, typo, atau bahasa gaul sehari-hari (mis. "yg", "krn"/"karna", "udh"/"udah", "blm", "tp", "sy", "gpp", "dr", "utk", "bgt", "gimana", "kayaknya"). Selalu tafsirkan maksud pengguna dengan wajar meskipun tulisannya tidak baku — jangan minta pengguna menulis ulang dengan bahasa formal. Contoh: "tolongin approve-in cutinya budi dong" → panggil decide_leave_request dengan employee_name="Budi"; "berapa org yg blm absen hr ini" → panggil get_today_attendance; "cutinya si ani gmn statusnya" → panggil get_pending_leaves atau search terkait.
+
+PENTING soal tool yang bisa MENGUBAH DATA (decide_leave_request, decide_overtime_request, decide_absence_correction, generate_payslip, generate_payroll_batch, decide_payroll_status, decide_hiring_step, send_offer_letter): tool-tool ini hanya MENGUSULKAN tindakan, TIDAK langsung mengeksekusinya — sistem di luar Anda yang menampilkan hasilnya ke pengguna sebagai usulan yang perlu dikonfirmasi, dan yang menjalankannya setelah dikonfirmasi. Anda TIDAK PERLU (dan tidak akan) melihat hasil dari tool-tool ini di percakapan — begitu Anda memanggilnya, giliran Anda selesai. Jangan pernah memanggil tool ini dua kali untuk permintaan yang sama, dan jangan berasumsi tentang hasilnya.
+PENTING — JANGAN PERNAH mengarang/menebak nama karyawan sebagai argumen ke tool "decide_*" atau "generate_*"/"send_*". Tool-tool ini WAJIB hanya dipanggil ketika pengguna sudah eksplisit menyebut nama orangnya. Untuk pertanyaan umum/laporan (mis. "ada lembur pending nggak", "ada cuti yang belum diproses"), selalu gunakan tool pelaporan (get_pending_leaves, get_pending_overtime, get_pending_absence_corrections, get_pending_approvals, dll) — JANGAN pernah memanggil tool "decide_*" hanya untuk mengecek/melihat data.`;
 
 // Bounds each provider's tool-calling loop — a well-behaved model resolves
 // in 1-2 rounds (ask -> tool call -> final answer); this is a backstop
@@ -60,6 +73,53 @@ const MAX_TOOL_ROUNDS = 4;
 // MAX_TOOL_ROUNDS is exhausted.
 function toolSignature(name: string, args: string): string {
   return `${name}:${args}`;
+}
+
+// Deterministic confirm/cancel matching for a pending write-tool proposal —
+// deliberately NOT another LLM call. Only matches short (<=5 word) messages
+// so a longer/ambiguous reply falls through to a normal turn instead of
+// silently executing or discarding something the user didn't clearly mean.
+const CONFIRM_WORDS = ["ya", "iya", "yaa", "yap", "y", "ok", "oke", "oce", "okay", "siap", "gas", "gaskeun", "lanjut", "lanjutkan", "setuju", "boleh", "yuk", "sip", "betul", "benar", "confirm", "yes", "lakukan", "proses", "eksekusi"];
+const CANCEL_WORDS = ["tidak", "gak", "ga", "nggak", "ngga", "jangan", "batal", "batalkan", "cancel", "engga", "enggak", "no", "stop", "gajadi"];
+
+function matchConfirmIntent(message: string): "confirm" | "cancel" | null {
+  const trimmed = message.trim().toLowerCase().replace(/[.,!?]+$/, "");
+  if (!trimmed) return null;
+  const words = trimmed.split(/\s+/);
+  if (words.length > 5) return null;
+  const first = words[0];
+  if (CANCEL_WORDS.includes(first)) return "cancel";
+  if (CONFIRM_WORDS.includes(first)) return "confirm";
+  return null;
+}
+
+// Builds the deterministic (never LLM-authored) reply for a write-tool's
+// proposal/error result — see WRITE_TOOL_NAMES short-circuit in each
+// provider loop below.
+function replyFromProposal(toolName: string, proposal: ToolProposalResult): { reply: string; pendingAction?: PendingAction } {
+  switch (proposal.status) {
+    case "AWAITING_USER_CONFIRMATION":
+      return {
+        reply: proposal.summary,
+        pendingAction: { toolName: proposal.toolName, args: proposal.args, summary: proposal.summary },
+      };
+    case "NEEDS_DISAMBIGUATION":
+      return { reply: `${proposal.message}\n${proposal.options.map((o) => `- ${o}`).join("\n")}` };
+    case "NEEDS_INFO":
+    case "NOT_ALLOWED":
+    case "ERROR":
+      return { reply: proposal.message };
+  }
+}
+
+function parseToolProposal(toolName: string, rawResult: string): ToolProposalResult | null {
+  try {
+    const parsed = JSON.parse(rawResult);
+    if (parsed && typeof parsed.status === "string") return parsed as ToolProposalResult;
+  } catch {
+    // fall through
+  }
+  return null;
 }
 
 function describeError(err: unknown): string {
@@ -100,8 +160,9 @@ function parseFailedToolCall(err: unknown): { name: string; args: string } | nul
   return { name: match[1], args: match[2] };
 }
 
-async function runGroq(history: CopilotMessage[]): Promise<{ reply: string; provider: CopilotProvider } | { error: string }> {
+async function runGroq(history: CopilotMessage[], role: string): Promise<{ reply: string; provider: CopilotProvider; pendingAction?: PendingAction } | { error: string }> {
   const groq = getGroqClient();
+  const tools = toolsForRole(role);
   const messages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
     ...history.map((m): Groq.Chat.Completions.ChatCompletionMessageParam => ({ role: m.role, content: m.content })),
@@ -116,7 +177,7 @@ async function runGroq(history: CopilotMessage[]): Promise<{ reply: string; prov
       completion = await groq.chat.completions.create({
         model: HRD_COPILOT_MODEL,
         messages,
-        tools: HRD_COPILOT_TOOLS,
+        tools,
         // Force a text answer on the final round instead of allowing yet
         // another tool call — guarantees the loop ends with a real reply
         // rather than the generic "terlalu kompleks" bailout.
@@ -128,6 +189,10 @@ async function runGroq(history: CopilotMessage[]): Promise<{ reply: string; prov
       if (!recovered) throw err;
       const fakeCallId = `recovered-${round}`;
       const result = await executeHrdCopilotTool(recovered.name, recovered.args);
+      if (WRITE_TOOL_NAMES.has(recovered.name)) {
+        const proposal = parseToolProposal(recovered.name, result);
+        if (proposal) return { ...replyFromProposal(recovered.name, proposal), provider: "groq" };
+      }
       messages.push({
         role: "assistant", content: "",
         tool_calls: [{ id: fakeCallId, type: "function", function: { name: recovered.name, arguments: recovered.args } }],
@@ -148,6 +213,10 @@ async function runGroq(history: CopilotMessage[]): Promise<{ reply: string; prov
       if (seenSignatures.has(signature)) repeatedCall = true;
       seenSignatures.add(signature);
       const result = await executeHrdCopilotTool(toolCall.function.name, toolCall.function.arguments);
+      if (WRITE_TOOL_NAMES.has(toolCall.function.name)) {
+        const proposal = parseToolProposal(toolCall.function.name, result);
+        if (proposal) return { ...replyFromProposal(toolCall.function.name, proposal), provider: "groq" };
+      }
       messages.push({ role: "tool", tool_call_id: toolCall.id, content: result });
     }
     if (repeatedCall) {
@@ -165,12 +234,12 @@ async function runGroq(history: CopilotMessage[]): Promise<{ reply: string; prov
 // real usage) — same tools, same dispatcher, different provider. Gemini's
 // SDK wants strict user/model-alternating history and returns function
 // calls via response.functionCalls() instead of OpenAI-style tool_calls.
-async function runGemini(history: CopilotMessage[]): Promise<{ reply: string; provider: CopilotProvider } | { error: string }> {
+async function runGemini(history: CopilotMessage[], role: string): Promise<{ reply: string; provider: CopilotProvider; pendingAction?: PendingAction } | { error: string }> {
   const gemini = getGeminiClient();
   const model = gemini.getGenerativeModel({
     model: GEMINI_COPILOT_MODEL,
     systemInstruction: SYSTEM_PROMPT,
-    tools: [{ functionDeclarations: HRD_COPILOT_TOOLS_GEMINI }],
+    tools: [{ functionDeclarations: toolsForRoleGemini(role) }],
     // Default thresholds can false-positive-block ordinary internal HR
     // discussion (employee names, disciplinary cases, warnings) under the
     // harassment/hate-speech categories. Relaxed since this is an
@@ -201,6 +270,10 @@ async function runGemini(history: CopilotMessage[]): Promise<{ reply: string; pr
     const responseParts = [];
     for (const call of calls) {
       const toolResult = await executeHrdCopilotTool(call.name, JSON.stringify(call.args || {}));
+      if (WRITE_TOOL_NAMES.has(call.name)) {
+        const proposal = parseToolProposal(call.name, toolResult);
+        if (proposal) return { ...replyFromProposal(call.name, proposal), provider: "gemini" };
+      }
       let parsed: unknown;
       try { parsed = JSON.parse(toolResult); } catch { parsed = { raw: toolResult }; }
       responseParts.push({ functionResponse: { name: call.name, response: parsed as object } });
@@ -225,8 +298,9 @@ type OpenRouterMessage = {
 // this doesn't go through an SDK) using the same OpenAI-style
 // chat-completions + tool-calling shape as Groq, so the round-loop logic
 // mirrors runGroq's.
-async function runOpenRouter(history: CopilotMessage[]): Promise<{ reply: string; provider: CopilotProvider } | { error: string }> {
+async function runOpenRouter(history: CopilotMessage[], role: string): Promise<{ reply: string; provider: CopilotProvider; pendingAction?: PendingAction } | { error: string }> {
   const apiKey = getOpenRouterApiKey();
+  const tools = toolsForRole(role);
   const messages: OpenRouterMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
     ...history.map((m): OpenRouterMessage => ({ role: m.role, content: m.content })),
@@ -240,7 +314,7 @@ async function runOpenRouter(history: CopilotMessage[]): Promise<{ reply: string
       body: JSON.stringify({
         model: OPENROUTER_COPILOT_MODEL,
         messages,
-        tools: HRD_COPILOT_TOOLS,
+        tools,
         tool_choice: isLastRound ? "none" : "auto",
         temperature: 0.3,
       }),
@@ -259,6 +333,10 @@ async function runOpenRouter(history: CopilotMessage[]): Promise<{ reply: string
     messages.push({ role: "assistant", content: message.content, tool_calls: message.tool_calls });
     for (const toolCall of message.tool_calls) {
       const result = await executeHrdCopilotTool(toolCall.function.name, toolCall.function.arguments);
+      if (WRITE_TOOL_NAMES.has(toolCall.function.name)) {
+        const proposal = parseToolProposal(toolCall.function.name, result);
+        if (proposal) return { ...replyFromProposal(toolCall.function.name, proposal), provider: "openrouter" };
+      }
       messages.push({ role: "tool", tool_call_id: toolCall.id, content: result });
     }
   }
@@ -274,19 +352,48 @@ function safeJsonParse(text: string): unknown {
 // product must never reveal which AI vendor answered. `slow` is the only
 // signal the UI gets, and it's provider-agnostic by construction.
 function toClientResult(
-  result: { reply: string; provider: CopilotProvider } | { error: string }
-): { reply: string; slow: boolean } | { error: string } {
+  result: { reply: string; provider: CopilotProvider; pendingAction?: PendingAction } | { error: string }
+): { reply: string; slow: boolean; pendingAction?: PendingAction } | { error: string } {
   if ("error" in result) return result;
-  return { reply: result.reply, slow: result.provider !== "groq" };
+  return { reply: result.reply, slow: result.provider !== "groq", pendingAction: result.pendingAction };
 }
 
-export async function askHrdCopilot(history: CopilotMessage[]): Promise<{ reply: string; slow: boolean } | { error: string }> {
-  await requireRole("hrd", "superadmin", "director", "department_manager");
+export async function askHrdCopilot(
+  history: CopilotMessage[],
+  pendingAction?: PendingAction | null,
+  confirmed?: boolean
+): Promise<{ reply: string; slow: boolean; pendingAction?: PendingAction } | { error: string }> {
+  const user = await requireRole("hrd", "superadmin", "director", "department_manager");
+
+  const rl = await rateLimit(`hrd-copilot:${user.email}`, 30, 5 * 60 * 1000);
+  if (rl.limited) return { error: "Terlalu banyak permintaan ke asisten dalam waktu singkat. Coba lagi dalam beberapa menit." };
 
   const trimmedHistory = history.slice(-20); // cap context sent per turn
 
+  // A pendingAction from a prior turn is only ever acted on deterministically
+  // here — never by asking the LLM to decide. The client always echoes back
+  // the exact {toolName,args} it was shown; a stale/replayed confirmation
+  // still can't double-apply because every underlying write action re-checks
+  // current DB state (idempotency guards) before mutating.
+  if (pendingAction) {
+    const lastUserMessage = [...trimmedHistory].reverse().find((m) => m.role === "user")?.content || "";
+    const intent = confirmed === true ? "confirm" : matchConfirmIntent(lastUserMessage);
+
+    if (intent === "cancel") {
+      return { reply: "Baik, dibatalkan. Tidak ada perubahan yang dilakukan.", slow: false };
+    }
+    if (intent === "confirm") {
+      const execRl = await rateLimit(`hrd-copilot-execute:${user.email}`, 10, 10 * 60 * 1000);
+      if (execRl.limited) return { error: "Terlalu banyak tindakan dieksekusi dalam waktu singkat. Coba lagi dalam beberapa menit." };
+      const result = await executeConfirmedWriteAction(pendingAction.toolName, pendingAction.args, user);
+      return "error" in result ? { reply: result.error, slow: false } : { reply: result.message, slow: false };
+    }
+    // Ambiguous reply — drop the stale pendingAction and fall through to a
+    // normal turn instead of guessing; the user can just ask again naturally.
+  }
+
   try {
-    return toClientResult(await runGroq(trimmedHistory));
+    return toClientResult(await runGroq(trimmedHistory, user.role));
   } catch (groqErr) {
     // Fall back to Gemini on ANY Groq failure, not just rate-limit (429) —
     // "heavier" questions (broader tool results, longer combined context)
@@ -296,13 +403,13 @@ export async function askHrdCopilot(history: CopilotMessage[]): Promise<{ reply:
     // at all, which is the "tugas berat = gagal" gap this fixes.
     console.error("[hrd-copilot] Groq error, falling back to Gemini:", describeError(groqErr));
     try {
-      return toClientResult(await runGemini(trimmedHistory));
+      return toClientResult(await runGemini(trimmedHistory, user.role));
     } catch (geminiErr) {
       console.error("[hrd-copilot] Gemini fallback also failed, falling back to OpenRouter:", describeError(geminiErr));
       // Third tier — a different upstream from both Groq and Google, so all
       // three being rate-limited at once is far less likely than just two.
       try {
-        return toClientResult(await runOpenRouter(trimmedHistory));
+        return toClientResult(await runOpenRouter(trimmedHistory, user.role));
       } catch (openRouterErr) {
         console.error("[hrd-copilot] OpenRouter fallback also failed:", describeError(openRouterErr));
         if (isRateLimitError(groqErr) || isRateLimitError(geminiErr) || isRateLimitError(openRouterErr)) {

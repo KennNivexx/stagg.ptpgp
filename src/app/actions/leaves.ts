@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { submitLeaveForEmployee } from "@/lib/leaves-core";
+import { auditLog } from "@/lib/audit";
 
 const uid = () => crypto.randomUUID();
 
@@ -60,6 +61,11 @@ export async function updateLeaveStatus(id: string, status: string): Promise<{ e
   }
 
   await supabaseAdmin.from("pengajuan_cuti").update({ status, approved_by: user.name, updated_at: new Date().toISOString() }).eq("id", id);
+
+  await auditLog({
+    action: "leave.status_change", targetId: id, targetName: l.employee_name as string,
+    performedBy: user, detail: `${l.type} (${l.start_date} - ${l.end_date}) ${status === "Disetujui" ? "disetujui" : "ditolak"}.`,
+  });
 
   // Saldo Cuti (leave balance) was previously a completely separate,
   // manually-maintained number — approving a request here never touched it,

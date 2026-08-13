@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
+import { auditLog } from "@/lib/audit";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const MISSING = "Jalankan migrasi 20260713003_workforce_time_management.sql terlebih dahulu.";
@@ -166,18 +167,34 @@ export async function ajukanKoreksi(formData: FormData) {
   return { success: true };
 }
 
-export async function reviewKoreksi(id: string, approve: boolean) {
+export async function reviewKoreksi(id: string, approve: boolean): Promise<{ error: string } | { success: true }> {
   const user = await requireRole("hrd", "superadmin", "department_manager");
+  const { data: row } = await supabaseAdmin.from("koreksi_absensi").select("karyawan_id, status, jenis_koreksi, tanggal").eq("id", id).maybeSingle();
+  if (!row) return { error: "Koreksi absensi tidak ditemukan." };
+  const r = row as { karyawan_id: string; status: string; jenis_koreksi: string; tanggal: string };
+
   if (user.role === "department_manager") {
-    const { data: row } = await supabaseAdmin.from("koreksi_absensi").select("karyawan_id").eq("id", id).maybeSingle();
     const ids = await deptEmployeeIds(await resolveOwnDepartment(user.email));
-    if (!ids.includes((row as { karyawan_id?: string } | null)?.karyawan_id || "")) {
+    if (!ids.includes(r.karyawan_id || "")) {
       return { error: "Anda hanya dapat memproses koreksi karyawan di departemen Anda sendiri." };
     }
   }
-  await supabaseAdmin.from("koreksi_absensi").update({
-    status: approve ? "Disetujui" : "Ditolak", reviewed_by: user.name || user.email,
-  }).eq("id", id);
+
+  // Guard against re-processing an already-decided request (double-click,
+  // network retry, or an AI-assistant confirmation replayed after the fact).
+  if (r.status && r.status !== "Pending") {
+    return { error: `Koreksi ini sudah diproses sebelumnya (${r.status}).` };
+  }
+
+  const status = approve ? "Disetujui" : "Ditolak";
+  await supabaseAdmin.from("koreksi_absensi").update({ status, reviewed_by: user.name || user.email }).eq("id", id);
+
+  const empName = await resolveKaryawanName(r.karyawan_id);
+  await auditLog({
+    action: "absence_correction.decision", targetId: id, targetName: empName,
+    performedBy: user, detail: `${r.jenis_koreksi} (${r.tanggal}) ${status === "Disetujui" ? "disetujui" : "ditolak"}.`,
+  });
+
   revalidateWtm();
   return { success: true };
 }
@@ -216,16 +233,27 @@ export async function ajukanLembur(formData: FormData) {
   return { success: true };
 }
 
-export async function reviewLembur(id: string, approve: boolean) {
+export async function reviewLembur(id: string, approve: boolean): Promise<{ error: string } | { success: true }> {
   const user = await requireRole("hrd", "superadmin", "department_manager");
+  const { data: row } = await supabaseAdmin.from("lembur").select("karyawan_id, status, tanggal, jam_mulai, jam_selesai").eq("id", id).maybeSingle();
+  if (!row) return { error: "Lembur tidak ditemukan." };
+  const r = row as { karyawan_id: string; status: string; tanggal: string; jam_mulai: string | null; jam_selesai: string | null };
+
   if (user.role === "department_manager") {
-    const { data: row } = await supabaseAdmin.from("lembur").select("karyawan_id").eq("id", id).maybeSingle();
     const ids = await deptEmployeeIds(await resolveOwnDepartment(user.email));
-    if (!ids.includes((row as { karyawan_id?: string } | null)?.karyawan_id || "")) {
+    if (!ids.includes(r.karyawan_id || "")) {
       return { error: "Anda hanya dapat memproses lembur karyawan di departemen Anda sendiri." };
     }
   }
-  const updatePayload: Record<string, unknown> = { status: approve ? "Disetujui" : "Ditolak", reviewed_by: user.name || user.email };
+
+  // Guard against re-processing an already-decided request (double-click,
+  // network retry, or an AI-assistant confirmation replayed after the fact).
+  if (r.status && r.status !== "Pending") {
+    return { error: `Lembur ini sudah diproses sebelumnya (${r.status}).` };
+  }
+
+  const status = approve ? "Disetujui" : "Ditolak";
+  const updatePayload: Record<string, unknown> = { status, reviewed_by: user.name || user.email };
 
   // Approving here was previously a pure status flip — `lembur.hours`/`amount`
   // (what admin.ts's payroll engine actually sums into Lembur pay) were never
@@ -234,22 +262,26 @@ export async function reviewLembur(id: string, approve: boolean) {
   // "HH:MM" strings with no date, so duration is computed on a fixed
   // reference day (midnight rollover only wraps overnight shifts, doesn't
   // span multiple calendar days).
-  if (approve) {
-    const { data: row } = await supabaseAdmin.from("lembur").select("jam_mulai, jam_selesai").eq("id", id).maybeSingle();
-    const r = row as { jam_mulai: string | null; jam_selesai: string | null } | null;
-    if (r?.jam_mulai && r?.jam_selesai) {
-      const toMinutes = (t: string) => { const [h, m] = t.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
-      let minutes = toMinutes(r.jam_selesai) - toMinutes(r.jam_mulai);
-      if (minutes < 0) minutes += 24 * 60; // overnight shift (e.g. 22:00 -> 02:00)
-      const hours = Math.round((minutes / 60) * 100) / 100;
-      const { data: rateRow } = await supabaseAdmin.from("konfigurasi_penggajian").select("value").eq("key", "overtime_rate_per_hour").maybeSingle();
-      const ratePerHour = Number((rateRow as { value?: unknown } | null)?.value) || 25000;
-      updatePayload.hours = hours;
-      updatePayload.amount = Math.round(hours * ratePerHour);
-    }
+  let hours: number | null = null;
+  if (approve && r.jam_mulai && r.jam_selesai) {
+    const toMinutes = (t: string) => { const [h, m] = t.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+    let minutes = toMinutes(r.jam_selesai) - toMinutes(r.jam_mulai);
+    if (minutes < 0) minutes += 24 * 60; // overnight shift (e.g. 22:00 -> 02:00)
+    hours = Math.round((minutes / 60) * 100) / 100;
+    const { data: rateRow } = await supabaseAdmin.from("konfigurasi_penggajian").select("value").eq("key", "overtime_rate_per_hour").maybeSingle();
+    const ratePerHour = Number((rateRow as { value?: unknown } | null)?.value) || 25000;
+    updatePayload.hours = hours;
+    updatePayload.amount = Math.round(hours * ratePerHour);
   }
 
   await supabaseAdmin.from("lembur").update(updatePayload).eq("id", id);
+
+  const empName = await resolveKaryawanName(r.karyawan_id);
+  await auditLog({
+    action: "overtime.decision", targetId: id, targetName: empName,
+    performedBy: user, detail: `Lembur ${r.tanggal} (${r.jam_mulai || "—"}–${r.jam_selesai || "—"}) ${status === "Disetujui" ? "disetujui" : "ditolak"}${hours ? `, ${hours} jam` : ""}.`,
+  });
+
   revalidateWtm();
   return { success: true };
 }
@@ -340,6 +372,11 @@ export async function getWorkforceTimeStats() {
 }
 
 /* ─────── shared helper ─────── */
+async function resolveKaryawanName(karyawanId: string): Promise<string> {
+  const { data } = await supabaseAdmin.from("karyawan").select("full_name").eq("id", karyawanId).maybeSingle();
+  return (data as { full_name?: string } | null)?.full_name || "—";
+}
+
 async function joinKaryawanNames(rows: Record<string, unknown>[]) {
   const empIds = [...new Set(rows.map(r => r.karyawan_id).filter(Boolean))] as string[];
   if (empIds.length === 0) return rows.map(r => ({ ...r, karyawan_nama: "—" }));

@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { requireRole } from "@/lib/auth-guard";
 import { searchEmployees } from "@/app/actions/employee";
 import { getLeaves } from "@/app/actions/leaves";
+import { getLembur, getKoreksiAbsensi } from "@/app/actions/workforce-time";
+import { getHiringApprovalStatus, generateOfferLetter } from "@/app/actions/recruitment-hiring";
 import { getRelationsExecutiveMetrics } from "@/app/actions/employee-relations";
 import { getAssetRepairRequests, getAssets } from "@/app/actions/ga-assets";
 import { getMaintenanceRequests } from "@/app/actions/ga-infrastruktur";
@@ -193,6 +195,22 @@ export const HRD_COPILOT_TOOLS: Groq.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "get_pending_overtime",
+      description: "Daftar pengajuan LEMBUR yang masih menunggu persetujuan (status Pending) — hanya MELAPORKAN, tidak mengubah apa pun. Gunakan untuk pertanyaan seperti 'ada lembur yang pending?', 'siapa yang lembur belum di-approve'. JANGAN gunakan decide_overtime_request untuk pertanyaan semacam ini — tool itu khusus untuk MEMUTUSKAN satu pengajuan spesifik yang sudah disebutkan namanya.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_pending_absence_corrections",
+      description: "Daftar pengajuan KOREKSI ABSENSI yang masih menunggu persetujuan (status Pending) — hanya MELAPORKAN, tidak mengubah apa pun. Gunakan untuk pertanyaan seperti 'ada koreksi absensi yang pending?', 'siapa yang butuh koreksi absen'. JANGAN gunakan decide_absence_correction untuk pertanyaan semacam ini — tool itu khusus untuk MEMUTUSKAN satu pengajuan spesifik yang sudah disebutkan namanya.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_hr_metrics",
       description: "Metrik eksekutif Employee Relations: jumlah kasus terbuka/tertutup/lewat tenggat, turnover rate, engagement index, eNPS. Gunakan untuk pertanyaan tentang turnover, engagement, atau ringkasan kasus karyawan.",
       parameters: { type: "object", properties: {} },
@@ -214,7 +232,178 @@ export const HRD_COPILOT_TOOLS: Groq.Chat.Completions.ChatCompletionTool[] = [
       parameters: { type: "object", properties: {} },
     },
   },
+
+  // ── Write-capable tools ──────────────────────────────────────────────
+  // Every tool below only ever PROPOSES an action (returns a JSON payload
+  // describing exactly what would happen, never mutates anything itself).
+  // The actual mutation happens in a separate, non-LLM-reachable code path
+  // (src/lib/hrd-copilot-actions.ts) only after the user explicitly
+  // confirms — see src/app/actions/hrd-copilot.ts for the confirm flow.
+  {
+    type: "function",
+    function: {
+      name: "decide_leave_request",
+      description: "Menyetujui atau menolak pengajuan Cuti/Izin SATU karyawan yang NAMANYA sudah disebutkan pengguna, yang masih Pending. Ini akan MENGUSULKAN tindakan — pengguna harus mengonfirmasi dulu sebelum benar-benar dieksekusi. Gunakan HANYA saat pengguna eksplisit menyebut nama karyawan, mis. 'approve cuti budi', 'tolak izin si ani'. JANGAN gunakan untuk pertanyaan umum seperti 'ada cuti pending nggak' — pakai get_pending_leaves untuk itu, dan JANGAN mengarang/menebak nama karyawan.",
+      parameters: {
+        type: "object",
+        properties: {
+          employee_name: { type: "string", description: "Nama karyawan yang pengajuan cutinya ingin diputuskan." },
+          decision: { type: "string", description: "Keputusan: 'Disetujui' atau 'Ditolak'." },
+        },
+        required: ["employee_name", "decision"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "decide_overtime_request",
+      description: "Menyetujui atau menolak pengajuan Lembur SATU karyawan yang NAMANYA sudah disebutkan pengguna, yang masih Pending. MENGUSULKAN tindakan, butuh konfirmasi pengguna sebelum benar-benar dieksekusi. Gunakan HANYA saat pengguna eksplisit menyebut nama karyawan. JANGAN gunakan untuk pertanyaan umum seperti 'ada lembur pending nggak' — pakai get_pending_overtime untuk itu, dan JANGAN mengarang/menebak nama karyawan.",
+      parameters: {
+        type: "object",
+        properties: {
+          employee_name: { type: "string", description: "Nama karyawan yang pengajuan lemburnya ingin diputuskan." },
+          decision: { type: "string", description: "Keputusan: 'Disetujui' atau 'Ditolak'." },
+        },
+        required: ["employee_name", "decision"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "decide_absence_correction",
+      description: "Menyetujui atau menolak pengajuan Koreksi Absensi SATU karyawan yang NAMANYA sudah disebutkan pengguna, yang masih Pending. MENGUSULKAN tindakan, butuh konfirmasi pengguna sebelum benar-benar dieksekusi. Gunakan HANYA saat pengguna eksplisit menyebut nama karyawan. JANGAN gunakan untuk pertanyaan umum seperti 'ada koreksi absensi pending nggak' — pakai get_pending_absence_corrections untuk itu, dan JANGAN mengarang/menebak nama karyawan.",
+      parameters: {
+        type: "object",
+        properties: {
+          employee_name: { type: "string", description: "Nama karyawan yang pengajuan koreksi absensinya ingin diputuskan." },
+          decision: { type: "string", description: "Keputusan: 'Disetujui' atau 'Ditolak'." },
+        },
+        required: ["employee_name", "decision"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_payslip",
+      description: "Membuat slip gaji (payroll) untuk satu karyawan pada periode tertentu. MENGUSULKAN tindakan, butuh konfirmasi pengguna sebelum benar-benar dieksekusi.",
+      parameters: {
+        type: "object",
+        properties: {
+          employee_name: { type: "string", description: "Nama karyawan yang slip gajinya ingin dibuat." },
+          month: { type: "string", description: "Bulan periode payroll, angka 1-12." },
+          year: { type: "string", description: "Tahun periode payroll, mis. '2026'." },
+        },
+        required: ["employee_name", "month", "year"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_payroll_batch",
+      description: "Membuat payroll untuk SELURUH karyawan aktif pada periode tertentu sekaligus (batch). MENGUSULKAN tindakan, butuh konfirmasi pengguna sebelum benar-benar dieksekusi.",
+      parameters: {
+        type: "object",
+        properties: {
+          month: { type: "string", description: "Bulan periode payroll, angka 1-12." },
+          year: { type: "string", description: "Tahun periode payroll, mis. '2026'." },
+        },
+        required: ["month", "year"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "decide_payroll_status",
+      description: "Mengubah status verifikasi/persetujuan payroll (Draft→Verified_SDM→Verified_Keuangan→Approved→Paid), untuk satu karyawan atau batch satu periode. MENGUSULKAN tindakan, butuh konfirmasi pengguna sebelum benar-benar dieksekusi. Status hanya bisa naik satu langkah berurutan — jika target salah, akan diberi tahu status yang benar.",
+      parameters: {
+        type: "object",
+        properties: {
+          scope: { type: "string", description: "'single' untuk satu karyawan, atau 'batch' untuk satu periode penuh." },
+          employee_name: { type: "string", description: "Nama karyawan (wajib jika scope='single')." },
+          month: { type: "string", description: "Bulan periode, angka 1-12 (opsional untuk single, wajib untuk batch)." },
+          year: { type: "string", description: "Tahun periode (opsional untuk single, wajib untuk batch)." },
+          target_status: { type: "string", description: "Status tujuan: 'Verified_SDM', 'Verified_Keuangan', 'Approved', atau 'Paid'." },
+          payment_method: { type: "string", description: "Metode pembayaran, wajib diisi jika target_status='Paid' (mis. 'Transfer Bank')." },
+        },
+        required: ["scope", "target_status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "decide_hiring_step",
+      description: "Menyetujui atau menolak satu tahap approval hiring (rekrutmen) untuk seorang kandidat/pelamar. MENGUSULKAN tindakan, butuh konfirmasi pengguna sebelum benar-benar dieksekusi. Jika menolak, alasan (notes) wajib diisi.",
+      parameters: {
+        type: "object",
+        properties: {
+          candidate_name: { type: "string", description: "Nama kandidat/pelamar." },
+          decision: { type: "string", description: "Keputusan: 'Approved' atau 'Rejected'." },
+          notes: { type: "string", description: "Catatan/alasan, wajib diisi jika decision='Rejected'." },
+        },
+        required: ["candidate_name", "decision"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "send_offer_letter",
+      description: "Mengirim offer letter (surat penawaran kerja) ke seorang kandidat/pelamar yang sudah memiliki gaji ditawarkan. MENGUSULKAN tindakan, butuh konfirmasi pengguna sebelum benar-benar dieksekusi.",
+      parameters: {
+        type: "object",
+        properties: {
+          candidate_name: { type: "string", description: "Nama kandidat/pelamar yang akan dikirim offer letter." },
+        },
+        required: ["candidate_name"],
+      },
+    },
+  },
 ];
+
+/** Tool names whose result the model NEVER paraphrases — see the
+ * short-circuit logic in src/app/actions/hrd-copilot.ts, which returns the
+ * proposal/error `message`/`summary` field directly as the reply the
+ * instant one of these is called, skipping any further LLM round. */
+export const WRITE_TOOL_NAMES = new Set([
+  "decide_leave_request",
+  "decide_overtime_request",
+  "decide_absence_correction",
+  "generate_payslip",
+  "generate_payroll_batch",
+  "decide_payroll_status",
+  "decide_hiring_step",
+  "send_offer_letter",
+]);
+
+export type ToolProposalResult =
+  | { status: "AWAITING_USER_CONFIRMATION"; summary: string; toolName: string; args: Record<string, string> }
+  | { status: "NEEDS_DISAMBIGUATION"; message: string; options: string[] }
+  | { status: "NEEDS_INFO"; message: string }
+  | { status: "NOT_ALLOWED"; message: string }
+  | { status: "ERROR"; message: string };
+
+// Some roles askHrdCopilot() lets into the chat at all (hrd/superadmin/
+// director/department_manager) are NOT allowed by the underlying write
+// action for certain tools (e.g. updateLeaveStatus explicitly excludes hrd
+// and director). Filtering those tools out of the list offered to the model
+// avoids ever proposing something guaranteed to fail — the real action's own
+// role check stays authoritative regardless, this is purely a UX/round-trip
+// optimization, not a substitute for it.
+const ROLE_EXCLUDED_WRITE_TOOLS: Record<string, string[]> = {
+  hrd: ["decide_leave_request"],
+  director: ["decide_leave_request", "decide_overtime_request", "decide_absence_correction"],
+};
+
+export function toolsForRole(role: string): Groq.Chat.Completions.ChatCompletionTool[] {
+  const excluded = new Set(ROLE_EXCLUDED_WRITE_TOOLS[role] || []);
+  return HRD_COPILOT_TOOLS.filter((t) => !excluded.has(t.function!.name));
+}
 
 // Gemini fallback (see src/app/actions/hrd-copilot.ts) uses the same tools
 // but Google's SDK wants its own SchemaType enum instead of plain JSON-schema
@@ -236,6 +425,11 @@ export const HRD_COPILOT_TOOLS_GEMINI: FunctionDeclaration[] = HRD_COPILOT_TOOLS
     },
   };
 });
+
+export function toolsForRoleGemini(role: string): FunctionDeclaration[] {
+  const excluded = new Set(ROLE_EXCLUDED_WRITE_TOOLS[role] || []);
+  return HRD_COPILOT_TOOLS_GEMINI.filter((t) => !excluded.has(t.name));
+}
 
 // Caps how many raw rows get relayed back into the model's context for any
 // list-shaped tool result — keeps token usage predictable regardless of how
@@ -263,6 +457,294 @@ async function getDepartmentHeadcount() {
     per_departemen: Array.from(counts.entries())
       .map(([department, count]) => ({ department, count }))
       .sort((a, b) => b.count - a.count),
+  };
+}
+
+async function proposeLeaveDecision(args: Record<string, unknown>): Promise<ToolProposalResult> {
+  const name = typeof args.employee_name === "string" ? args.employee_name.trim() : "";
+  const decisionRaw = typeof args.decision === "string" ? args.decision.trim() : "";
+  const decision = decisionRaw === "Disetujui" || decisionRaw === "Ditolak" ? decisionRaw : null;
+  if (!name) return { status: "NEEDS_INFO", message: "Sebutkan nama karyawan yang pengajuan Cuti/Izinnya ingin diputuskan." };
+  if (!decision) return { status: "NEEDS_INFO", message: "Sebutkan keputusannya: disetujui atau ditolak." };
+
+  const rows = (await getLeaves({})) as Record<string, unknown>[];
+  const q = name.toLowerCase();
+  const matches = rows.filter((r) => r.status === "Pending" && String(r.employee_name || "").toLowerCase().includes(q));
+  if (matches.length === 0) return { status: "ERROR", message: `Tidak ditemukan pengajuan Cuti/Izin berstatus Pending atas nama "${name}".` };
+  if (matches.length > 1) {
+    return {
+      status: "NEEDS_DISAMBIGUATION",
+      message: `Ada ${matches.length} pengajuan Cuti/Izin Pending atas nama "${name}". Sebutkan lebih spesifik (jenis atau tanggal):`,
+      options: matches.slice(0, 5).map((r) => `${r.type} — ${r.start_date} s/d ${r.end_date}`),
+    };
+  }
+  const m = matches[0];
+  return {
+    status: "AWAITING_USER_CONFIRMATION",
+    summary: `🔔 Konfirmasi: ${decision === "Disetujui" ? "Menyetujui" : "Menolak"} ${m.type} atas nama ${m.employee_name}, ${m.start_date} s/d ${m.end_date}. Ketik "ya" untuk melanjutkan atau "batal" untuk membatalkan.`,
+    toolName: "decide_leave_request",
+    args: { id: String(m.id), status: decision, description: `${decision === "Disetujui" ? "Menyetujui" : "Menolak"} ${m.type} atas nama ${m.employee_name}, ${m.start_date} s/d ${m.end_date}` },
+  };
+}
+
+async function proposeOvertimeDecision(args: Record<string, unknown>): Promise<ToolProposalResult> {
+  const name = typeof args.employee_name === "string" ? args.employee_name.trim() : "";
+  const decisionRaw = typeof args.decision === "string" ? args.decision.trim() : "";
+  const decision = decisionRaw === "Disetujui" || decisionRaw === "Ditolak" ? decisionRaw : null;
+  if (!name) return { status: "NEEDS_INFO", message: "Sebutkan nama karyawan yang pengajuan lemburnya ingin diputuskan." };
+  if (!decision) return { status: "NEEDS_INFO", message: "Sebutkan keputusannya: disetujui atau ditolak." };
+
+  const rows = (await getLembur()) as Record<string, unknown>[];
+  const q = name.toLowerCase();
+  const matches = rows.filter((r) => r.status === "Pending" && String(r.karyawan_nama || "").toLowerCase().includes(q));
+  if (matches.length === 0) return { status: "ERROR", message: `Tidak ditemukan pengajuan Lembur berstatus Pending atas nama "${name}".` };
+  if (matches.length > 1) {
+    return {
+      status: "NEEDS_DISAMBIGUATION",
+      message: `Ada ${matches.length} pengajuan Lembur Pending atas nama "${name}". Sebutkan tanggalnya:`,
+      options: matches.slice(0, 5).map((r) => `${r.tanggal} (${r.jam_mulai || "—"}–${r.jam_selesai || "—"})`),
+    };
+  }
+  const m = matches[0];
+  return {
+    status: "AWAITING_USER_CONFIRMATION",
+    summary: `🔔 Konfirmasi: ${decision === "Disetujui" ? "Menyetujui" : "Menolak"} lembur ${m.karyawan_nama} tanggal ${m.tanggal}. Ketik "ya" untuk melanjutkan atau "batal" untuk membatalkan.`,
+    toolName: "decide_overtime_request",
+    args: { id: String(m.id), approve: decision === "Disetujui" ? "true" : "false", description: `${decision === "Disetujui" ? "Menyetujui" : "Menolak"} lembur ${m.karyawan_nama} tanggal ${m.tanggal}` },
+  };
+}
+
+async function proposeAbsenceCorrectionDecision(args: Record<string, unknown>): Promise<ToolProposalResult> {
+  const name = typeof args.employee_name === "string" ? args.employee_name.trim() : "";
+  const decisionRaw = typeof args.decision === "string" ? args.decision.trim() : "";
+  const decision = decisionRaw === "Disetujui" || decisionRaw === "Ditolak" ? decisionRaw : null;
+  if (!name) return { status: "NEEDS_INFO", message: "Sebutkan nama karyawan yang pengajuan koreksi absensinya ingin diputuskan." };
+  if (!decision) return { status: "NEEDS_INFO", message: "Sebutkan keputusannya: disetujui atau ditolak." };
+
+  const rows = (await getKoreksiAbsensi()) as Record<string, unknown>[];
+  const q = name.toLowerCase();
+  const matches = rows.filter((r) => r.status === "Pending" && String(r.karyawan_nama || "").toLowerCase().includes(q));
+  if (matches.length === 0) return { status: "ERROR", message: `Tidak ditemukan pengajuan Koreksi Absensi berstatus Pending atas nama "${name}".` };
+  if (matches.length > 1) {
+    return {
+      status: "NEEDS_DISAMBIGUATION",
+      message: `Ada ${matches.length} pengajuan Koreksi Absensi Pending atas nama "${name}". Sebutkan jenis/tanggalnya:`,
+      options: matches.slice(0, 5).map((r) => `${r.jenis_koreksi} — ${r.tanggal}`),
+    };
+  }
+  const m = matches[0];
+  return {
+    status: "AWAITING_USER_CONFIRMATION",
+    summary: `🔔 Konfirmasi: ${decision === "Disetujui" ? "Menyetujui" : "Menolak"} koreksi absensi (${m.jenis_koreksi}) ${m.karyawan_nama} tanggal ${m.tanggal}. Ketik "ya" untuk melanjutkan atau "batal" untuk membatalkan.`,
+    toolName: "decide_absence_correction",
+    args: { id: String(m.id), approve: decision === "Disetujui" ? "true" : "false", description: `${decision === "Disetujui" ? "Menyetujui" : "Menolak"} koreksi absensi (${m.jenis_koreksi}) ${m.karyawan_nama} tanggal ${m.tanggal}` },
+  };
+}
+
+async function proposeGeneratePayslip(args: Record<string, unknown>): Promise<ToolProposalResult> {
+  const name = typeof args.employee_name === "string" ? args.employee_name.trim() : "";
+  const month = typeof args.month === "string" ? args.month.trim() : "";
+  const year = typeof args.year === "string" ? args.year.trim() : "";
+  if (!name) return { status: "NEEDS_INFO", message: "Sebutkan nama karyawan yang slip gajinya ingin dibuat." };
+  if (!month || !year) return { status: "NEEDS_INFO", message: "Sebutkan bulan dan tahun periode payroll." };
+
+  const matches = await searchEmployees(name);
+  if (matches.length === 0) return { status: "ERROR", message: `Karyawan "${name}" tidak ditemukan.` };
+  if (matches.length > 1) {
+    return {
+      status: "NEEDS_DISAMBIGUATION",
+      message: `Ada ${matches.length} karyawan dengan nama "${name}". Sebutkan lebih spesifik:`,
+      options: matches.slice(0, 5).map((m) => `${m.full_name} — ${m.department}`),
+    };
+  }
+  const emp = matches[0];
+  return {
+    status: "AWAITING_USER_CONFIRMATION",
+    summary: `🔔 Konfirmasi: Generate slip gaji untuk ${emp.full_name}, periode ${month}/${year}. Ketik "ya" untuk melanjutkan atau "batal" untuk membatalkan.`,
+    toolName: "generate_payslip",
+    args: { employee_id: emp.id, month, year, description: `Generate slip gaji untuk ${emp.full_name}, periode ${month}/${year}` },
+  };
+}
+
+async function proposeGeneratePayrollBatch(args: Record<string, unknown>): Promise<ToolProposalResult> {
+  const month = typeof args.month === "string" ? args.month.trim() : "";
+  const year = typeof args.year === "string" ? args.year.trim() : "";
+  if (!month || !year) return { status: "NEEDS_INFO", message: "Sebutkan bulan dan tahun periode payroll untuk proses batch." };
+  return {
+    status: "AWAITING_USER_CONFIRMATION",
+    summary: `🔔 Konfirmasi: Generate payroll untuk SELURUH karyawan aktif (Tetap/Kontrak/Magang) periode ${month}/${year}. Karyawan yang sudah punya slip akan dilewati otomatis. Ketik "ya" untuk melanjutkan atau "batal" untuk membatalkan.`,
+    toolName: "generate_payroll_batch",
+    args: { month, year, description: `Generate payroll seluruh karyawan aktif periode ${month}/${year}` },
+  };
+}
+
+// Mirrors admin.ts's PAYROLL_TRANSITIONS map. Duplicated rather than
+// imported because admin.ts is a "use server" file — every export from one
+// must be an async function, so a plain constant can't be shared directly.
+// This copy is only used to shape a nicer proposal/error message; the real,
+// authoritative gate is still enforced inside updatePayrollStatus /
+// assertPayrollTransitionAllowed when the confirmed action actually runs.
+const PAYROLL_STATUS_VALUES = ["Draft", "Verified_SDM", "Verified_Keuangan", "Approved", "Paid"] as const;
+type PayrollStatusLocal = (typeof PAYROLL_STATUS_VALUES)[number];
+const PAYROLL_TRANSITIONS_LOCAL: Record<PayrollStatusLocal, PayrollStatusLocal | null> = {
+  Draft: "Verified_SDM", Verified_SDM: "Verified_Keuangan", Verified_Keuangan: "Approved", Approved: "Paid", Paid: null,
+};
+
+async function proposePayrollStatusDecision(args: Record<string, unknown>): Promise<ToolProposalResult> {
+  const scope = args.scope === "batch" ? "batch" : "single";
+  const targetRaw = typeof args.target_status === "string" ? args.target_status.trim() : "";
+  const target = (PAYROLL_STATUS_VALUES as readonly string[]).includes(targetRaw) && targetRaw !== "Draft" ? (targetRaw as PayrollStatusLocal) : null;
+  if (!target) {
+    return { status: "NEEDS_INFO", message: "Sebutkan status tujuan yang valid: Verified_SDM, Verified_Keuangan, Approved, atau Paid." };
+  }
+  const payment_method = typeof args.payment_method === "string" ? args.payment_method.trim() : "";
+  if (target === "Paid" && !payment_method) {
+    return { status: "NEEDS_INFO", message: "Untuk menandai payroll sebagai Paid, sebutkan dulu metode pembayarannya (mis. Transfer Bank)." };
+  }
+  const transfer_date = typeof args.transfer_date === "string" ? args.transfer_date.trim() : "";
+  const payment_reference = typeof args.payment_reference === "string" ? args.payment_reference.trim() : "";
+  const payment_notes = typeof args.payment_notes === "string" ? args.payment_notes.trim() : "";
+
+  if (scope === "batch") {
+    const month = typeof args.month === "string" ? args.month.trim() : "";
+    const year = typeof args.year === "string" ? args.year.trim() : "";
+    if (!month || !year) return { status: "NEEDS_INFO", message: "Sebutkan bulan dan tahun periode payroll untuk proses batch." };
+    return {
+      status: "AWAITING_USER_CONFIRMATION",
+      summary: `🔔 Konfirmasi: Ubah status seluruh payroll periode ${month}/${year} yang eligible menjadi "${target}". Ketik "ya" untuk melanjutkan atau "batal" untuk membatalkan.`,
+      toolName: "decide_payroll_status",
+      args: { scope: "batch", month, year, target_status: target, payment_method, transfer_date, payment_reference, payment_notes, description: `Ubah status payroll periode ${month}/${year} menjadi "${target}"` },
+    };
+  }
+
+  const name = typeof args.employee_name === "string" ? args.employee_name.trim() : "";
+  if (!name) return { status: "NEEDS_INFO", message: "Sebutkan nama karyawan yang payroll-nya ingin diproses." };
+  const matches = await searchEmployees(name);
+  if (matches.length === 0) return { status: "ERROR", message: `Karyawan "${name}" tidak ditemukan.` };
+  if (matches.length > 1) {
+    return {
+      status: "NEEDS_DISAMBIGUATION",
+      message: `Ada ${matches.length} karyawan dengan nama "${name}". Sebutkan lebih spesifik:`,
+      options: matches.slice(0, 5).map((m) => `${m.full_name} — ${m.department}`),
+    };
+  }
+  const emp = matches[0];
+  const month = typeof args.month === "string" ? args.month.trim() : "";
+  const year = typeof args.year === "string" ? args.year.trim() : "";
+  let q = supabaseAdmin.from("penggajian").select("id, month, year, status").eq("employee_id", emp.id)
+    .order("year", { ascending: false }).order("month", { ascending: false });
+  if (month) q = q.eq("month", Number(month));
+  if (year) q = q.eq("year", Number(year));
+  const { data: payrollRows } = await q.limit(5);
+  const rows = (payrollRows || []) as { id: string; month: number; year: number; status: string }[];
+  if (rows.length === 0) return { status: "ERROR", message: `Belum ada data payroll untuk ${emp.full_name}${month && year ? ` periode ${month}/${year}` : ""}.` };
+  const row = rows[0];
+  if (row.status === target) return { status: "ERROR", message: `Payroll ${emp.full_name} periode ${row.month}/${row.year} sudah berstatus "${target}".` };
+  const expectedTarget = PAYROLL_TRANSITIONS_LOCAL[row.status as PayrollStatusLocal];
+  if (expectedTarget !== target) {
+    return { status: "ERROR", message: `Status payroll ${emp.full_name} periode ${row.month}/${row.year} saat ini "${row.status}". Langkah berikutnya yang valid adalah "${expectedTarget || "(tidak ada, sudah final)"}", bukan "${target}".` };
+  }
+  return {
+    status: "AWAITING_USER_CONFIRMATION",
+    summary: `🔔 Konfirmasi: Ubah status payroll ${emp.full_name} periode ${row.month}/${row.year} dari "${row.status}" menjadi "${target}". Ketik "ya" untuk melanjutkan atau "batal" untuk membatalkan.`,
+    toolName: "decide_payroll_status",
+    args: { scope: "single", id: row.id, target_status: target, payment_method, transfer_date, payment_reference, payment_notes, description: `Ubah status payroll ${emp.full_name} periode ${row.month}/${row.year} menjadi "${target}"` },
+  };
+}
+
+async function findPelamarByName(name: string): Promise<{ id: string; full_name: string; email: string }[]> {
+  const { data } = await supabaseAdmin.from("pelamar").select("id, full_name, email").ilike("full_name", `%${name}%`).limit(10);
+  return (data || []) as { id: string; full_name: string; email: string }[];
+}
+
+// Mirrors recruitment-hiring.ts's ROLE_FOR_APPROVER map — same "can't export
+// a plain constant from a 'use server' file" constraint as the payroll map
+// above. Only used to shape a helpful NOT_ALLOWED message before proposing;
+// decideHiringApprovalStep's own check is still the real gate at execution.
+const HIRING_APPROVER_ROLE_ALLOWED: Record<string, string[]> = {
+  HR: ["hrd", "superadmin"],
+  "Department Head": ["department_manager", "hrd", "superadmin"],
+  Finance: ["hrd", "director", "superadmin"],
+  Director: ["director", "superadmin"],
+};
+
+async function proposeHiringDecision(args: Record<string, unknown>): Promise<ToolProposalResult> {
+  const user = await requireRole("hrd", "superadmin", "director", "department_manager");
+  const name = typeof args.candidate_name === "string" ? args.candidate_name.trim() : "";
+  const decisionRaw = typeof args.decision === "string" ? args.decision.trim() : "";
+  const decision = decisionRaw === "Approved" || decisionRaw === "Rejected" ? decisionRaw : null;
+  const notes = typeof args.notes === "string" ? args.notes.trim() : "";
+  if (!name) return { status: "NEEDS_INFO", message: "Sebutkan nama kandidat/pelamar." };
+  if (!decision) return { status: "NEEDS_INFO", message: "Sebutkan keputusannya: Approved (setuju) atau Rejected (tolak)." };
+  if (decision === "Rejected" && !notes) return { status: "NEEDS_INFO", message: "Alasan penolakan wajib diisi untuk menolak tahap ini." };
+
+  const candidates = await findPelamarByName(name);
+  if (candidates.length === 0) return { status: "ERROR", message: `Pelamar "${name}" tidak ditemukan.` };
+  if (candidates.length > 1) {
+    return {
+      status: "NEEDS_DISAMBIGUATION",
+      message: `Ada ${candidates.length} pelamar dengan nama "${name}". Sebutkan lebih spesifik (email):`,
+      options: candidates.slice(0, 5).map((c) => `${c.full_name} — ${c.email}`),
+    };
+  }
+  const candidate = candidates[0];
+
+  const steps = (await getHiringApprovalStatus(candidate.id)) as { step_number: number; approver_role: string; status: string }[];
+  const pending = steps.filter((s) => s.status === "Pending").sort((a, b) => a.step_number - b.step_number)[0];
+  if (!pending) return { status: "ERROR", message: `Tidak ada tahap approval hiring yang Pending untuk ${candidate.full_name}.` };
+
+  const allowed = HIRING_APPROVER_ROLE_ALLOWED[pending.approver_role] || ["hrd", "superadmin"];
+  if (!allowed.includes(user.role)) {
+    return { status: "NOT_ALLOWED", message: `Tahap ini (langkah ${pending.step_number}, approver: ${pending.approver_role}) bukan wewenang Anda.` };
+  }
+
+  const isLastStep = pending.step_number === Math.max(...steps.map((s) => s.step_number));
+  const lastStepWarning = isLastStep && decision === "Approved"
+    ? " CATATAN: ini adalah tahap approval TERAKHIR — menyetujui akan otomatis membuat data karyawan baru dari kandidat ini."
+    : "";
+  return {
+    status: "AWAITING_USER_CONFIRMATION",
+    summary: `🔔 Konfirmasi: ${decision === "Approved" ? "Menyetujui" : "Menolak"} tahap ${pending.step_number} (${pending.approver_role}) untuk kandidat ${candidate.full_name}.${lastStepWarning} Ketik "ya" untuk melanjutkan atau "batal" untuk membatalkan.`,
+    toolName: "decide_hiring_step",
+    args: { application_id: candidate.id, step_number: String(pending.step_number), decision, notes, description: `${decision === "Approved" ? "Menyetujui" : "Menolak"} tahap ${pending.step_number} (${pending.approver_role}) untuk kandidat ${candidate.full_name}` },
+  };
+}
+
+async function proposeSendOfferLetter(args: Record<string, unknown>): Promise<ToolProposalResult> {
+  const name = typeof args.candidate_name === "string" ? args.candidate_name.trim() : "";
+  if (!name) return { status: "NEEDS_INFO", message: "Sebutkan nama kandidat yang akan dikirim offer letter." };
+
+  const candidates = await findPelamarByName(name);
+  if (candidates.length === 0) return { status: "ERROR", message: `Pelamar "${name}" tidak ditemukan.` };
+  if (candidates.length > 1) {
+    return {
+      status: "NEEDS_DISAMBIGUATION",
+      message: `Ada ${candidates.length} pelamar dengan nama "${name}". Sebutkan lebih spesifik (email):`,
+      options: candidates.slice(0, 5).map((c) => `${c.full_name} — ${c.email}`),
+    };
+  }
+  const candidate = candidates[0];
+
+  const { data: row } = await supabaseAdmin.from("pelamar").select("offered_salary, offer_letter_content, offer_letter_status").eq("id", candidate.id).maybeSingle();
+  const r = row as { offered_salary?: number | null; offer_letter_content?: string | null; offer_letter_status?: string | null } | null;
+  if (!r?.offered_salary) {
+    return { status: "NEEDS_INFO", message: `Gaji yang ditawarkan untuk ${candidate.full_name} belum diisi. Set dulu di menu Recruitment > Decisions sebelum mengirim offer letter.` };
+  }
+  if (r.offer_letter_status === "Terkirim") {
+    return { status: "ERROR", message: `Offer letter untuk ${candidate.full_name} sudah pernah terkirim.` };
+  }
+  // Generating letter content is reversible / has no external effect (unlike
+  // sending it), so it's safe to do eagerly while building the proposal
+  // rather than gating it behind a second confirmation.
+  if (!r.offer_letter_content) {
+    const genRes = await generateOfferLetter(candidate.id);
+    if (genRes && "error" in genRes) return { status: "ERROR", message: genRes.error };
+  }
+  return {
+    status: "AWAITING_USER_CONFIRMATION",
+    summary: `🔔 Konfirmasi: Kirim offer letter ke ${candidate.full_name} (${candidate.email}) dengan gaji ditawarkan Rp${Number(r.offered_salary).toLocaleString("id-ID")}. Ketik "ya" untuk melanjutkan atau "batal" untuk membatalkan.`,
+    toolName: "send_offer_letter",
+    args: { application_id: candidate.id, description: `Kirim offer letter ke ${candidate.full_name} (${candidate.email})` },
   };
 }
 
@@ -310,6 +792,28 @@ export async function executeHrdCopilotTool(name: string, rawArgs: string): Prom
           daftar: rows.slice(0, LIST_CAP).map((r) => ({
             nama: r.employee_name, departemen: r.department, jenis: r.type,
             mulai: r.start_date, selesai: r.end_date,
+          })),
+        });
+      }
+
+      case "get_pending_overtime": {
+        const rows = (await getLembur()) as Record<string, unknown>[];
+        const pending = rows.filter((r) => r.status === "Pending");
+        return JSON.stringify({
+          total_pending: pending.length,
+          daftar: pending.slice(0, LIST_CAP).map((r) => ({
+            nama: r.karyawan_nama, tanggal: r.tanggal, jam_mulai: r.jam_mulai, jam_selesai: r.jam_selesai,
+          })),
+        });
+      }
+
+      case "get_pending_absence_corrections": {
+        const rows = (await getKoreksiAbsensi()) as Record<string, unknown>[];
+        const pending = rows.filter((r) => r.status === "Pending");
+        return JSON.stringify({
+          total_pending: pending.length,
+          daftar: pending.slice(0, LIST_CAP).map((r) => ({
+            nama: r.karyawan_nama, jenis: r.jenis_koreksi, tanggal: r.tanggal,
           })),
         });
       }
@@ -586,6 +1090,30 @@ export async function executeHrdCopilotTool(name: string, rawArgs: string): Prom
           }))
         );
       }
+
+      case "decide_leave_request":
+        return JSON.stringify(await proposeLeaveDecision(args));
+
+      case "decide_overtime_request":
+        return JSON.stringify(await proposeOvertimeDecision(args));
+
+      case "decide_absence_correction":
+        return JSON.stringify(await proposeAbsenceCorrectionDecision(args));
+
+      case "generate_payslip":
+        return JSON.stringify(await proposeGeneratePayslip(args));
+
+      case "generate_payroll_batch":
+        return JSON.stringify(await proposeGeneratePayrollBatch(args));
+
+      case "decide_payroll_status":
+        return JSON.stringify(await proposePayrollStatusDecision(args));
+
+      case "decide_hiring_step":
+        return JSON.stringify(await proposeHiringDecision(args));
+
+      case "send_offer_letter":
+        return JSON.stringify(await proposeSendOfferLetter(args));
 
       default:
         return JSON.stringify({ error: `Tool tidak dikenal: ${name}` });

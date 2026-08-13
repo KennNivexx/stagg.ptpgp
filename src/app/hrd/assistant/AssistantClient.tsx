@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Send, User } from "lucide-react";
-import { askHrdCopilot, type CopilotMessage } from "@/app/actions/hrd-copilot";
+import { Send, User, Check, X } from "lucide-react";
+import { askHrdCopilot, type CopilotMessage, type PendingAction } from "@/app/actions/hrd-copilot";
 import CopilotOrbAvatar from "@/components/hrd/CopilotOrbAvatar";
 
 const SUGGESTED_PROMPTS = [
@@ -35,17 +35,27 @@ export default function AssistantClient() {
   // commits — a ref updates immediately, closing that window.
   const inFlightRef = useRef(false);
 
+  // The one write-action proposal currently awaiting the user's yes/no, if
+  // any — always overwritten with whatever the latest server reply says
+  // (or cleared), so a stale proposal can never be accidentally re-confirmed
+  // after the conversation has moved on. Echoed back to askHrdCopilot
+  // verbatim on the next call; the server never trusts it blindly (every
+  // underlying write action re-checks current DB state before mutating).
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  async function send(text: string) {
+  async function send(text: string, confirmed?: boolean) {
     const trimmed = text.trim();
     if (!trimmed || inFlightRef.current) return;
     inFlightRef.current = true;
+    const currentPendingAction = pendingAction;
     const nextMessages: DisplayMessage[] = [...messages, { role: "user", content: trimmed }];
     setMessages(nextMessages);
     setInput("");
+    setPendingAction(null);
     setLoading(true);
     try {
       // Don't feed prior error banners back in as fake conversation history —
@@ -53,11 +63,12 @@ export default function AssistantClient() {
       const historyForModel: CopilotMessage[] = nextMessages
         .filter((m) => !m.isError)
         .map((m) => ({ role: m.role, content: m.content }));
-      const result = await askHrdCopilot(historyForModel);
+      const result = await askHrdCopilot(historyForModel, currentPendingAction, confirmed);
       if ("error" in result) {
         setMessages([...nextMessages, { role: "assistant", content: result.error, isError: true }]);
       } else {
         setMessages([...nextMessages, { role: "assistant", content: result.reply, slow: result.slow }]);
+        setPendingAction(result.pendingAction || null);
       }
     } catch {
       // The server action call itself failed (network drop, server
@@ -68,6 +79,17 @@ export default function AssistantClient() {
       setLoading(false);
       inFlightRef.current = false;
     }
+  }
+
+  function confirmPendingAction() {
+    if (!pendingAction || inFlightRef.current) return;
+    send("Ya, lakukan.", true);
+  }
+
+  function cancelPendingAction() {
+    if (!pendingAction) return;
+    setPendingAction(null);
+    setMessages((prev) => [...prev, { role: "assistant", content: "Baik, dibatalkan. Tidak ada perubahan yang dilakukan." }]);
   }
 
   return (
@@ -155,6 +177,36 @@ export default function AssistantClient() {
                 </div>
               </motion.div>
             ))}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {pendingAction && !loading && (
+              <motion.div
+                key="pending-action"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="flex gap-3"
+              >
+                <div className="h-8 w-8 shrink-0" />
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5">
+                  <button
+                    type="button"
+                    onClick={confirmPendingAction}
+                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg px-3 py-1.5 transition-colors"
+                  >
+                    <Check size={13} /> Ya, lakukan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelPendingAction}
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 transition-colors"
+                  >
+                    <X size={13} /> Batal
+                  </button>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
 
           <AnimatePresence>
