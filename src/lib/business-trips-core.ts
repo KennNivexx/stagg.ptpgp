@@ -15,8 +15,9 @@ export async function submitBusinessTripForEmployee(params: {
   start_date: string;
   end_date: string;
   reason: string;
+  estimasi_biaya?: number | null;
 }): Promise<{ error: string } | { success: true }> {
-  const { employeeId, employeeEmail, employeeName, destination, start_date, end_date, reason } = params;
+  const { employeeId, employeeEmail, employeeName, destination, start_date, end_date, reason, estimasi_biaya } = params;
 
   if (!destination || !start_date || !end_date) return { error: "Tujuan, tanggal mulai, dan tanggal selesai wajib diisi." };
   if (new Date(end_date) < new Date(start_date)) return { error: "Tanggal selesai harus setelah tanggal mulai." };
@@ -32,6 +33,10 @@ export async function submitBusinessTripForEmployee(params: {
     start_date,
     end_date,
     reason,
+    // Optional — lets this trip's cost contribute to getFinancialSummary()
+    // once approved. Nullable since most historical/existing trips never
+    // had a cost estimate and shouldn't be forced to invent one.
+    estimasi_biaya: estimasi_biaya ?? null,
     status: "Pending",
   });
   if (error) return { error: "Gagal mengajukan perjalanan dinas." };

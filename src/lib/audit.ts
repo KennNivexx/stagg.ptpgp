@@ -95,7 +95,9 @@ export type AuditAction =
   | "kpi.status_change"
   | "absence_correction.decision"
   | "overtime.decision"
-  | "ai_assistant.write_action";
+  | "ai_assistant.write_action"
+  | "pengiriman.create"
+  | "pengiriman.update";
 
 export async function auditLog(params: {
   action: AuditAction;

@@ -81,6 +81,10 @@ export default function BusinessTripRequestButton() {
                   <label className="block text-xs font-bold text-slate-600 mb-1.5" htmlFor="trip-reason">Keperluan</label>
                   <textarea id="trip-reason" name="reason" rows={3} placeholder="Keperluan perjalanan dinas..." className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none resize-none" />
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5" htmlFor="trip-cost">Estimasi Biaya (Opsional)</label>
+                  <input id="trip-cost" type="number" min="0" step="1000" name="estimasi_biaya" placeholder="cth. 1500000" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-pgp-red focus:ring-1 focus:ring-pgp-red outline-none" />
+                </div>
 
                 <div className="text-[11px] text-slate-500 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                   Selama tanggal dinas ini disetujui, Anda tidak perlu berada di lokasi kerja untuk bisa absen.

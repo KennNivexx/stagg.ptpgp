@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, BarChart3, Building2, UserCircle2, Warehouse,
   Briefcase, Award, GraduationCap, BookOpen, TrendingUp,
-  Gift, Heart, FileText, Clock, Settings,
+  Gift, Heart, FileText, Clock, Settings, Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -248,6 +248,20 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     ],
   },
   {
+    // New — company revenue tracking didn't exist anywhere in this system
+    // before (confirmed: zero omset/revenue/billing data in any prior
+    // migration). Kept as its own group rather than nested under an
+    // existing one since it's a recurring staff data-entry workflow (log
+    // each completed shipment's billed value), the same weight as "Aset &
+    // Fasilitas", not just a report.
+    label: "Keuangan Operasional",
+    icon: Wallet,
+    color: "emerald",
+    items: [
+      { href: "/hrd/finance/pengiriman", label: "Pengiriman & Omset" },
+    ],
+  },
+  {
     label: "Laporan & Analitik",
     icon: FileText,
     color: "lime",
@@ -256,6 +270,7 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
       { href: "/hrd/reports/recruitment", label: "Laporan Rekrutmen" },
       { href: "/hrd/reports/employees", label: "Laporan Karyawan" },
       { href: "/hrd/reports/payroll", label: "Laporan Payroll" },
+      { href: "/hrd/reports/laba-rugi", label: "Laporan Laba/Rugi" },
       { href: "/hrd/reports/training", label: "Laporan Training" },
       { href: "/hrd/reports/performance", label: "Laporan Kinerja" },
       { href: "/hrd/reports/turnover", label: "Laporan Turnover" },

@@ -12,6 +12,8 @@ export async function submitBusinessTrip(formData: FormData) {
   // their OWN business trip here; approving a subordinate's is the separate
   // updateBusinessTripStatus action below.
   const user = await requireRole("hrd", "superadmin", "employee", "department_manager");
+  const estimasiRaw = (formData.get("estimasi_biaya") as string || "").trim();
+  const estimasi_biaya = estimasiRaw ? parseFloat(estimasiRaw) : null;
   const result = await submitBusinessTripForEmployee({
     employeeId: user.id,
     employeeEmail: user.email,
@@ -20,6 +22,7 @@ export async function submitBusinessTrip(formData: FormData) {
     start_date: (formData.get("start_date") as string || "").trim(),
     end_date: (formData.get("end_date") as string || "").trim(),
     reason: (formData.get("reason") as string || "").trim(),
+    estimasi_biaya: estimasi_biaya != null && !Number.isNaN(estimasi_biaya) ? estimasi_biaya : null,
   });
   if ("success" in result) {
     revalidatePath("/hrd/attendance");

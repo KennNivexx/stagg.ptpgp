@@ -6,6 +6,7 @@ import { searchEmployees } from "@/app/actions/employee";
 import { getLeaves } from "@/app/actions/leaves";
 import { getLembur, getKoreksiAbsensi } from "@/app/actions/workforce-time";
 import { getHiringApprovalStatus, generateOfferLetter } from "@/app/actions/recruitment-hiring";
+import { getFinancialSummary } from "@/app/actions/pengiriman";
 import { getRelationsExecutiveMetrics } from "@/app/actions/employee-relations";
 import { getAssetRepairRequests, getAssets } from "@/app/actions/ga-assets";
 import { getMaintenanceRequests } from "@/app/actions/ga-infrastruktur";
@@ -139,6 +140,20 @@ export const HRD_COPILOT_TOOLS: Groq.Chat.Completions.ChatCompletionTool[] = [
       name: "get_org_overview",
       description: "Ringkasan struktur organisasi: jumlah departemen/unit, dan jumlah formasi jabatan yang kosong (vacant) vs terisi (filled). Gunakan untuk pertanyaan tentang struktur organisasi, unit kerja, atau formasi jabatan.",
       parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_financial_summary",
+      description: "Ringkasan keuangan perusahaan: total OMSET (pendapatan dari pengiriman/proyek), total BIAYA operasional (payroll, insentif supir, perjalanan dinas), dan LABA/RUGI bersih untuk satu periode bulan. Gunakan untuk pertanyaan seperti 'berapa omset/pendapatan bulan ini', 'untung atau rugi bulan ini', 'berapa laba perusahaan'. Ini BEDA dari get_payroll_overview (yang hanya soal gaji karyawan) — gunakan tool ini untuk pertanyaan soal omset/laba/rugi perusahaan secara keseluruhan.",
+      parameters: {
+        type: "object",
+        properties: {
+          month: { type: "string", description: "Bulan, angka 1-12. Kosongkan untuk bulan berjalan." },
+          year: { type: "string", description: "Tahun, mis. '2026'. Kosongkan untuk tahun berjalan." },
+        },
+      },
     },
   },
   {
@@ -1002,6 +1017,20 @@ export async function executeHrdCopilotTool(name: string, rawArgs: string): Prom
           total_formasi_jabatan: formasi.length,
           formasi_kosong: vacant,
           formasi_terisi: formasi.length - vacant,
+        });
+      }
+
+      case "get_financial_summary": {
+        const month = typeof args.month === "string" && args.month.trim() ? parseInt(args.month.trim(), 10) : undefined;
+        const year = typeof args.year === "string" && args.year.trim() ? parseInt(args.year.trim(), 10) : undefined;
+        const summary = await getFinancialSummary(month, year);
+        return JSON.stringify({
+          periode: summary.periode,
+          total_omset: summary.omset,
+          total_biaya: summary.biaya.total,
+          rincian_biaya: { gaji: summary.biaya.gaji, insentif_supir: summary.biaya.insentif_supir, perjalanan_dinas: summary.biaya.perjalanan_dinas },
+          laba_rugi: summary.laba_rugi,
+          status: summary.laba_rugi >= 0 ? "Laba" : "Rugi",
         });
       }
 

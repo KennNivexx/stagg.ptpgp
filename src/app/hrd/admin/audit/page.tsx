@@ -18,6 +18,7 @@ function getModuleFromAction(action: string): string {
   if (action.startsWith("payroll.")) return "Payroll";
   if (action.startsWith("hiring.") || action.startsWith("offer.")) return "Rekrutmen";
   if (action.startsWith("ai_assistant.")) return "AI Assistant";
+  if (action.startsWith("pengiriman.")) return "Keuangan Operasional";
   return "Sistem";
 }
 
@@ -57,6 +58,8 @@ function getActionLabel(action: string): string {
     "hiring.approval_decision": "Approval hiring diputuskan",
     "offer.status_change": "Status offer letter diubah",
     "ai_assistant.write_action": "Tindakan dieksekusi oleh AI Assistant",
+    "pengiriman.create": "Pengiriman & omset dicatat",
+    "pengiriman.update": "Pengiriman & omset diperbarui",
   };
   return labels[action] || action;
 }
