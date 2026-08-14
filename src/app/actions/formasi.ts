@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { auditLog } from "@/lib/audit";
+import { getParentCode } from "@/lib/org-code";
+import { isMoreSenior } from "@/lib/org-levels";
 
 export interface FormasiRow {
   id: string;
@@ -21,6 +23,72 @@ export interface FormasiRow {
 
 const uid = () => "formasi-" + crypto.randomUUID();
 const MISSING_MIGRATION = "Jalankan migrasi 20260712001_org_design_overhaul.sql terlebih dahulu.";
+
+/** Level (rank name) of whichever jabatan is currently the Filled kepala unit
+ * of `unitId`, or null if the unit has no unit head assigned yet / no
+ * recognizable level — mirrors org-helpers.ts's getKepalaUnit() but also
+ * surfaces jabatan.level, which that helper doesn't expose. */
+async function getKepalaUnitLevel(unitId: string): Promise<string | null> {
+  const { data: formasiRows } = await supabaseAdmin
+    .from("formasi_jabatan")
+    .select("jabatan_id")
+    .eq("unit_organisasi_id", unitId)
+    .eq("status", "Filled");
+  const rows = (formasiRows || []) as { jabatan_id: string }[];
+  if (rows.length === 0) return null;
+
+  const jabatanIds = [...new Set(rows.map(r => r.jabatan_id))];
+  const { data: jabatanRows } = await supabaseAdmin
+    .from("jabatan")
+    .select("id, is_kepala_unit, level")
+    .in("id", jabatanIds);
+  const kepala = ((jabatanRows || []) as { id: string; is_kepala_unit: boolean; level: string | null }[])
+    .find(j => j.is_kepala_unit);
+  return kepala?.level || null;
+}
+
+/** Guards against assigning a unit-head jabatan that outranks the unit-head
+ * of its own parent unit — e.g. a "Manager" leading a sub-unit whose parent
+ * unit is still led by a "Supervisor". Only fires when the target jabatan
+ * itself is a kepala unit AND both sides resolve to a recognizable level;
+ * legacy/empty levels are skipped rather than falsely rejected. */
+async function checkKepalaUnitSeniority(unitOrganisasiId: string, jabatanId: string): Promise<{ error: string } | null> {
+  const { data: jabatanRow } = await supabaseAdmin
+    .from("jabatan")
+    .select("name, level, is_kepala_unit")
+    .eq("id", jabatanId)
+    .maybeSingle();
+  const jabatan = jabatanRow as { name: string; level: string | null; is_kepala_unit: boolean } | null;
+  if (!jabatan?.is_kepala_unit || !jabatan.level) return null;
+
+  const { data: unitRow } = await supabaseAdmin
+    .from("unit_organisasi")
+    .select("code")
+    .eq("id", unitOrganisasiId)
+    .maybeSingle();
+  const code = (unitRow as { code: string } | null)?.code;
+  if (!code) return null;
+  const parentCode = getParentCode(code);
+  if (!parentCode) return null;
+
+  const { data: parentRow } = await supabaseAdmin
+    .from("unit_organisasi")
+    .select("id, name")
+    .eq("code", parentCode)
+    .maybeSingle();
+  const parent = parentRow as { id: string; name: string } | null;
+  if (!parent?.id) return null;
+
+  const parentLevel = await getKepalaUnitLevel(parent.id);
+  if (!parentLevel) return null;
+
+  if (isMoreSenior(jabatan.level, parentLevel)) {
+    return {
+      error: `Jabatan "${jabatan.name}" (${jabatan.level}) lebih senior daripada kepala unit induknya, "${parent.name}" (${parentLevel}). Periksa kembali penempatan ini agar urutan struktur tetap benar.`,
+    };
+  }
+  return null;
+}
 
 export async function getFormasiList(): Promise<FormasiRow[]> {
   await requireRole("hrd", "superadmin");
@@ -64,6 +132,9 @@ export async function createFormasi(formData: FormData) {
 
   if (!unit_organisasi_id || !jabatan_id) return { error: "Unit dan jabatan wajib dipilih." };
 
+  const seniorityError = await checkKepalaUnitSeniority(unit_organisasi_id, jabatan_id);
+  if (seniorityError) return seniorityError;
+
   const { count, error: countErr } = await supabaseAdmin
     .from("formasi_jabatan")
     .select("*", { count: "exact", head: true });
@@ -93,6 +164,9 @@ export async function updateFormasi(formData: FormData) {
   const keterangan = (formData.get("keterangan") as string || "").trim();
 
   if (!id || !unit_organisasi_id || !jabatan_id) return { error: "Unit dan jabatan wajib dipilih." };
+
+  const seniorityError = await checkKepalaUnitSeniority(unit_organisasi_id, jabatan_id);
+  if (seniorityError) return seniorityError;
 
   const { error } = await supabaseAdmin.from("formasi_jabatan").update({
     unit_organisasi_id, jabatan_id, keterangan: keterangan || null, updated_at: new Date().toISOString(),

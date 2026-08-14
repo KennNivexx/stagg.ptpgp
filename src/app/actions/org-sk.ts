@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { auditLog } from "@/lib/audit";
+import { buildTree } from "@/app/actions/org";
 
 export interface StrukturVersi {
   id: string;
@@ -121,13 +122,19 @@ export async function approveStruktur(id: string) {
     .update({ status: "Archived", updated_at: new Date().toISOString() })
     .eq("status", "Approved");
 
+  // Snapshot the live org tree at the moment of approval so drift can be
+  // detected later — approving an SK doesn't lock unit_organisasi/jabatan,
+  // it just records what the structure looked like when this SK took effect.
+  const snapshot_data = await buildTree();
+
   const { error } = await supabaseAdmin.from("struktur_organisasi_versi").update({
     status: "Approved", approved_by: user.name || user.email, approved_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(), snapshot_data,
   }).eq("id", id);
   if (error) return { error: "Gagal menyetujui versi struktur." };
 
   revalidatePath("/hrd/workplace/sk");
+  revalidatePath("/hrd/workplace/structure");
   auditLog({ action: "orgsk.approve", targetId: id, targetName: (row as { nama: string }).nama, performedBy: user });
   return { success: true };
 }
@@ -149,4 +156,36 @@ export async function archiveStruktur(id: string) {
 export async function getActiveStrukturVersion(): Promise<StrukturVersi | null> {
   const { data } = await supabaseAdmin.from("struktur_organisasi_versi").select("*").eq("status", "Approved").maybeSingle();
   return (data as StrukturVersi) || null;
+}
+
+export interface StrukturSyncStatus {
+  hasApprovedVersion: boolean;
+  inSync: boolean;
+  approvedVersionName: string | null;
+  approvedVersionNomorSk: string | null;
+}
+
+/** Compares the live org tree against the snapshot taken when the currently
+ * Approved SK version was signed off. Structural JSON equality is enough to
+ * tell "unchanged" from "drifted" — this isn't meant to pinpoint what
+ * changed, just to surface that org design has moved since the last SK. */
+export async function getStrukturSyncStatus(): Promise<StrukturSyncStatus> {
+  const { data } = await supabaseAdmin
+    .from("struktur_organisasi_versi")
+    .select("nama, nomor_sk, snapshot_data")
+    .eq("status", "Approved")
+    .maybeSingle();
+  const approved = data as { nama: string; nomor_sk: string; snapshot_data: unknown } | null;
+
+  if (!approved) {
+    return { hasApprovedVersion: false, inSync: false, approvedVersionName: null, approvedVersionNomorSk: null };
+  }
+  if (!approved.snapshot_data) {
+    // Approved before the snapshot column existed / migration not applied yet.
+    return { hasApprovedVersion: true, inSync: false, approvedVersionName: approved.nama, approvedVersionNomorSk: approved.nomor_sk };
+  }
+
+  const currentTree = await buildTree();
+  const inSync = JSON.stringify(currentTree) === JSON.stringify(approved.snapshot_data);
+  return { hasApprovedVersion: true, inSync, approvedVersionName: approved.nama, approvedVersionNomorSk: approved.nomor_sk };
 }

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Briefcase, AlertTriangle, X, Search, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, Briefcase, AlertTriangle, X, Search, ShieldCheck, ArrowUpDown } from "lucide-react";
 import { getMasterJabatan, addPosition, updatePosition, deletePosition, type MasterJabatan } from "@/app/actions/positions";
 import { getGrades, type GradeJabatan } from "@/app/actions/grades";
 import { getDepartments } from "@/app/actions/org";
 import EmptyState from "@/components/EmptyState";
+import { ORG_LEVELS, levelRank } from "@/lib/org-levels";
 
-const LEVELS = ["Staff", "Supervisor", "Asisten Manajer", "Manager", "Kepala Divisi", "Wakil Direktur", "Direktur"];
+const LEVELS = ORG_LEVELS;
 
 /**
  * Master Jabatan: katalog jenis jabatan (bukan jumlah posisi — itu diatur di
@@ -20,6 +21,7 @@ export default function MasterJabatanPage() {
   const [departments, setDepartments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [levelSort, setLevelSort] = useState<"senior-first" | "junior-first" | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -85,7 +87,17 @@ export default function MasterJabatanPage() {
     await fetchData();
   };
 
-  const filtered = rows.filter(r => !search.trim() || r.name.toLowerCase().includes(search.toLowerCase()) || r.code.includes(search) || r.department.toLowerCase().includes(search.toLowerCase()));
+  const filtered = rows
+    .filter(r => !search.trim() || r.name.toLowerCase().includes(search.toLowerCase()) || r.code.includes(search) || r.department.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      if (!levelSort) return 0;
+      const diff = levelRank(a.level) - levelRank(b.level); // ascending = most senior first
+      return levelSort === "senior-first" ? diff : -diff;
+    });
+
+  const toggleLevelSort = () => {
+    setLevelSort(prev => prev === null ? "senior-first" : prev === "senior-first" ? "junior-first" : null);
+  };
 
   if (loading) return <div className="p-6 lg:p-8 flex items-center justify-center h-64"><p className="text-sm text-slate-500">Memuat data...</p></div>;
 
@@ -186,7 +198,10 @@ export default function MasterJabatanPage() {
               <div className="col-span-2">Kode</div>
               <div className="col-span-3">Nama</div>
               <div className="col-span-2">Departemen</div>
-              <div className="col-span-2">Level / Grade</div>
+              <button type="button" onClick={toggleLevelSort} className="col-span-2 flex items-center gap-1 text-left hover:text-slate-600 transition-colors">
+                Level / Grade <ArrowUpDown size={11} className={levelSort ? "text-[#CC0000]" : ""} />
+                {levelSort && <span className="normal-case font-semibold text-[8px] text-slate-400">({levelSort === "senior-first" ? "senior→junior" : "junior→senior"})</span>}
+              </button>
               <div className="col-span-1">Status</div>
               <div className="col-span-2 text-right">Aksi</div>
             </div>

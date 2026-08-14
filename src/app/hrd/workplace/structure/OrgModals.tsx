@@ -140,8 +140,20 @@ export interface UnitDesignFields {
 
 export const JENIS_UNIT_OPTIONS = ["Holding", "Direktorat", "Divisi", "Departemen", "Section", "Sub Section", "Unit", "Tim", "Project", "Cabang"];
 
+const LEVEL_TIER_LABELS = ["Komisaris", "Direktur Utama", "Wakil Direktur", "Kepala Divisi", "Manajer Unit", "Asisten Manajer", "Supervisor/Koordinator", "Staf/Pelaksana"];
+
+/** Mirrors src/app/actions/org.ts's codeLevel() — tree depth derived purely
+ * from the unit's dot-separated code, never a free-form field. Kept in sync
+ * with that server-side function's logic intentionally. */
+function computeCodeLevel(code: string): number {
+  const segs = code.split(".").map(Number);
+  let depth = -1;
+  for (let i = 0; i < segs.length; i++) if (segs[i] > 0) depth = i;
+  return Math.max(0, Math.min(7, depth));
+}
+
 export function EditModal({
-  mounted, modal, sel, fName, setFName, fCode, setFCode, fLevel, setFLevel,
+  mounted, modal, sel, fName, setFName, fCode, setFCode,
   design, setDesign, fErr, fLoading,
   onClose, onSave,
 }: {
@@ -150,7 +162,6 @@ export function EditModal({
   sel: OrgUnit;
   fName: string; setFName: (v: string) => void;
   fCode: string; setFCode: (v: string) => void;
-  fLevel: number; setFLevel: (v: number) => void;
   design: UnitDesignFields; setDesign: (v: UnitDesignFields) => void;
   fErr: string; fLoading: boolean;
   onClose: () => void;
@@ -199,12 +210,10 @@ export function EditModal({
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                   Tingkat / Level
                 </label>
-                <select value={fLevel} onChange={e => setFLevel(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 transition-all">
-                  {[0,1,2,3,4,5,6,7].map(l => (
-                    <option key={l} value={l}>L{l} &mdash; {["Komisaris","Direktur Utama","Wakil Direktur","Kepala Divisi","Manajer Unit","Asisten Manajer","Supervisor/Koordinator","Staf/Pelaksana"][l]}</option>
-                  ))}
-                </select>
+                <div className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 font-semibold">
+                  L{computeCodeLevel(fCode)} &mdash; {LEVEL_TIER_LABELS[computeCodeLevel(fCode)]}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Level mengikuti Kode Unit di atas secara otomatis &mdash; tidak bisa diubah terpisah, supaya urutan struktur selalu benar.</p>
               </div>
               )}
               <div className="grid grid-cols-2 gap-3">

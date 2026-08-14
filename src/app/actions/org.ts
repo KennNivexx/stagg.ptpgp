@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { auditLog } from "@/lib/audit";
 import { getKepalaUnitMap } from "@/lib/org-helpers";
+import { codeLevel, generateCode, getParentCode, isDescendantOf } from "@/lib/org-code";
 import type { OrgUnit, FlatDept } from "@/types/org";
 
 /** Fields the "Unit Organisasi" form (Menu 2 of the enterprise org-design
@@ -27,48 +28,6 @@ function readUnitDesignFields(formData: FormData) {
 }
 
 /* ─────── helpers ─────── */
-
-function codeSegments(code: string): number[] {
-  return code.split(".").map(Number);
-}
-
-function codeLevel(code: string): number {
-  return codeSegments(code).filter(d => d > 0).length - 1;
-}
-
-function generateCode(parentCode: string, siblingCount: number): string {
-  const digits = codeSegments(parentCode);
-  let level = 0;
-  for (let i = 0; i < digits.length; i++) {
-    if (digits[i] > 0) level = i + 1;
-  }
-  digits[level] = siblingCount + 1;
-  for (let i = level + 1; i < digits.length; i++) digits[i] = 0;
-  return digits.join(".");
-}
-
-function getParentCode(code: string): string | null {
-  const digits = codeSegments(code);
-  let lastNonZero = -1;
-  for (let i = 0; i < digits.length; i++) if (digits[i] > 0) lastNonZero = i;
-  if (lastNonZero <= 0) return null;
-  digits[lastNonZero] = 0;
-  return digits.join(".");
-}
-
-function isDescendantOf(code: string, ancestor: string): boolean {
-  // Codes are fixed-width and zero-padded (e.g. "1.1.2.1.0.0.0"), so `code`
-  // and `ancestor` always have the same segment count — a plain length
-  // comparison can never distinguish shallower from deeper codes and made
-  // this always return false, silently disabling the cycle guard entirely.
-  const a = codeSegments(ancestor);
-  const c = codeSegments(code);
-  let aDepth = -1;
-  for (let i = 0; i < a.length; i++) if (a[i] > 0) aDepth = i;
-  if (aDepth < 0) return false;
-  for (let i = 0; i <= aDepth; i++) if (c[i] !== a[i]) return false;
-  return aDepth + 1 < c.length && c[aDepth + 1] > 0;
-}
 
 const uid = () => "org-" + crypto.randomUUID();
 
@@ -118,7 +77,7 @@ interface OrgUnitRow {
   tanggal_berakhir?: string | null; status?: string | null;
 }
 
-async function buildTree(): Promise<OrgUnit[]> {
+export async function buildTree(): Promise<OrgUnit[]> {
   const { data } = await supabaseAdmin.from("unit_organisasi").select("*").order("level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true });
   if (data && data.length > 0) {
     const rows = data as unknown as OrgUnitRow[];
@@ -619,7 +578,6 @@ export async function updateOrgUnit(formData: FormData) {
 
   const unit_code = (formData.get("unit_code") as string || "").trim();
   const unit_name = (formData.get("unit_name") as string || "").trim();
-  const level = parseInt((formData.get("level") as string) || "0");
   const new_code = (formData.get("new_code") as string || "").trim();
   const designFields = readUnitDesignFields(formData);
 
@@ -645,7 +603,12 @@ export async function updateOrgUnit(formData: FormData) {
 
   const updates: Record<string, unknown> = { ...designFields };
   if (unit_name) updates.name = unit_name;
-  updates.level = level;
+  // level is ALWAYS derived from the unit's code (tree depth), never from
+  // free-form input — previously a separate "Tingkat/Level" dropdown in the
+  // edit form let level be saved independently of code, so editing just the
+  // dropdown (without also changing the code) silently corrupted the level
+  // shown/sorted on this unit, decoupled from its real position in the tree.
+  updates.level = codeLevel(unit_code);
 
   if (new_code && new_code !== unit_code) {
     const npc = getParentCode(new_code);

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-guard";
 import { ApplyButton, ConsultationButton } from "./CareerActionButtons";
 import { getMyCareerTransactions } from "@/app/actions/career-development";
+import { levelRank, isMoreSenior } from "@/lib/org-levels";
 
 const TX_STATUS_STYLE: Record<string, string> = {
   "In Review": "bg-amber-50 text-amber-700",
@@ -35,19 +36,20 @@ export default async function EmployeeCareer() {
     .limit(1)
     .single();
 
-  // Fetch department positions from database for career path and promotion opportunities
+  // Fetch department positions from database for career path and promotion opportunities.
+  // Sorted client-side by real seniority (levelRank) — jabatan.level holds
+  // rank NAMES ("Staff", "Manager", ...), not a sortable numeric/dot format,
+  // so a plain DB `.order("level")` was a silent alphabetical sort (wrong
+  // order) and this page's own parseLevel() previously assumed a dot-numeric
+  // format that never matched real data, making every comparison below
+  // resolve to 0 and "Peluang Promosi" effectively non-functional.
   const { data: deptPositions } = await supabaseAdmin
     .from("jabatan")
     .select("id, name, department, level, code")
-    .eq("department", employee?.department || "")
-    .order("level", { ascending: true });
+    .eq("department", employee?.department || "");
 
-  const posList = (deptPositions || []) as { id: string; name: string; department: string; level: string; code: string }[];
-
-  function parseLevel(level: string): number {
-    const parts = level.split(".");
-    return parseFloat(parts.slice(0, 2).join(".")) || 0;
-  }
+  const posList = ((deptPositions || []) as { id: string; name: string; department: string; level: string; code: string }[])
+    .sort((a, b) => levelRank(b.level) - levelRank(a.level)); // least senior first, most senior last
 
   const currentPos = posList.find((p) => p.name === employee?.position);
   const currentLevel = currentPos?.level || "";
@@ -57,7 +59,7 @@ export default async function EmployeeCareer() {
   const currentLevelIdx = posList.findIndex((p) => p.name === employee?.position);
 
   const availablePromotions = posList
-    .filter((p) => parseLevel(p.level) > parseLevel(currentLevel))
+    .filter((p) => isMoreSenior(p.level, currentLevel))
     .map((p, idx) => ({
       id: idx + 1,
       position: p.name,

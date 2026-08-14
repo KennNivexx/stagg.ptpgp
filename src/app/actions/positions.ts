@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { auditLog } from "@/lib/audit";
 import { getKepalaUnitMap } from "@/lib/org-helpers";
+import { levelRank } from "@/lib/org-levels";
 
 interface Position {
   id: string;
@@ -49,11 +50,6 @@ export async function getPositions(): Promise<Position[]> {
     .order("name", { ascending: true });
   return (data as Position[]) || [];
 }
-
-const LEVEL_RANK: Record<string, number> = {
-  "Staff": 1, "Supervisor": 2, "Asisten Manajer": 3,
-  "Manager": 4, "Kepala Divisi": 5, "Wakil Direktur": 6, "Direktur": 7,
-};
 
 // Compares dot-separated hierarchy codes (e.g. "1.1.2.1.10.0.0" vs
 // "1.1.2.1.2.0.0") segment-by-segment as NUMBERS. A plain string compare
@@ -135,9 +131,9 @@ export async function getPositionsMonitor(): Promise<PositionMonitor[]> {
     list.sort((a, b) => {
       const pa = posByKey.get(`${a.name}::${a.department}`);
       const pb = posByKey.get(`${b.name}::${b.department}`);
-      const la = LEVEL_RANK[pa?.level || ""] || 0;
-      const lb = LEVEL_RANK[pb?.level || ""] || 0;
-      if (la !== lb) return lb - la; // higher rank first
+      const la = levelRank(pa?.level);
+      const lb = levelRank(pb?.level);
+      if (la !== lb) return la - lb; // more senior first (lower rank number = more senior)
       return a.name.localeCompare(b.name);
     });
 

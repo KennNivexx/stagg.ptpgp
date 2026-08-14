@@ -71,7 +71,6 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
   };
   const [fName, setFName] = useState("");
   const [fCode, setFCode] = useState("");
-  const [fLevel, setFLevel] = useState<number>(0);
   const [design, setDesign] = useState<UnitDesignFields>(EMPTY_DESIGN);
   const [fLoading, setFLoading] = useState(false);
   const [fErr, setFErr] = useState("");
@@ -106,8 +105,8 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
   });
 
   const clickNode = (n: OrgUnit) => { setSel(n); setModal("info"); };
-  const openEd = (n: OrgUnit) => { setSel(n); setFName(n.name); setFCode(n.code); setFLevel(n.level); setDesign(designFromUnit(n)); setFErr(""); setModal("edit"); };
-  const openAd = (n: OrgUnit) => { setSel(n); setFName(""); setFCode(""); setFLevel(n.level + 1); setDesign(EMPTY_DESIGN); setFErr(""); setModal("add"); };
+  const openEd = (n: OrgUnit) => { setSel(n); setFName(n.name); setFCode(n.code); setDesign(designFromUnit(n)); setFErr(""); setModal("edit"); };
+  const openAd = (n: OrgUnit) => { setSel(n); setFName(""); setFCode(""); setDesign(EMPTY_DESIGN); setFErr(""); setModal("add"); };
   const openDl = (n: OrgUnit) => { setSel(n); setFErr(""); setModal("del"); };
   const closeM = () => { setModal(null); setSel(null); };
 
@@ -125,7 +124,6 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
     setFLoading(true); setFErr("");
     const fd = new FormData();
     fd.append("unit_code", sel.code); fd.append("unit_name", fName.trim());
-    fd.append("level", String(fLevel));
     appendDesign(fd);
     if (fCode.trim() && fCode.trim() !== sel.code) fd.append("new_code", fCode.trim());
     const r = await updateOrgUnit(fd); setFLoading(false);
@@ -150,7 +148,6 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
     setSel(unit);
     setFName(unit.name);
     setFCode(unit.code);
-    setFLevel(unit.level);
     setDesign(designFromUnit(unit));
     setFErr("");
     setModal("edit");
@@ -267,7 +264,6 @@ export default function OrgStructureClient({ orgData = [], employees = [] }: Pro
           mounted={mounted} modal={modal as "edit" | "add"} sel={sel}
           fName={fName} setFName={setFName}
           fCode={fCode} setFCode={setFCode}
-          fLevel={fLevel} setFLevel={setFLevel}
           design={design} setDesign={setDesign}
           fErr={fErr} fLoading={fLoading}
           onClose={closeM}

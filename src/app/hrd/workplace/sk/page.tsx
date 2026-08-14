@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Plus, CheckCircle2, Archive, Send, X, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
-import { getStrukturVersions, createStrukturVersion, submitForReview, approveStruktur, archiveStruktur, type StrukturVersi } from "@/app/actions/org-sk";
+import { FileText, Plus, CheckCircle2, Archive, Send, X, ChevronDown, ChevronUp, ShieldCheck, AlertTriangle } from "lucide-react";
+import { getStrukturVersions, createStrukturVersion, submitForReview, approveStruktur, archiveStruktur, getStrukturSyncStatus, type StrukturVersi, type StrukturSyncStatus } from "@/app/actions/org-sk";
 import EmptyState from "@/components/EmptyState";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -35,6 +35,7 @@ function VersionCard({ v, actions, highlight }: { v: StrukturVersi; actions?: Re
  */
 export default function StrukturSkPage() {
   const [versions, setVersions] = useState<StrukturVersi[]>([]);
+  const [syncStatus, setSyncStatus] = useState<StrukturSyncStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -50,8 +51,9 @@ export default function StrukturSkPage() {
   const [keterangan, setKeterangan] = useState("");
 
   const fetchData = async () => {
-    const data = await getStrukturVersions();
+    const [data, sync] = await Promise.all([getStrukturVersions(), getStrukturSyncStatus()]);
     setVersions(data);
+    setSyncStatus(sync);
     setLoading(false);
   };
   useEffect(() => { fetchData(); }, []);
@@ -103,6 +105,18 @@ export default function StrukturSkPage() {
           {showForm ? <X size={16} /> : <Plus size={16} />} {showForm ? "Batal" : "Versi Baru"}
         </button>
       </div>
+
+      {syncStatus?.hasApprovedVersion && (
+        syncStatus.inSync ? (
+          <div className="flex items-center gap-2 p-3.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl text-xs font-semibold">
+            <ShieldCheck size={15} className="shrink-0" /> Struktur organisasi saat ini sesuai dengan SK {syncStatus.approvedVersionNomorSk} ({syncStatus.approvedVersionName}).
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 p-3.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-semibold">
+            <AlertTriangle size={15} className="shrink-0" /> Struktur organisasi saat ini sudah berbeda dari SK {syncStatus.approvedVersionNomorSk} ({syncStatus.approvedVersionName}) yang terakhir disetujui. Pertimbangkan membuat versi SK baru bila perubahan ini permanen.
+          </div>
+        )
+      )}
 
       {success && <div className="p-4 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl text-sm font-semibold">{success}</div>}
       {error && <div className="p-4 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-semibold">{error}</div>}
