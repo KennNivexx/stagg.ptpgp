@@ -72,7 +72,12 @@ export default function CTASection({
         </motion.p>
 
         <motion.div className="flex flex-col sm:flex-row justify-center gap-4" variants={item}>
-          {button_url ? (
+          {/* "/contact" is treated the same as empty because it's a known-dead
+              route (no page exists there) that the CTA editor's old default
+              could have already saved into the live settings for any site
+              whose CTA section was ever saved before that default was fixed —
+              this keeps the button working even for already-persisted data. */}
+          {button_url && button_url !== "/contact" ? (
             <a
               href={button_url}
               className="bg-pgp-red hover:bg-pgp-red-hover text-white px-8 py-4 rounded-xl font-extrabold transition-all shadow-[0_10px_30px_-6px_rgba(221,44,0,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2"

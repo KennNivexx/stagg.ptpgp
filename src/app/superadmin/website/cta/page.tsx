@@ -29,7 +29,10 @@ export default function CTACMS() {
           title: (s.title as string) || "Siap Bekerja Sama dengan Kami?",
           subtitle: (s.subtitle as string) || "",
           button_text: (s.button_text as string) || "Hubungi Kami",
-          button_url: (s.button_url as string) || "/contact",
+          // Empty (not "/contact", which 404s — there's no such page) is what
+          // CTASection.tsx checks for to open the working QuotationModal
+          // instead of rendering a dead link.
+          button_url: (s.button_url as string) || "",
           whatsapp_text: (s.whatsapp_text as string) || "WhatsApp Sekarang",
           whatsapp_number: (s.whatsapp_number as string) || "6281234567890",
         });

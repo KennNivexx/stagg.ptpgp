@@ -390,10 +390,15 @@ export async function getErApprovals(category: "Complaint" | "Investigation" | "
 
 export async function decideErApproval(id: string, decision: "Approved" | "Rejected", notes = "") {
   const actor = await requireRole("hrd", "superadmin", "director");
-  const { error } = await supabaseAdmin.from("er_approvals").update({
+  // .eq("status","Pending") in the WHERE clause makes this an atomic
+  // compare-and-swap — a double-click/retry that lands after the first
+  // write already flipped the row away from Pending affects zero rows
+  // instead of silently re-deciding an already-decided approval.
+  const { data: updated, error } = await supabaseAdmin.from("er_approvals").update({
     status: decision, notes, decided_at: new Date().toISOString(),
-  }).eq("id", id);
+  }).eq("id", id).eq("status", "Pending").select("id");
   if (error) { console.error("[employee-relations] decideErApproval error:", error.message); return { error: "Gagal memproses. Silakan coba lagi." }; }
+  if (!updated || updated.length === 0) return { error: "Persetujuan ini sudah diproses sebelumnya." };
   await auditLog({
     action: "er.approval_decision",
     targetId: id, performedBy: actor, detail: `Persetujuan ER ${decision === "Approved" ? "disetujui" : "ditolak"}${notes ? ` — ${notes}` : ""}.`,

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/lib/supabase";
-import { scheduleInterview } from "@/app/actions/recruitment";
+import { getInterviewCandidates, scheduleInterview } from "@/app/actions/recruitment";
 import { submitInterviewScore, getInterviewScores } from "@/app/actions/recruitment-hiring";
 import {
   Calendar, Clock, MapPin, Video, User, Users, X, Save, Phone, Mail,
@@ -109,39 +108,10 @@ export default function JadwalInterview() {
 
   const load = () => {
     setLoading(true);
-    supabase
-      .from("pelamar")
-      .select("*")
-      .eq("status", "Interview")
-      .order("applied_at", { ascending: false })
-      .then(async ({ data }) => {
-        const apps = (data || []) as Record<string, unknown>[];
-        const jobIds = [...new Set(apps.map((a) => a.job_id as string).filter(Boolean))];
-        const jobMap = new Map<string, string>();
-        if (jobIds.length > 0) {
-          const { data: jobs } = await supabase.from("lowongan_kerja").select("id, position").in("id", jobIds);
-          (jobs || []).forEach((j: Record<string, unknown>) => jobMap.set(j.id as string, j.position as string));
-        }
-        const mapped = apps.map((app) => ({
-          id: app.id as string,
-          full_name: app.full_name as string,
-          email: app.email as string,
-          phone: (app.phone as string) || "",
-          job_title: jobMap.get(app.job_id as string) || "-",
-          applied_at: app.applied_at as string,
-          job_id: app.job_id as string,
-          interview_date: (app.interview_date as string) || "",
-          interview_time: (app.interview_time as string) || "",
-          interviewer: (app.interviewer as string) || "",
-          interview_location: (app.interview_location as string) || "",
-          interview_online_link: (app.interview_online_link as string) || "",
-          interview_notes: (app.interview_notes as string) || "",
-          test_tulis_result: (app.test_tulis_result as Interview["test_tulis_result"]) || null,
-          test_psikotes_result: (app.test_psikotes_result as Interview["test_psikotes_result"]) || null,
-        }));
-        setInterviews(mapped);
-        setLoading(false);
-      });
+    getInterviewCandidates().then((data) => {
+      setInterviews(data);
+      setLoading(false);
+    });
   };
 
   useEffect(() => { load(); }, []);

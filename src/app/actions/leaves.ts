@@ -60,7 +60,18 @@ export async function updateLeaveStatus(id: string, status: string): Promise<{ e
     return { error: `Cuti ini sudah diproses sebelumnya (${currentStatus}).` };
   }
 
-  await supabaseAdmin.from("pengajuan_cuti").update({ status, approved_by: user.name, updated_at: new Date().toISOString() }).eq("id", id);
+  // The SELECT+check above isn't atomic on its own — two near-simultaneous
+  // calls (double-click, network retry) can both read "Pending" before
+  // either write lands. Making the UPDATE itself conditional on
+  // status=Pending turns this into a compare-and-swap: only the first call
+  // actually affects a row, so the balance-deduction block below can never
+  // run twice for the same request.
+  const { data: updatedRows } = await supabaseAdmin.from("pengajuan_cuti")
+    .update({ status, approved_by: user.name, updated_at: new Date().toISOString() })
+    .eq("id", id).eq("status", "Pending").select("id");
+  if (!updatedRows || updatedRows.length === 0) {
+    return { error: "Cuti ini sudah diproses sebelumnya." };
+  }
 
   await auditLog({
     action: "leave.status_change", targetId: id, targetName: l.employee_name as string,

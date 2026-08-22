@@ -87,7 +87,13 @@ export async function GET(request: NextRequest) {
         const expiring = expiringContracts.filter((e: Record<string, unknown>) => e.status === "Kontrak");
         if (expiring.length > 0) {
           notifications.push({
-            id: "contract-warning",
+            // Suffixed with the live count (here and at every other
+            // category-level id below) so the id itself changes whenever
+            // the underlying count changes — a static id like the old
+            // "contract-warning" stays in the client's read-id list
+            // forever once dismissed, permanently hiding this category
+            // even after new items appear (see useNotifications.ts).
+            id: `contract-warning-${expiring.length}`,
             type: "contract",
             title: "Kontrak Akan Berakhir",
             message: `${expiring.length} karyawan kontrak perlu diperpanjang dalam waktu dekat.`,
@@ -100,7 +106,7 @@ export async function GET(request: NextRequest) {
 
       if (newEmployees?.length) {
         notifications.push({
-          id: "new-emp",
+          id: `new-emp-${newEmployees.length}`,
           type: "new_employee",
           title: "Karyawan Baru",
           message: `${newEmployees.length} karyawan baru bergabung baru-baru ini.`,
@@ -112,7 +118,7 @@ export async function GET(request: NextRequest) {
 
       if (pendingPayroll?.length) {
         notifications.push({
-          id: "payroll-pending",
+          id: `payroll-pending-${pendingPayroll.length}`,
           type: "payroll",
           title: "Payroll Pending",
           message: `${pendingPayroll.length} slip gaji masih berstatus draft — perlu diproses.`,
@@ -135,7 +141,7 @@ export async function GET(request: NextRequest) {
       const rejectedReqs = (decidedRequests || []).filter((r: Record<string, unknown>) => r.status === "Ditolak");
       if (approvedReqs.length > 0) {
         notifications.push({
-          id: "workforce-approved",
+          id: `workforce-approved-${approvedReqs.length}`,
           type: "request",
           title: "Permintaan SDM Disetujui Direktur",
           message: `${approvedReqs.length} permintaan disetujui — buat lowongan rekrutmennya.`,
@@ -146,7 +152,7 @@ export async function GET(request: NextRequest) {
       }
       if (rejectedReqs.length > 0) {
         notifications.push({
-          id: "workforce-rejected",
+          id: `workforce-rejected-${rejectedReqs.length}`,
           type: "request",
           title: "Permintaan SDM Ditolak Direktur",
           message: `${rejectedReqs.length} permintaan ditolak — informasikan ke departemen terkait.`,
@@ -177,7 +183,7 @@ export async function GET(request: NextRequest) {
         if (msLeft > 0) {
           const hoursLeft = Math.max(1, Math.ceil(msLeft / 3_600_000));
           notifications.push({
-            id: "resignation-approved",
+            id: `resignation-approved-${resign.id}`,
             type: "warning",
             title: "Pengunduran Diri Berhasil",
             message: `Pengunduran diri Anda telah disetujui. Akun Anda akan dihapus permanen dalam ±${hoursLeft} jam (${deleteAt.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}).`,
@@ -205,7 +211,7 @@ export async function GET(request: NextRequest) {
 
           if (approved.length > 0) {
             notifications.push({
-              id: "leave-approved",
+              id: `leave-approved-${approved.length}`,
               type: "leave",
               title: "Cuti Disetujui",
               message: `${approved.length} pengajuan cuti telah disetujui.`,
@@ -216,7 +222,7 @@ export async function GET(request: NextRequest) {
           }
           if (rejected.length > 0) {
             notifications.push({
-              id: "leave-rejected",
+              id: `leave-rejected-${rejected.length}`,
               type: "leave",
               title: "Cuti Ditolak",
               message: `${rejected.length} pengajuan cuti ditolak.`,
@@ -227,7 +233,7 @@ export async function GET(request: NextRequest) {
           }
           if (pending.length > 0) {
             notifications.push({
-              id: "leave-pending",
+              id: `leave-pending-${pending.length}`,
               type: "leave",
               title: "Cuti Menunggu",
               message: `${pending.length} pengajuan cuti masih menunggu persetujuan.`,
@@ -279,7 +285,7 @@ export async function GET(request: NextRequest) {
         });
         if (dueTrainings.length > 0) {
           notifications.push({
-            id: "training-due",
+            id: `training-due-${dueTrainings.length}`,
             type: "training",
             title: "Training Wajib — Menutup Gap Kompetensi",
             message: `${dueTrainings.length} pelatihan wajib menunggu Anda selesaikan.`,
@@ -301,7 +307,7 @@ export async function GET(request: NextRequest) {
 
       if (pendingRequests?.length) {
         notifications.push({
-          id: "workforce-pending",
+          id: `workforce-pending-${pendingRequests.length}`,
           type: "request",
           title: "Permintaan SDM Menunggu Persetujuan",
           message: `${pendingRequests.length} permintaan penambahan karyawan menunggu keputusan Anda.`,
@@ -334,7 +340,7 @@ export async function GET(request: NextRequest) {
 
         if (approved.length > 0) {
           notifications.push({
-            id: "dept-request-approved",
+            id: `dept-request-approved-${approved.length}`,
             type: "request",
             title: "Permintaan SDM Disetujui",
             message: `${approved.length} permintaan penambahan karyawan departemen Anda telah disetujui.`,
@@ -345,7 +351,7 @@ export async function GET(request: NextRequest) {
         }
         if (rejected.length > 0) {
           notifications.push({
-            id: "dept-request-rejected",
+            id: `dept-request-rejected-${rejected.length}`,
             type: "request",
             title: "Permintaan SDM Ditolak",
             message: `${rejected.length} permintaan penambahan karyawan departemen Anda ditolak.`,
@@ -363,7 +369,7 @@ export async function GET(request: NextRequest) {
           .limit(20);
         if (pendingLeaves?.length) {
           notifications.push({
-            id: "dept-leave-pending",
+            id: `dept-leave-pending-${pendingLeaves.length}`,
             type: "leave",
             title: "Cuti Menunggu Keputusan Anda",
             message: `${pendingLeaves.length} pengajuan cuti karyawan departemen Anda menunggu persetujuan.`,

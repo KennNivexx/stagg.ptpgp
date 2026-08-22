@@ -131,9 +131,17 @@ export async function loginAction(formData: FormData) {
 
   if (dbUser) {
     await setLoginCookies(dbUser);
-    redirect(getRedirectPath(dbUser.role));
+    // Return the destination instead of calling redirect() here — this action
+    // is invoked imperatively (await loginAction(...)) from a client-side
+    // try/catch in login/page.tsx, not via a <form action> prop. redirect()
+    // works by throwing internally; when called from inside a Server Action
+    // like this, that throw propagates to the CALLER's own catch block and
+    // gets mistaken for a real failure ("Gagal masuk" flashing on a
+    // successful login), even though the redirect itself would still occur.
+    // See node_modules/next/dist/docs/.../functions/redirect.md: "redirect
+    // should be called outside the try block when using try/catch statements."
+    return { success: true, redirectTo: getRedirectPath(dbUser.role) };
   }
-
 
   return { error: "Email atau password salah." };
 }

@@ -292,11 +292,23 @@ export async function evaluateRewardRules(period: string): Promise<{ error: stri
   for (const rule of rules) {
     for (const emp of employees) {
       // Skor KPI: ambil evaluasi periode ini kalau ada, kalau tidak fallback ke terbaru.
+      // `period` di sini selalu "MM/YYYY" (divalidasi di atas), tapi
+      // evaluasi_kpi.period adalah teks bebas yang diisi HRD sendiri
+      // (placeholder-nya "Q1 2026 / Jan 2026" — lihat KpiForm.tsx) sehingga
+      // exact-match nyaris tidak pernah cocok. Fallback ke evaluasi terbaru
+      // milik karyawan itu — ini yang sebelumnya dijanjikan komentar di atas
+      // tapi belum pernah benar-benar diimplementasikan, jadi setiap aturan
+      // reward dengan syarat min_kpi_score diam-diam gagal untuk semua orang.
       let kpiScore: number | null = null;
       if (rule.min_kpi_score != null) {
         const { data: evalRow } = await supabaseAdmin.from("evaluasi_kpi").select("final_score, score")
           .eq("employee_id", emp.id).eq("period", period).maybeSingle();
-        const e = evalRow as { final_score: number | null; score: number | null } | null;
+        let e = evalRow as { final_score: number | null; score: number | null } | null;
+        if (!e) {
+          const { data: latestRow } = await supabaseAdmin.from("evaluasi_kpi").select("final_score, score")
+            .eq("employee_id", emp.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+          e = latestRow as { final_score: number | null; score: number | null } | null;
+        }
         kpiScore = e ? (e.final_score ?? e.score) : null;
         if (kpiScore == null || kpiScore < Number(rule.min_kpi_score)) continue;
       }

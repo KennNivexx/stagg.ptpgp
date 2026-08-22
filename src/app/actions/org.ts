@@ -375,14 +375,22 @@ async function recalculateDescendants(parentCode: string, newParentCode: string)
   }
 }
 
-async function deleteSubtree(code: string) {
+/** Returns the code of the first unit that failed to delete (e.g. a foreign
+ * key from formasi_jabatan/riwayat_posisi_karyawan still pointing at it,
+ * since neither has ON DELETE CASCADE) — null if the whole subtree deleted
+ * cleanly. The .delete()'s error used to go unchecked, so deleteOrgUnit
+ * would report success while some units silently survived in the DB. */
+async function deleteSubtree(code: string): Promise<string | null> {
   const { data: children } = await supabaseAdmin.from("unit_organisasi").select("code").eq("parent_code", code);
   if (children) {
     for (const c of children as { code: string }[]) {
-      await deleteSubtree(c.code);
+      const failedCode = await deleteSubtree(c.code);
+      if (failedCode) return failedCode;
     }
   }
-  await supabaseAdmin.from("unit_organisasi").delete().eq("code", code);
+  const { error } = await supabaseAdmin.from("unit_organisasi").delete().eq("code", code);
+  if (error) { console.error(`[org] deleteSubtree failed for ${code}:`, error.message); return code; }
+  return null;
 }
 
 async function migrateTreeToOrgUnits(tree: OrgUnit[]) {
@@ -648,7 +656,10 @@ export async function deleteOrgUnit(unitCode: string) {
   const { data: unit } = await supabaseAdmin.from("unit_organisasi").select("name, code").eq("code", unitCode).maybeSingle();
   if (!unit) return { error: "Unit tidak ditemukan." };
 
-  await deleteSubtree(unitCode);
+  const failedCode = await deleteSubtree(unitCode);
+  if (failedCode) {
+    return { error: `Gagal menghapus unit (kode ${failedCode}) — kemungkinan masih ada Position Number atau riwayat posisi yang mengacu ke unit ini. Kosongkan/pindahkan dulu sebelum menghapus.` };
+  }
 
   try {
     const tree = await buildTree();

@@ -33,6 +33,8 @@ const MENU_GROUPS = [
       { href: "/director/competency", label: "Usulan Kompetensi" },
       { href: "/director/trainings", label: "Anggaran Pelatihan" },
       { href: "/director/vehicle-requests", label: "Pengadaan Kendaraan" },
+      { href: "/director/career-committee", label: "Career Committee" },
+      { href: "/director/salary-review", label: "Salary Review" },
     ],
   },
   {
@@ -59,6 +61,8 @@ const ITEM_TOOLTIPS: Record<string, string> = {
   "/director/competency": "Persetujuan usulan kompetensi baru",
   "/director/trainings": "Persetujuan anggaran pelatihan",
   "/director/vehicle-requests": "Persetujuan pengadaan kendaraan",
+  "/director/career-committee": "Persetujuan transaksi karier level komite",
+  "/director/salary-review": "Persetujuan salary review",
   "/director/guides": "Bantuan & panduan penggunaan portal",
 };
 

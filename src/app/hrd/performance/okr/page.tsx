@@ -1,6 +1,8 @@
 import { Target } from "lucide-react";
+import { requireRole } from "@/lib/auth-guard";
 
-export default function OKRPage() {
+export default async function OKRPage() {
+  await requireRole("hrd", "superadmin", "director", "department_manager");
   return (
     <div className="p-6 lg:p-8 space-y-8">
       <div>

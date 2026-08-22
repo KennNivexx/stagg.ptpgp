@@ -156,6 +156,16 @@ export async function submitSurveyResponse(formData: FormData) {
 
 export async function updateResignationStatus(id: string, status: string) {
   const user = await requireRole("hrd", "superadmin");
+
+  // Every sibling decide-action (updateLeaveStatus, updateBusinessTripStatus,
+  // etc.) blocks re-deciding an already-processed record; this one didn't —
+  // a retried/double-clicked "Disetujui" would push delete_at another 24h
+  // into the future each time, with no bound.
+  const { data: existing } = await supabaseAdmin.from("pengunduran_diri").select("status").eq("id", id).maybeSingle();
+  if ((existing as { status?: string } | null)?.status !== "Diajukan") {
+    return { error: "Pengajuan ini sudah diproses sebelumnya." };
+  }
+
   const updateData: Record<string, unknown> = {
     status, reviewed_by: user.name || user.email,
     reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString(),

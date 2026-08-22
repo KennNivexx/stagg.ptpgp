@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { User, Lock, Eye, ArrowRight, ShieldCheck, Globe, HelpCircle, LayoutDashboard } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { User, Lock, Eye, ArrowRight, ArrowLeft, ShieldCheck, Globe, HelpCircle, LayoutDashboard } from "lucide-react";
 import { loginAction } from "@/app/actions/auth";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +23,12 @@ export default function LoginPage() {
       if (res?.error) {
         setError(res.error);
         setLoading(false);
+        return;
       }
+      // Navigate ourselves instead of having the action call redirect() —
+      // keeps loading=true through the navigation so the button doesn't
+      // flash back to its idle state before the new page takes over.
+      if (res?.redirectTo) router.push(res.redirectTo);
     } catch {
       setError("Gagal masuk. Terjadi kesalahan pada server atau koneksi.");
       setLoading(false);
@@ -30,10 +37,20 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen flex bg-white font-sans">
-      
+
+      {/* Back button — always visible, top-left */}
+      <Link
+        href="/"
+        className="fixed top-5 left-5 z-20 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-sm border border-zinc-200 text-xs font-bold text-zinc-600 hover:text-pgp-red hover:border-pgp-red/30 shadow-sm transition-colors"
+      >
+        <ArrowLeft size={14} /> Kembali
+      </Link>
+
       {/* Left Side: Brand Showcase */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-center p-12 overflow-hidden border-r border-zinc-100">
-        <div className="absolute inset-0 z-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-black via-pgp-navy to-black"></div>
+        <div className="absolute -top-24 -right-24 z-0 h-96 w-96 rounded-full bg-pgp-red/25 blur-[100px]"></div>
+        <div className="absolute -bottom-32 -left-16 z-0 h-80 w-80 rounded-full bg-pgp-red/15 blur-[100px]"></div>
 
         <div className="relative z-10 bg-[#FCFBF9]/95 backdrop-blur-md p-8 md:p-10 rounded-[32px] border border-orange-100/50 shadow-2xl max-w-lg mx-auto flex flex-col justify-between h-[80%] w-full">
           <div>

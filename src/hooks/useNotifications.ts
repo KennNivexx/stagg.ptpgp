@@ -53,27 +53,36 @@ export function useNotifications(role: string) {
       });
   }, [role]);
 
-  const fetchNotifications = useCallback(() => {
-    fetchOnce().then((ok) => {
-      // A transient blip (e.g. dev server restart) would otherwise leave the
-      // badge stale for a full 60s — retry once shortly after instead of
-      // waiting for the next scheduled poll.
-      if (!ok) setTimeout(() => { fetchOnce(); }, 5_000);
-    });
-  }, [fetchOnce]);
-
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60_000);
+    let cancelled = false;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const run = () => {
+      fetchOnce().then((ok) => {
+        if (cancelled) return;
+        // A transient blip (e.g. dev server restart) would otherwise leave
+        // the badge stale for a full 60s — retry once shortly after instead
+        // of waiting for the next scheduled poll. Tracked so it can be
+        // cancelled on unmount — it used to be a bare setTimeout with no
+        // cleanup, so a component that unmounted within that 5s window still
+        // got its setNotifications/setReadIds called on a stale closure.
+        if (!ok) retryTimeout = setTimeout(run, 5_000);
+      });
+    };
+
+    run();
+    const interval = setInterval(run, 60_000);
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") fetchNotifications();
+      if (document.visibilityState === "visible") run();
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
+      cancelled = true;
       clearInterval(interval);
+      if (retryTimeout) clearTimeout(retryTimeout);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [fetchNotifications]);
+  }, [fetchOnce]);
 
   const unread = notifications.filter((n) => !readIds.includes(n.id));
 

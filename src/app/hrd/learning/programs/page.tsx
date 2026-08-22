@@ -1,68 +1,104 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
-import { GraduationCap, Clock, Users, MapPin, Plus, X, Save, Search, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { GraduationCap, Clock, Users, MapPin, Plus, X, Save, Search, Pencil, Trash2 } from "lucide-react";
+import { getTrainings, saveTraining, deleteTraining } from "@/app/actions/trainings";
 
 type Program = {
   id: string;
-  name: string;
-  category: string;
-  duration: string;
-  instructor: string;
-  maxParticipants: number;
+  title: string;
+  category: string | null;
+  durasi_jam: number | null;
+  instruktur: string | null;
   status: string;
   description: string;
+  date_start: string;
+  date_end: string;
+  enrollment_count: number;
 };
 
-const INITIAL_PROGRAMS: Program[] = [
-  { id: "1", name: "Pelatihan Kepemimpinan Dasar", category: "Leadership", duration: "3 Hari", instructor: "Dr. Ahmad Fauzi", maxParticipants: 30, status: "Aktif", description: "Program pengembangan kemampuan kepemimpinan bagi supervisor dan manajer baru" },
-  { id: "2", name: "Workshop Keselamatan Kerja", category: "K3", duration: "2 Hari", instructor: "Budi Hartono, S.K3", maxParticipants: 50, status: "Aktif", description: "Pelatihan standar keselamatan dan kesehatan kerja sesuai regulasi" },
-  { id: "3", name: "Microsoft Excel Advanced", category: "Teknis", duration: "5 Hari", instructor: "Rina Kusuma", maxParticipants: 20, status: "Aktif", description: "Pelatihan Excel tingkat lanjut untuk analisis data bisnis" },
-  { id: "4", name: "Service Excellence", category: "Soft Skills", duration: "2 Hari", instructor: "Maya Indriani", maxParticipants: 40, status: "Aktif", description: "Meningkatkan kualitas layanan pelanggan dan komunikasi" },
-  { id: "5", name: "Manajemen Proyek Profesional", category: "Leadership", duration: "5 Hari", instructor: "Irwan Setiawan, PMP", maxParticipants: 25, status: "Planned", description: "Persiapan sertifikasi manajemen proyek untuk project manager" },
-  { id: "6", name: "Digital Marketing Basic", category: "Teknis", duration: "3 Hari", instructor: "Dian Purnama", maxParticipants: 30, status: "Planned", description: "Pengenalan strategi pemasaran digital dan media sosial" },
-  { id: "7", name: "Pelatihan ISO 9001", category: "Sertifikasi", duration: "4 Hari", instructor: "Tim Konsultan", maxParticipants: 15, status: "Completed", description: "Pemahaman dan implementasi standar mutu ISO 9001:2015" },
-  { id: "8", name: "Effective Communication", category: "Soft Skills", duration: "2 Hari", instructor: "Sarah Amalia", maxParticipants: 35, status: "Completed", description: "Teknik komunikasi efektif di lingkungan kerja" },
-];
-
 const CATEGORIES = ["Leadership", "K3", "Teknis", "Soft Skills", "Sertifikasi"];
-const STATUSES = ["Aktif", "Planned", "Completed"];
+// Matches trainings.ts's VALID_STATUSES exactly — this page reads/writes the
+// same `pelatihan` table as /hrd/learning/trainings via the same actions.
+const STATUSES = ["Planned", "Ongoing", "Completed", "Cancelled"];
+
+const emptyForm = {
+  title: "", category: "Teknis", durasi_jam: "", instruktur: "",
+  status: "Planned", description: "", date_start: "", date_end: "",
+};
 
 export default function ProgramPelatihan() {
-  const [programs, setPrograms] = useState<Program[]>(INITIAL_PROGRAMS);
-  const [activeTab, setActiveTab] = useState("Aktif");
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("Planned");
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", category: "Teknis", duration: "", instructor: "", maxParticipants: 20, status: "Planned", description: "" });
+  const [formData, setFormData] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = () => {
+    setLoading(true);
+    getTrainings().then((data) => {
+      setPrograms(data as unknown as Program[]);
+      setLoading(false);
+    });
+  };
+  useEffect(() => { load(); }, []);
 
   const filtered = programs.filter((p) => {
     if (activeTab && p.status !== activeTab) return false;
-    if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
-      setPrograms((prev) => prev.map((p) => (p.id === editingId ? { ...p, ...formData } : p)));
-      setEditingId(null);
-    } else {
-      setPrograms([...programs, { id: Date.now().toString(), ...formData }]);
-    }
+    setSaving(true);
+    setError("");
+    const fd = new FormData();
+    if (editingId) fd.set("id", editingId);
+    fd.set("title", formData.title);
+    fd.set("category", formData.category);
+    fd.set("durasi_jam", formData.durasi_jam);
+    fd.set("instruktur", formData.instruktur);
+    fd.set("status", formData.status);
+    fd.set("description", formData.description);
+    fd.set("date_start", formData.date_start);
+    fd.set("date_end", formData.date_end);
+    const res = await saveTraining(fd);
+    setSaving(false);
+    if ("error" in res) { setError(res.error || "Gagal menyimpan program."); return; }
     setShowForm(false);
-    setFormData({ name: "", category: "Teknis", duration: "", instructor: "", maxParticipants: 20, status: "Planned", description: "" });
+    setEditingId(null);
+    setFormData(emptyForm);
+    load();
   };
 
   const handleEdit = (prog: Program) => {
     setEditingId(prog.id);
-    setFormData({ name: prog.name, category: prog.category, duration: prog.duration, instructor: prog.instructor, maxParticipants: prog.maxParticipants, status: prog.status, description: prog.description });
+    setFormData({
+      title: prog.title, category: prog.category || "Teknis",
+      durasi_jam: prog.durasi_jam != null ? String(prog.durasi_jam) : "",
+      instruktur: prog.instruktur || "", status: prog.status,
+      description: prog.description || "", date_start: prog.date_start || "", date_end: prog.date_end || "",
+    });
+    setError("");
     setShowForm(true);
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Hapus program pelatihan ini? Peserta yang terdaftar juga akan dihapus.")) return;
+    const res = await deleteTraining(id);
+    if ("error" in res) { alert(res.error); return; }
+    load();
+  };
+
   const getStatusColor = (s: string) => {
-    if (s === "Aktif") return "bg-emerald-50 text-emerald-700";
+    if (s === "Ongoing") return "bg-blue-50 text-blue-700";
     if (s === "Planned") return "bg-amber-50 text-amber-700";
+    if (s === "Completed") return "bg-emerald-50 text-emerald-700";
     return "bg-slate-100 text-slate-500";
   };
 
@@ -74,7 +110,7 @@ export default function ProgramPelatihan() {
           <p className="text-sm text-gray-500 mt-1">Kelola program pelatihan dan pengembangan karyawan perusahaan.</p>
         </div>
         <button
-          onClick={() => { setEditingId(null); setFormData({ name: "", category: "Teknis", duration: "", instructor: "", maxParticipants: 20, status: "Planned", description: "" }); setShowForm(true); }}
+          onClick={() => { setEditingId(null); setFormData(emptyForm); setError(""); setShowForm(true); }}
           className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
         >
           <Plus size={14} /> Tambah Program
@@ -111,10 +147,11 @@ export default function ProgramPelatihan() {
               <h3 className="font-extrabold text-slate-800 text-sm">{editingId ? "Edit Program" : "Tambah Program Baru"}</h3>
               <button onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><X size={16} /></button>
             </div>
+            {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl">{error}</div>}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Nama Program</label>
-                <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Nama program pelatihan" />
+                <input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Nama program pelatihan" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -124,19 +161,23 @@ export default function ProgramPelatihan() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Durasi</label>
-                  <input required value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Contoh: 3 Hari" />
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Durasi (jam)</label>
+                  <input type="number" min={0} value={formData.durasi_jam} onChange={(e) => setFormData({ ...formData, durasi_jam: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Contoh: 16" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Instruktur</label>
-                  <input required value={formData.instructor} onChange={(e) => setFormData({ ...formData, instructor: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Nama instruktur" />
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Mulai</label>
+                  <input type="date" required value={formData.date_start} onChange={(e) => setFormData({ ...formData, date_start: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Max Peserta</label>
-                  <input type="number" required value={formData.maxParticipants} onChange={(e) => setFormData({ ...formData, maxParticipants: Number(e.target.value) })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" min={1} />
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Selesai</label>
+                  <input type="date" required value={formData.date_end} onChange={(e) => setFormData({ ...formData, date_end: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Instruktur</label>
+                <input value={formData.instruktur} onChange={(e) => setFormData({ ...formData, instruktur: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Nama instruktur" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Status</label>
@@ -148,15 +189,20 @@ export default function ProgramPelatihan() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi</label>
                 <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" rows={2} placeholder="Deskripsi program..." />
               </div>
-              <button type="submit" className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2">
-                <Save size={14} /> {editingId ? "Simpan Perubahan" : "Simpan Program"}
+              <button type="submit" disabled={saving} className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2">
+                <Save size={14} /> {saving ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Simpan Program"}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000] mx-auto mb-4" />
+          <p className="text-sm text-slate-500">Memuat data...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
           <GraduationCap size={48} className="mx-auto text-slate-300 mb-4" />
           <p className="text-sm text-slate-500">Tidak ada program pelatihan ditemukan.</p>
@@ -167,24 +213,31 @@ export default function ProgramPelatihan() {
             <div key={prog.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md transition-all group">
               <div className="flex items-start justify-between mb-3">
                 <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${getStatusColor(prog.status)}`}>{prog.status}</span>
-                <button onClick={() => handleEdit(prog)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-300 group-hover:text-slate-500 transition-colors">
-                  <Pencil size={14} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => handleEdit(prog)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-300 group-hover:text-slate-500 transition-colors">
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => handleDelete(prog.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-300 group-hover:text-red-500 transition-colors">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-              <h3 className="font-extrabold text-sm text-slate-800 mb-2">{prog.name}</h3>
+              <h3 className="font-extrabold text-sm text-slate-800 mb-2">{prog.title}</h3>
               <p className="text-[11px] text-slate-500 mb-3 line-clamp-2">{prog.description}</p>
               <div className="flex flex-wrap gap-2 text-[10px] text-slate-600 mb-3">
+                {prog.durasi_jam != null && (
+                  <span className="flex items-center gap-1 px-2 py-1 bg-slate-50 rounded-lg">
+                    <Clock size={10} /> {prog.durasi_jam} jam
+                  </span>
+                )}
                 <span className="flex items-center gap-1 px-2 py-1 bg-slate-50 rounded-lg">
-                  <Clock size={10} /> {prog.duration}
-                </span>
-                <span className="flex items-center gap-1 px-2 py-1 bg-slate-50 rounded-lg">
-                  <Users size={10} /> Max {prog.maxParticipants}
+                  <Users size={10} /> {prog.enrollment_count} peserta
                 </span>
               </div>
               <div className="pt-3 border-t border-slate-50 flex items-center gap-2">
                 <MapPin size={11} className="text-slate-400" />
-                <p className="text-[10px] text-slate-500">{prog.instructor}</p>
-                <span className="ml-auto px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-bold">{prog.category}</span>
+                <p className="text-[10px] text-slate-500">{prog.instruktur || "Belum ditentukan"}</p>
+                {prog.category && <span className="ml-auto px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-bold">{prog.category}</span>}
               </div>
             </div>
           ))}

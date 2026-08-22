@@ -23,25 +23,39 @@ export default async function PosisiKritis() {
     .select("id, full_name, position, department")
     .neq("status", "Resigned");
 
-  const positions = (managers || []).map((m: Record<string, unknown>, i: number) => {
+  // HRD's own risk_level from "Tandai Posisi Kritis" (markedPositions) used
+  // to be fetched but never actually used here — the table instead showed a
+  // risk level from `i % 3`, unrelated to anything HRD entered. Manually
+  // assessed positions now show HRD's real judgment; auto-detected ones
+  // that were never assessed show "Belum Dinilai" instead of a fabricated
+  // level (the one real signal available, `hasBackup`, still drives an
+  // honest "Tinggi" call when there's truly no backup candidate).
+  const markedByEmployeeId = new Map(
+    markedPositions.map((mp) => [(mp as { employee_id: string }).employee_id, mp as { risk_level: string }])
+  );
+
+  const positions = (managers || []).map((m: Record<string, unknown>) => {
     const hasBackup = (allEmployees || []).some(
       (e: Record<string, unknown>) =>
         e.id !== m.id &&
         e.department === m.department &&
         (e.position as string)?.toLowerCase().includes(((m.position as string) || "").toLowerCase().replace(/manager|direktur|kepala|head|lead/gi, "").trim())
     );
-    const risk = !hasBackup ? "Tinggi" : i % 3 === 0 ? "Rendah" : "Sedang";
+    const marked = markedByEmployeeId.get(m.id as string);
+    const risk = marked ? marked.risk_level : (!hasBackup ? "Tinggi" : "Belum Dinilai");
     return {
       ...m,
       departmentName: (m.department as string) || "-",
       risk,
       hasBackup,
+      isManuallyAssessed: !!marked,
     };
   });
 
   const highCount = positions.filter((p) => p.risk === "Tinggi").length;
   const mediumCount = positions.filter((p) => p.risk === "Sedang").length;
   const lowCount = positions.filter((p) => p.risk === "Rendah").length;
+  const unassessedCount = positions.filter((p) => p.risk === "Belum Dinilai").length;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -50,7 +64,7 @@ export default async function PosisiKritis() {
         <p className="text-sm text-gray-500">Identifikasi dan kelola posisi-posisi kunci untuk perencanaan suksesi.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Users size={18} /></div>
@@ -84,6 +98,15 @@ export default async function PosisiKritis() {
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Risiko Rendah</p>
               <p className="text-xl font-extrabold text-slate-800">{lowCount}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-slate-100 text-slate-500 rounded-xl"><Shield size={18} /></div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Belum Dinilai</p>
+              <p className="text-xl font-extrabold text-slate-800">{unassessedCount}</p>
             </div>
           </div>
         </div>
@@ -139,7 +162,8 @@ export default async function PosisiKritis() {
                           <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
                             risk === "Tinggi" ? "bg-red-50 text-red-700" :
                             risk === "Sedang" ? "bg-amber-50 text-amber-700" :
-                            "bg-emerald-50 text-emerald-700"
+                            risk === "Rendah" ? "bg-emerald-50 text-emerald-700" :
+                            "bg-slate-100 text-slate-500"
                           }`}>
                             {risk}
                           </span>

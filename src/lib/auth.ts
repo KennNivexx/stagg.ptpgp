@@ -1,4 +1,4 @@
-import { randomBytes, randomInt, pbkdf2 } from "crypto";
+import { randomBytes, randomInt, pbkdf2, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 
 const PBKDF2_ITERATIONS = 100_000;
@@ -17,7 +17,13 @@ async function hashPassword(password: string): Promise<string> {
 async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const [salt, hash] = stored.split(":");
   const verify = (await pbkdf2Async(password, salt, PBKDF2_ITERATIONS, 64, "sha512")).toString("hex");
-  return hash === verify;
+  // Plain `===` leaks timing info proportional to the matching prefix length
+  // of the hex hash — session.ts and otp-token.ts both already use
+  // constant-time comparisons for the same reason, this was the one
+  // inconsistent spot. Both buffers are always 128 hex chars (64-byte
+  // digest), so the length check never itself leaks anything new.
+  if (hash.length !== verify.length) return false;
+  return timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(verify, "hex"));
 }
 
 function generateRandomPassword(): string {

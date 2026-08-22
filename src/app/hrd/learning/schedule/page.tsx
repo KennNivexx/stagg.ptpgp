@@ -1,55 +1,66 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, Clock, MapPin, Users, Plus, X, Save, User } from "lucide-react";
+import { getTrainings, saveTraining } from "@/app/actions/trainings";
 
 type Schedule = {
   id: string;
-  programName: string;
-  date: string;
-  time: string;
-  location: string;
-  instructor: string;
-  participants: number;
-  maxParticipants: number;
+  title: string;
+  date_start: string;
+  date_end: string;
+  lokasi: string | null;
+  instruktur: string | null;
   status: string;
+  enrollment_count: number;
 };
 
-const INITIAL_SCHEDULES: Schedule[] = [
-  { id: "1", programName: "Pelatihan Kepemimpinan Dasar", date: "2026-06-15", time: "08:00 - 16:00", location: "Ruang Training Lt. 3", instructor: "Dr. Ahmad Fauzi", participants: 28, maxParticipants: 30, status: "Terjadwal" },
-  { id: "2", programName: "Workshop Keselamatan Kerja", date: "2026-06-20", time: "09:00 - 15:00", location: "Aula Utama", instructor: "Budi Hartono, S.K3", participants: 45, maxParticipants: 50, status: "Terjadwal" },
-  { id: "3", programName: "Microsoft Excel Advanced", date: "2026-06-22", time: "08:30 - 16:30", location: "Lab Komputer", instructor: "Rina Kusuma", participants: 15, maxParticipants: 20, status: "Terjadwal" },
-  { id: "4", programName: "Service Excellence", date: "2026-07-01", time: "09:00 - 16:00", location: "Ruang Meeting Eksekutif", instructor: "Maya Indriani", participants: 32, maxParticipants: 40, status: "Terjadwal" },
-  { id: "5", programName: "Manajemen Proyek Profesional", date: "2026-07-10", time: "08:00 - 17:00", location: "Ruang Training Lt. 2", instructor: "Irwan Setiawan, PMP", participants: 10, maxParticipants: 25, status: "Terjadwal" },
-  { id: "6", programName: "Pelatihan Kepemimpinan Dasar - Batch 2", date: "2026-07-15", time: "08:00 - 16:00", location: "Ruang Training Lt. 3", instructor: "Dr. Ahmad Fauzi", participants: 20, maxParticipants: 30, status: "Terjadwal" },
-  { id: "7", programName: "Digital Marketing Basic", date: "2026-07-20", time: "09:30 - 15:30", location: "Ruang Meeting A", instructor: "Dian Purnama", participants: 18, maxParticipants: 30, status: "Terjadwal" },
-  { id: "8", programName: "Pelatihan ISO 9001", date: "2026-06-01", time: "08:00 - 17:00", location: "Ruang Training Lt. 3", instructor: "Tim Konsultan", participants: 15, maxParticipants: 15, status: "Selesai" },
-  { id: "9", programName: "Effective Communication", date: "2026-05-25", time: "09:00 - 16:00", location: "Aula Utama", instructor: "Sarah Amalia", participants: 35, maxParticipants: 35, status: "Selesai" },
-];
-
-const PROGRAM_OPTIONS = [
-  "Pelatihan Kepemimpinan Dasar", "Workshop Keselamatan Kerja", "Microsoft Excel Advanced",
-  "Service Excellence", "Manajemen Proyek Profesional", "Digital Marketing Basic",
-  "Pelatihan ISO 9001", "Effective Communication",
-];
+const emptyForm = { title: "", date_start: "", date_end: "", lokasi: "", instruktur: "" };
 
 export default function JadwalPelatihan() {
-  const [schedules, setSchedules] = useState<Schedule[]>(INITIAL_SCHEDULES);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState("Terjadwal");
-  const [formData, setFormData] = useState({ programName: "", date: "", time: "08:00 - 16:00", location: "", instructor: "", maxParticipants: 30 });
+  const [formData, setFormData] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const upcoming = schedules.filter((s) => s.status === "Terjadwal");
-  const completed = schedules.filter((s) => s.status === "Selesai");
+  const load = () => {
+    setLoading(true);
+    getTrainings().then((data) => {
+      setSchedules(data as unknown as Schedule[]);
+      setLoading(false);
+    });
+  };
+  useEffect(() => { load(); }, []);
 
-  const display = activeTab === "Terjadwal" ? upcoming : completed;
+  // "Jadwal Pelatihan" is a date-centric view of the same pelatihan rows
+  // /hrd/learning/programs and /hrd/learning/trainings manage — there's no
+  // separate "session" table backing this, so Terjadwal/Selesai maps
+  // directly onto Planned+Ongoing / Completed status.
+  const upcoming = schedules.filter((s) => s.status === "Planned" || s.status === "Ongoing");
+  const completed = schedules.filter((s) => s.status === "Completed");
+  const display = [...(activeTab === "Terjadwal" ? upcoming : completed)]
+    .sort((a, b) => (a.date_start || "").localeCompare(b.date_start || ""));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newSched: Schedule = { id: Date.now().toString(), ...formData, participants: 0, status: "Terjadwal" };
-    setSchedules([newSched, ...schedules]);
+    setSaving(true);
+    setError("");
+    const fd = new FormData();
+    fd.set("title", formData.title);
+    fd.set("date_start", formData.date_start);
+    fd.set("date_end", formData.date_end || formData.date_start);
+    fd.set("lokasi", formData.lokasi);
+    fd.set("instruktur", formData.instruktur);
+    fd.set("status", "Planned");
+    const res = await saveTraining(fd);
+    setSaving(false);
+    if ("error" in res) { setError(res.error || "Gagal menyimpan jadwal."); return; }
     setShowForm(false);
-    setFormData({ programName: "", date: "", time: "08:00 - 16:00", location: "", instructor: "", maxParticipants: 30 });
+    setFormData(emptyForm);
+    load();
   };
 
   const isToday = (dateStr: string) => {
@@ -58,6 +69,7 @@ export default function JadwalPelatihan() {
   };
 
   const isThisWeek = (dateStr: string) => {
+    if (!dateStr) return false;
     const d = new Date(dateStr);
     const now = new Date();
     const weekStart = new Date(now);
@@ -75,7 +87,7 @@ export default function JadwalPelatihan() {
           <p className="text-sm text-gray-500 mt-1">Kelola jadwal pelatihan, sesi kelas, dan absensi peserta.</p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => { setFormData(emptyForm); setError(""); setShowForm(true); }}
           className="bg-[#CC0000] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center gap-2"
         >
           <Plus size={14} /> Tambah Jadwal
@@ -104,40 +116,32 @@ export default function JadwalPelatihan() {
               <h3 className="font-extrabold text-slate-800 text-sm">Tambah Jadwal Pelatihan</h3>
               <button onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><X size={16} /></button>
             </div>
+            {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl">{error}</div>}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Program</label>
-                <select required value={formData.programName} onChange={(e) => setFormData({ ...formData, programName: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm">
-                  <option value="">Pilih Program</option>
-                  {PROGRAM_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Nama Pelatihan</label>
+                <input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Nama program pelatihan" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
-                  <input type="date" required value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" />
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Mulai</label>
+                  <input type="date" required value={formData.date_start} onChange={(e) => setFormData({ ...formData, date_start: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Waktu</label>
-                  <input type="text" required value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="08:00 - 16:00" />
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Selesai</label>
+                  <input type="date" value={formData.date_end} onChange={(e) => setFormData({ ...formData, date_end: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Sama dengan tanggal mulai jika kosong" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Lokasi</label>
-                <input required value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Ruang Training Lt. 3" />
+                <input value={formData.lokasi} onChange={(e) => setFormData({ ...formData, lokasi: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Ruang Training Lt. 3" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Instruktur</label>
-                  <input required value={formData.instructor} onChange={(e) => setFormData({ ...formData, instructor: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Nama instruktur" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Max Peserta</label>
-                  <input type="number" required value={formData.maxParticipants} onChange={(e) => setFormData({ ...formData, maxParticipants: Number(e.target.value) })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" min={1} />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Instruktur</label>
+                <input value={formData.instruktur} onChange={(e) => setFormData({ ...formData, instruktur: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl text-sm" placeholder="Nama instruktur" />
               </div>
-              <button type="submit" className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors inline-flex items-center justify-center gap-2">
-                <Save size={14} /> Simpan Jadwal
+              <button type="submit" disabled={saving} className="w-full bg-[#CC0000] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#aa0000] transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2">
+                <Save size={14} /> {saving ? "Menyimpan..." : "Simpan Jadwal"}
               </button>
             </form>
           </div>
@@ -145,7 +149,12 @@ export default function JadwalPelatihan() {
       )}
 
       <div className="space-y-4">
-        {display.length === 0 ? (
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CC0000] mx-auto mb-4" />
+            <p className="text-sm text-slate-500">Memuat data...</p>
+          </div>
+        ) : display.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center">
             <Calendar size={48} className="mx-auto text-slate-300 mb-4" />
             <p className="text-sm text-slate-500">Tidak ada jadwal {activeTab.toLowerCase()}.</p>
@@ -156,48 +165,45 @@ export default function JadwalPelatihan() {
               key={sched.id}
               className={`bg-white rounded-2xl border shadow-sm p-5 hover:shadow-md transition-all ${
                 activeTab === "Selesai" ? "border-slate-100 opacity-75" :
-                isToday(sched.date) ? "border-[#CC0000] ring-1 ring-[#CC0000]/20" :
-                isThisWeek(sched.date) ? "border-blue-200" : "border-slate-100"
+                isToday(sched.date_start) ? "border-[#CC0000] ring-1 ring-[#CC0000]/20" :
+                isThisWeek(sched.date_start) ? "border-blue-200" : "border-slate-100"
               }`}
             >
               <div className="flex flex-col md:flex-row md:items-center gap-4">
                 <div className="flex items-center gap-3 min-w-[180px]">
                   <div className={`p-3 rounded-xl ${
                     activeTab === "Selesai" ? "bg-slate-100 text-slate-500" :
-                    isToday(sched.date) ? "bg-red-50 text-[#CC0000]" :
-                    isThisWeek(sched.date) ? "bg-blue-50 text-blue-600" : "bg-slate-50 text-slate-600"
+                    isToday(sched.date_start) ? "bg-red-50 text-[#CC0000]" :
+                    isThisWeek(sched.date_start) ? "bg-blue-50 text-blue-600" : "bg-slate-50 text-slate-600"
                   }`}>
                     <Calendar size={22} />
                   </div>
                   <div>
                     <p className="text-xs font-extrabold uppercase text-slate-500">
-                      {new Date(sched.date).toLocaleDateString("id-ID", { month: "short" })}
+                      {sched.date_start ? new Date(sched.date_start).toLocaleDateString("id-ID", { month: "short" }) : "-"}
                     </p>
-                    <p className="text-2xl font-extrabold text-slate-800">{new Date(sched.date).getDate()}</p>
-                    {isToday(sched.date) && <span className="text-[9px] font-bold text-[#CC0000]">Hari ini</span>}
+                    <p className="text-2xl font-extrabold text-slate-800">{sched.date_start ? new Date(sched.date_start).getDate() : "-"}</p>
+                    {isToday(sched.date_start) && <span className="text-[9px] font-bold text-[#CC0000]">Hari ini</span>}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-extrabold text-sm text-slate-800 mb-1">{sched.programName}</h3>
+                  <h3 className="font-extrabold text-sm text-slate-800 mb-1">{sched.title}</h3>
                   <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-500">
-                    <span className="flex items-center gap-1"><Clock size={10} /> {sched.time}</span>
-                    <span className="flex items-center gap-1"><MapPin size={10} /> {sched.location}</span>
-                    <span className="flex items-center gap-1"><User size={10} /> {sched.instructor}</span>
+                    <span className="flex items-center gap-1"><Clock size={10} /> {sched.date_start === sched.date_end ? sched.date_start : `${sched.date_start} – ${sched.date_end}`}</span>
+                    {sched.lokasi && <span className="flex items-center gap-1"><MapPin size={10} /> {sched.lokasi}</span>}
+                    <span className="flex items-center gap-1"><User size={10} /> {sched.instruktur || "Belum ditentukan"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
                   <div className="text-center">
                     <div className="flex items-center gap-1">
                       <Users size={12} className="text-slate-400" />
-                      <span className="text-xs font-extrabold text-slate-800">{sched.participants}</span>
-                      <span className="text-[10px] text-slate-400">/ {sched.maxParticipants}</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full mt-1 w-full overflow-hidden">
-                      <div className="h-full bg-[#CC0000] rounded-full" style={{ width: `${(sched.participants / sched.maxParticipants) * 100}%` }} />
+                      <span className="text-xs font-extrabold text-slate-800">{sched.enrollment_count}</span>
+                      <span className="text-[10px] text-slate-400">peserta</span>
                     </div>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold ${
-                    sched.status === "Selesai" ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
+                    sched.status === "Completed" ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
                   }`}>
                     {sched.status}
                   </span>

@@ -410,9 +410,17 @@ export type ToolProposalResult =
 // avoids ever proposing something guaranteed to fail — the real action's own
 // role check stays authoritative regardless, this is purely a UX/round-trip
 // optimization, not a substitute for it.
+// generate_payslip / generate_payroll_batch / send_offer_letter are hrd+
+// superadmin-only at the real action layer (generatePayslip,
+// generateBatchPayroll, sendOfferLetter in admin.ts/recruitment-hiring.ts
+// all call requireRole("hrd","superadmin") with no other role accepted) —
+// unlike decide_payroll_status/decide_hiring_step, which are genuinely
+// multi-role and stage-dependent, so those two are deliberately NOT listed
+// here for any role.
 const ROLE_EXCLUDED_WRITE_TOOLS: Record<string, string[]> = {
   hrd: ["decide_leave_request"],
-  director: ["decide_leave_request", "decide_overtime_request", "decide_absence_correction"],
+  director: ["decide_leave_request", "decide_overtime_request", "decide_absence_correction", "generate_payslip", "generate_payroll_batch", "send_offer_letter"],
+  department_manager: ["generate_payslip", "generate_payroll_batch", "send_offer_letter"],
 };
 
 export function toolsForRole(role: string): Groq.Chat.Completions.ChatCompletionTool[] {

@@ -2,11 +2,12 @@ import Link from "next/link";
 import {
   TrendingUp, Users, Target, Star, GitBranch,
   ArrowUp, BarChart2, Shield, BookOpen, Briefcase,
-  ChevronRight, Rocket, Award, ClipboardList,
+  ChevronRight, Rocket, Award,
   UserCheck, RefreshCw, Settings, FileBarChart,
-  Brain, Layers, Map, Zap, CheckCircle, Clock,
+  Layers, Map, Zap, CheckCircle, Clock,
   ArrowRight, RotateCcw, AlertCircle,
 } from "lucide-react";
+import { requireRole } from "@/lib/auth-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,11 @@ const KPI_CARDS: KpiCard[] = [
 ];
 
 /* ─── Career Engine Output cards ────────────────────────────────── */
+// One tile per real destination page only — this used to have sibling tiles
+// in QUICK_GROUPS below pointing at these exact same hrefs under different
+// labels (e.g. 5 "Report & Analytics" tiles that all led to /career/analytics),
+// which just looked like more features than actually existed. Every output
+// now appears exactly once, here.
 const ENGINE_OUTPUTS = [
   { label: "Career Score",          color: "fuchsia", href: "/hrd/career/assessment",     icon: Target },
   { label: "Career Readiness",      color: "violet",  href: "/hrd/career/readiness",      icon: CheckCircle },
@@ -63,6 +69,7 @@ const ENGINE_OUTPUTS = [
   { label: "IDP",                   color: "indigo",  href: "/hrd/career/plans",           icon: BookOpen },
   { label: "Salary Review",         color: "amber",   href: "/hrd/career/approval/salary", icon: Briefcase },
   { label: "Leadership Pipeline",   color: "teal",    href: "/hrd/career/talent/leadership-pipeline", icon: GitBranch },
+  { label: "Dashboard & Laporan",   color: "slate",   href: "/hrd/career/analytics",       icon: FileBarChart },
 ];
 
 /* ─── Quick access groups ───────────────────────────────────────── */
@@ -81,41 +88,41 @@ const QUICK_GROUPS: QuickGroup[] = [
     ],
   },
   {
+    // "9-Box Matrix" and "Leadership Pipeline" removed — both already appear
+    // once each in ENGINE_OUTPUTS above; no reason to link them twice.
     title: "Talent Management",
     icon: Users,
     color: "fuchsia",
     items: [
       { label: "Talent Pool",           href: "/hrd/career/talent/pool",               icon: Users },
       { label: "Talent Review",         href: "/hrd/career/talent/review",             icon: UserCheck },
-      { label: "9-Box Matrix",          href: "/hrd/career/9-box",                     icon: Layers },
       { label: "Succession Overview",   href: "/hrd/succession",                       icon: Shield },
       { label: "Critical Position",     href: "/hrd/succession/positions",             icon: AlertCircle },
       { label: "Successor Planning",    href: "/hrd/succession/candidates",            icon: GitBranch },
       { label: "Pool Suksesi",          href: "/hrd/succession/talentpool",            icon: Users },
       { label: "Penilaian Kesiapan",    href: "/hrd/succession/readiness",             icon: Target },
-      { label: "Leadership Pipeline",   href: "/hrd/career/talent/leadership-pipeline", icon: TrendingUp },
     ],
   },
   {
+    // "Career Assessment", "Career Readiness", "Career Recommendation", and
+    // "IDP" removed — all four already appear once each in ENGINE_OUTPUTS
+    // above (as "Career Score", "Career Readiness", "Promotion Recommend",
+    // and "IDP" respectively, same destination pages).
     title: "Career Development",
     icon: TrendingUp,
     color: "violet",
     items: [
       { label: "Career Profile",        href: "/hrd/career/profile",                   icon: UserCheck },
-      { label: "Career Assessment",     href: "/hrd/career/assessment",                icon: ClipboardList },
-      { label: "Career Readiness",      href: "/hrd/career/readiness",                 icon: CheckCircle },
-      { label: "Career Recommendation", href: "/hrd/career/recommendation",            icon: Brain },
-      { label: "IDP",                   href: "/hrd/career/plans",                     icon: BookOpen },
       { label: "Career Simulation",     href: "/hrd/career/simulation",                icon: Zap },
     ],
   },
   {
+    // "Mutasi" removed — already appears in ENGINE_OUTPUTS as "Mutation Recommend".
     title: "Transaksi Karier",
     icon: ArrowRight,
     color: "emerald",
     items: [
       { label: "Promosi",               href: "/hrd/career/transactions/promotion",    icon: ArrowUp },
-      { label: "Mutasi",                href: "/hrd/career/mutations",                 icon: RefreshCw },
       { label: "Rotasi",                href: "/hrd/career/transactions/rotation",     icon: RotateCcw },
       { label: "Demosi",                href: "/hrd/career/transactions/demotion",     icon: ArrowRight },
       { label: "Acting Assignment",     href: "/hrd/career/transactions/acting",       icon: Award },
@@ -123,30 +130,23 @@ const QUICK_GROUPS: QuickGroup[] = [
     ],
   },
   {
+    // "Salary Approval" removed — already appears in ENGINE_OUTPUTS as "Salary Review".
     title: "Approval",
     icon: CheckCircle,
     color: "blue",
     items: [
       { label: "Promotion Approval",    href: "/hrd/career/approval/promotion",        icon: ArrowUp },
       { label: "Mutation Approval",     href: "/hrd/career/approval/mutation",         icon: RefreshCw },
-      { label: "Salary Approval",       href: "/hrd/career/approval/salary",           icon: Briefcase },
       { label: "Succession Approval",   href: "/hrd/career/approval/succession",       icon: GitBranch },
       { label: "Career Committee",      href: "/hrd/career/approval/committee",        icon: Users },
     ],
   },
-  {
-    title: "Report & Analytics",
-    icon: FileBarChart,
-    color: "indigo",
-    items: [
-      { label: "Executive Dashboard",   href: "/hrd/career/analytics",                 icon: BarChart2 },
-      { label: "Promotion Report",      href: "/hrd/career/analytics",                 icon: ArrowUp },
-      { label: "Talent Report",         href: "/hrd/career/analytics",                 icon: Star },
-      { label: "Succession Report",     href: "/hrd/career/analytics",                 icon: GitBranch },
-      { label: "Career KPI",            href: "/hrd/career/analytics",                 icon: Target },
-      { label: "Salary Projection",     href: "/hrd/career/approval/salary",           icon: TrendingUp },
-    ],
-  },
+  // "Report & Analytics" group removed entirely — all 5 of its tiles
+  // (Executive Dashboard, Promotion Report, Talent Report, Succession
+  // Report, Career KPI) rendered the exact same /hrd/career/analytics page,
+  // and its 6th tile (Salary Projection) duplicated /hrd/career/approval/
+  // salary. That one real page is now linked once, via ENGINE_OUTPUTS'
+  // "Dashboard & Laporan" tile.
 ];
 
 /* ─── Business Process flow ─────────────────────────────────────── */
@@ -226,6 +226,7 @@ function QuickGroupCard({ group }: { group: QuickGroup }) {
 
 /* ─── Page ──────────────────────────────────────────────────────── */
 export default async function CareerDevelopmentPage() {
+  await requireRole("hrd", "superadmin");
   return (
     <div className="space-y-8">
 

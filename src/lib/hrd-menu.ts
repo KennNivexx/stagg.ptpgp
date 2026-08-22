@@ -79,14 +79,14 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     color: "indigo",
     hubHref: "/hrd/workplace",
     items: [
-      { href: "/hrd/workplace/sk", label: "Struktur Organisasi (SK)" },
+      { href: "/hrd/workplace/sk", label: "Struktur Organisasi (SK)", showInDropdown: false },
       { href: "/hrd/workplace/structure", label: "Unit Organisasi" },
       { href: "/hrd/workplace/positions", label: "Master Jabatan" },
-      { href: "/hrd/workplace/jobdesc", label: "Deskripsi Kerja" },
-      { href: "/hrd/workplace/jobspec", label: "Spesifikasi Kerja" },
-      { href: "/hrd/workplace/grades", label: "Grade & Level" },
+      { href: "/hrd/workplace/jobdesc", label: "Deskripsi Kerja", showInDropdown: false },
+      { href: "/hrd/workplace/jobspec", label: "Spesifikasi Kerja", showInDropdown: false },
+      { href: "/hrd/workplace/grades", label: "Grade & Level", showInDropdown: false },
       { href: "/hrd/workplace/formasi", label: "Position Management (Formasi)" },
-      { href: "/hrd/workplace/chart", label: "Organization Chart" },
+      { href: "/hrd/workplace/chart", label: "Organization Chart", showInDropdown: false },
     ],
   },
   {
@@ -112,14 +112,19 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     icon: Warehouse,
     color: "slate",
     items: [
+      // Armada Kendaraan and Pengendalian Aset stay visible as the one
+      // representative entry per section; the other 3 items in each cluster
+      // are still fully reachable via a "Menu Aset & Fasilitas" quick-links
+      // block piggybacked onto those two pages (see VehiclesClient's page
+      // wrapper and ga/assets/page.tsx) — no dedicated hub page needed.
       { href: "/hrd/infrastructure/vehicles", label: "Armada Kendaraan", section: "Kendaraan" },
-      { href: "/hrd/trips", label: "Data Trip Supir", section: "Kendaraan" },
-      { href: "/hrd/vehicle-requests", label: "Pengadaan Kendaraan", section: "Kendaraan" },
-      { href: "/hrd/workforce/driver-monitoring", label: "Monitoring Kinerja Pengemudi", section: "Kendaraan" },
+      { href: "/hrd/trips", label: "Data Trip Supir", section: "Kendaraan", showInDropdown: false },
+      { href: "/hrd/vehicle-requests", label: "Pengadaan Kendaraan", section: "Kendaraan", showInDropdown: false },
+      { href: "/hrd/workforce/driver-monitoring", label: "Monitoring Kinerja Pengemudi", section: "Kendaraan", showInDropdown: false },
       { href: "/hrd/ga/assets", label: "Pengendalian Aset", section: "General Affair" },
-      { href: "/hrd/ga/peralatan", label: "Pengendalian Peralatan", section: "General Affair" },
-      { href: "/hrd/ga/infrastruktur", label: "Pemeliharaan Infrastruktur", section: "General Affair" },
-      { href: "/hrd/ga/housekeeping", label: "Housekeeping & 5R", section: "General Affair" },
+      { href: "/hrd/ga/peralatan", label: "Pengendalian Peralatan", section: "General Affair", showInDropdown: false },
+      { href: "/hrd/ga/infrastruktur", label: "Pemeliharaan Infrastruktur", section: "General Affair", showInDropdown: false },
+      { href: "/hrd/ga/housekeeping", label: "Housekeeping & 5R", section: "General Affair", showInDropdown: false },
     ],
   },
   {
@@ -131,10 +136,10 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
       { href: "/hrd/attendance", label: "Absensi & Koreksi", section: "Waktu & Kehadiran" },
       { href: "/hrd/leaves", label: "Cuti & Saldo Cuti", section: "Waktu & Kehadiran" },
       { href: "/hrd/workforce-time/overtime", label: "Lembur & Timesheet", section: "Waktu & Kehadiran" },
-      { href: "/hrd/infrastructure/locations", label: "Lokasi & Shift Kerja", section: "Infrastruktur Kerja" },
-      { href: "/hrd/business-trips", label: "Perjalanan Dinas", section: "Infrastruktur Kerja" },
-      { href: "/hrd/workforce-time/calendar", label: "Kalender & Penugasan", section: "Infrastruktur Kerja" },
-      { href: "/hrd/incidents", label: "Laporan Insiden", section: "Infrastruktur Kerja" },
+      { href: "/hrd/infrastructure/locations", label: "Lokasi & Shift Kerja", section: "Infrastruktur Kerja", showInDropdown: false },
+      { href: "/hrd/business-trips", label: "Perjalanan Dinas", section: "Infrastruktur Kerja", showInDropdown: false },
+      { href: "/hrd/workforce-time/calendar", label: "Kalender & Penugasan", section: "Infrastruktur Kerja", showInDropdown: false },
+      { href: "/hrd/incidents", label: "Laporan Insiden", section: "Infrastruktur Kerja", showInDropdown: false },
     ],
   },
   {
@@ -143,12 +148,12 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     color: "purple",
     hubHref: "/hrd/competency",
     items: [
-      { href: "/hrd/competency/library", label: "Pustaka Kompetensi" },
+      { href: "/hrd/competency/library", label: "Pustaka Kompetensi", showInDropdown: false },
       { href: "/hrd/competency/skillmatrix", label: "Matriks Keahlian" },
       { href: "/hrd/competency/assessment", label: "Asesmen Kompetensi" },
-      { href: "/hrd/competency/gap", label: "Analisis Kesenjangan" },
-      { href: "/hrd/competency/reports", label: "Laporan Kompetensi" },
-      { href: "/hrd/knowledge/mapping", label: "Mapping Kompetensi ke Pengetahuan" },
+      { href: "/hrd/competency/gap", label: "Analisis Kesenjangan", showInDropdown: false },
+      { href: "/hrd/competency/reports", label: "Laporan Kompetensi", showInDropdown: false },
+      { href: "/hrd/knowledge/mapping", label: "Mapping Kompetensi ke Pengetahuan", showInDropdown: false },
     ],
   },
   {
@@ -157,13 +162,13 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     color: "teal",
     hubHref: "/hrd/learning",
     items: [
-      { href: "/hrd/learning/tna", label: "Training Need Analysis (TNA)" },
+      { href: "/hrd/learning/tna", label: "Training Need Analysis (TNA)", showInDropdown: false },
       { href: "/hrd/learning/trainings", label: "Training" },
       { href: "/hrd/learning/materials", label: "Materi Kursus" },
-      { href: "/hrd/learning/quizzes", label: "Kuis & Ujian" },
-      { href: "/hrd/learning/certificates", label: "Sertifikat" },
-      { href: "/hrd/learning/evaluation", label: "Evaluasi Pelatihan" },
-      { href: "/hrd/learning/roi", label: "Analisa Dampak ROTI" },
+      { href: "/hrd/learning/quizzes", label: "Kuis & Ujian", showInDropdown: false },
+      { href: "/hrd/learning/certificates", label: "Sertifikat", showInDropdown: false },
+      { href: "/hrd/learning/evaluation", label: "Evaluasi Pelatihan", showInDropdown: false },
+      { href: "/hrd/learning/roi", label: "Analisa Dampak ROTI", showInDropdown: false },
     ],
   },
   {
@@ -184,11 +189,11 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     color: "orange",
     hubHref: "/hrd/performance",
     items: [
-      { href: "/hrd/performance/framework", label: "Framework Kinerja" },
+      { href: "/hrd/performance/framework", label: "Framework Kinerja", showInDropdown: false },
       { href: "/hrd/performance/kpi", label: "Manajemen KPI" },
       { href: "/hrd/performance/reviews", label: "Review Kinerja" },
-      { href: "/hrd/performance/feedback", label: "Umpan Balik" },
-      { href: "/hrd/performance/reports", label: "Laporan Kinerja" },
+      { href: "/hrd/performance/feedback", label: "Umpan Balik", showInDropdown: false },
+      { href: "/hrd/performance/reports", label: "Laporan Kinerja", showInDropdown: false },
     ],
   },
   {
@@ -198,11 +203,11 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     hubHref: "/hrd/rewards",
     items: [
       { href: "/hrd/rewards/payroll", label: "Payroll, Gaji & Tunjangan", section: "Kompensasi Rutin" },
-      { href: "/hrd/rewards/periode", label: "Periode Payroll", section: "Kompensasi Rutin" },
+      { href: "/hrd/rewards/periode", label: "Periode Payroll", section: "Kompensasi Rutin", showInDropdown: false },
       { href: "/hrd/rewards/kasbon", label: "Kasbon Karyawan", section: "Kompensasi Rutin" },
-      { href: "/hrd/rewards/bonuses", label: "Bonus, Insentif & Penghargaan", section: "Reward Non-Rutin" },
-      { href: "/hrd/rewards/salary-review", label: "Salary Review", section: "Kompensasi Rutin" },
-      { href: "/hrd/rewards/statement", label: "Total Rewards & PPh 21", section: "Reward Non-Rutin" },
+      { href: "/hrd/rewards/bonuses", label: "Bonus, Insentif & Penghargaan", section: "Reward Non-Rutin", showInDropdown: false },
+      { href: "/hrd/rewards/salary-review", label: "Salary Review", section: "Kompensasi Rutin", showInDropdown: false },
+      { href: "/hrd/rewards/statement", label: "Total Rewards & PPh 21", section: "Reward Non-Rutin", showInDropdown: false },
       // "Formula Reward" (/hrd/rewards/formula) intentionally has no entry here —
       // it's already a tab inside the Payroll hub above, not a separate page.
     ],
@@ -219,11 +224,11 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     color: "fuchsia",
     hubHref: "/hrd/career",
     items: [
-      { href: "/hrd/career/talent", label: "Talent Pool & Suksesi" },
+      { href: "/hrd/career/talent", label: "Talent Pool & Suksesi", showInDropdown: false },
       { href: "/hrd/career/transactions", label: "Transaksi Karier (Promosi, Mutasi, dll)" },
-      { href: "/hrd/career/development", label: "Pengembangan & Riwayat Karier" },
+      { href: "/hrd/career/development", label: "Pengembangan & Riwayat Karier", showInDropdown: false },
       // ── MASTER & APPROVAL (via hub) ──
-      { href: "/hrd/career/master", label: "Master Kebijakan Karier", section: "Master & Approval" },
+      { href: "/hrd/career/master", label: "Master Kebijakan Karier", section: "Master & Approval", showInDropdown: false },
       { href: "/hrd/career/approval", label: "Approval Karier", section: "Master & Approval" },
     ],
   },
@@ -235,16 +240,16 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     items: [
       // ── MANAJEMEN KASUS (combined hub) ──
       { href: "/hrd/relations/cases", label: "Manajemen Kasus & Hubungan Industrial", section: "Operasional" },
-      { href: "/hrd/relations/warnings", label: "Surat Peringatan", section: "Operasional" },
+      { href: "/hrd/relations/warnings", label: "Surat Peringatan", section: "Operasional", showInDropdown: false },
       // ── KOMUNIKASI & SURVEI (combined hub) ──
-      { href: "/hrd/relations/communication", label: "Komunikasi, Partisipasi & Survei", section: "Engagement" },
+      { href: "/hrd/relations/communication", label: "Komunikasi, Partisipasi & Survei", section: "Engagement", showInDropdown: false },
       // ── SEPARATION (combined hub) ──
       { href: "/hrd/relations/separation", label: "Resignation & Separation", section: "Operasional" },
       // ── ANALITIK ──
-      { href: "/hrd/relations/analytics", label: "Dashboard & Analitik ER", section: "Engagement" },
+      { href: "/hrd/relations/analytics", label: "Dashboard & Analitik ER", section: "Engagement", showInDropdown: false },
       // ── MASTER / APPROVAL (via hub) ──
-      { href: "/hrd/relations/master", label: "Master Data Employee Relations", section: "Master & Approval" },
-      { href: "/hrd/relations/approval", label: "Approval Employee Relations", section: "Master & Approval" },
+      { href: "/hrd/relations/master", label: "Master Data Employee Relations", section: "Master & Approval", showInDropdown: false },
+      { href: "/hrd/relations/approval", label: "Approval Employee Relations", section: "Master & Approval", showInDropdown: false },
     ],
   },
   {
@@ -267,13 +272,13 @@ export const MENU_GROUPS: HrdMenuGroup[] = [
     color: "lime",
     hubHref: "/hrd/reports",
     items: [
-      { href: "/hrd/reports/recruitment", label: "Laporan Rekrutmen" },
+      { href: "/hrd/reports/recruitment", label: "Laporan Rekrutmen", showInDropdown: false },
       { href: "/hrd/reports/employees", label: "Laporan Karyawan" },
       { href: "/hrd/reports/payroll", label: "Laporan Payroll" },
-      { href: "/hrd/reports/laba-rugi", label: "Laporan Laba/Rugi" },
-      { href: "/hrd/reports/training", label: "Laporan Training" },
-      { href: "/hrd/reports/performance", label: "Laporan Kinerja" },
-      { href: "/hrd/reports/turnover", label: "Laporan Turnover" },
+      { href: "/hrd/reports/laba-rugi", label: "Laporan Laba/Rugi", showInDropdown: false },
+      { href: "/hrd/reports/training", label: "Laporan Training", showInDropdown: false },
+      { href: "/hrd/reports/performance", label: "Laporan Kinerja", showInDropdown: false },
+      { href: "/hrd/reports/turnover", label: "Laporan Turnover", showInDropdown: false },
     ],
   },
   {

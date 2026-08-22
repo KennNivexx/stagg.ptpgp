@@ -367,6 +367,11 @@ export async function savePerformanceFramework(formData: FormData): Promise<{ er
  * the existing KPI score. No-ops silently if no evaluasi_kpi row exists yet
  * for that employee+period (nothing to attach the score to). */
 export async function recomputeFinalScore(employeeId: string, period: string) {
+  // Only ever called internally by saveKpiEvaluation/saveFeedback, both of
+  // which already requireRole before reaching here — guarded directly too
+  // since this is itself an exported "use server" action and thus callable
+  // on its own if its ID ever leaks into a client bundle.
+  await requireRole("hrd", "superadmin", "department_manager");
   if (!employeeId || !period) return;
 
   const { data: kpiRow } = await supabaseAdmin.from("evaluasi_kpi").select("id, score").eq("employee_id", employeeId).eq("period", period).maybeSingle();

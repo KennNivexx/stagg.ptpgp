@@ -1,7 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { getPublicSettings } from "@/lib/public-settings";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import NewNavbar from "@/components/public/NewNavbar";
 import PGPFooter from "@/components/public/PGPFooter";
+import ThemeStyle from "@/components/public/ThemeStyle";
 import AnimatedCareerWrapper from "@/components/public/AnimatedCareerWrapper";
 
 export const revalidate = 60;
@@ -18,7 +20,11 @@ export default async function CareerPage(props: { searchParams: Promise<{ filter
   if (filter && filter !== 'All') {
     query = query.eq('department', filter);
   }
-  const { data: jobs } = await query;
+  const [{ data: jobs }, settings] = await Promise.all([query, getPublicSettings()]);
+  const info = settings?.info || {};
+  const links = settings?.links || {};
+  const footer = settings?.footer || {};
+  const theme = settings?.theme || {};
   const mappedJobs = (jobs || []).map((j: Record<string, unknown>) => ({
     id: j.id as string,
     title: (j.title as string) || (j.position as string),
@@ -37,9 +43,15 @@ export default async function CareerPage(props: { searchParams: Promise<{ filter
 
   return (
     <main className={`min-h-screen bg-[#FDFDFD] pt-[72px] ${jakarta.className}`}>
-      <NewNavbar />
+      <ThemeStyle
+        primary={theme.primary as string}
+        primaryHover={theme.primary_hover as string}
+        navy={theme.navy as string}
+        background={theme.background as string}
+      />
+      <NewNavbar links={links} companyName={info.company_name as string} />
       <AnimatedCareerWrapper jobs={mappedJobs} />
-      <PGPFooter />
+      <PGPFooter info={info} footer={footer} links={links} />
     </main>
   );
 }

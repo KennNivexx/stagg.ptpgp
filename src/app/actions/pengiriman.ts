@@ -90,8 +90,11 @@ export async function getFinancialSummary(month?: number, year?: number): Promis
 
   const [{ data: omsetRows }, { data: payrollRows }, { data: insentifRows }, { data: dinasRows }] = await Promise.all([
     supabaseAdmin.from("pengiriman").select("nilai_omset").eq("status", "Selesai").gte("tanggal", from).lte("tanggal", to),
-    supabaseAdmin.from("penggajian").select("gross_salary").eq("month", m).eq("year", y),
-    supabaseAdmin.from("insentif").select("amount").eq("period", periode).eq("type", "incentive"),
+    supabaseAdmin.from("penggajian").select("gross_salary, bonus").eq("month", m).eq("year", y),
+    // Same status filter computePayrollEntry/generatePayslip use when folding
+    // insentif into a payslip's bonus (admin.ts) — without it this counted
+    // Pending/Ditolak rows as a real cost.
+    supabaseAdmin.from("insentif").select("amount").eq("period", periode).eq("type", "incentive").in("status", ["Disetujui", "Dibayarkan"]),
     supabaseAdmin.from("perjalanan_dinas").select("estimasi_biaya").eq("status", "Disetujui").gte("start_date", from).lte("start_date", to),
   ]);
 
@@ -99,7 +102,13 @@ export async function getFinancialSummary(month?: number, year?: number): Promis
     ((rows || []) as Record<string, unknown>[]).reduce((s, r) => s + (Number(r[key]) || 0), 0);
 
   const omset = sum(omsetRows, "nilai_omset");
-  const gaji = sum(payrollRows, "gross_salary");
+  // gross_salary already has every approved/paid insentif row for that
+  // employee/period folded into it as `bonus` (computePayrollEntry, admin.ts)
+  // — subtract bonus back out here so the separate insentif_supir line below
+  // isn't counted twice. (bonus can also include non-"incentive" types like
+  // THR, which this doesn't re-add as its own line — a known, much smaller
+  // gap versus the double-count this replaces.)
+  const gaji = sum(payrollRows, "gross_salary") - sum(payrollRows, "bonus");
   const insentif_supir = sum(insentifRows, "amount");
   const perjalanan_dinas = sum(dinasRows, "estimasi_biaya");
   const total = gaji + insentif_supir + perjalanan_dinas;

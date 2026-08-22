@@ -234,7 +234,11 @@ export async function issueWarning(formData: FormData) {
  * Called at warnings page load — no cron in this environment, so expiry is
  * applied lazily whenever the list is viewed. */
 export async function expireOldWarnings() {
-  const today = new Date().toISOString().slice(0, 10);
+  // .toISOString() is UTC — during the first ~7 hours of each WIB calendar
+  // day this lags a day behind, so a warning could stay "Aktif" for hours
+  // past its real Jakarta expiry. Match the WIB-aware pattern already used
+  // elsewhere (attendance-core.ts, geofence.ts) instead.
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
   const { error } = await supabaseAdmin
     .from("surat_peringatan")
     .update({ status: "Kadaluarsa" })

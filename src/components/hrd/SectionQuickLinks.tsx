@@ -27,17 +27,24 @@ const COLOR_CLASSES: Record<string, { bg: string; text: string }> = {
  * this project's earlier hand-written tile sections had (some linked to
  * routes that no longer exist). `excludeHref` drops the hub's own entry
  * (always present as items[0] for a group with a hubHref) so a hub page
- * doesn't render a tile linking to itself. */
-export default function SectionQuickLinks({ groupLabel, excludeHref }: { groupLabel: string; excludeHref?: string }) {
+ * doesn't render a tile linking to itself.
+ *
+ * `onlySection` restricts the tiles to one `item.section` cluster — used to
+ * "piggyback" a group that has no dedicated hub page (e.g. Aset & Fasilitas)
+ * onto one of its own existing sub-pages instead of building a whole new
+ * hub route just to hold quick-links. */
+export default function SectionQuickLinks({ groupLabel, excludeHref, onlySection }: { groupLabel: string; excludeHref?: string; onlySection?: string }) {
   const group = MENU_GROUPS.find((g) => g.label === groupLabel);
   if (!group) return null;
-  const items = group.items.filter((item) => item.href !== excludeHref);
+  const items = group.items
+    .filter((item) => item.href !== excludeHref)
+    .filter((item) => onlySection === undefined || item.section === onlySection);
   if (items.length === 0) return null;
   const colors = COLOR_CLASSES[group.color] || COLOR_CLASSES.slate;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-      <h3 className="font-extrabold text-slate-800 text-sm mb-4">Menu {group.label}</h3>
+      <h3 className="font-extrabold text-slate-800 text-sm mb-4">Menu {onlySection ? `${group.label} — ${onlySection}` : group.label}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map((item) => (
           <Link

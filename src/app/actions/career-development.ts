@@ -79,39 +79,12 @@ export async function getCareerReadinessRules() {
 }
 
 // ── TALENT MANAGEMENT ────────────────────────────────────────────────────
-
-export async function getTalentPool() {
-  await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin
-    .from("talent_pools")
-    .select("*, karyawan!talent_pools_karyawan_id_fkey(full_name, department, position), target:jabatan!talent_pools_target_jabatan_id_fkey(name)")
-    .order("created_at", { ascending: false });
-  return data || [];
-}
-
-export async function getTalentReviews() {
-  await requireRole("hrd", "superadmin");
-  const { data } = await supabaseAdmin
-    .from("talent_reviews")
-    .select("*, karyawan!talent_reviews_karyawan_id_fkey(full_name, department, position), talent_classifications(name, color_code)")
-    .order("review_date", { ascending: false });
-  return data || [];
-}
-
-export async function getLeadershipPipeline() {
-  await requireRole("hrd", "superadmin");
-  // Leadership pipeline = talent pool entries targeting a Manager-and-above
-  // jabatan, cross-referenced with their latest talent review classification.
-  const { data } = await supabaseAdmin
-    .from("talent_pools")
-    .select("*, karyawan!talent_pools_karyawan_id_fkey(full_name, department, position), target:jabatan!talent_pools_target_jabatan_id_fkey(name, level)")
-    .in("status", ["Ready", "Development"])
-    .order("created_at", { ascending: false });
-  return (data || []).filter((r) => {
-    const level = (r as { target?: { level?: string } }).target?.level;
-    return level && ["Manager", "General Manager", "Direktur", "Direktur Utama"].includes(level);
-  });
-}
+// getTalentPool/getTalentReviews/getLeadershipPipeline used to live here,
+// reading talent_pools/talent_reviews — tables nothing in the app ever
+// wrote to. Their consuming pages (/hrd/career/talent/pool, /review,
+// /leadership-pipeline) now read the real live data instead, from
+// succession.ts's pool_suksesi/penilaian_kesiapan_suksesi/kandidat_suksesor
+// (the tables HRD actually enters data into via /hrd/succession/*).
 
 // ── CAREER DEVELOPMENT (per-employee) ───────────────────────────────────
 
@@ -361,22 +334,30 @@ export async function getCareerAnalytics() {
     { count: readyForPromotion },
     { count: highPotential },
     { count: criticalPositions },
-    { data: successionPlans },
+    { data: readinessAssessments },
     { data: assessments },
     { count: promotionsThisYear },
     { count: mutationsThisYear },
   ] = await Promise.all([
     supabaseAdmin.from("career_assessments").select("*", { count: "exact", head: true }).gte("final_career_score", 80),
-    supabaseAdmin.from("talent_reviews").select("*", { count: "exact", head: true }).gte("potential_score", 85),
-    supabaseAdmin.from("critical_positions").select("*", { count: "exact", head: true }).eq("status", "Active"),
-    supabaseAdmin.from("succession_plans").select("readiness_status"),
+    // talent_reviews/critical_positions/succession_plans below used to be
+    // this dashboard's source for these 3 numbers — but nothing in the app
+    // ever writes to those tables; the actual data entry HRD uses lives at
+    // /hrd/succession/* against pool_suksesi/posisi_kritis/
+    // penilaian_kesiapan_suksesi (succession.ts), so this dashboard never
+    // reflected anything HRD actually entered. Wired to the real tables.
+    supabaseAdmin.from("pool_suksesi").select("*", { count: "exact", head: true }).in("potential_rating", ["Bintang", "Potensial Tinggi"]),
+    supabaseAdmin.from("posisi_kritis").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("penilaian_kesiapan_suksesi").select("total_score"),
     supabaseAdmin.from("career_assessments").select("final_career_score"),
     supabaseAdmin.from("promosi_karir").select("*", { count: "exact", head: true }).gte("created_at", `${new Date().getFullYear()}-01-01`),
     supabaseAdmin.from("mutasi_karir").select("*", { count: "exact", head: true }).is("review_type", null).gte("created_at", `${new Date().getFullYear()}-01-01`),
   ]);
-  const plans = (successionPlans || []) as { readiness_status: string }[];
-  const readyNow = plans.filter((p) => p.readiness_status === "Ready Now").length;
-  const successionReadinessPct = plans.length > 0 ? Math.round((readyNow / plans.length) * 100) : 0;
+  // 80 matches the exact "Siap Segera" threshold already used on
+  // /hrd/succession/readiness — same number, same meaning, one source of truth.
+  const readiness = (readinessAssessments || []) as { total_score: number }[];
+  const readyNow = readiness.filter((r) => (Number(r.total_score) || 0) >= 80).length;
+  const successionReadinessPct = readiness.length > 0 ? Math.round((readyNow / readiness.length) * 100) : 0;
   const scores = (assessments || []) as { final_career_score: number }[];
   const avgCareerScore = scores.length > 0 ? Math.round((scores.reduce((s, r) => s + (r.final_career_score || 0), 0) / scores.length) * 10) / 10 : 0;
   return {

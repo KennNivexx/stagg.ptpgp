@@ -168,12 +168,39 @@ export async function updateFormasi(formData: FormData) {
   const seniorityError = await checkKepalaUnitSeniority(unit_organisasi_id, jabatan_id);
   if (seniorityError) return seniorityError;
 
+  // Needed before the update to know whether this Position Number is
+  // currently occupied — if it is, the occupant's record must be kept in
+  // sync below (previously only assignKaryawan did this; editing a Filled
+  // formasi's jabatan/unit here left the employee's position/department
+  // text fields — and, via jabatan.is_kepala_unit, the org chart's leader —
+  // silently desynced from the formasi they actually hold).
+  const { data: before } = await supabaseAdmin.from("formasi_jabatan").select("status, karyawan_id").eq("id", id).maybeSingle();
+  const occupantId = (before as { status?: string; karyawan_id?: string | null } | null)?.status === "Filled"
+    ? (before as { karyawan_id?: string | null }).karyawan_id
+    : null;
+
   const { error } = await supabaseAdmin.from("formasi_jabatan").update({
     unit_organisasi_id, jabatan_id, keterangan: keterangan || null, updated_at: new Date().toISOString(),
   }).eq("id", id);
   if (error) return { error: "Gagal mengupdate Position Number." };
 
+  if (occupantId) {
+    const [{ data: jabatan }, { data: unit }] = await Promise.all([
+      supabaseAdmin.from("jabatan").select("name, code").eq("id", jabatan_id).maybeSingle(),
+      supabaseAdmin.from("unit_organisasi").select("name").eq("id", unit_organisasi_id).maybeSingle(),
+    ]);
+    const jabatanName = (jabatan as { name?: string } | null)?.name || "";
+    const jabatanCode = (jabatan as { code?: string } | null)?.code || "";
+    const unitName = (unit as { name?: string } | null)?.name || "";
+    const { error: karyawanErr } = await supabaseAdmin.from("karyawan").update({
+      position: jabatanName, department: unitName, kode_jabatan: jabatanCode,
+    }).eq("id", occupantId);
+    if (karyawanErr) console.error("[formasi] updateFormasi: gagal sinkronkan data karyawan:", karyawanErr.message);
+  }
+
   revalidatePath("/hrd/workplace/formasi");
+  revalidatePath("/hrd/workplace/structure");
+  revalidatePath("/hrd/infrastructure/employees");
   auditLog({ action: "formasi.update", targetId: id, performedBy: user });
   return { success: true };
 }
@@ -227,20 +254,53 @@ export async function assignKaryawan(formasiId: string, karyawanId: string) {
   const now = new Date().toISOString();
   const today = now.slice(0, 10);
 
-  await supabaseAdmin.from("formasi_jabatan").update({
+  // Three sequential writes with no real transaction available (Supabase
+  // REST client) — each is checked and, if a later one fails, the earlier
+  // ones are compensated so a Position Number can never end up stuck showing
+  // Filled with no employee actually pointing back to it (or vice versa).
+  // The .eq("status","Vacant")/.is("formasi_id", null) conditions turn each
+  // write into a compare-and-swap, closing the TOCTOU race where two
+  // concurrent assignKaryawan calls both pass the SELECT-based checks above
+  // before either write lands (which used to let both succeed, stranding
+  // whichever employee lost the race with no way to unassign them).
+  const { data: formasiRows, error: formasiErr } = await supabaseAdmin.from("formasi_jabatan").update({
     status: "Filled", karyawan_id: karyawanId, tanggal_mulai: today, updated_at: now,
-  }).eq("id", formasiId);
+  }).eq("id", formasiId).eq("status", "Vacant").select("id");
+  if (formasiErr) { console.error("[formasi] assignKaryawan formasi update error:", formasiErr.message); return { error: "Gagal menempatkan karyawan." }; }
+  if (!formasiRows || formasiRows.length === 0) return { error: "Position Number ini baru saja terisi oleh proses lain." };
 
-  await supabaseAdmin.from("karyawan").update({
+  const { data: karyawanRows, error: karyawanErr } = await supabaseAdmin.from("karyawan").update({
     formasi_id: formasiId, position: jabatanName, department: unitName,
     kode_jabatan: jabatanCode,
-  }).eq("id", karyawanId);
+  }).eq("id", karyawanId).is("formasi_id", null).select("id");
+  if (!karyawanErr && (!karyawanRows || karyawanRows.length === 0)) {
+    console.error("[formasi] assignKaryawan: karyawan already had a formasi_id (race lost)");
+    await supabaseAdmin.from("formasi_jabatan").update({
+      status: "Vacant", karyawan_id: null, tanggal_mulai: null, updated_at: new Date().toISOString(),
+    }).eq("id", formasiId);
+    return { error: "Karyawan ini baru saja ditempatkan di Position Number lain oleh proses lain. Perubahan dibatalkan." };
+  }
+  if (karyawanErr) {
+    console.error("[formasi] assignKaryawan karyawan update error:", karyawanErr.message);
+    await supabaseAdmin.from("formasi_jabatan").update({
+      status: "Vacant", karyawan_id: null, tanggal_mulai: null, updated_at: new Date().toISOString(),
+    }).eq("id", formasiId);
+    return { error: "Gagal menempatkan karyawan. Perubahan dibatalkan." };
+  }
 
-  await supabaseAdmin.from("riwayat_posisi_karyawan").insert({
+  const { error: riwayatErr } = await supabaseAdmin.from("riwayat_posisi_karyawan").insert({
     id: "riw-" + crypto.randomUUID(), karyawan_id: karyawanId, formasi_id: formasiId,
     jabatan_id: f.jabatan_id, unit_organisasi_id: f.unit_organisasi_id,
     jenis_perubahan: "Penempatan", tanggal_mulai: today, created_by: user.name || user.email,
   });
+  if (riwayatErr) {
+    console.error("[formasi] assignKaryawan riwayat insert error:", riwayatErr.message);
+    await supabaseAdmin.from("formasi_jabatan").update({
+      status: "Vacant", karyawan_id: null, tanggal_mulai: null, updated_at: new Date().toISOString(),
+    }).eq("id", formasiId);
+    await supabaseAdmin.from("karyawan").update({ formasi_id: null }).eq("id", karyawanId);
+    return { error: "Gagal mencatat riwayat penempatan. Perubahan dibatalkan." };
+  }
 
   revalidatePath("/hrd/workplace/formasi");
   revalidatePath("/hrd/workplace/structure");
@@ -257,12 +317,22 @@ export async function unassignKaryawan(formasiId: string) {
   if (!formasi) return { error: "Position Number tidak ditemukan." };
   const karyawanId = (formasi as { karyawan_id: string | null }).karyawan_id;
 
-  await supabaseAdmin.from("formasi_jabatan").update({
+  const { error: formasiErr } = await supabaseAdmin.from("formasi_jabatan").update({
     status: "Vacant", karyawan_id: null, tanggal_mulai: null, updated_at: new Date().toISOString(),
   }).eq("id", formasiId);
+  if (formasiErr) { console.error("[formasi] unassignKaryawan formasi update error:", formasiErr.message); return { error: "Gagal melepas penempatan." }; }
 
   if (karyawanId) {
-    await supabaseAdmin.from("karyawan").update({ formasi_id: null }).eq("id", karyawanId);
+    const { error: karyawanErr } = await supabaseAdmin.from("karyawan").update({ formasi_id: null }).eq("id", karyawanId);
+    if (karyawanErr) {
+      console.error("[formasi] unassignKaryawan karyawan update error:", karyawanErr.message);
+      // Position Number is already Vacant at this point — leaving it that
+      // way (rather than re-Filling it) is the safer failure mode, since
+      // re-Filling could race with someone else assigning it in the
+      // meantime. Surface the error so HRD knows to fix karyawan.formasi_id
+      // manually instead of assuming the unassign fully succeeded.
+      return { error: "Position Number berhasil dikosongkan, tapi gagal melepas relasi pada data karyawan. Hubungi admin." };
+    }
     await supabaseAdmin.from("riwayat_posisi_karyawan")
       .update({ tanggal_selesai: new Date().toISOString().slice(0, 10) })
       .eq("formasi_id", formasiId).eq("karyawan_id", karyawanId).is("tanggal_selesai", null);

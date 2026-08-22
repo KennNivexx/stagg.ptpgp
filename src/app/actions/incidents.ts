@@ -58,6 +58,13 @@ export async function updateIncidentStatus(id: string, status: string, resolutio
   if (!report) return { error: "Laporan tidak ditemukan." };
   const r = report as Record<string, unknown>;
 
+  // "Selesai" is the terminal state — every sibling decide-action in this
+  // codebase (updateLeaveStatus, updateBusinessTripStatus, reviewKoreksi,
+  // reviewLembur) blocks re-processing an already-decided record; this one
+  // didn't, so a double-click/retry could silently re-fire the "resolved"
+  // notification below on an incident that was already closed.
+  if (r.status === "Selesai") return { error: "Laporan ini sudah selesai diproses sebelumnya." };
+
   if (user.role === "department_manager") {
     const { data: mgr } = await supabaseAdmin.from("karyawan").select("department").eq("email", user.email).maybeSingle();
     const myDept = (mgr as { department?: string } | null)?.department;

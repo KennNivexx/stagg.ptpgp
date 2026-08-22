@@ -478,6 +478,64 @@ export async function moveApplicationStatus(applicationId: string, newStatus: st
 }
 
 // ── Interview: schedule / update date, time, interviewer, location, notes ───
+export interface InterviewCandidate {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  job_title: string;
+  applied_at: string;
+  job_id: string;
+  interview_date: string;
+  interview_time: string;
+  interviewer: string;
+  interview_location: string;
+  interview_online_link: string;
+  interview_notes: string;
+  test_tulis_result: { score?: number; passed?: boolean } | null;
+  test_psikotes_result: { overall?: number } | null;
+}
+
+/** Every applicant currently in the Interview stage, for the Jadwal Interview
+ * page — this used to be fetched client-side via the anon `supabase` client,
+ * which RLS blocks (every table denies anon/authenticated by default, see
+ * 20260620003_enable_rls.sql) so the page always rendered an empty list
+ * regardless of real data. */
+export async function getInterviewCandidates(): Promise<InterviewCandidate[]> {
+  await requireRole("hrd", "superadmin");
+  const { data } = await supabaseAdmin
+    .from("pelamar")
+    .select("*")
+    .eq("status", "Interview")
+    .order("applied_at", { ascending: false });
+  const apps = (data || []) as Record<string, unknown>[];
+
+  const jobIds = [...new Set(apps.map((a) => a.job_id as string).filter(Boolean))];
+  const jobMap = new Map<string, string>();
+  if (jobIds.length > 0) {
+    const { data: jobs } = await supabaseAdmin.from("lowongan_kerja").select("id, position").in("id", jobIds);
+    ((jobs || []) as Record<string, unknown>[]).forEach((j) => jobMap.set(j.id as string, j.position as string));
+  }
+
+  return apps.map((app) => ({
+    id: app.id as string,
+    full_name: app.full_name as string,
+    email: app.email as string,
+    phone: (app.phone as string) || "",
+    job_title: jobMap.get(app.job_id as string) || "-",
+    applied_at: app.applied_at as string,
+    job_id: app.job_id as string,
+    interview_date: (app.interview_date as string) || "",
+    interview_time: (app.interview_time as string) || "",
+    interviewer: (app.interviewer as string) || "",
+    interview_location: (app.interview_location as string) || "",
+    interview_online_link: (app.interview_online_link as string) || "",
+    interview_notes: (app.interview_notes as string) || "",
+    test_tulis_result: (app.test_tulis_result as InterviewCandidate["test_tulis_result"]) || null,
+    test_psikotes_result: (app.test_psikotes_result as InterviewCandidate["test_psikotes_result"]) || null,
+  }));
+}
+
 export async function scheduleInterview(
   applicationId: string,
   payload: {
@@ -578,9 +636,15 @@ export async function hireCandidateFromPipeline(applicationId: string, _skipAppr
   fd.set("position", (job?.position as string) || (app.position as string) || "");
   fd.set("department", (job?.department as string) || (app.department as string) || "");
 
-  // Mark as Diterima before creating employee
-  await supabaseAdmin.from("pelamar").update({ status: "Diterima" }).eq("id", applicationId);
-
+  // hireCandidate() itself marks pelamar.status = "Diterima" — but only
+  // AFTER it successfully inserts the karyawan row (see the .update() right
+  // after the employee insert, further down in this file). This function
+  // used to mark it "Diterima" here, BEFORE calling hireCandidate() — if
+  // hireCandidate then failed (bad job posting, insert error, etc.), the
+  // applicant was left permanently marked "Diterima" with no employee
+  // record ever created, and the "sudah direkrut sebelumnya" guard above
+  // would then block every future retry forever. Let hireCandidate own that
+  // write at the point it's actually true.
   return hireCandidate(fd);
 }
 

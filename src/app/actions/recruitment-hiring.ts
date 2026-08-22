@@ -152,8 +152,21 @@ export async function decideHiringApprovalStep(
     .select("step_number").eq("application_id", applicationId).order("step_number", { ascending: false }).limit(1);
   const lastStep = (allSteps || [])[0] as { step_number: number } | undefined;
   if (lastStep && lastStep.step_number === stepNumber) {
+    // This step was just committed "Approved" above — hireCandidate()'s own
+    // independent gate check (recruitment.ts) requires every step to already
+    // show Approved in the DB before it'll proceed, so that write can't be
+    // deferred until after this call succeeds. If it fails anyway (bad job
+    // posting, insert error, etc.), roll this step back to Pending instead
+    // of leaving it stuck Approved-with-no-employee-created and permanently
+    // blocked from ever being retried (the guard at the top of this
+    // function only allows deciding a step that's still Pending).
     const hireRes = await hireCandidateFromPipeline(applicationId, true);
-    if (hireRes && "error" in hireRes) return { error: hireRes.error as string };
+    if (hireRes && "error" in hireRes) {
+      await supabaseAdmin.from("hiring_approval_steps").update({
+        status: "Pending", approved_by: null, approved_at: null, notes: null,
+      }).eq("application_id", applicationId).eq("step_number", stepNumber);
+      return { error: `${hireRes.error} (Tahap ${stepNumber} dikembalikan ke status Pending, silakan coba lagi.)` };
+    }
   }
 
   revalidatePath("/hrd/recruitment/decisions");

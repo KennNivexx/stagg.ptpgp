@@ -43,25 +43,54 @@ export default async function KandidatSuksesor() {
   const readinessAssessments = await getLatestReadinessByEmployee();
   const addedCandidates = await getSuccessionCandidates();
 
-  // Unified formula: prefer a real succession readiness assessment, else fall
-  // back to average KPI score. No fabricated floor for employees with no data.
+  // HRD's manually-added candidates (readiness_override/notes from the "Tambah
+  // Kandidat" form) used to be fetched only for the side-panel form's own
+  // display — this main ranking table always auto-generated purely from KPI/
+  // readiness scores, so a manual entry never actually showed up here (its
+  // override was ignored, and if the employee's auto-computed readiness fell
+  // below 50 or outside the top 20, they wouldn't appear in this table at all
+  // regardless of HRD explicitly adding them).
+  const manualByEmployeeId = new Map(
+    (addedCandidates as { employee_id: string; readiness_override: number | null; notes: string | null }[])
+      .map((c) => [c.employee_id, c])
+  );
+
+  // Unified formula: manual override (if HRD set one) wins, else a real
+  // succession readiness assessment, else average KPI score. No fabricated
+  // floor for employees with no data.
   const getReadiness = (id: string): number | null => {
+    const manual = manualByEmployeeId.get(id);
+    if (manual?.readiness_override != null) return manual.readiness_override;
     if (id in readinessAssessments) return readinessAssessments[id];
     const avg = getAvgScore(id);
     return avg > 0 ? avg : null;
   };
 
-  const candidates = (employees || [])
-    .map((emp: Record<string, unknown>) => {
-      const id = emp.id as string;
-      return {
-        ...emp,
-        avgScore: getAvgScore(id),
-        readiness: getReadiness(id),
-      };
-    })
-    .filter((emp: Record<string, unknown>) => (emp.readiness as number | null) !== null && (emp.readiness as number) >= 50)
-    .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.readiness as number) - (a.readiness as number))
+  const employeeList = (employees || []) as Record<string, unknown>[];
+  const buildCandidate = (emp: Record<string, unknown>): Record<string, unknown> & { avgScore: number; readiness: number | null; manuallyAdded: boolean } => {
+    const id = emp.id as string;
+    return {
+      ...emp,
+      avgScore: getAvgScore(id),
+      readiness: getReadiness(id),
+      manuallyAdded: manualByEmployeeId.has(id),
+    };
+  };
+
+  const autoRanked = employeeList
+    .map(buildCandidate)
+    .filter((emp) => (emp.readiness as number | null) !== null && (emp.readiness as number) >= 50);
+
+  // Every manually-added candidate must appear — HRD explicitly put them
+  // here, so their auto-computed score (or lack of one) can't silently
+  // exclude them the way it did before.
+  const autoRankedIds = new Set(autoRanked.map((c) => c.id as string));
+  const manualOnly = employeeList
+    .filter((emp) => manualByEmployeeId.has(emp.id as string) && !autoRankedIds.has(emp.id as string))
+    .map(buildCandidate);
+
+  const candidates = [...autoRanked, ...manualOnly]
+    .sort((a, b) => (b.manuallyAdded ? 1 : 0) - (a.manuallyAdded ? 1 : 0) || ((b.readiness as number) || 0) - ((a.readiness as number) || 0))
     .slice(0, 20);
 
   return (
@@ -153,7 +182,12 @@ export default async function KandidatSuksesor() {
                             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
                               {(c.full_name as string)?.charAt(0)?.toUpperCase() || "?"}
                             </div>
-                            <p className="text-xs font-bold text-slate-800">{c.full_name as string}</p>
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">{c.full_name as string}</p>
+                              {(c.manuallyAdded as boolean) && (
+                                <span className="text-[9px] font-bold text-purple-600">Ditambahkan manual</span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-xs text-slate-600">{c.position as string || "-"}</td>

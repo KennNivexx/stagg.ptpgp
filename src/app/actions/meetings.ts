@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth-guard";
+import { requireRole, requireAuth } from "@/lib/auth-guard";
 import { auditLog } from "@/lib/audit";
 
 const MIGRATION_NAME = "20260816002_meeting_governance";
@@ -73,6 +73,7 @@ function withComputedExpiry(rows: BookingRuangMeeting[]): BookingRuangMeeting[] 
  * "Kedaluwarsa" secara permanen di database. Dipanggil dari halaman list
  * (on-view), bukan cron. */
 export async function expireStaleBookings(): Promise<{ expired: number }> {
+  await requireAuth();
   const { data, error } = await supabaseAdmin
     .from("booking_ruang_meeting")
     .select("id, created_at")
@@ -90,11 +91,13 @@ export async function expireStaleBookings(): Promise<{ expired: number }> {
 }
 
 export async function getRooms(): Promise<RuangMeeting[]> {
+  await requireAuth();
   const { data } = await supabaseAdmin.from("ruang_meeting").select("*").order("nama");
   return (data as RuangMeeting[]) || [];
 }
 
 export async function getBookings(): Promise<BookingRuangMeeting[]> {
+  await requireAuth();
   await expireStaleBookings();
   const { data } = await supabaseAdmin
     .from("booking_ruang_meeting")
@@ -239,11 +242,13 @@ export interface DaftarHadirPeserta {
 }
 
 export async function listDaftarHadir(): Promise<DaftarHadir[]> {
+  await requireRole("hrd", "superadmin", "department_manager");
   const { data } = await supabaseAdmin.from("daftar_hadir").select("*").order("tanggal", { ascending: false });
   return (data as DaftarHadir[]) || [];
 }
 
 export async function getDaftarHadir(id: string): Promise<{ sheet: DaftarHadir; peserta: DaftarHadirPeserta[] } | null> {
+  await requireRole("hrd", "superadmin", "department_manager");
   const { data: sheet } = await supabaseAdmin.from("daftar_hadir").select("*").eq("id", id).maybeSingle();
   if (!sheet) return null;
   const { data: peserta } = await supabaseAdmin
@@ -348,11 +353,13 @@ export interface NotulenRapatItem {
 }
 
 export async function listNotulen(): Promise<NotulenRapat[]> {
+  await requireRole("hrd", "superadmin", "director", "department_manager");
   const { data } = await supabaseAdmin.from("notulen_rapat").select("*").order("tanggal", { ascending: false });
   return (data as NotulenRapat[]) || [];
 }
 
 export async function getNotulen(id: string): Promise<{ notulen: NotulenRapat; items: NotulenRapatItem[] } | null> {
+  await requireRole("hrd", "superadmin", "director", "department_manager");
   const { data: notulen } = await supabaseAdmin.from("notulen_rapat").select("*").eq("id", id).maybeSingle();
   if (!notulen) return null;
   const { data: items } = await supabaseAdmin
